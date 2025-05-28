@@ -6,9 +6,8 @@ export default defineConfig({
     plugins: [dts()],
     build: {
         lib: {
-            entry: resolve(__dirname, 'src/index.ts'),
-            formats: ['es'],
-            fileName: 'index'
+            entry: resolve(__dirname, 'src/tutorial.eval.ts'),
+            formats: ['es']
         }
     }
 })

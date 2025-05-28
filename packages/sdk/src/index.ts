@@ -1,3 +1,2 @@
-export class Axiom {
-    
-}
+export * from './axiom'
+export * from './types'

@@ -1,21 +1,6 @@
-# Axiom AI
+import { Axiom } from '@axiomhq/ai'
 
-This repo contains all the SDKs and libraries needed for AI models obsverability.
-
-
-## Install Axiom SDK
-
-```bash
-npm install @axiomhq/ai autoevals
-```
-
-## Create and run a prompt
-
-```ts
-import Axiom from '@axiomhq/ai'
-
-
-const ai = new Axiom(process.env.API_KEY)
+const ai = new Axiom('API_KEY')
 
 async function main() {
     const project = await ai.projects.create('finetune-email-summary')
@@ -52,4 +37,7 @@ async function main() {
         }
     )
 }
-```
+
+main().then(() => {
+    console.log('done')
+})
