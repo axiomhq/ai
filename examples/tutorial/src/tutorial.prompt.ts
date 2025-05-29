@@ -22,7 +22,7 @@ async function main() {
     })
 
     // Deploy to production
-    await ai.prompts.deploy(prompt.id, {
+    await ai.prompts.deploy(project.name, prompt.id, {
         environment: 'production',
         version: prompt.version
     });

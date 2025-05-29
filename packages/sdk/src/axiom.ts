@@ -1,25 +1,41 @@
 import { Eval, type EvalParams } from './eval'
-import { createProject } from './projects'
-import { createPrompt, deployPrompt } from './prompts'
-import type { PromptInput } from './types'
+import HTTPClient from './httpClient'
+import type { Project, Prompt, PromptInput } from './types'
 
-export class Axiom {
-    constructor(private readonly apiKey: string) { }
+export type ClientOptions = {
+    onError?: (error: Error) => void
+}
+
+export class Axiom extends HTTPClient {
+
+    constructor(apiKey: string, private opts: ClientOptions = {}) {
+        super({ apiKey })
+
+        // default options
+        if (!this.opts.onError) {
+            this.opts.onError = (error) => {
+                console.error(error)
+            }
+        }
+    }
 
     prompts = {
-        create: (project: string, input: PromptInput) => {
-            console.log(this.apiKey)
-            return createPrompt(project, input)
+        create: async (project: string, input: PromptInput): Promise<Prompt> => {
+            return await this.client.post<Prompt>(`/projects/${project}/prompts`, {
+                body: JSON.stringify(input)
+            })
         },
 
-        deploy: (prompt: string, { environment, version }: { environment: 'production' | 'staging' | 'development', version: string }) => {
-            return deployPrompt(prompt, { environment, version })
+        deploy: async (project: string, promptId: string, { environment, version }: { environment: 'production' | 'staging' | 'development', version: string }) => {
+            return await this.client.put<Prompt>(`/projects/${project}/prompts/${promptId}/deploy`, {
+                body: JSON.stringify({ promptId, environment, version })
+            })
         }
     }
 
     projects = {
-        create: (name: string) => {
-            return createProject(name)
+        create: async (name: string): Promise<Project> => {
+            return await this.client.post<Project>('/projects', { body: JSON.stringify({ name }) })
         }
     }
 
