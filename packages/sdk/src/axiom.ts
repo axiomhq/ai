@@ -1,6 +1,6 @@
 import { Eval, type EvalParams } from './eval'
 import HTTPClient from './httpClient'
-import type { Project, Prompt, PromptInput } from './types'
+import type { LibraryInput, Project, Prompt, PromptInput } from './types'
 
 export type ClientOptions = {
     onError?: (error: Error) => void
@@ -39,11 +39,19 @@ export class Axiom extends HTTPClient {
         }
     }
 
+    library = {
+        create: async (project: string, input: LibraryInput): Promise<Prompt> => {
+            return await this.client.post<Prompt>(`/projects/${project}/library`, {
+                body: JSON.stringify(input)
+            })
+        }
+    }
+
     run({ project, prompt, inputs }: { project: string, prompt: string, inputs: Record<string, any> }) {
         console.log(project, prompt, inputs)
     }
 
-    eval({ project, prompt, data, task, scorers }: EvalParams) {
-        Eval({ project, prompt, data, task, scorers })
+    eval({ project, data, task, scorers }: EvalParams) {
+        return Eval({ project, data, task, scorers })
     }
 }

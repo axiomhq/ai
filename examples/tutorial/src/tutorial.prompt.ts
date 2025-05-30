@@ -14,7 +14,7 @@ async function main() {
             },
             {
                 role: 'user',
-                content: '{{email_content}}'
+                content: 'this is my {{email_content}} and sdflsdfnbskdf'
             }
         ],
         model: 'gpt-4',
