@@ -6,14 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "vitest",
     "check-types": "tsc --noEmit"
   },
+  "main": "dist/index.js",
   "dependencies": {
     "@axiomhq/ai": "workspace:*",
     "autoevals": "^0.0.129"
   },
   "devDependencies": {
+    "dotenv": "^16.5.0",
+    "vitest-evals": "^0.3.0",
+    "@types/node": "^22.15.29",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.1"
   }
 }
