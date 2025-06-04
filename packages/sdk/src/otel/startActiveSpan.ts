@@ -2,7 +2,7 @@ import {
   type Span,
   type SpanOptions,
   SpanStatusCode,
-  Tracer,
+  type Tracer,
 } from "@opentelemetry/api";
 
 interface Callbacks {

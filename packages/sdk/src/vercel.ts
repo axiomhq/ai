@@ -1,4 +1,4 @@
-import { Tracer, type Span } from "@opentelemetry/api";
+import { type Tracer, type Span } from "@opentelemetry/api";
 import {
   generateText,
   generateObject,
@@ -17,6 +17,7 @@ type GenerateTextAddlOpts = {
   additionalAttributes?: Record<string, string>;
 };
 
+// @TODO: this should probably not live here, but instead live in cloud
 function attemptToEnrichSpanWithPricing({
   span,
   model,
