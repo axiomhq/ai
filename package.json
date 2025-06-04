@@ -1,11 +1,11 @@
 {
 	"scripts": {
-		"build": "turbo build",
+		"build": "turbo build --force",
+		"test": "turbo test",
 		"check-types": "turbo check-types"
 	},
 	"devDependencies": {
-		"turbo": "^2.5.3",
-		"vite-plugin-dts": "^4.5.4"
+		"turbo": "^2.5.3"
 	},
-	"packageManager": "pnpm@9.15.4"
+	"packageManager": "pnpm@10.11.1"
 }
