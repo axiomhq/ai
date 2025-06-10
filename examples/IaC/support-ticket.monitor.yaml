@@ -1,0 +1,15 @@
+name: support-ticket-monitor
+description: "Monitor support tickets for billing issues"
+
+rules:
+  - name: "billing-issue"
+    description: "Monitor support tickets for billing issues"
+    query: "['support-ticket-classifier'] | where intent = 'billing_issue'"
+    notifiers:
+      - id: "send-email"
+        description: "Send an email to the customer"
+        type: "email"
+        config:
+          to: "support@example.com"
+          subject: "Billing Issue"
+          body: "The customer has a billing issue. Please investigate."

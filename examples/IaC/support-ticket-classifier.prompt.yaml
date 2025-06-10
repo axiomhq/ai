@@ -1,0 +1,17 @@
+name: support-ticket-classifier
+messages:
+  - role: developer
+    content: `Classify support tickets into:\n
+          - intent: billing_issue | technical_issue | feature_request | complaint\n
+          - urgency: low | medium | high | critical\n
+          - sentiment: positive | neutral | negative | angry\n
+          Output as JSON.`
+  - role: user
+    content: |
+      {{ticket_content}} \n Customer tier: {{customer_tier}}\
+variables:
+  - name: ticket_content
+    type: string
+  - name: customer_tier
+    type: string
+    default: "free"

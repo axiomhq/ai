@@ -43,6 +43,28 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0(tinyrainbow@2.0.0)(vitest@3.2.1(@types/node@22.15.29)(yaml@2.8.0))
 
+  packages/cli:
+    dependencies:
+      commander:
+        specifier: ^14.0.0
+        version: 14.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.15.29
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vite:
+        specifier: ^6.3.5
+        version: 6.3.5(@types/node@22.15.29)(yaml@2.8.0)
+      vite-plugin-dts:
+        specifier: ^4.5.4
+        version: 4.5.4(@types/node@22.15.29)(rollup@4.41.1)(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.29)(yaml@2.8.0))
+      vitest:
+        specifier: ^3.2.1
+        version: 3.2.1(@types/node@22.15.29)(yaml@2.8.0)
+
   packages/sdk:
     dependencies:
       '@opentelemetry/api':
@@ -436,6 +458,7 @@ packages:
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
+
   '@types/diff-match-patch@1.0.36':
     resolution: {integrity: sha512-xFdR6tkm0MWvBfO8xXCSsinYxHcqkQUlcHeSpMC2ukzOb6lwQAfDmW+Qt0AvlGd8HpsS28qKsB+oPeJn9I39jg==}
 
@@ -600,12 +623,13 @@ packages:
     resolution: {integrity: sha512-mCuXncKXk5iCLhfhwTc0izo0gtEmpz5CtG2y8GiOINBlMVS6v8TMRc5TaLWKS6692m9+dVVfzgeVxR5UxWHTYw==}
     engines: {node: '>=12'}
 
-  check-error@2.1.1:
-    resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
-    engines: {node: '>= 16'}
   chalk@5.4.1:
     resolution: {integrity: sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
+
+  check-error@2.1.1:
+    resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
+    engines: {node: '>= 16'}
 
   cheminfo-types@1.8.1:
     resolution: {integrity: sha512-FRcpVkox+cRovffgqNdDFQ1eUav+i/Vq/CUd1hcfEl2bevntFlzznL+jE8g4twl6ElB7gZjCko6pYpXyMn+6dA==}
@@ -613,6 +637,10 @@ packages:
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
+
+  commander@14.0.0:
+    resolution: {integrity: sha512-2uM9rYjPvyq39NwLRqaiLtWHyDC1FvryJDa2ATTVims5YAS4PupsEQsDvP14FqhFr0P49CYDugi59xaxJlTXRA==}
+    engines: {node: '>=20'}
 
   compare-versions@6.1.1:
     resolution: {integrity: sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg==}
@@ -655,15 +683,16 @@ packages:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
 
-  dotenv@16.5.0:
-    resolution: {integrity: sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==}
-    engines: {node: '>=12'}
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
 
   diff-match-patch@1.0.5:
     resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
+
+  dotenv@16.5.0:
+    resolution: {integrity: sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==}
+    engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -1041,11 +1070,6 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
-  tinybench@2.9.0:
-    resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
-
-  tinyexec@0.3.2:
-    resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
   swr@2.3.3:
     resolution: {integrity: sha512-dshNvs3ExOqtZ6kJBaAsabhPdHyeY4P2cKwRCniDVifBMoG/SVI7tfLWqPXriVspf2Rg4tPzXJTnwaihIeFw2A==}
     peerDependencies:
@@ -1054,6 +1078,12 @@ packages:
   throttleit@2.1.0:
     resolution: {integrity: sha512-nt6AMGKW1p/70DF/hGBdJB57B8Tspmbp5gfJ8ilhLnt7kkr2ye7hzD6NVG8GGErk2HWF34igrL2CXmNIkzKqKw==}
     engines: {node: '>=18'}
+
+  tinybench@2.9.0:
+    resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
+
+  tinyexec@0.3.2:
+    resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
 
   tinyglobby@0.2.14:
     resolution: {integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==}
@@ -1304,10 +1334,10 @@ snapshots:
       zod: 3.25.46
       zod-to-json-schema: 3.24.5(zod@3.25.46)
 
-  '@asteasolutions/zod-to-openapi@6.4.0(zod@3.25.32)':
+  '@asteasolutions/zod-to-openapi@6.4.0(zod@3.25.46)':
     dependencies:
       openapi3-ts: 4.4.0
-      zod: 3.25.32
+      zod: 3.25.46
 
   '@babel/helper-string-parser@7.27.1': {}
 
@@ -1324,9 +1354,9 @@ snapshots:
 
   '@braintrust/core@0.0.87':
     dependencies:
-      '@asteasolutions/zod-to-openapi': 6.4.0(zod@3.25.32)
+      '@asteasolutions/zod-to-openapi': 6.4.0(zod@3.25.46)
       uuid: 9.0.1
-      zod: 3.25.32
+      zod: 3.25.46
 
   '@esbuild/aix-ppc64@0.25.5':
     optional: true
@@ -1551,6 +1581,7 @@ snapshots:
       '@types/deep-eql': 4.0.2
 
   '@types/deep-eql@4.0.2': {}
+
   '@types/diff-match-patch@1.0.36': {}
 
   '@types/estree@1.0.7': {}
@@ -1761,14 +1792,17 @@ snapshots:
       loupe: 3.1.3
       pathval: 2.0.0
 
-  check-error@2.1.1: {}
   chalk@5.4.1: {}
+
+  check-error@2.1.1: {}
 
   cheminfo-types@1.8.1: {}
 
   combined-stream@1.0.8:
     dependencies:
       delayed-stream: 1.0.0
+
+  commander@14.0.0: {}
 
   compare-versions@6.1.1: {}
 
@@ -1805,10 +1839,11 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  dotenv@16.5.0: {}
   dequal@2.0.3: {}
 
   diff-match-patch@1.0.5: {}
+
+  dotenv@16.5.0: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -2196,9 +2231,6 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  tinybench@2.9.0: {}
-
-  tinyexec@0.3.2: {}
   swr@2.3.3(react@19.1.0):
     dependencies:
       dequal: 2.0.3
@@ -2206,6 +2238,10 @@ snapshots:
       use-sync-external-store: 1.5.0(react@19.1.0)
 
   throttleit@2.1.0: {}
+
+  tinybench@2.9.0: {}
+
+  tinyexec@0.3.2: {}
 
   tinyglobby@0.2.14:
     dependencies:
