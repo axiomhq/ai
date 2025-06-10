@@ -3,7 +3,6 @@ import { Levenshtein } from 'autoevals'
 
 const someTask: TaskFn = async (input: string) => `hello, ${input}!`
 
-
   describeEval("my evals", {
     data: async () => {
       // The scenarios you wish to evaluate

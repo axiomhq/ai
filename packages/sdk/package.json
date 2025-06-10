@@ -2,10 +2,15 @@
   "name": "@axiomhq/ai",
   "version": "0.0.0",
   "type": "module",
+  "author": "Axiom, Inc.",
+  "contributors": [
+    "Islam Shehata <islam@axiom.co>"
+  ], 
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check-types": "tsc --noEmit"
+    "format": "eslint './**/*.{js,ts}' --quiet --fix",
+    "lint": "eslint './**/*.{js,ts}'"
   },
   "types": "./dist/index.d.ts",
   "module": "./dist/index.js",
@@ -16,18 +21,31 @@
       "types": "./dist/types/index.d.ts"
     }
   },
+  "keywords": [
+    "axiom",
+    "api",
+    "rest",
+    "client",
+    "axiom-js",
+    "axiom sdk",
+    "axiom js",
+    "logger",
+    "logging"
+  ],
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "ai": "^4.3.16",
     "fetch-retry": "^6.0.0",
-    "zod": "^3.25.46"
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
     "@types/node": "^22.15.29",
-    "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-dts": "^4.5.4",
-    "vitest": "^3.2.1"
+    "typescript": "catalog:",
+    "eslint": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
   },
   "files": [
     "dist"
