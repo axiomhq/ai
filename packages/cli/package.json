@@ -1,0 +1,22 @@
+{
+  "name": "@axiomhq/cli",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": "./dist/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && chmod +x dist/index.js",
+    "check-types": "tsc --noEmit"
+  },
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.1"
+  }
+}

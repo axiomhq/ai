@@ -8,5 +8,5 @@
              > Tools   >
 
 
-Projects are the highest component that wraps the library, scorers and toosls. You should
+Projects are the highest component that wraps the library, scorers and tools. You should
 first create a project and then add prompts to it.

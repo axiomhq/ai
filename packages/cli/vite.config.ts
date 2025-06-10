@@ -8,16 +8,18 @@ export default defineConfig({
             outDir: 'dist/types'
         })
     ],
-    optimizeDeps: {
-        exclude: ['fsevents']
-    },
     build: {
-        target: 'es2020',
+        target: 'node22',
         lib: {
             entry: resolve(__dirname, 'src/index.ts'),
             formats: ['es'],
-            fileName: (format, entry) => `${entry}.js`
+            fileName: () => 'index.js'
+        },
+        rollupOptions: {
+            external: ['commander']
         },
         outDir: 'dist',
+        sourcemap: true,
+        ssr: true,
     }
 })
