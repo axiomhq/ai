@@ -1,8 +1,12 @@
 {
   "name": "@axiomhq/cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "bin": "./dist/index.js",
+  "author": "Axiom, Inc.",
+  "contributors": [
+    "Islam Shehata <islam@axiom.co>"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build && chmod +x dist/index.js",
@@ -10,6 +14,20 @@
     "lint": "eslint"
   },
   "types": "./dist/index.d.ts",
+  "keywords": [
+    "axiom",
+    "api",
+    "rest",
+    "client",
+    "axiom-js",
+    "axiom sdk",
+    "axiom js",
+    "logger",
+    "logging",
+    "ai"
+  ],
+  "repository": "https://github.com/axiomhq/ai",
+  "license": "MIT",
   "dependencies": {
     "commander": "^14.0.0"
   },
