@@ -39,5 +39,7 @@
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:",
     "eslint": "catalog:"
-  }
+  },
+  "files": ["dist"],
+  "packageManager": "pnpm@10.11.1"
 }

@@ -3,6 +3,9 @@ on:
     tags:
       - v*
 
+env:
+  PNPM_VERSION: 10.11.1
+  NODE_VERSION: 22
 
 jobs:
   # publish to github packages
@@ -16,7 +19,7 @@ jobs:
           version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - name: Cache turbo build setup
         uses: actions/cache@v4
