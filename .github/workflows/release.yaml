@@ -7,7 +7,7 @@ on:
 jobs:
   # publish to github packages
   publish:
-    name: Build
+    name: Publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,4 +27,4 @@ jobs:
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
-      - run: pnpm publish
+      - run: pnpm publish --no-git-checks
