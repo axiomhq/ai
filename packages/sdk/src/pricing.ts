@@ -3,7 +3,6 @@ type ModelPricingDetails = {
   OUTPUT_TOKEN_COST_PER_1K: number;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class Pricing {
   private static ModelPrices: Record<string, ModelPricingDetails> = {
     /**
