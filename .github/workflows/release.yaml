@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@axiomhq'
       - name: Cache turbo build setup
         uses: actions/cache@v4
         with:
@@ -35,6 +37,8 @@ jobs:
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
-      - run: pnpm publish -r --no-git-checks
+      - run: |
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          pnpm publish -r --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
