@@ -1,8 +1,10 @@
 {
+	"private": true,
 	"scripts": {
-		"build": "turbo build --force",
+		"build": "turbo build",
 		"test": "turbo test",
-		"check-types": "turbo check-types"
+		"format": "turbo run format",
+        "lint": "turbo run lint"
 	},
 	"devDependencies": {
 		"turbo": "^2.5.3"

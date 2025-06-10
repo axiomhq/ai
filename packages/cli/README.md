@@ -17,27 +17,35 @@ axiom [command] [options]
 ## Available Commands
 
 ### List Objects
+
 ```bash
 axiom list
 ```
+
 Lists all available objects in your Axiom workspace.
 
 ### Push Objects
+
 ```bash
 axiom push <object>
 ```
+
 Push a new version of an object (prompt, eval, monitor, dashboard, etc.).
 
 ### Pull Objects
+
 ```bash
 axiom pull <object>
 ```
+
 Pull the latest version of an object from the workspace.
 
 ### Delete Objects
+
 ```bash
 axiom delete <object>
 ```
+
 Delete an object from your workspace.
 
 ## Global Options
@@ -63,4 +71,3 @@ npm run build
 ## License
 
 MIT
-
