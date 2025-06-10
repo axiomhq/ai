@@ -1,0 +1,17 @@
+name: Support Dashboard
+description: "A dashboard for monitoring support tickets"
+
+elements:
+  - name: "support-ticket-count"
+    description: "Number of support tickets"
+    query: "['support-ticket-classifier'] | count"
+    type: "timeseries"
+    width: 3
+    height: 3
+    color: "orange"
+  - name: "support-ticket-status"
+    description: "Status of support tickets"
+    query: "['support-ticket-classifier'] | group by status"
+    type: "table"
+    width: 3
+    height: 3
