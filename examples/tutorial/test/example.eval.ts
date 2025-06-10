@@ -27,7 +27,7 @@ const someTask: TaskFn = async (input: string) => `hello, ${input}!`
     // The threshold required for the average score for this eval to pass. This will be
     // based on the scorers you've provided, and in the case of Factuality, we might be
     // ok with a 60% score (see the implementation for why).
-    threshold: 1,
+    threshold: 0.6,
 
     // The timeout for each test. Defaults to 10s. You may need to increase this if your model
     // provider has high latency or you're using a large number of scorers.
