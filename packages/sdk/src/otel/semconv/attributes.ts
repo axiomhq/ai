@@ -19,6 +19,11 @@ import {
   ATTR_GEN_AI_RESPONSE_ID,
   ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
   ATTR_GEN_AI_REQUEST_PRESENCE_PENALTY,
+  ATTR_GEN_AI_REQUEST_TEMPERATURE,
+  ATTR_GEN_AI_REQUEST_TOP_P,
+  ATTR_GEN_AI_REQUEST_TOP_K,
+  ATTR_GEN_AI_REQUEST_SEED,
+  ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
 } from "./semconv_incubating";
 
@@ -68,10 +73,10 @@ export const Attr = {
     Output: {
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
       Type_Values: {
-        Image: GEN_AI_OUTPUT_TYPE_VALUE_IMAGE,
-        Json: GEN_AI_OUTPUT_TYPE_VALUE_JSON,
-        Speech: GEN_AI_OUTPUT_TYPE_VALUE_SPEECH,
         Text: GEN_AI_OUTPUT_TYPE_VALUE_TEXT,
+        Json: GEN_AI_OUTPUT_TYPE_VALUE_JSON,
+        Image: GEN_AI_OUTPUT_TYPE_VALUE_IMAGE,
+        Speech: GEN_AI_OUTPUT_TYPE_VALUE_SPEECH,
       },
     },
     /**
@@ -107,6 +112,11 @@ export const Attr = {
       Model: ATTR_GEN_AI_REQUEST_MODEL,
       MaxTokens: ATTR_GEN_AI_REQUEST_MAX_TOKENS,
       PresencePenalty: ATTR_GEN_AI_REQUEST_PRESENCE_PENALTY,
+      Temperature: ATTR_GEN_AI_REQUEST_TEMPERATURE,
+      TopP: ATTR_GEN_AI_REQUEST_TOP_P,
+      TopK: ATTR_GEN_AI_REQUEST_TOP_K,
+      Seed: ATTR_GEN_AI_REQUEST_SEED,
+      StopSequences: ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
     },
     Response: {
       ID: ATTR_GEN_AI_RESPONSE_ID,
@@ -134,5 +144,6 @@ export const Attr = {
       OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
       Vercel: "vercel",
     },
+    Tool: {},
   },
 } as const;
