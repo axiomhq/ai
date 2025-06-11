@@ -1,6 +1,6 @@
-import { Eval, type EvalParams } from './eval'
 import HTTPClient from './httpClient'
-import type { LibraryInput, Prompt, PromptInput } from './types'
+import { Eval } from './eval'
+import type { Environment, EvalParams, LibraryInput, Prompt, PromptInput } from './types'
 
 export type ClientOptions = {
     onError?: (error: Error) => void
@@ -20,22 +20,33 @@ export class Axiom extends HTTPClient {
     }
 
     prompts = {
-        create: async (project: string, input: PromptInput): Promise<Prompt> => {
-            return await this.client.post<Prompt>(`/projects/${project}/prompts`, {
+        create: async (input: PromptInput): Promise<Prompt> => {
+            return await this.client.post<Prompt>(`/prompts`, {
                 body: JSON.stringify(input)
             })
         },
 
-        deploy: async (project: string, promptId: string, { environment, version }: { environment: 'production' | 'staging' | 'development', version: string }) => {
-            return await this.client.put<Prompt>(`/projects/${project}/prompts/${promptId}/deploy`, {
+        /*
+         * Loads a prompt from Axiom.
+         *
+         * @param slug - The slug of the prompt to load.
+         * @returns The prompt.
+         */
+        load: async (slug: string): Promise<Prompt> => {
+            // TODO: should check if prompt is already loaded in a cache layer
+            return await this.client.get<Prompt>(`/prompts/${slug}`)
+        },
+
+        deploy: async (promptId: string, { environment, version }: { environment: Environment, version: string }) => {
+            return await this.client.put<Prompt>(`/prompts/${promptId}/deploy`, {
                 body: JSON.stringify({ promptId, environment, version })
             })
         }
     }
 
     library = {
-        create: async (project: string, input: LibraryInput): Promise<Prompt> => {
-            return await this.client.post<Prompt>(`/projects/${project}/library`, {
+        create: async (input: LibraryInput): Promise<Prompt> => {
+            return await this.client.post<Prompt>(`/library`, {
                 body: JSON.stringify(input)
             })
         }
@@ -54,7 +65,18 @@ export class Axiom extends HTTPClient {
         return await fn()
     }
 
-    eval({ project, data, task, scorers }: EvalParams) {
-        return Eval({ project, data, task, scorers })
+    /*
+     * Runs a prompt on Axiom with the given inputs.
+     *
+     * @param prompt - The prompt to run.
+     * @param inputs - The inputs to pass to the prompt.
+     * @returns The result of the prompt.
+     */
+    run(_: Prompt, __: Record<string, any>) {
+        throw new Error('Not implemented')
+    }
+
+    eval({ data, task, scorers }: EvalParams) {
+        return Eval({ data, task, scorers })
     }
 }

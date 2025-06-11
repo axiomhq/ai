@@ -1,12 +1,12 @@
 import { Axiom } from '@axiomhq/ai'
+import { z } from 'zod'
 
 const ai = new Axiom('API_KEY')
 
 async function main() {
-    const project = await ai.projects.create('finetune-email-summary')
-
-    const prompt = await ai.prompts.create(project.name, {
-        name: 'email-summarizer',
+    const prompt = await ai.prompts.create({
+        name: 'Email Summarizer',
+        slug: 'email-summarizer',
         messages: [
             {
                 role: 'system',
@@ -17,23 +17,28 @@ async function main() {
                 content: 'this is my {{email_content}} and sdflsdfnbskdf'
             }
         ],
-        model: 'gpt-4',
-        temperature: 0.3
+        model: {
+            id: 'gpt-4',
+            provider: 'openai',
+            params: {
+                temperature: 0.3
+            }
+        },
+        arguments: {
+            email_content: z.string()
+        }
     })
 
     // Deploy to production
-    await ai.prompts.deploy(project.name, prompt.id, {
+    await ai.prompts.deploy(prompt.id, {
         environment: 'production',
         version: prompt.version
     });
 
     ai.run(
+        prompt,
         {
-            project: project.name,
-            prompt: 'email-summarizer',
-            inputs: {
-                email_content: 'Hello, how are you?'
-            }
+            email_content: 'Hello, how are you?'
         }
     )
 }
