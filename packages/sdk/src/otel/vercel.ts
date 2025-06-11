@@ -1,16 +1,8 @@
 import {
   type LanguageModelV1,
   type LanguageModelV1CallOptions,
-  // type LanguageModelV1FinishReason,
-  // type LanguageModelV1FunctionTool,
-  // type LanguageModelV1FunctionToolCall,
   type LanguageModelV1ObjectGenerationMode,
   type LanguageModelV1Prompt,
-  // type LanguageModelV1Prompt,
-  // type LanguageModelV1ProviderDefinedTool,
-  // type LanguageModelV1StreamPart,
-  // type LanguageModelV1TextPart,
-  // type LanguageModelV1ToolCallPart,
 } from "@ai-sdk/provider";
 
 import {
@@ -18,15 +10,28 @@ import {
   trace,
   propagation,
   type Span,
-  // SpanStatusCode,
   type Baggage,
   type Tracer,
 } from "@opentelemetry/api";
-import { Attr } from "./otel/semconv/attributes";
-import { createStartActiveSpan } from "./otel/startActiveSpan";
+import { Attr } from "./semconv/attributes";
+import { createStartActiveSpan } from "./startActiveSpan";
+import { currentUnixTime } from "../util/currentUnixTime";
+import { Pricing } from "src/pricing";
+import { AxiomAIResources } from "./shared";
 
-function currentUnixTime(): number {
-  return Date.now() / 1000;
+export function attemptToEnrichSpanWithPricing({
+  span,
+  model,
+  inputTokens,
+  outputTokens,
+}: {
+  span: Span;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}) {
+  const cost = Pricing.calculateCost(inputTokens, outputTokens, model);
+  span.setAttribute(Attr.GenAI.Cost.Estimated, cost.toFixed(6));
 }
 
 export function wrapAISDKModel<T extends object>(model: T): T {
@@ -43,26 +48,40 @@ export function wrapAISDKModel<T extends object>(model: T): T {
   }
 }
 
-type Meta = { workflow: string; step: string };
+type Meta = {
+  // TODO: BEFORE RELEASE - i think we will name these something else. but leaving like this for now to
+  // not break
+  workflow: string;
+  task: string;
+};
 export function withSpan<T extends (...args: any[]) => Promise<any>>(
   meta: Meta,
   fn: (...args: Parameters<T>) => ReturnType<T>,
-  opts?: { tracer?: Tracer }
+  opts?: {
+    tracer?: Tracer;
+    __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing?: boolean;
+  }
 ): Promise<ReturnType<T>> {
-  const tracer = opts?.tracer ?? trace.getTracer("@axiomhq/ai");
+  const tracer =
+    opts?.tracer ??
+    AxiomAIResources.getInstance().getTracer() ??
+    trace.getTracer("@axiomhq/ai");
 
-  const bag: Baggage = propagation.createBaggage({
-    workflow: { value: meta.workflow },
-    step: { value: meta.step },
-    // TODO: maybe we can just check the active span name instead?
-    __withspan_gen_ai_call: { value: "true" }, // Mark that we're inside withSpan
-  });
+  const startActiveSpan = createStartActiveSpan(tracer);
+  return startActiveSpan("gen_ai.call_llm", null, async (_span) => {
+    const bag: Baggage = propagation.createBaggage({
+      workflow: { value: meta.workflow },
+      task: { value: meta.task },
+      // TODO: maybe we can just check the active span name instead?
+      __withspan_gen_ai_call: { value: "true" }, // Mark that we're inside withSpan
+      ...(opts?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing && {
+        __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing:
+          { value: "true" },
+      }),
+    });
 
-  const ctx = propagation.setBaggage(context.active(), bag);
-
-  // TODO: is this ok?
-  return tracer.startActiveSpan("gen_ai.call_llm", async (_span) => {
-    return context.with(ctx, fn);
+    const ctx = propagation.setBaggage(context.active(), bag);
+    return await context.with(ctx, fn);
   });
 }
 
@@ -129,10 +148,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           bag.getEntry("workflow")!.value
         );
       }
-      if (bag.getEntry("step")?.value) {
+      if (bag.getEntry("task")?.value) {
         span.setAttribute(
           Attr.GenAI.Operation.TaskName,
-          bag.getEntry("step")!.value
+          bag.getEntry("task")!.value
         );
       }
     }
@@ -247,6 +266,20 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       );
     }
 
+    // Check for experimental pricing estimation (after we have usage data)
+    const shouldEstimatePricing =
+      bag?.getEntry(
+        "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
+      )?.value === "true";
+    if (shouldEstimatePricing && ret.usage) {
+      attemptToEnrichSpanWithPricing({
+        span,
+        model: this.modelId,
+        inputTokens: ret.usage.promptTokens,
+        outputTokens: ret.usage.completionTokens,
+      });
+    }
+
     // Set response text (you may want to make this conditional based on a flag)
     if (ret.text) {
       span.setAttribute(Attr.GenAI.Response.Text, ret.text);
@@ -319,10 +352,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           bag.getEntry("workflow")!.value
         );
       }
-      if (bag.getEntry("step")?.value) {
+      if (bag.getEntry("task")?.value) {
         span.setAttribute(
           Attr.GenAI.Operation.TaskName,
-          bag.getEntry("step")!.value
+          bag.getEntry("task")!.value
         );
       }
     }
@@ -417,6 +450,9 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
 
     const ret = await this.model.doStream(options);
+
+    // `this` is not available in the transform callback, so we need to capture the model ID here
+    const modelId = this.modelId;
 
     // Track streaming metrics
     let timeToFirstToken: number | undefined = undefined;
@@ -532,6 +568,20 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
               );
             }
 
+            // Check for experimental pricing estimation (after we have usage data)
+            const shouldEstimatePricing =
+              bag?.getEntry(
+                "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
+              )?.value === "true";
+            if (shouldEstimatePricing && usage) {
+              attemptToEnrichSpanWithPricing({
+                span,
+                model: modelId,
+                inputTokens: usage.promptTokens,
+                outputTokens: usage.completionTokens,
+              });
+            }
+
             // Log streaming metrics
             console.log("tktk stream completed", {
               timeToFirstToken,
@@ -585,12 +635,30 @@ function putPromptOnSpan(span: Span, prompt: LanguageModelV1Prompt) {
       case "user":
         if (typeof p.content === "string") {
           span.setAttribute(Attr.GenAI.Prompt.Text, p.content);
+        } else if (Array.isArray(p.content)) {
+          // Handle array of content parts - extract text from all text parts
+          if (p.content.some((part) => part.type !== "text")) {
+            throw new Error(`TODO: handle - ${JSON.stringify(p.content)}`);
+          }
+
+          const textParts = p.content.map((part: any) => part.text);
+
+          if (textParts.length === 0) {
+            return;
+          } else if (textParts.length === 1) {
+            span.setAttribute(Attr.GenAI.Prompt.Text, textParts[0]);
+          } else {
+            span.setAttribute(
+              Attr.GenAI.Prompt.Text,
+              textParts.map((p, idx) => `[Part ${idx + 1}]: ${p}`).join("\n\n")
+            );
+          }
         } else {
-          throw new Error("TODO: handle");
+          throw new Error(`TODO: handle - ${JSON.stringify(p.content)}`);
         }
         break;
       default:
-        throw new Error("TODO: handle");
+        throw new Error(`TODO: handle - ${JSON.stringify(p.role)}`);
     }
   });
 }
