@@ -16,9 +16,7 @@ import Axiom from "@axiomhq/ai";
 const ai = new Axiom(process.env.API_KEY);
 
 async function main() {
-  const project = await ai.projects.create("finetune-email-summary");
-
-  const prompt = await ai.prompts.create(project.name, {
+  const prompt = await ai.prompts.create({
     name: "email-summarizer",
     messages: [
       {
@@ -41,7 +39,6 @@ async function main() {
   });
 
   ai.run({
-    project: project.name,
     prompt: "email-summarizer",
     inputs: {
       email_content: "Hello, how are you?",

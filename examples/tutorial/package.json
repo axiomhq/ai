@@ -12,14 +12,15 @@
   "main": "dist/index.js",
   "dependencies": {
     "@axiomhq/ai": "workspace:*",
-    "autoevals": "^0.0.129"
+    "autoevals": "^0.0.129",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "vitest-evals": "^0.3.0",
     "@types/node": "^22.15.29",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-evals": "^0.3.0"
   }
 }

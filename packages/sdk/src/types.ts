@@ -1,3 +1,5 @@
+export type Environment = 'production' | 'staging' | 'development' | null
+
 export type PromptInput = {
     name: string
     slug: string // e.g: 'my-prompt'
@@ -26,4 +28,10 @@ export type LibraryInput = {
     messages: {role: string, content: string}[]
     model: string
     temperature: number
+}
+
+export type EvalParams = {
+    data: { input: any, expected: any }[],
+    task: (input: any) => any,
+    scorers: Function[]
 }
