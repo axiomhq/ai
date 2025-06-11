@@ -39,37 +39,6 @@ importers:
         specifier: ^2.5.3
         version: 2.5.3
 
-  examples/tutorial:
-    dependencies:
-      '@axiomhq/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      autoevals:
-        specifier: ^0.0.129
-        version: 0.0.129
-      zod:
-        specifier: 'catalog:'
-        version: 3.25.57
-    devDependencies:
-      '@types/node':
-        specifier: ^22.15.29
-        version: 22.15.29
-      typescript:
-        specifier: 'catalog:'
-        version: 5.8.3
-      vite:
-        specifier: 'catalog:'
-        version: 6.3.5(@types/node@22.15.29)(yaml@2.8.0)
-      vite-plugin-dts:
-        specifier: 'catalog:'
-        version: 4.5.4(@types/node@22.15.29)(rollup@4.41.1)(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.29)(yaml@2.8.0))
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.1(@types/node@22.15.29)(yaml@2.8.0)
-      vitest-evals:
-        specifier: ^0.3.0
-        version: 0.3.0(tinyrainbow@2.0.0)(vitest@3.2.1(@types/node@22.15.29)(yaml@2.8.0))
-
   internal/eslint-config:
     devDependencies:
       '@eslint/compat':
@@ -145,6 +114,37 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.1(@types/node@22.15.29)(yaml@2.8.0)
+
+  packages/examples:
+    dependencies:
+      '@axiomhq/ai':
+        specifier: workspace:*
+        version: link:../ai
+      autoevals:
+        specifier: ^0.0.129
+        version: 0.0.129
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.57
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.15.29
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
+      vite:
+        specifier: 'catalog:'
+        version: 6.3.5(@types/node@22.15.29)(yaml@2.8.0)
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 4.5.4(@types/node@22.15.29)(rollup@4.41.1)(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.29)(yaml@2.8.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.1(@types/node@22.15.29)(yaml@2.8.0)
+      vitest-evals:
+        specifier: ^0.3.0
+        version: 0.3.0(tinyrainbow@2.0.0)(vitest@3.2.1(@types/node@22.15.29)(yaml@2.8.0))
 
 packages:
 
