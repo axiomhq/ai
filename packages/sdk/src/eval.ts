@@ -1,12 +1,6 @@
-export type EvalParams = {
-    project: string
-    data: { input: any, expected: any }[],
-    task: (input: any) => any,
-    scorers: Function[]
-}
+import type { EvalParams } from "./types"
 
-
-export const Eval = async ({ project, data, task, scorers }: EvalParams) => {
+export const Eval = async ({ data, task, scorers }: EvalParams) => {
     const results: { input: any, output: any, score: any }[] = []
     
     await data.forEach(({ input, expected }) => {
@@ -17,7 +11,7 @@ export const Eval = async ({ project, data, task, scorers }: EvalParams) => {
     })
 
     // TODO: send experiment results to Axiom
-    console.log('TODO: send experiment results to Axiom', project)
+    console.log('TODO: send experiment results to Axiom')
 
     return results
 }
