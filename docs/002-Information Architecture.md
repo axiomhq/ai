@@ -1,12 +1,11 @@
 # Information Architecture (WIP)
 
-    Projects >   
-             > Library
-                > Input / Output
-                > Prompts
-             > Scorers > 
-             > Tools   >
+         > Org
+            > Prompts
+            > Input / Output
+            > Scorers > 
+            > Tools >
 
 
-Projects are the highest component that wraps the library, scorers and tools. You should
-first create a project and then add prompts to it.
+Prompts, scores and inputs are first class citizens that live in a flat architecture as APIs on the root level.
+
