@@ -45,24 +45,21 @@ export function wrapAISDKModel<T extends object>(model: T): T {
 
 type Meta = { workflow: string; step: string };
 export function withSpan<T extends (...args: any[]) => Promise<any>>(
+  tracer: Tracer,
   meta: Meta,
-  fn: (...args: Parameters<T>) => ReturnType<T>,
-  opts?: { tracer?: Tracer }
+  fn: (...args: Parameters<T>) => ReturnType<T>
 ): Promise<ReturnType<T>> {
-  const tracer = opts?.tracer ?? trace.getTracer("@axiomhq/ai");
+  const startActiveSpan = createStartActiveSpan(tracer);
+  return startActiveSpan("gen_ai.call_llm", null, async (_span) => {
+    const bag: Baggage = propagation.createBaggage({
+      workflow: { value: meta.workflow },
+      step: { value: meta.step },
+      // TODO: maybe we can just check the active span name instead?
+      __withspan_gen_ai_call: { value: "true" }, // Mark that we're inside withSpan
+    });
 
-  const bag: Baggage = propagation.createBaggage({
-    workflow: { value: meta.workflow },
-    step: { value: meta.step },
-    // TODO: maybe we can just check the active span name instead?
-    __withspan_gen_ai_call: { value: "true" }, // Mark that we're inside withSpan
-  });
-
-  const ctx = propagation.setBaggage(context.active(), bag);
-
-  // TODO: is this ok?
-  return tracer.startActiveSpan("gen_ai.call_llm", async (_span) => {
-    return context.with(ctx, fn);
+    const ctx = propagation.setBaggage(context.active(), bag);
+    return await context.with(ctx, fn);
   });
 }
 
@@ -585,12 +582,30 @@ function putPromptOnSpan(span: Span, prompt: LanguageModelV1Prompt) {
       case "user":
         if (typeof p.content === "string") {
           span.setAttribute(Attr.GenAI.Prompt.Text, p.content);
+        } else if (Array.isArray(p.content)) {
+          // Handle array of content parts - extract text from all text parts
+          if (p.content.some((part) => part.type !== "text")) {
+            throw new Error(`TODO: handle - ${JSON.stringify(p.content)}`);
+          }
+
+          const textParts = p.content.map((part: any) => part.text);
+
+          if (textParts.length === 0) {
+            return;
+          } else if (textParts.length === 1) {
+            span.setAttribute(Attr.GenAI.Prompt.Text, textParts[0]);
+          } else {
+            span.setAttribute(
+              Attr.GenAI.Prompt.Text,
+              textParts.map((p, idx) => `[Part ${idx + 1}]: ${p}`).join("\n\n")
+            );
+          }
         } else {
-          throw new Error("TODO: handle");
+          throw new Error(`TODO: handle - ${JSON.stringify(p.content)}`);
         }
         break;
       default:
-        throw new Error("TODO: handle");
+        throw new Error(`TODO: handle - ${JSON.stringify(p.role)}`);
     }
   });
 }
