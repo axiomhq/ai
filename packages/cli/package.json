@@ -8,8 +8,8 @@
     "Islam Shehata <islam@axiom.co>"
   ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && chmod +x dist/index.js",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "format": "prettier --check . --ignore-path .gitignore --write",
     "lint": "eslint"
   },
@@ -34,11 +34,10 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@types/node": "^22.15.29",
+    "eslint": "catalog:",
+    "tsup": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
-    "vitest": "catalog:",
-    "eslint": "catalog:"
+    "vitest": "catalog:"
   },
   "files": ["dist"],
   "packageManager": "pnpm@10.11.1"
