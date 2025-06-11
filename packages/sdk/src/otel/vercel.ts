@@ -1,16 +1,8 @@
 import {
   type LanguageModelV1,
   type LanguageModelV1CallOptions,
-  // type LanguageModelV1FinishReason,
-  // type LanguageModelV1FunctionTool,
-  // type LanguageModelV1FunctionToolCall,
   type LanguageModelV1ObjectGenerationMode,
   type LanguageModelV1Prompt,
-  // type LanguageModelV1Prompt,
-  // type LanguageModelV1ProviderDefinedTool,
-  // type LanguageModelV1StreamPart,
-  // type LanguageModelV1TextPart,
-  // type LanguageModelV1ToolCallPart,
 } from "@ai-sdk/provider";
 
 import {
@@ -18,43 +10,28 @@ import {
   trace,
   propagation,
   type Span,
-  // SpanStatusCode,
   type Baggage,
   type Tracer,
 } from "@opentelemetry/api";
-import { Attr } from "./otel/semconv/attributes";
-import { createStartActiveSpan } from "./otel/startActiveSpan";
-import { attemptToEnrichSpanWithPricing } from "./vercel";
+import { Attr } from "./semconv/attributes";
+import { createStartActiveSpan } from "./startActiveSpan";
+import { currentUnixTime } from "../util/currentUnixTime";
+import { Pricing } from "src/pricing";
+import { AxiomAIResources } from "./shared";
 
-function currentUnixTime(): number {
-  return Date.now() / 1000;
-}
-
-// Axiom AI Resources singleton for configuration management
-class AxiomAIResources {
-  private static instance: AxiomAIResources;
-  private tracer: Tracer | undefined;
-
-  private constructor() {}
-
-  static getInstance(): AxiomAIResources {
-    if (!AxiomAIResources.instance) {
-      AxiomAIResources.instance = new AxiomAIResources();
-    }
-    return AxiomAIResources.instance;
-  }
-
-  init(config: { tracer: Tracer }): void {
-    this.tracer = config.tracer;
-  }
-
-  getTracer(): Tracer | undefined {
-    return this.tracer;
-  }
-}
-
-export function initAxiomAI(config: { tracer: Tracer }) {
-  AxiomAIResources.getInstance().init(config);
+export function attemptToEnrichSpanWithPricing({
+  span,
+  model,
+  inputTokens,
+  outputTokens,
+}: {
+  span: Span;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}) {
+  const cost = Pricing.calculateCost(inputTokens, outputTokens, model);
+  span.setAttribute(Attr.GenAI.Cost.Estimated, cost.toFixed(6));
 }
 
 export function wrapAISDKModel<T extends object>(model: T): T {
