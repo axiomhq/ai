@@ -18,7 +18,7 @@ type GenerateTextAddlOpts = {
 };
 
 // @TODO: this should probably not live here, but instead live in cloud
-function attemptToEnrichSpanWithPricing({
+export function attemptToEnrichSpanWithPricing({
   span,
   model,
   inputTokens,

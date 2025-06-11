@@ -24,9 +24,37 @@ import {
 } from "@opentelemetry/api";
 import { Attr } from "./otel/semconv/attributes";
 import { createStartActiveSpan } from "./otel/startActiveSpan";
+import { attemptToEnrichSpanWithPricing } from "./vercel";
 
 function currentUnixTime(): number {
   return Date.now() / 1000;
+}
+
+// Axiom AI Resources singleton for configuration management
+class AxiomAIResources {
+  private static instance: AxiomAIResources;
+  private tracer: Tracer | undefined;
+
+  private constructor() {}
+
+  static getInstance(): AxiomAIResources {
+    if (!AxiomAIResources.instance) {
+      AxiomAIResources.instance = new AxiomAIResources();
+    }
+    return AxiomAIResources.instance;
+  }
+
+  init(config: { tracer: Tracer }): void {
+    this.tracer = config.tracer;
+  }
+
+  getTracer(): Tracer | undefined {
+    return this.tracer;
+  }
+}
+
+export function initAxiomAI(config: { tracer: Tracer }) {
+  AxiomAIResources.getInstance().init(config);
 }
 
 export function wrapAISDKModel<T extends object>(model: T): T {
@@ -43,19 +71,36 @@ export function wrapAISDKModel<T extends object>(model: T): T {
   }
 }
 
-type Meta = { workflow: string; step: string };
+type Meta = {
+  // TODO: BEFORE RELEASE - i think we will name these something else. but leaving like this for now to
+  // not break
+  workflow: string;
+  task: string;
+};
 export function withSpan<T extends (...args: any[]) => Promise<any>>(
-  tracer: Tracer,
   meta: Meta,
-  fn: (...args: Parameters<T>) => ReturnType<T>
+  fn: (...args: Parameters<T>) => ReturnType<T>,
+  opts?: {
+    tracer?: Tracer;
+    __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing?: boolean;
+  }
 ): Promise<ReturnType<T>> {
+  const tracer =
+    opts?.tracer ??
+    AxiomAIResources.getInstance().getTracer() ??
+    trace.getTracer("@axiomhq/ai");
+
   const startActiveSpan = createStartActiveSpan(tracer);
   return startActiveSpan("gen_ai.call_llm", null, async (_span) => {
     const bag: Baggage = propagation.createBaggage({
       workflow: { value: meta.workflow },
-      step: { value: meta.step },
+      task: { value: meta.task },
       // TODO: maybe we can just check the active span name instead?
       __withspan_gen_ai_call: { value: "true" }, // Mark that we're inside withSpan
+      ...(opts?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing && {
+        __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing:
+          { value: "true" },
+      }),
     });
 
     const ctx = propagation.setBaggage(context.active(), bag);
@@ -126,10 +171,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           bag.getEntry("workflow")!.value
         );
       }
-      if (bag.getEntry("step")?.value) {
+      if (bag.getEntry("task")?.value) {
         span.setAttribute(
           Attr.GenAI.Operation.TaskName,
-          bag.getEntry("step")!.value
+          bag.getEntry("task")!.value
         );
       }
     }
@@ -244,6 +289,20 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       );
     }
 
+    // Check for experimental pricing estimation (after we have usage data)
+    const shouldEstimatePricing =
+      bag?.getEntry(
+        "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
+      )?.value === "true";
+    if (shouldEstimatePricing && ret.usage) {
+      attemptToEnrichSpanWithPricing({
+        span,
+        model: this.modelId,
+        inputTokens: ret.usage.promptTokens,
+        outputTokens: ret.usage.completionTokens,
+      });
+    }
+
     // Set response text (you may want to make this conditional based on a flag)
     if (ret.text) {
       span.setAttribute(Attr.GenAI.Response.Text, ret.text);
@@ -316,10 +375,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           bag.getEntry("workflow")!.value
         );
       }
-      if (bag.getEntry("step")?.value) {
+      if (bag.getEntry("task")?.value) {
         span.setAttribute(
           Attr.GenAI.Operation.TaskName,
-          bag.getEntry("step")!.value
+          bag.getEntry("task")!.value
         );
       }
     }
@@ -414,6 +473,9 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
 
     const ret = await this.model.doStream(options);
+
+    // `this` is not available in the transform callback, so we need to capture the model ID here
+    const modelId = this.modelId;
 
     // Track streaming metrics
     let timeToFirstToken: number | undefined = undefined;
@@ -527,6 +589,20 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                 Attr.GenAI.Response.ProviderMetadata,
                 JSON.stringify(responseProviderMetadata)
               );
+            }
+
+            // Check for experimental pricing estimation (after we have usage data)
+            const shouldEstimatePricing =
+              bag?.getEntry(
+                "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
+              )?.value === "true";
+            if (shouldEstimatePricing && usage) {
+              attemptToEnrichSpanWithPricing({
+                span,
+                model: modelId,
+                inputTokens: usage.promptTokens,
+                outputTokens: usage.completionTokens,
+              });
             }
 
             // Log streaming metrics
