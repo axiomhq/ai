@@ -56,7 +56,7 @@ type Meta = {
 };
 export function withSpan<T extends (...args: any[]) => Promise<any>>(
   meta: Meta,
-  fn: (...args: Parameters<T>) => ReturnType<T>,
+  fn: (span: Span) => ReturnType<T>,
   opts?: {
     tracer?: Tracer;
     __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing?: boolean;
@@ -68,7 +68,7 @@ export function withSpan<T extends (...args: any[]) => Promise<any>>(
     trace.getTracer("@axiomhq/ai");
 
   const startActiveSpan = createStartActiveSpan(tracer);
-  return startActiveSpan("gen_ai.call_llm", null, async (_span) => {
+  return startActiveSpan("gen_ai.call_llm", null, async (span) => {
     const bag: Baggage = propagation.createBaggage({
       workflow: { value: meta.workflow },
       task: { value: meta.task },
@@ -81,7 +81,7 @@ export function withSpan<T extends (...args: any[]) => Promise<any>>(
     });
 
     const ctx = propagation.setBaggage(context.active(), bag);
-    return await context.with(ctx, fn);
+    return await context.with(ctx, () => fn(span));
   });
 }
 
