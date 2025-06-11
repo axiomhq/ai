@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/bin.ts"],
   format: ["esm", "cjs"],
   external: ["@opentelemetry/api"], // don't bundle it
   dts: true, // generate .d.ts files
