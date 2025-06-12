@@ -28,7 +28,7 @@ import { AxiomAIResources } from "./shared";
  */
 const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
 
-export function attemptToEnrichSpanWithPricing({
+export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
   model,
   inputTokens,
@@ -462,12 +462,14 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
         "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
       )?.value === "true";
     if (shouldEstimatePricing && result.usage) {
-      attemptToEnrichSpanWithPricing({
-        span,
-        model: modelId,
-        inputTokens: result.usage.promptTokens,
-        outputTokens: result.usage.completionTokens,
-      });
+      _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing(
+        {
+          span,
+          model: modelId,
+          inputTokens: result.usage.promptTokens,
+          outputTokens: result.usage.completionTokens,
+        }
+      );
     }
 
     // Set response text (you may want to make this conditional based on a flag)
