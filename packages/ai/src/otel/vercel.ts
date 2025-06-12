@@ -116,190 +116,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     return this.model.supportsUrl;
   }
 
-  private async executeGenerate(
-    options: LanguageModelV1CallOptions,
-    span: Span
-  ) {
-    const {
-      prompt,
-      maxTokens,
-      frequencyPenalty,
-      presencePenalty,
-      temperature,
-      topP,
-      topK,
-      seed,
-      headers: _headers,
-      abortSignal: _abortSignal,
-      stopSequences,
-      responseFormat,
-      inputFormat,
-      mode,
-      providerMetadata,
-    } = options;
-
-    const bag = propagation.getActiveBaggage();
-
-    // Set workflow and task attributes from baggage
-    if (bag) {
-      if (bag.getEntry("workflow")?.value) {
-        span.setAttribute(
-          Attr.GenAI.Operation.WorkflowName,
-          bag.getEntry("workflow")!.value
-        );
-      }
-      if (bag.getEntry("task")?.value) {
-        span.setAttribute(
-          Attr.GenAI.Operation.TaskName,
-          bag.getEntry("task")!.value
-        );
-      }
-    }
-
-    // Set prompt attributes
-    putPromptOnSpan(span, prompt);
-
-    // Set request attributes
-    span.setAttributes({
-      [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-      [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
-      [Attr.GenAI.Request.Model]: this.modelId,
-      [Attr.GenAI.Provider]: this.provider,
-      // TODO: BEFORE MERGE - this should not be hard coded!!!
-      // TODO: also not in doStream
-      [Attr.GenAI.System]: Attr.GenAI.System_Values.Vercel,
-    });
-
-    // Set optional request attributes
-    if (maxTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.MaxTokens, maxTokens);
-    }
-    if (frequencyPenalty !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.FrequencyPenalty, frequencyPenalty);
-    }
-    if (presencePenalty !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.PresencePenalty, presencePenalty);
-    }
-    if (temperature !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.Temperature, temperature);
-    }
-    if (topP !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.TopP, topP);
-    }
-    if (topK !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.TopK, topK);
-    }
-    if (seed !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.Seed, seed);
-    }
-
-    // Set stop sequences
-    if (stopSequences && stopSequences.length > 0) {
-      span.setAttribute(
-        Attr.GenAI.Request.StopSequences,
-        JSON.stringify(stopSequences)
-      );
-    }
-
-    // Set response format
-    if (responseFormat) {
-      span.setAttribute(Attr.GenAI.Output.Type, responseFormat.type);
-    }
-
-    // Set input format
-    span.setAttribute("gen_ai.request.input_format", inputFormat);
-
-    // Set mode information
-    span.setAttribute("gen_ai.request.mode_type", mode.type);
-    if (mode.type === "regular" && mode.tools) {
-      span.setAttribute("gen_ai.request.tools_count", mode.tools.length);
-      if (mode.toolChoice) {
-        span.setAttribute(
-          "gen_ai.request.tool_choice",
-          typeof mode.toolChoice === "string"
-            ? mode.toolChoice
-            : JSON.stringify(mode.toolChoice)
-        );
-      }
-    } else if (mode.type === "object-json") {
-      if (mode.name) {
-        span.setAttribute("gen_ai.request.object_name", mode.name);
-      }
-      if (mode.description) {
-        span.setAttribute(
-          "gen_ai.request.object_description",
-          mode.description
-        );
-      }
-      if (mode.schema) {
-        span.setAttribute("gen_ai.request.object_has_schema", true);
-      }
-    } else if (mode.type === "object-tool") {
-      span.setAttribute("gen_ai.request.object_tool_name", mode.tool.name);
-    }
-
-    // Set provider metadata if present in request
-    if (providerMetadata && Object.keys(providerMetadata).length > 0) {
-      span.setAttribute(
-        "gen_ai.request.provider_metadata",
-        JSON.stringify(providerMetadata)
-      );
-    }
-
-    const ret = await this.model.doGenerate(options);
-
-    // Set response attributes
-    if (ret.response?.id) {
-      span.setAttribute(Attr.GenAI.Response.ID, ret.response.id);
-    }
-    if (ret.response?.modelId) {
-      span.setAttribute(Attr.GenAI.Response.Model, ret.response.modelId);
-    }
-    if (ret.finishReason) {
-      span.setAttribute(Attr.GenAI.Response.FinishReason, ret.finishReason);
-    }
-
-    // Set usage attributes
-    if (ret.usage) {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, ret.usage.promptTokens);
-      span.setAttribute(
-        Attr.GenAI.Usage.OutputTokens,
-        ret.usage.completionTokens
-      );
-    }
-
-    // Check for experimental pricing estimation (after we have usage data)
-    const shouldEstimatePricing =
-      bag?.getEntry(
-        "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
-      )?.value === "true";
-    if (shouldEstimatePricing && ret.usage) {
-      attemptToEnrichSpanWithPricing({
-        span,
-        model: this.modelId,
-        inputTokens: ret.usage.promptTokens,
-        outputTokens: ret.usage.completionTokens,
-      });
-    }
-
-    // Set response text (you may want to make this conditional based on a flag)
-    if (ret.text) {
-      span.setAttribute(Attr.GenAI.Response.Text, ret.text);
-    }
-
-    // Set provider metadata if available
-    if (ret.providerMetadata && Object.keys(ret.providerMetadata).length > 0) {
-      span.setAttribute(
-        Attr.GenAI.Response.ProviderMetadata,
-        JSON.stringify(ret.providerMetadata)
-      );
-    }
-
-    return ret;
-  }
-
-  // For the first cut, do not support custom span_info arguments. We can
-  // propagate those via async local storage
   async doGenerate(options: LanguageModelV1CallOptions) {
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan =
@@ -326,132 +142,53 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
   }
 
-  private async executeStream(options: LanguageModelV1CallOptions, span: Span) {
-    const {
-      prompt,
-      maxTokens,
-      frequencyPenalty,
-      presencePenalty,
-      temperature,
-      topP,
-      topK,
-      seed,
-      headers: _headers,
-      abortSignal: _abortSignal,
-      stopSequences,
-      responseFormat,
-      inputFormat,
-      mode,
-      providerMetadata,
-    } = options;
+  private async executeGenerate(
+    options: LanguageModelV1CallOptions,
+    span: Span
+  ) {
+    this.setScopeAttributes(span);
+    this.setPreCallAttributes(span, options);
 
+    const res = await this.model.doGenerate(options);
+
+    this.setPostCallAttributes(span, res);
+
+    return res;
+  }
+
+  async doStream(options: LanguageModelV1CallOptions) {
     const bag = propagation.getActiveBaggage();
+    const isWithinWithSpan =
+      bag?.getEntry("__withspan_gen_ai_call")?.value === "true";
+
+    if (isWithinWithSpan) {
+      // Reuse existing span created by withSpan
+      const activeSpan = trace.getActiveSpan();
+      if (!activeSpan) {
+        throw new Error("Expected active span when within withSpan");
+      }
+
+      activeSpan.updateName(this.createDescriptiveSpanName());
+
+      return this.executeStream(options, activeSpan);
+    } else {
+      // Create new span only if not within withSpan
+      const tracer = trace.getTracer("@axiomhq/ai");
+      const startActiveSpan = createStartActiveSpan(tracer);
+      const name = this.createDescriptiveSpanName();
+
+      return startActiveSpan(name, null, async (span) => {
+        return await this.executeStream(options, span);
+      });
+    }
+  }
+
+  private async executeStream(options: LanguageModelV1CallOptions, span: Span) {
     const startTime = currentUnixTime(); // Unix timestamp
 
-    // Set workflow and task attributes from baggage
-    if (bag) {
-      if (bag.getEntry("workflow")?.value) {
-        span.setAttribute(
-          Attr.GenAI.Operation.WorkflowName,
-          bag.getEntry("workflow")!.value
-        );
-      }
-      if (bag.getEntry("task")?.value) {
-        span.setAttribute(
-          Attr.GenAI.Operation.TaskName,
-          bag.getEntry("task")!.value
-        );
-      }
-    }
+    this.setScopeAttributes(span);
 
-    // Set prompt attributes
-    putPromptOnSpan(span, prompt);
-
-    // Set request attributes (same as executeGenerate)
-    span.setAttributes({
-      [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-      [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
-      [Attr.GenAI.Request.Model]: this.modelId,
-      [Attr.GenAI.Provider]: this.provider,
-      [Attr.GenAI.System]: Attr.GenAI.System_Values.Vercel,
-    });
-
-    // Set optional request attributes
-    if (maxTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.MaxTokens, maxTokens);
-    }
-    if (frequencyPenalty !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.FrequencyPenalty, frequencyPenalty);
-    }
-    if (presencePenalty !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.PresencePenalty, presencePenalty);
-    }
-    if (temperature !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.Temperature, temperature);
-    }
-    if (topP !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.TopP, topP);
-    }
-    if (topK !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.TopK, topK);
-    }
-    if (seed !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.Seed, seed);
-    }
-
-    // Set stop sequences
-    if (stopSequences && stopSequences.length > 0) {
-      span.setAttribute(
-        Attr.GenAI.Request.StopSequences,
-        JSON.stringify(stopSequences)
-      );
-    }
-
-    // Set response format
-    if (responseFormat) {
-      span.setAttribute(Attr.GenAI.Output.Type, responseFormat.type);
-    }
-
-    // Set input format
-    // TODO: all these string attrs need to be bikeshedded, i just made them up without too much consideration
-    span.setAttribute("gen_ai.request.input_format", inputFormat);
-
-    // Set mode information
-    span.setAttribute("gen_ai.request.mode_type", mode.type);
-    if (mode.type === "regular" && mode.tools) {
-      span.setAttribute("gen_ai.request.tools_count", mode.tools.length);
-      if (mode.toolChoice) {
-        span.setAttribute(
-          "gen_ai.request.tool_choice",
-          typeof mode.toolChoice === "string"
-            ? mode.toolChoice
-            : JSON.stringify(mode.toolChoice)
-        );
-      }
-    } else if (mode.type === "object-json") {
-      if (mode.name) {
-        span.setAttribute("gen_ai.request.object_name", mode.name);
-      }
-      if (mode.description) {
-        span.setAttribute(
-          "gen_ai.request.object_description",
-          mode.description
-        );
-      }
-      if (mode.schema) {
-        span.setAttribute("gen_ai.request.object_has_schema", true);
-      }
-    } else if (mode.type === "object-tool") {
-      span.setAttribute("gen_ai.request.object_tool_name", mode.tool.name);
-    }
-
-    // Set provider metadata if present in request
-    if (providerMetadata && Object.keys(providerMetadata).length > 0) {
-      span.setAttribute(
-        "gen_ai.request.provider_metadata",
-        JSON.stringify(providerMetadata)
-      );
-    }
+    this.setPreCallAttributes(span, options);
 
     const ret = await this.model.doStream(options);
 
@@ -533,58 +270,26 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
             controller.enqueue(chunk);
           },
           async flush(controller) {
-            // Set final response attributes
-            if (responseId) {
-              span.setAttribute(Attr.GenAI.Response.ID, responseId);
-            }
-            if (responseModelId) {
-              span.setAttribute(Attr.GenAI.Response.Model, responseModelId);
-            }
-            if (finishReason) {
-              span.setAttribute(Attr.GenAI.Response.FinishReason, finishReason);
-            }
+            // Construct result object for helper function
+            const streamResult = {
+              response:
+                responseId || responseModelId
+                  ? {
+                      id: responseId,
+                      modelId: responseModelId,
+                    }
+                  : undefined,
+              finishReason,
+              usage,
+              text: fullText,
+              providerMetadata: responseProviderMetadata,
+            };
 
-            // Set usage attributes
-            if (usage) {
-              span.setAttribute(
-                Attr.GenAI.Usage.InputTokens,
-                usage.promptTokens
-              );
-              span.setAttribute(
-                Attr.GenAI.Usage.OutputTokens,
-                usage.completionTokens
-              );
-            }
-
-            // Set response text
-            if (fullText) {
-              span.setAttribute(Attr.GenAI.Response.Text, fullText);
-            }
-
-            // Set provider metadata if available
-            if (
-              responseProviderMetadata &&
-              Object.keys(responseProviderMetadata).length > 0
-            ) {
-              span.setAttribute(
-                Attr.GenAI.Response.ProviderMetadata,
-                JSON.stringify(responseProviderMetadata)
-              );
-            }
-
-            // Check for experimental pricing estimation (after we have usage data)
-            const shouldEstimatePricing =
-              bag?.getEntry(
-                "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
-              )?.value === "true";
-            if (shouldEstimatePricing && usage) {
-              attemptToEnrichSpanWithPricing({
-                span,
-                model: modelId,
-                inputTokens: usage.promptTokens,
-                outputTokens: usage.completionTokens,
-              });
-            }
+            AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
+              span,
+              modelId,
+              streamResult
+            );
 
             controller.terminate();
           },
@@ -593,37 +298,224 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     };
   }
 
-  async doStream(options: LanguageModelV1CallOptions) {
-    const bag = propagation.getActiveBaggage();
-    const isWithinWithSpan =
-      bag?.getEntry("__withspan_gen_ai_call")?.value === "true";
-
-    if (isWithinWithSpan) {
-      // Reuse existing span created by withSpan
-      const activeSpan = trace.getActiveSpan();
-      if (!activeSpan) {
-        throw new Error("Expected active span when within withSpan");
-      }
-
-      activeSpan.updateName(this.createDescriptiveSpanName());
-
-      return this.executeStream(options, activeSpan);
-    } else {
-      // Create new span only if not within withSpan
-      const tracer = trace.getTracer("@axiomhq/ai");
-      const startActiveSpan = createStartActiveSpan(tracer);
-      const name = this.createDescriptiveSpanName();
-
-      return startActiveSpan(name, null, async (span) => {
-        return await this.executeStream(options, span);
-      });
-    }
-  }
-
   private createDescriptiveSpanName(): string {
     // Create span name like "chat gpt-4"
     // TODO: do we ever want to not use "chat"?
     return `${Attr.GenAI.Operation.Name_Values.Chat} ${this.modelId}`;
+  }
+
+  private setScopeAttributes(span: Span) {
+    const bag = propagation.getActiveBaggage();
+
+    // Set workflow and task attributes from baggage
+    if (bag) {
+      if (bag.getEntry("workflow")?.value) {
+        span.setAttribute(
+          Attr.GenAI.Operation.WorkflowName,
+          bag.getEntry("workflow")!.value
+        );
+      }
+      if (bag.getEntry("task")?.value) {
+        span.setAttribute(
+          Attr.GenAI.Operation.TaskName,
+          bag.getEntry("task")!.value
+        );
+      }
+    }
+  }
+
+  private setPreCallAttributes(
+    span: Span,
+    options: LanguageModelV1CallOptions
+  ) {
+    const {
+      prompt,
+      maxTokens,
+      frequencyPenalty,
+      presencePenalty,
+      temperature,
+      topP,
+      topK,
+      seed,
+      stopSequences,
+      responseFormat,
+      inputFormat,
+      mode,
+      providerMetadata,
+    } = options;
+
+    // Set prompt attributes
+    putPromptOnSpan(span, prompt);
+
+    // Set request attributes
+    span.setAttributes({
+      [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
+      [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
+      [Attr.GenAI.Request.Model]: this.modelId,
+      [Attr.GenAI.Provider]: this.provider,
+      // TODO: BEFORE MERGE - this should not be hard coded!!!
+      [Attr.GenAI.System]: Attr.GenAI.System_Values.Vercel,
+    });
+
+    // Set optional request attributes
+    if (maxTokens !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.MaxTokens, maxTokens);
+    }
+    if (frequencyPenalty !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.FrequencyPenalty, frequencyPenalty);
+    }
+    if (presencePenalty !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.PresencePenalty, presencePenalty);
+    }
+    if (temperature !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.Temperature, temperature);
+    }
+    if (topP !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.TopP, topP);
+    }
+    if (topK !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.TopK, topK);
+    }
+    if (seed !== undefined) {
+      span.setAttribute(Attr.GenAI.Request.Seed, seed);
+    }
+
+    // Set stop sequences
+    if (stopSequences && stopSequences.length > 0) {
+      span.setAttribute(
+        Attr.GenAI.Request.StopSequences,
+        JSON.stringify(stopSequences)
+      );
+    }
+
+    // Set response format
+    if (responseFormat) {
+      span.setAttribute(Attr.GenAI.Output.Type, responseFormat.type);
+    }
+
+    // Set input format
+    span.setAttribute("gen_ai.request.input_format", inputFormat);
+
+    // Set mode information
+    span.setAttribute("gen_ai.request.mode_type", mode.type);
+    if (mode.type === "regular" && mode.tools) {
+      span.setAttribute("gen_ai.request.tools_count", mode.tools.length);
+      if (mode.toolChoice) {
+        span.setAttribute(
+          "gen_ai.request.tool_choice",
+          typeof mode.toolChoice === "string"
+            ? mode.toolChoice
+            : JSON.stringify(mode.toolChoice)
+        );
+      }
+    } else if (mode.type === "object-json") {
+      if (mode.name) {
+        span.setAttribute("gen_ai.request.object_name", mode.name);
+      }
+      if (mode.description) {
+        span.setAttribute(
+          "gen_ai.request.object_description",
+          mode.description
+        );
+      }
+      if (mode.schema) {
+        span.setAttribute("gen_ai.request.object_has_schema", true);
+      }
+    } else if (mode.type === "object-tool") {
+      span.setAttribute("gen_ai.request.object_tool_name", mode.tool.name);
+    }
+
+    // Set provider metadata if present in request
+    if (providerMetadata && Object.keys(providerMetadata).length > 0) {
+      span.setAttribute(
+        "gen_ai.request.provider_metadata",
+        JSON.stringify(providerMetadata)
+      );
+    }
+  }
+
+  private static setPostCallAttributesStatic(
+    span: Span,
+    modelId: string,
+    result: {
+      response?: { id?: string; modelId?: string };
+      finishReason?: string;
+      usage?: { promptTokens: number; completionTokens: number };
+      text?: string;
+      providerMetadata?: any;
+    }
+  ) {
+    const bag = propagation.getActiveBaggage();
+
+    // Set response attributes
+    if (result.response?.id) {
+      span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
+    }
+    if (result.response?.modelId) {
+      span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
+    }
+    if (result.finishReason) {
+      span.setAttribute(Attr.GenAI.Response.FinishReason, result.finishReason);
+    }
+
+    // Set usage attributes
+    if (result.usage) {
+      span.setAttribute(
+        Attr.GenAI.Usage.InputTokens,
+        result.usage.promptTokens
+      );
+      span.setAttribute(
+        Attr.GenAI.Usage.OutputTokens,
+        result.usage.completionTokens
+      );
+    }
+
+    // Check for experimental pricing estimation (after we have usage data)
+    const shouldEstimatePricing =
+      bag?.getEntry(
+        "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
+      )?.value === "true";
+    if (shouldEstimatePricing && result.usage) {
+      attemptToEnrichSpanWithPricing({
+        span,
+        model: modelId,
+        inputTokens: result.usage.promptTokens,
+        outputTokens: result.usage.completionTokens,
+      });
+    }
+
+    // Set response text (you may want to make this conditional based on a flag)
+    if (result.text) {
+      span.setAttribute(Attr.GenAI.Response.Text, result.text);
+    }
+
+    // Set provider metadata if available
+    if (
+      result.providerMetadata &&
+      Object.keys(result.providerMetadata).length > 0
+    ) {
+      span.setAttribute(
+        Attr.GenAI.Response.ProviderMetadata,
+        JSON.stringify(result.providerMetadata)
+      );
+    }
+  }
+
+  private setPostCallAttributes(
+    span: Span,
+    result: {
+      response?: { id?: string; modelId?: string };
+      finishReason?: string;
+      usage?: { promptTokens: number; completionTokens: number };
+      text?: string;
+      providerMetadata?: any;
+    }
+  ) {
+    AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
+      span,
+      this.modelId,
+      result
+    );
   }
 
   // TODO: implement
