@@ -11,8 +11,8 @@
         "dependsOn": ["^build"],
         "outputs": ["coverage/**"]
       },
-      "check-types": {
-        "dependsOn": ["^check-types"]
+      "typecheck": {
+        "dependsOn": ["^typecheck"]
       },
       "dev": {
         "persistent": true,
