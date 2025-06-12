@@ -117,6 +117,21 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   }
 
   async doGenerate(options: LanguageModelV1CallOptions) {
+    return this.withSpanHandling(async (span) => {
+      this.setScopeAttributes(span);
+      this.setPreCallAttributes(span, options);
+
+      const res = await this.model.doGenerate(options);
+
+      this.setPostCallAttributes(span, res);
+
+      return res;
+    });
+  }
+
+  private async withSpanHandling<T>(
+    operation: (span: Span) => Promise<T>
+  ): Promise<T> {
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan =
       bag?.getEntry("__withspan_gen_ai_call")?.value === "true";
@@ -129,173 +144,132 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       }
       activeSpan.updateName(this.createDescriptiveSpanName());
 
-      return this.executeGenerate(options, activeSpan);
+      return operation(activeSpan);
     } else {
       // Create new span only if not within withSpan
       const tracer = trace.getTracer("@axiomhq/ai");
       const startActiveSpan = createStartActiveSpan(tracer);
       const name = this.createDescriptiveSpanName();
 
-      return startActiveSpan(name, null, async (span) => {
-        return this.executeGenerate(options, span);
-      });
+      return startActiveSpan(name, null, operation);
     }
-  }
-
-  private async executeGenerate(
-    options: LanguageModelV1CallOptions,
-    span: Span
-  ) {
-    this.setScopeAttributes(span);
-    this.setPreCallAttributes(span, options);
-
-    const res = await this.model.doGenerate(options);
-
-    this.setPostCallAttributes(span, res);
-
-    return res;
   }
 
   async doStream(options: LanguageModelV1CallOptions) {
-    const bag = propagation.getActiveBaggage();
-    const isWithinWithSpan =
-      bag?.getEntry("__withspan_gen_ai_call")?.value === "true";
+    return this.withSpanHandling(async (span) => {
+      const startTime = currentUnixTime(); // Unix timestamp
 
-    if (isWithinWithSpan) {
-      // Reuse existing span created by withSpan
-      const activeSpan = trace.getActiveSpan();
-      if (!activeSpan) {
-        throw new Error("Expected active span when within withSpan");
-      }
+      this.setScopeAttributes(span);
 
-      activeSpan.updateName(this.createDescriptiveSpanName());
+      this.setPreCallAttributes(span, options);
 
-      return this.executeStream(options, activeSpan);
-    } else {
-      // Create new span only if not within withSpan
-      const tracer = trace.getTracer("@axiomhq/ai");
-      const startActiveSpan = createStartActiveSpan(tracer);
-      const name = this.createDescriptiveSpanName();
+      const ret = await this.model.doStream(options);
 
-      return startActiveSpan(name, null, async (span) => {
-        return await this.executeStream(options, span);
-      });
-    }
-  }
+      // `this` is not available in the transform callback, so we need to capture the model ID here
+      const modelId = this.modelId;
 
-  private async executeStream(options: LanguageModelV1CallOptions, span: Span) {
-    const startTime = currentUnixTime(); // Unix timestamp
+      // Track streaming metrics
+      let timeToFirstToken: number | undefined = undefined;
+      let usage:
+        | {
+            promptTokens: number;
+            completionTokens: number;
+          }
+        | undefined = undefined;
+      let fullText: string | undefined = undefined;
+      const toolCalls: Record<string, any> = {};
+      let finishReason: string | undefined = undefined;
+      let responseId: string | undefined = undefined;
+      let responseModelId: string | undefined = undefined;
+      let responseProviderMetadata: any = undefined;
 
-    this.setScopeAttributes(span);
+      return {
+        ...ret,
+        stream: ret.stream.pipeThrough(
+          new TransformStream({
+            transform(chunk: any, controller) {
+              // Track time to first token
+              if (timeToFirstToken === undefined) {
+                timeToFirstToken = currentUnixTime() - startTime;
+                span.setAttribute(
+                  "gen_ai.response.time_to_first_token",
+                  timeToFirstToken
+                );
+              }
 
-    this.setPreCallAttributes(span, options);
-
-    const ret = await this.model.doStream(options);
-
-    // `this` is not available in the transform callback, so we need to capture the model ID here
-    const modelId = this.modelId;
-
-    // Track streaming metrics
-    let timeToFirstToken: number | undefined = undefined;
-    let usage:
-      | {
-          promptTokens: number;
-          completionTokens: number;
-        }
-      | undefined = undefined;
-    let fullText: string | undefined = undefined;
-    const toolCalls: Record<string, any> = {};
-    let finishReason: string | undefined = undefined;
-    let responseId: string | undefined = undefined;
-    let responseModelId: string | undefined = undefined;
-    let responseProviderMetadata: any = undefined;
-
-    return {
-      ...ret,
-      stream: ret.stream.pipeThrough(
-        new TransformStream({
-          transform(chunk: any, controller) {
-            // Track time to first token
-            if (timeToFirstToken === undefined) {
-              timeToFirstToken = currentUnixTime() - startTime;
-              span.setAttribute(
-                "gen_ai.response.time_to_first_token",
-                timeToFirstToken
-              );
-            }
-
-            switch (chunk.type) {
-              case "response-metadata":
-                if (chunk.id) {
-                  responseId = chunk.id;
-                }
-                if (chunk.modelId) {
-                  responseModelId = chunk.modelId;
-                }
-                if (chunk.providerMetadata) {
-                  responseProviderMetadata = chunk.providerMetadata;
-                }
-                break;
-              case "text-delta":
-                if (fullText === undefined) {
-                  fullText = "";
-                }
-                fullText += chunk.textDelta;
-                break;
-              case "tool-call":
-                toolCalls[chunk.toolCallId] = {
-                  toolCallType: chunk.toolCallType,
-                  toolCallId: chunk.toolCallId,
-                  toolName: chunk.toolName,
-                  args: chunk.args,
-                };
-                break;
-              case "tool-call-delta":
-                if (toolCalls[chunk.toolCallId] === undefined) {
+              switch (chunk.type) {
+                case "response-metadata":
+                  if (chunk.id) {
+                    responseId = chunk.id;
+                  }
+                  if (chunk.modelId) {
+                    responseModelId = chunk.modelId;
+                  }
+                  if (chunk.providerMetadata) {
+                    responseProviderMetadata = chunk.providerMetadata;
+                  }
+                  break;
+                case "text-delta":
+                  if (fullText === undefined) {
+                    fullText = "";
+                  }
+                  fullText += chunk.textDelta;
+                  break;
+                case "tool-call":
                   toolCalls[chunk.toolCallId] = {
                     toolCallType: chunk.toolCallType,
                     toolCallId: chunk.toolCallId,
                     toolName: chunk.toolName,
-                    args: "",
+                    args: chunk.args,
                   };
-                }
-                toolCalls[chunk.toolCallId].args += chunk.argsTextDelta;
-                break;
-              case "finish":
-                usage = chunk.usage;
-                finishReason = chunk.finishReason;
-                break;
-            }
+                  break;
+                case "tool-call-delta":
+                  if (toolCalls[chunk.toolCallId] === undefined) {
+                    toolCalls[chunk.toolCallId] = {
+                      toolCallType: chunk.toolCallType,
+                      toolCallId: chunk.toolCallId,
+                      toolName: chunk.toolName,
+                      args: "",
+                    };
+                  }
+                  toolCalls[chunk.toolCallId].args += chunk.argsTextDelta;
+                  break;
+                case "finish":
+                  usage = chunk.usage;
+                  finishReason = chunk.finishReason;
+                  break;
+              }
 
-            controller.enqueue(chunk);
-          },
-          async flush(controller) {
-            // Construct result object for helper function
-            const streamResult = {
-              response:
-                responseId || responseModelId
-                  ? {
-                      id: responseId,
-                      modelId: responseModelId,
-                    }
-                  : undefined,
-              finishReason,
-              usage,
-              text: fullText,
-              providerMetadata: responseProviderMetadata,
-            };
+              controller.enqueue(chunk);
+            },
+            async flush(controller) {
+              // Construct result object for helper function
+              const streamResult = {
+                response:
+                  responseId || responseModelId
+                    ? {
+                        id: responseId,
+                        modelId: responseModelId,
+                      }
+                    : undefined,
+                finishReason,
+                usage,
+                text: fullText,
+                providerMetadata: responseProviderMetadata,
+              };
 
-            AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
-              span,
-              modelId,
-              streamResult
-            );
+              AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
+                span,
+                modelId,
+                streamResult
+              );
 
-            controller.terminate();
-          },
-        })
-      ),
-    };
+              controller.terminate();
+            },
+          })
+        ),
+      };
+    });
   }
 
   private createDescriptiveSpanName(): string {
