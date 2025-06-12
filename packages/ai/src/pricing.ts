@@ -1,10 +1,10 @@
-type ModelPricingDetails = {
+export type UNSTABLE_ModelPricingDetails = {
   INPUT_TOKEN_COST_PER_1K: number;
   OUTPUT_TOKEN_COST_PER_1K: number;
 };
 
-export class Pricing {
-  private static ModelPrices: Record<string, ModelPricingDetails> = {
+export class _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing {
+  private static ModelPrices: Record<string, UNSTABLE_ModelPricingDetails> = {
     /**
      * ANTHROPIC (BEDROCK)
      * 🚨 note that bedrock requires us/eu prefixes!
@@ -44,7 +44,10 @@ export class Pricing {
     outputTokens: number,
     model: string
   ): number {
-    const modelPricing = Pricing.ModelPrices[model];
+    const modelPricing =
+      _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.ModelPrices[
+        model
+      ];
 
     if (!modelPricing) {
       if (process.env.NODE_ENV === "development") {

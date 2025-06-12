@@ -16,7 +16,7 @@ import {
 import { Attr } from "./semconv/attributes";
 import { createStartActiveSpan } from "./startActiveSpan";
 import { currentUnixTime } from "../util/currentUnixTime";
-import { Pricing } from "src/pricing";
+import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
 import { AxiomAIResources } from "./shared";
 
 /**
@@ -39,7 +39,12 @@ export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attem
   inputTokens: number;
   outputTokens: number;
 }) {
-  const cost = Pricing.calculateCost(inputTokens, outputTokens, model);
+  const cost =
+    _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
+      inputTokens,
+      outputTokens,
+      model
+    );
   span.setAttribute(Attr.GenAI.Cost.Estimated, cost.toFixed(6));
 }
 
