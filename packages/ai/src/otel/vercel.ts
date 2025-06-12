@@ -19,6 +19,15 @@ import { currentUnixTime } from "../util/currentUnixTime";
 import { Pricing } from "src/pricing";
 import { AxiomAIResources } from "./shared";
 
+/**
+ * We need a way to know that we're inside `withSpan`
+ * Because we don't own `generateText` and similar functions,
+ * we use OTel Baggage to propagate this information. Another
+ * consideration might be to use AsyncLocalStorage in Node and
+ * some kind of KV in workerd.
+ */
+const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
+
 export function attemptToEnrichSpanWithPricing({
   span,
   model,
@@ -73,7 +82,7 @@ export function withSpan<T extends (...args: any[]) => Promise<any>>(
       workflow: { value: meta.workflow },
       task: { value: meta.task },
       // TODO: maybe we can just check the active span name instead?
-      __withspan_gen_ai_call: { value: "true" }, // Mark that we're inside withSpan
+      [WITHSPAN_BAGGAGE_KEY]: { value: "true" }, // Mark that we're inside withSpan
       ...(opts?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing && {
         __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing:
           { value: "true" },
@@ -121,7 +130,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   ): Promise<T> {
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan =
-      bag?.getEntry("__withspan_gen_ai_call")?.value === "true";
+      bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === "true";
 
     if (isWithinWithSpan) {
       // Reuse existing span created by withSpan
