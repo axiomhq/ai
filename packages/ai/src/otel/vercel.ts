@@ -165,6 +165,8 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
       [Attr.GenAI.Provider]: this.provider,
+      // TODO: BEFORE MERGE - this should not be hard coded!!!
+      // TODO: also not in doStream
       [Attr.GenAI.System]: Attr.GenAI.System_Values.Vercel,
     });
 
@@ -293,8 +295,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       );
     }
 
-    console.log("tktk ret", ret.text);
-
     return ret;
   }
 
@@ -311,13 +311,17 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       if (!activeSpan) {
         throw new Error("Expected active span when within withSpan");
       }
+      activeSpan.updateName(this.createDescriptiveSpanName());
+
       return this.executeGenerate(options, activeSpan);
     } else {
       // Create new span only if not within withSpan
       const tracer = trace.getTracer("@axiomhq/ai");
       const startActiveSpan = createStartActiveSpan(tracer);
-      return startActiveSpan("gen_ai.call_llm", null, async (span) => {
-        return await this.executeGenerate(options, span);
+      const name = this.createDescriptiveSpanName();
+
+      return startActiveSpan(name, null, async (span) => {
+        return this.executeGenerate(options, span);
       });
     }
   }
@@ -582,13 +586,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
               });
             }
 
-            // Log streaming metrics
-            console.log("tktk stream completed", {
-              timeToFirstToken,
-              fullText: fullText?.substring(0, 100) + "...",
-              toolCallsCount: Object.keys(toolCalls).length,
-            });
-
             controller.terminate();
           },
         })
@@ -607,15 +604,26 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       if (!activeSpan) {
         throw new Error("Expected active span when within withSpan");
       }
+
+      activeSpan.updateName(this.createDescriptiveSpanName());
+
       return this.executeStream(options, activeSpan);
     } else {
       // Create new span only if not within withSpan
       const tracer = trace.getTracer("@axiomhq/ai");
       const startActiveSpan = createStartActiveSpan(tracer);
-      return startActiveSpan("gen_ai.call_llm", null, async (span) => {
+      const name = this.createDescriptiveSpanName();
+
+      return startActiveSpan(name, null, async (span) => {
         return await this.executeStream(options, span);
       });
     }
+  }
+
+  private createDescriptiveSpanName(): string {
+    // Create span name like "chat gpt-4"
+    // TODO: do we ever want to not use "chat"?
+    return `${Attr.GenAI.Operation.Name_Values.Chat} ${this.modelId}`;
   }
 
   // TODO: implement
