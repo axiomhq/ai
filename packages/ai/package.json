@@ -10,7 +10,8 @@
     "dev": "tsup --watch",
     "build": "tsup && chmod +x dist/bin.js",
     "format": "eslint './**/*.{js,ts}' --quiet --fix",
-    "lint": "eslint './**/*.{js,ts}'"
+    "lint": "eslint './**/*.{js,ts}'",
+    "typecheck": "tsc --noEmit"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs",
