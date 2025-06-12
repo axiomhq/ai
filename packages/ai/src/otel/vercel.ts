@@ -353,8 +353,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
       [Attr.GenAI.Provider]: this.provider,
-      // TODO: BEFORE MERGE - this should not be hard coded!!!
-      [Attr.GenAI.System]: Attr.GenAI.System_Values.Vercel,
+      // TODO: there is currently no good way to get the system from the vercel sdk.
+      // we would need a lookup table or regex stuff or similar. fragile either way.
+      // @see: docs for `ATTR_GEN_AI_SYSTEM`)
+      // [Attr.GenAI.System]: "_OTHER",
     });
 
     // Set optional request attributes
@@ -434,6 +436,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
   }
 
+  // this is static because we would need to hold a reference to the instance in `executeStream` otherwise
   private static setPostCallAttributesStatic(
     span: Span,
     modelId: string,
