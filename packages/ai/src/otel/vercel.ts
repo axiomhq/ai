@@ -116,19 +116,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     return this.model.supportsUrl;
   }
 
-  async doGenerate(options: LanguageModelV1CallOptions) {
-    return this.withSpanHandling(async (span) => {
-      this.setScopeAttributes(span);
-      this.setPreCallAttributes(span, options);
-
-      const res = await this.model.doGenerate(options);
-
-      this.setPostCallAttributes(span, res);
-
-      return res;
-    });
-  }
-
   private async withSpanHandling<T>(
     operation: (span: Span) => Promise<T>
   ): Promise<T> {
@@ -153,6 +140,19 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
       return startActiveSpan(name, null, operation);
     }
+  }
+
+  async doGenerate(options: LanguageModelV1CallOptions) {
+    return this.withSpanHandling(async (span) => {
+      this.setScopeAttributes(span);
+      this.setPreCallAttributes(span, options);
+
+      const res = await this.model.doGenerate(options);
+
+      this.setPostCallAttributes(span, res);
+
+      return res;
+    });
   }
 
   async doStream(options: LanguageModelV1CallOptions) {
