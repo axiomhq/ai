@@ -17,10 +17,9 @@ jobs:
         id: notify-pr-merged
         uses: slackapi/slack-github-action@v2
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
-              "channel": "#proj-rudder",
               "text": "PR Merged for @axiomhq/ai: *${{ github.event.head_commit.message || github.event.pull_request.title }}* :tada:\n<${{ github.event.head_commit.url || github.event.pull_request.html_url }}|View Changes>"
             }
