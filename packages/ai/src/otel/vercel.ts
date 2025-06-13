@@ -11,6 +11,7 @@ import { createStartActiveSpan } from "./startActiveSpan";
 import { currentUnixTime } from "../util/currentUnixTime";
 import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
 import { WITHSPAN_BAGGAGE_KEY } from "./withSpanBaggageKey";
+import { createGenAISpanName } from "./shared";
 
 export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
@@ -90,14 +91,14 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       if (!activeSpan) {
         throw new Error("Expected active span when within withSpan");
       }
-      activeSpan.updateName(this.createDescriptiveSpanName());
+      activeSpan.updateName(this.spanName());
 
       return operation(activeSpan);
     } else {
       // Create new span only if not within withSpan
       const tracer = trace.getTracer("@axiomhq/ai");
       const startActiveSpan = createStartActiveSpan(tracer);
-      const name = this.createDescriptiveSpanName();
+      const name = this.spanName();
 
       return startActiveSpan(name, null, operation);
     }
@@ -233,10 +234,12 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     });
   }
 
-  private createDescriptiveSpanName(): string {
-    // Create span name like "chat gpt-4"
+  private spanName(): string {
     // TODO: do we ever want to not use "chat"?
-    return `${Attr.GenAI.Operation.Name_Values.Chat} ${this.modelId}`;
+    return createGenAISpanName(
+      Attr.GenAI.Operation.Name_Values.Chat,
+      this.modelId
+    );
   }
 
   private setScopeAttributes(span: Span) {
