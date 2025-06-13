@@ -9,8 +9,24 @@ import type { ChatCompletionCreateParams } from "openai/resources/chat/completio
 
 const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
 
-export function wrapOpenAI(client: OpenAI): OpenAI {
-  return new AxiomWrappedOpenAI(client) as unknown as OpenAI;
+export function wrapOpenAI<T extends object>(openai: T): T {
+  const oai: unknown = openai;
+  if (
+    oai &&
+    typeof oai === "object" &&
+    "chat" in oai &&
+    typeof oai.chat === "object" &&
+    oai.chat &&
+    "completions" in oai.chat &&
+    typeof oai.chat.completions === "object" &&
+    oai.chat.completions &&
+    "create" in oai.chat.completions
+  ) {
+    return new AxiomWrappedOpenAI(oai as any) as unknown as T;
+  } else {
+    console.warn("Unsupported OpenAI library (potentially v3). Not wrapping.");
+    return openai;
+  }
 }
 
 class AxiomWrappedOpenAI {
