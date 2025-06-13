@@ -5,28 +5,12 @@ import {
   type LanguageModelV1Prompt,
 } from "@ai-sdk/provider";
 
-import {
-  context,
-  trace,
-  propagation,
-  type Span,
-  type Baggage,
-  type Tracer,
-} from "@opentelemetry/api";
+import { trace, propagation, type Span } from "@opentelemetry/api";
 import { Attr } from "./semconv/attributes";
 import { createStartActiveSpan } from "./startActiveSpan";
 import { currentUnixTime } from "../util/currentUnixTime";
 import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
-import { AxiomAIResources } from "./shared";
-
-/**
- * We need a way to know that we're inside `withSpan`
- * Because we don't own `generateText` and similar functions,
- * we use OTel Baggage to propagate this information. Another
- * consideration might be to use AsyncLocalStorage in Node and
- * some kind of KV in workerd.
- */
-const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
+import { WITHSPAN_BAGGAGE_KEY } from "./withSpanBaggageKey";
 
 export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
@@ -60,43 +44,6 @@ export function wrapAISDKModel<T extends object>(model: T): T {
     console.warn("Unsupported AI SDK model. Not wrapping.");
     return model;
   }
-}
-
-type Meta = {
-  // TODO: BEFORE RELEASE - i think we will name these something else. but leaving like this for now to
-  // not break
-  workflow: string;
-  task: string;
-};
-export function withSpan<T extends (...args: any[]) => Promise<any>>(
-  meta: Meta,
-  fn: (span: Span) => ReturnType<T>,
-  opts?: {
-    tracer?: Tracer;
-    __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing?: boolean;
-  }
-): Promise<ReturnType<T>> {
-  const tracer =
-    opts?.tracer ??
-    AxiomAIResources.getInstance().getTracer() ??
-    trace.getTracer("@axiomhq/ai");
-
-  const startActiveSpan = createStartActiveSpan(tracer);
-  return startActiveSpan("gen_ai.call_llm", null, async (span) => {
-    const bag: Baggage = propagation.createBaggage({
-      workflow: { value: meta.workflow },
-      task: { value: meta.task },
-      // TODO: maybe we can just check the active span name instead?
-      [WITHSPAN_BAGGAGE_KEY]: { value: "true" }, // Mark that we're inside withSpan
-      ...(opts?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing && {
-        __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing:
-          { value: "true" },
-      }),
-    });
-
-    const ctx = propagation.setBaggage(context.active(), bag);
-    return await context.with(ctx, () => fn(span));
-  });
 }
 
 class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
