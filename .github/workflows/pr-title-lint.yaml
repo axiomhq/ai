@@ -1,0 +1,19 @@
+# this workflow will run on every pr to make sure the project is following the guidelines
+
+# run labeler with elevated permissions before other actions
+
+name: PR Checks
+
+on:
+  pull_request_target:
+    branches: ["*"]
+    types: ["opened", "edited", "synchronize"]
+
+jobs:
+  lint-pr-title:
+    runs-on: ubuntu-latest
+    name: Validate PR Title
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
