@@ -100,6 +100,33 @@ class AxiomWrappedOpenAI {
     }
   }
 
+  private setPreCallAttributesForResponses(span: Span, options: any) {
+    const {
+      model,
+      input,
+      instructions,
+      // @ts-expect-error - NOTE: rest has a bunch of other stuff on it!
+      ...rest
+    } = options;
+
+    // Set request attributes for responses API
+    span.setAttributes({
+      [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
+      [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
+      [Attr.GenAI.Request.Model]: model,
+      [Attr.GenAI.Provider]: "openai",
+      [Attr.GenAI.System]: "openai",
+    });
+
+    // Set prompt attributes for responses API
+    if (instructions) {
+      span.setAttribute(Attr.GenAI.Prompt.System, instructions);
+    }
+    if (input) {
+      span.setAttribute(Attr.GenAI.Prompt.Text, input);
+    }
+  }
+
   private setPostCallAttributes(
     span: Span,
     result: ChatCompletion,
@@ -159,6 +186,44 @@ class AxiomWrappedOpenAI {
     }
   }
 
+  private setPostCallAttributesForResponses(
+    span: Span,
+    result: any,
+    startTime: number
+  ) {
+    // TODO: add pricing
+    // const bag = propagation.getActiveBaggage();
+
+    // Set total request duration
+    const endTime = currentUnixTime();
+    span.setAttribute("gen_ai.request.duration_ms", endTime - startTime);
+
+    // Set response attributes for responses API
+    if (result.id) {
+      span.setAttribute(Attr.GenAI.Response.ID, result.id);
+    }
+    if (result.model) {
+      span.setAttribute(Attr.GenAI.Response.Model, result.model);
+    }
+
+    // Set usage attributes if available
+    if (result.usage) {
+      span.setAttribute(
+        Attr.GenAI.Usage.InputTokens,
+        result.usage.input_tokens || 0
+      );
+      span.setAttribute(
+        Attr.GenAI.Usage.OutputTokens,
+        result.usage.output_tokens || 0
+      );
+    }
+
+    // Set response text for responses API
+    if (result.output_text) {
+      span.setAttribute(Attr.GenAI.Response.Text, result.output_text);
+    }
+  }
+
   chat = {
     completions: {
       create: (options: any) => {
@@ -173,6 +238,22 @@ class AxiomWrappedOpenAI {
           return result;
         });
       },
+    },
+  };
+
+  responses = {
+    create: (options: any) => {
+      return this.withSpanHandling(async (span) => {
+        // Use responses-specific attributes
+        this.setPreCallAttributesForResponses(span, options);
+
+        const startTime = currentUnixTime();
+        const result = await this.client.responses.create(options);
+
+        this.setPostCallAttributesForResponses(span, result, startTime);
+
+        return result;
+      });
     },
   };
 
