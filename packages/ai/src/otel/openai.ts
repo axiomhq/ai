@@ -6,6 +6,7 @@ import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/p
 import OpenAI from "openai";
 import type { ChatCompletion } from "openai/resources/chat/completions";
 import type { ChatCompletionCreateParams } from "openai/resources/chat/completions";
+import { createGenAISpanName, type GenAIOperation } from "./shared";
 
 const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
 
@@ -32,8 +33,13 @@ export function wrapOpenAI<T extends object>(openai: T): T {
 class AxiomWrappedOpenAI {
   constructor(private client: OpenAI) {}
 
+  private spanName(operation: GenAIOperation, model?: string): string {
+    return createGenAISpanName(operation, model);
+  }
+
   private async withSpanHandling<T>(
-    operation: (span: Span) => Promise<T>
+    operation: (span: Span) => Promise<T>,
+    spanName: string
   ): Promise<T> {
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan =
@@ -44,11 +50,13 @@ class AxiomWrappedOpenAI {
       if (!activeSpan) {
         throw new Error("Expected active span when within withSpan");
       }
+      // Update the span name to be more descriptive
+      activeSpan.updateName(spanName);
       return operation(activeSpan);
     } else {
       const tracer = trace.getTracer("@axiomhq/ai");
       const startActiveSpan = createStartActiveSpan(tracer);
-      return startActiveSpan("gen_ai.call_llm", null, operation);
+      return startActiveSpan(spanName, null, operation);
     }
   }
 
@@ -126,6 +134,7 @@ class AxiomWrappedOpenAI {
     } = options;
 
     // Set request attributes for responses API
+    // Note: Both chat completions and responses API use "chat" operation per OpenTelemetry spec
     span.setAttributes({
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
@@ -207,8 +216,7 @@ class AxiomWrappedOpenAI {
     result: any,
     startTime: number
   ) {
-    // TODO: add pricing
-    // const bag = propagation.getActiveBaggage();
+    const bag = propagation.getActiveBaggage();
 
     // Set total request duration
     const endTime = currentUnixTime();
@@ -232,6 +240,19 @@ class AxiomWrappedOpenAI {
         Attr.GenAI.Usage.OutputTokens,
         result.usage.output_tokens || 0
       );
+
+      // Check for experimental pricing estimation
+      const shouldEstimatePricing =
+        bag?.getEntry(
+          "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
+        )?.value === "true";
+      if (shouldEstimatePricing) {
+        _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
+          result.usage.input_tokens || 0,
+          result.usage.output_tokens || 0,
+          result.model
+        );
+      }
     }
 
     // Set response text for responses API
@@ -243,6 +264,10 @@ class AxiomWrappedOpenAI {
   chat = {
     completions: {
       create: (options: any) => {
+        const spanName = this.spanName(
+          Attr.GenAI.Operation.Name_Values.Chat,
+          options.model
+        );
         return this.withSpanHandling(async (span) => {
           this.setPreCallAttributes(span, options);
 
@@ -252,13 +277,17 @@ class AxiomWrappedOpenAI {
           this.setPostCallAttributes(span, result, startTime);
 
           return result;
-        });
+        }, spanName);
       },
     },
   };
 
   responses = {
     create: (options: any) => {
+      const spanName = this.spanName(
+        Attr.GenAI.Operation.Name_Values.Chat,
+        options.model
+      );
       return this.withSpanHandling(async (span) => {
         // Use responses-specific attributes
         this.setPreCallAttributesForResponses(span, options);
@@ -269,7 +298,7 @@ class AxiomWrappedOpenAI {
         this.setPostCallAttributesForResponses(span, result, startTime);
 
         return result;
-      });
+      }, spanName);
     },
   };
 
