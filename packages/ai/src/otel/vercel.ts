@@ -92,7 +92,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
         throw new Error("Expected active span when within withSpan");
       }
       activeSpan.updateName(this.spanName());
-
+      // testy
       return operation(activeSpan);
     } else {
       // Create new span only if not within withSpan
