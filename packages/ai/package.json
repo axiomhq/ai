@@ -12,7 +12,8 @@
     "format": "eslint './**/*.{js,ts}' --quiet --fix",
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "test:watch": "vitest --watch"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs",
@@ -56,6 +57,9 @@
   },
   "devDependencies": {
     "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/core": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@repo/eslint-config": "workspace:*",
     "@types/node": "^22.15.29",
     "eslint": "catalog:",

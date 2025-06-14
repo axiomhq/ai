@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from "vitest";
-import { wrapOpenAI } from "./openai";
+import { wrapOpenAI } from "../../src/otel/openai";
 import OpenAI from "openai";
 
 describe("wrapOpenAI", () => {
