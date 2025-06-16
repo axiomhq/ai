@@ -6,6 +6,13 @@ export default defineConfig({
     environment: "node",
     include: ["__test__/**/*.test.ts"],
     globals: true,
+    pool: "forks",
+    // TODO: ensure that this allows parallel tests
+    poolOptions: {
+      forks: {
+        isolate: true,
+      },
+    },
   },
   resolve: {
     alias: {
