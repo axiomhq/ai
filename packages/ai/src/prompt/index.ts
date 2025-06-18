@@ -21,7 +21,7 @@ export const parse = async (
   prompt: Prompt,
   {
     context: unsafeContext = {},
-    parser: parserName = "handlebars",
+    parser: parserName = "nunjucks",
   }: {
     context?: Record<string, any>;
     parser?: "nunjucks" | "handlebars";
