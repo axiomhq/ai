@@ -1,15 +1,17 @@
 import HTTPClient from "./httpClient";
-import { Eval } from "./eval";
+
+import { Eval, type EvalParams } from "./evals/eval";
 import type {
   Environment,
-  EvalParams,
   LibraryInput,
   Prompt,
   PromptInput,
 } from "./types";
+import { parse } from "./prompt";
 
 export type ClientOptions = {
   onError?: (error: Error) => void;
+  parser?: "nunjucks" | "handlebars";
 };
 
 export class Axiom extends HTTPClient {
@@ -27,7 +29,35 @@ export class Axiom extends HTTPClient {
     }
   }
 
+  static prompts = {
+    /*
+     * Parses a prompt with the given inputs.
+     * This is useful for previewing the prompt before running it.
+     *
+     * @param prompt - The prompt to parse.
+     * @param options - An object containing the context for parsing and the parser to use.
+     * @returns The parsed prompt.
+     */
+    parse,
+  };
+
   prompts = {
+    /*
+     * Parses a prompt with the given inputs.
+     * This is useful for previewing the prompt before running it.
+     *
+     * @param prompt - The prompt to parse.
+     * @param options - An object containing the context for parsing and the parser to use.
+     * @returns The parsed prompt.
+     */
+    parse,
+
+    /*
+     * Creates a new prompt.
+     *
+     * @param input - The input to create the prompt with.
+     * @returns The created prompt.
+     */
     create: async (input: PromptInput): Promise<Prompt> => {
       return await this.client.post<Prompt>(`/prompts`, {
         body: JSON.stringify(input),
@@ -86,11 +116,18 @@ export class Axiom extends HTTPClient {
    * @param inputs - The inputs to pass to the prompt.
    * @returns The result of the prompt.
    */
-  run(_: Prompt, __: Record<string, any>) {
+
+  async run(prompt: Prompt, inputs: Record<string, any>) {
+    let parsedPrompt: Prompt;
+    parsedPrompt = await parse(prompt, {
+      context: inputs,
+      parser: "nunjucks",
+    });
+    console.log(parsedPrompt);
     throw new Error("Not implemented");
   }
 
-  eval({ data, task, scorers }: EvalParams) {
-    return Eval({ data, task, scorers });
-  }
+    eval(name: string, params: EvalParams) {
+      return Eval(name, params);
+    }
 }

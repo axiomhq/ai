@@ -4,6 +4,7 @@ import { loadPushCommand } from "./commands/push";
 import { loadPullCommand } from "./commands/pull";
 import { loadDeleteCommand } from "./commands/delete";
 import { loadListCommand } from "./commands/list";
+import { loadRunCommand } from "./commands/run";
 
 const program = new Command();
 
@@ -16,5 +17,6 @@ loadListCommand(program);
 loadPushCommand(program);
 loadPullCommand(program);
 loadDeleteCommand(program);
+loadRunCommand(program);
 
 program.parse();
