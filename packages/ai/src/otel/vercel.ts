@@ -5,6 +5,10 @@ import {
   type LanguageModelV1Prompt,
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
+  type LanguageModelV1FunctionTool,
+  type LanguageModelV1ProviderDefinedTool,
+  type LanguageModelV1TextPart,
+  type LanguageModelV1ToolCallPart,
 } from "@ai-sdk/provider";
 
 import { trace, propagation, type Span } from "@opentelemetry/api";
@@ -55,6 +59,95 @@ function formatCompletion({
         : ""),
     finish_reason: finishReason,
   };
+}
+
+function convertTools(
+  tools: Array<LanguageModelV1FunctionTool | LanguageModelV1ProviderDefinedTool>
+) {
+  return tools.map((tool) => {
+    const { type: _, ...rest } = tool;
+    return {
+      type: tool.type,
+      function: rest,
+    };
+  });
+}
+
+function postProcessPrompt(prompt: LanguageModelV1Prompt): any[] {
+  const results: any[] = [];
+  for (const message of prompt) {
+    switch (message.role) {
+      case "system":
+        results.push({
+          role: "system",
+          content: message.content,
+        });
+        break;
+      case "assistant":
+        const textPart = message.content.find(
+          (part) => part.type === "text"
+        ) as LanguageModelV1TextPart | undefined;
+        const toolCallParts = message.content.filter(
+          (part) => part.type === "tool-call"
+        ) as LanguageModelV1ToolCallPart[];
+        results.push({
+          role: "assistant",
+          content: textPart?.text || null,
+          ...(toolCallParts.length > 0
+            ? {
+                tool_calls: toolCallParts.map((part) => ({
+                  id: part.toolCallId,
+                  function: {
+                    name: part.toolName,
+                    arguments: JSON.stringify(part.args),
+                  },
+                  type: "function" as const,
+                })),
+              }
+            : {}),
+        });
+        break;
+      case "user":
+        results.push({
+          role: "user",
+          content: message.content.map((part) => {
+            switch (part.type) {
+              case "text":
+                return {
+                  type: "text",
+                  text: part.text,
+                  ...(part.providerMetadata
+                    ? { providerMetadata: part.providerMetadata }
+                    : {}),
+                };
+              case "image":
+                return {
+                  type: "image_url",
+                  image_url: {
+                    url: part.image.toString(),
+                    ...(part.providerMetadata
+                      ? { providerMetadata: part.providerMetadata }
+                      : {}),
+                  },
+                };
+              default:
+                return part as any;
+            }
+          }),
+        });
+        break;
+      case "tool":
+        for (const part of message.content) {
+          results.push({
+            role: "tool",
+            tool_call_id: part.toolCallId,
+            content: JSON.stringify(part.result),
+          });
+        }
+        break;
+    }
+  }
+  return results;
 }
 
 export function wrapAISDKModel<T extends object>(model: T): T {
@@ -316,8 +409,9 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       providerMetadata,
     } = options;
 
-    // Set prompt attributes
-    putPromptOnSpan(span, prompt);
+    // Set prompt attributes (full conversation history)
+    const processedPrompt = postProcessPrompt(prompt);
+    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
 
     // Set request attributes
     span.setAttributes({
@@ -382,21 +476,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
             : JSON.stringify(mode.toolChoice)
         );
       }
-    } else if (mode.type === "object-json") {
-      if (mode.name) {
-        span.setAttribute("gen_ai.request.object_name", mode.name);
-      }
-      if (mode.description) {
-        span.setAttribute(
-          "gen_ai.request.object_description",
-          mode.description
-        );
-      }
-      if (mode.schema) {
-        span.setAttribute("gen_ai.request.object_has_schema", true);
-      }
-    } else if (mode.type === "object-tool") {
-      span.setAttribute("gen_ai.request.object_tool_name", mode.tool.name);
     }
 
     // Set provider metadata if present in request
@@ -498,47 +577,4 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       result
     );
   }
-
-  // TODO: implement
-  // - convertTools
-  // - postProcessPrompt (we have putPromptOnSpan now but it's almost certainly wrong)
-}
-
-// TODO: better name
-function putPromptOnSpan(span: Span, prompt: LanguageModelV1Prompt) {
-  prompt.forEach((p) => {
-    // TODO: this is almost certainly wrong!!! Look at with Neil
-    switch (p.role) {
-      case "system":
-        span.setAttribute(Attr.GenAI.Prompt.System, p.content);
-        break;
-      case "user":
-        if (typeof p.content === "string") {
-          span.setAttribute(Attr.GenAI.Prompt.Text, p.content);
-        } else if (Array.isArray(p.content)) {
-          // Handle array of content parts - extract text from all text parts
-          if (p.content.some((part) => part.type !== "text")) {
-            throw new Error(`TODO: handle - ${JSON.stringify(p.content)}`);
-          }
-
-          const textParts = p.content.map((part: any) => part.text);
-
-          if (textParts.length === 0) {
-            return;
-          } else if (textParts.length === 1) {
-            span.setAttribute(Attr.GenAI.Prompt.Text, textParts[0]);
-          } else {
-            span.setAttribute(
-              Attr.GenAI.Prompt.Text,
-              textParts.map((p, idx) => `[Part ${idx + 1}]: ${p}`).join("\n\n")
-            );
-          }
-        } else {
-          throw new Error(`TODO: handle - ${JSON.stringify(p.content)}`);
-        }
-        break;
-      default:
-        throw new Error(`TODO: handle - ${JSON.stringify(p.role)}`);
-    }
-  });
 }

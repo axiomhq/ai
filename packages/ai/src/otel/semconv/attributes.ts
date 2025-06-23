@@ -25,6 +25,7 @@ import {
   ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
   ATTR_GEN_AI_COMPLETION,
+  ATTR_GEN_AI_PROMPT,
 } from "./semconv_incubating";
 
 /**
@@ -84,18 +85,7 @@ export const Attr = {
      * There doesn't seem to be a semconv for this
      */
     Provider: "gen_ai.provider",
-    Prompt: {
-      System: "gen_ai.prompt.system",
-      Role: "gen_ai.prompt.role",
-      Role_Values: {
-        // there might be others?
-        Assistant: "assistant",
-        System: "system",
-        User: "user",
-      },
-      Text: "gen_ai.prompt.text",
-      PreviousMessages: "gen_ai.prompt.previous_messages",
-    },
+    Prompt: ATTR_GEN_AI_PROMPT,
     Usage: {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
       OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
