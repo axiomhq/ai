@@ -5,8 +5,7 @@ import {
   type LanguageModelV1Prompt,
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
-  type LanguageModelV1FunctionTool,
-  type LanguageModelV1ProviderDefinedTool,
+
   type LanguageModelV1TextPart,
   type LanguageModelV1ToolCallPart,
 } from "@ai-sdk/provider";
@@ -120,7 +119,7 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): any[] {
                   },
                 };
               default:
-                return part as any;
+                return part;
             }
           }),
         });
@@ -139,14 +138,14 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): any[] {
   return results;
 }
 
-export function wrapAISDKModel<T extends object>(model: T): T {
-  const m = model as any;
+export function wrapAISDKModel<T extends LanguageModelV1>(model: T): T {
+  const m = model;
   if (
     m?.specificationVersion === "v1" &&
     typeof m?.provider === "string" &&
     typeof m?.modelId === "string"
   ) {
-    return new AxiomWrappedLanguageModelV1(m as LanguageModelV1) as any as T;
+    return new AxiomWrappedLanguageModelV1(m) as never as T;
   } else {
     console.warn("Unsupported AI SDK model. Not wrapping.");
     return model;
