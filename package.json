@@ -10,7 +10,7 @@
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
-    "turbo": "^2.5.3"
+    "turbo": "^2.5.4"
   },
   "packageManager": "pnpm@10.11.1"
 }
