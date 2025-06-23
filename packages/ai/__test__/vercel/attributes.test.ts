@@ -60,13 +60,14 @@ describe("span names", () => {
        * 🚨 This is not yet the final shape we want the sdk to have
        * So update this as we get closer to the attributes we like
        */
+      "gen_ai.prompt":
+        '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
       "gen_ai.completion":
         '{"role":"assistant","content":"Mock response","finish_reason":"stop"}',
       "gen_ai.operation.name": "chat",
       "gen_ai.operation.task_name": "test-task",
       "gen_ai.operation.workflow_name": "test-workflow",
       "gen_ai.output.type": "text",
-      "gen_ai.prompt.text": "Hello, world!",
       "gen_ai.provider": "mock-provider",
       "gen_ai.request.input_format": "prompt",
       "gen_ai.request.mode_type": "regular",
