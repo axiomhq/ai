@@ -8,6 +8,7 @@ import {
   type LanguageModelV1TextPart,
   type LanguageModelV1ToolCallPart,
   type LanguageModelV1StreamPart,
+  type LanguageModelV1ProviderMetadata,
 } from "@ai-sdk/provider";
 
 import { trace, propagation, type Span } from "@opentelemetry/api";
@@ -17,59 +18,10 @@ import { currentUnixTime } from "../util/currentUnixTime";
 import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
 import { WITHSPAN_BAGGAGE_KEY } from "./withSpanBaggageKey";
 import { createGenAISpanName } from "./shared";
-
-// OpenAI-compatible message format interfaces
-interface ToolCall {
-  id: string;
-  type: "function";
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
-
-interface SystemMessage {
-  role: "system";
-  content: string;
-}
-
-interface UserContentPart {
-  type: "text" | "image_url" | string; // Allow other types for extensibility
-  text?: string;
-  image_url?: {
-    url: string;
-    providerMetadata?: any;
-  };
-  providerMetadata?: any;
-  [key: string]: any; // Allow additional properties
-}
-
-interface UserMessage {
-  role: "user";
-  content: UserContentPart[];
-}
-
-interface AssistantMessage {
-  role: "assistant";
-  content: string | null;
-  tool_calls?: ToolCall[];
-}
-
-interface ToolMessage {
-  role: "tool";
-  tool_call_id: string;
-  content: string;
-}
-
-type ConversationMessage =
-  | SystemMessage
-  | UserMessage
-  | AssistantMessage
-  | ToolMessage;
-
-interface Completion extends AssistantMessage {
-  finish_reason: LanguageModelV1FinishReason;
-}
+import type {
+  OpenAIMessage,
+  OpenAIAssistantMessage,
+} from "./vercelTypes";
 
 export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
@@ -94,29 +46,31 @@ export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attem
 function formatCompletion({
   text,
   toolCalls,
-  finishReason,
 }: {
   text: string | undefined;
   toolCalls: LanguageModelV1FunctionToolCall[] | undefined;
-  finishReason: LanguageModelV1FinishReason;
-}): Completion {
+}): OpenAIAssistantMessage {
   return {
     role: "assistant",
     content:
       text ??
-      (toolCalls
-        ? toolCalls.length === 1 && toolCalls[0].toolName === "json"
-          ? toolCalls[0].args
-          : JSON.stringify(toolCalls)
+      (toolCalls && toolCalls.length > 0
+        ? null // Content is null when we have no text but do have tool calls
         : ""),
-    finish_reason: finishReason,
+    tool_calls: toolCalls?.map((toolCall, index) => ({
+      id: toolCall.toolCallId,
+      type: "function" as const,
+      function: {
+        name: toolCall.toolName,
+        arguments: JSON.stringify(toolCall.args),
+      },
+      index,
+    })),
   };
 }
 
-function postProcessPrompt(
-  prompt: LanguageModelV1Prompt
-): ConversationMessage[] {
-  const results: ConversationMessage[] = [];
+function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
+  const results: OpenAIMessage[] = [];
   for (const message of prompt) {
     switch (message.role) {
       case "system":
@@ -173,7 +127,8 @@ function postProcessPrompt(
                   },
                 };
               default:
-                return part;
+                // Handle unknown content types by passing them through
+                return part as any;
             }
           }),
         });
@@ -302,11 +257,13 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           }
         | undefined = undefined;
       let fullText: string | undefined = undefined;
-      const toolCallsMap: Record<string, any> = {};
+      const toolCallsMap: Record<string, LanguageModelV1FunctionToolCall> = {};
       let finishReason: LanguageModelV1FinishReason | undefined = undefined;
       let responseId: string | undefined = undefined;
       let responseModelId: string | undefined = undefined;
-      let responseProviderMetadata: any = undefined;
+      let responseProviderMetadata:
+        | LanguageModelV1ProviderMetadata
+        | undefined = undefined;
 
       return {
         ...ret,
@@ -348,7 +305,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                     toolCallId: chunk.toolCallId,
                     toolName: chunk.toolName,
                     args: chunk.args,
-                  };
+                  } as LanguageModelV1FunctionToolCall;
                   break;
                 case "tool-call-delta":
                   if (toolCallsMap[chunk.toolCallId] === undefined) {
@@ -357,7 +314,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                       toolCallId: chunk.toolCallId,
                       toolName: chunk.toolName,
                       args: "",
-                    };
+                    } as LanguageModelV1FunctionToolCall;
                   }
                   toolCallsMap[chunk.toolCallId].args += chunk.argsTextDelta;
                   break;
@@ -541,7 +498,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       usage?: { promptTokens: number; completionTokens: number };
       text?: string;
       toolCalls?: LanguageModelV1FunctionToolCall[];
-      providerMetadata?: any;
+      providerMetadata?: LanguageModelV1ProviderMetadata;
     }
   ) {
     const bag = propagation.getActiveBaggage();
@@ -587,9 +544,11 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       const completion = formatCompletion({
         text: result.text,
         toolCalls: result.toolCalls,
-        finishReason: result.finishReason,
       });
       span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+      
+      // Store finish reason separately as per semantic conventions
+      span.setAttribute("gen_ai.response.finish_reasons", JSON.stringify([result.finishReason]));
     }
 
     // Set provider metadata if available
@@ -612,7 +571,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       usage?: { promptTokens: number; completionTokens: number };
       text?: string;
       toolCalls?: LanguageModelV1FunctionToolCall[];
-      providerMetadata?: any;
+      providerMetadata?: LanguageModelV1ProviderMetadata;
     }
   ) {
     AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(

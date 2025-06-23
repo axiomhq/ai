@@ -62,8 +62,9 @@ describe("span names", () => {
        */
       "gen_ai.prompt":
         '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
-      "gen_ai.completion":
-        '{"role":"assistant","content":"Mock response","finish_reason":"stop"}',
+      "gen_ai.completion": '{"role":"assistant","content":"Mock response"}',
+      // '{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mock response\"},\"finish_reason\":\"stop\"}]}',
+      "gen_ai.response.finish_reasons": '["stop"]',
       "gen_ai.operation.name": "chat",
       "gen_ai.operation.task_name": "test-task",
       "gen_ai.operation.workflow_name": "test-workflow",
