@@ -9,7 +9,6 @@ import type {
   LanguageModelV1FinishReason,
   LanguageModelV1FunctionToolCall,
   LanguageModelV1StreamPart,
-  NoSuchModelError,
   ProviderV1,
 } from "@ai-sdk/provider";
 import { MockEmbeddingModelV1 } from "ai/test";

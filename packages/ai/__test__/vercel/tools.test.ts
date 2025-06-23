@@ -75,7 +75,7 @@ describe("tool call attributes", () => {
       "gen_ai.prompt":
         '[{"role":"user","content":[{"type":"text","text":"What is 2+2?"}]}]',
       "gen_ai.completion":
-        '{\"role\":\"assistant\",\"content\":\"Let me calculate that for you.\",\"tool_calls\":[{\"id\":\"call-123\",\"type\":\"function\",\"function\":{\"name\":\"calculator\",\"arguments\":\"\\\"{\\\\\\\"expression\\\\\\\": \\\\\\\"2+2\\\\\\\"}\\\"\"},\"index\":0}]}',
+        '{\"role\":\"assistant\",\"content\":\"Let me calculate that for you.\",\"tool_calls\":[{\"id\":\"call-123\",\"type\":\"function\",\"function\":{\"name\":\"calculator\",\"arguments\":\"{\\\"expression\\\": \\\"2+2\\\"}\"},\"index\":0}]}',
       "gen_ai.response.finish_reasons": '["tool-calls"]',
       "gen_ai.operation.name": "chat",
       "gen_ai.operation.task_name": "test-task",

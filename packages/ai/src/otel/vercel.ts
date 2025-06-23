@@ -62,7 +62,7 @@ function formatCompletion({
       type: "function" as const,
       function: {
         name: toolCall.toolName,
-        arguments: JSON.stringify(toolCall.args),
+        arguments: toolCall.args,
       },
       index,
     })),
