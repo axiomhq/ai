@@ -5,7 +5,6 @@ import {
   type LanguageModelV1Prompt,
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
-
   type LanguageModelV1TextPart,
   type LanguageModelV1ToolCallPart,
 } from "@ai-sdk/provider";
@@ -17,6 +16,59 @@ import { currentUnixTime } from "../util/currentUnixTime";
 import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
 import { WITHSPAN_BAGGAGE_KEY } from "./withSpanBaggageKey";
 import { createGenAISpanName } from "./shared";
+
+// OpenAI-compatible message format interfaces
+interface ToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+interface SystemMessage {
+  role: "system";
+  content: string;
+}
+
+interface UserContentPart {
+  type: "text" | "image_url" | string; // Allow other types for extensibility
+  text?: string;
+  image_url?: {
+    url: string;
+    providerMetadata?: any;
+  };
+  providerMetadata?: any;
+  [key: string]: any; // Allow additional properties
+}
+
+interface UserMessage {
+  role: "user";
+  content: UserContentPart[];
+}
+
+interface AssistantMessage {
+  role: "assistant";
+  content: string | null;
+  tool_calls?: ToolCall[];
+}
+
+interface ToolMessage {
+  role: "tool";
+  tool_call_id: string;
+  content: string;
+}
+
+type ConversationMessage =
+  | SystemMessage
+  | UserMessage
+  | AssistantMessage
+  | ToolMessage;
+
+interface Completion extends AssistantMessage {
+  finish_reason: LanguageModelV1FinishReason;
+}
 
 export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
@@ -46,7 +98,7 @@ function formatCompletion({
   text: string | undefined;
   toolCalls: LanguageModelV1FunctionToolCall[] | undefined;
   finishReason: LanguageModelV1FinishReason;
-}) {
+}): Completion {
   return {
     role: "assistant",
     content:
@@ -60,9 +112,10 @@ function formatCompletion({
   };
 }
 
-
-function postProcessPrompt(prompt: LanguageModelV1Prompt): any[] {
-  const results: any[] = [];
+function postProcessPrompt(
+  prompt: LanguageModelV1Prompt
+): ConversationMessage[] {
+  const results: ConversationMessage[] = [];
   for (const message of prompt) {
     switch (message.role) {
       case "system":
@@ -89,7 +142,7 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): any[] {
                     name: part.toolName,
                     arguments: JSON.stringify(part.args),
                   },
-                  type: "function" as const,
+                  type: "function",
                 })),
               }
             : {}),
