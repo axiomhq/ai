@@ -8,6 +8,8 @@ import type { ChatCompletion } from "openai/resources/chat/completions";
 import type { ChatCompletionCreateParams } from "openai/resources/chat/completions";
 import { createGenAISpanName, type GenAIOperation } from "./shared";
 
+// 🚨 temporarily commented out some stuff here that involves attributes we're no longer using in the vercel implementation
+
 const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
 
 export function wrapOpenAI<T extends object>(openai: T): T {
@@ -91,13 +93,13 @@ class AxiomWrappedOpenAI {
 
     // Set prompt attributes
     if (messages) {
-      messages.forEach((msg: any) => {
-        if (msg.role === "system") {
-          span.setAttribute(Attr.GenAI.Prompt.System, msg.content);
-        } else if (msg.role === "user") {
-          span.setAttribute(Attr.GenAI.Prompt.Text, msg.content);
-        }
-      });
+      // messages.forEach((msg: any) => {
+      //   if (msg.role === "system") {
+      //     span.setAttribute(Attr.GenAI.Prompt.System, msg.content);
+      //   } else if (msg.role === "user") {
+      //     span.setAttribute(Attr.GenAI.Prompt.Text, msg.content);
+      //   }
+      // });
     }
 
     // Set optional request attributes
@@ -144,12 +146,12 @@ class AxiomWrappedOpenAI {
     });
 
     // Set prompt attributes for responses API
-    if (instructions) {
-      span.setAttribute(Attr.GenAI.Prompt.System, instructions);
-    }
-    if (input) {
-      span.setAttribute(Attr.GenAI.Prompt.Text, input);
-    }
+    // if (instructions) {
+    //   span.setAttribute(Attr.GenAI.Prompt.System, instructions);
+    // }
+    // if (input) {
+    //   span.setAttribute(Attr.GenAI.Prompt.Text, input);
+    // }
   }
 
   private setPostCallAttributes(
@@ -171,10 +173,10 @@ class AxiomWrappedOpenAI {
       span.setAttribute(Attr.GenAI.Response.Model, result.model);
     }
     if (result.choices[0]?.finish_reason) {
-      span.setAttribute(
-        Attr.GenAI.Response.FinishReason,
-        result.choices[0].finish_reason
-      );
+      // span.setAttribute(
+      //   Attr.GenAI.Response.FinishReason,
+      //   result.choices[0].finish_reason
+      // );
     }
 
     // Set usage attributes

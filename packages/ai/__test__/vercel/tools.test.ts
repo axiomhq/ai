@@ -11,7 +11,7 @@ import {
   createMockProvider,
   mockResponses,
 } from "./mock-provider/mock-provider";
-import { SpanKind } from "@opentelemetry/api";
+import { z } from "zod";
 
 let memoryExporter: InMemorySpanExporter;
 let tracerProvider: NodeTracerProvider;
@@ -34,21 +34,37 @@ afterAll(async () => {
   await memoryExporter.shutdown();
 });
 
-describe("span names", () => {
-  it("should name the span after the model when wrapped in withSpan", async () => {
+describe("tool call attributes", () => {
+  it("should capture attributes for LLM request/response with tools", async () => {
     const mockProvider = createMockProvider();
+
+    const toolCall = {
+      toolCallType: "function" as const,
+      toolCallId: "call-123",
+      toolName: "calculator",
+      args: '{"expression": "2+2"}',
+    };
+
     mockProvider.addLanguageModelResponse(
-      "test",
-      mockResponses.text("Hello, world!")
+      "tool-model",
+      mockResponses.textWithTools("Let me calculate that for you.", [toolCall])
     );
-    const model = wrapAISDKModel(mockProvider.languageModel("model-name"));
+
+    const model = wrapAISDKModel(mockProvider.languageModel("tool-model"));
 
     await withSpan(
       { workflow: "test-workflow", task: "test-task" },
       async () => {
         return await generateText({
           model,
-          prompt: "Hello, world!",
+          prompt: "What is 2+2?",
+          tools: {
+            calculator: {
+              description: "Perform mathematical calculations",
+              parameters: z.object({ expression: z.string() }),
+              execute: async ({ expression }) => eval(expression).toString(),
+            },
+          },
         });
       }
     );
@@ -56,15 +72,11 @@ describe("span names", () => {
     const spans = memoryExporter.getFinishedSpans();
     expect(spans.length).toBe(1);
     expect(spans[0].attributes).toEqual({
-      /**
-       * 🚨 This is not yet the final shape we want the sdk to have
-       * So update this as we get closer to the attributes we like
-       */
       "gen_ai.prompt":
-        '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
-      "gen_ai.completion": '{"role":"assistant","content":"Mock response"}',
-      // '{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mock response\"},\"finish_reason\":\"stop\"}]}',
-      "gen_ai.response.finish_reasons": '["stop"]',
+        '[{"role":"user","content":[{"type":"text","text":"What is 2+2?"}]}]',
+      "gen_ai.completion":
+        '{\"role\":\"assistant\",\"content\":\"Let me calculate that for you.\",\"tool_calls\":[{\"id\":\"call-123\",\"type\":\"function\",\"function\":{\"name\":\"calculator\",\"arguments\":\"{\\\"expression\\\": \\\"2+2\\\"}\"},\"index\":0}]}',
+      "gen_ai.response.finish_reasons": '["tool-calls"]',
       "gen_ai.operation.name": "chat",
       "gen_ai.operation.task_name": "test-task",
       "gen_ai.operation.workflow_name": "test-workflow",
@@ -72,12 +84,14 @@ describe("span names", () => {
       "gen_ai.provider": "mock-provider",
       "gen_ai.request.input_format": "prompt",
       "gen_ai.request.mode_type": "regular",
-      "gen_ai.request.model": "model-name",
+      "gen_ai.request.model": "tool-model",
       "gen_ai.request.temperature": 0,
+      "gen_ai.request.tool_choice": '{"type":"auto"}',
+      "gen_ai.request.tools_count": 1,
       "gen_ai.response.id": "mock-response-id",
-      "gen_ai.response.model": "mock-model",
+      "gen_ai.response.model": "tool-model",
       "gen_ai.usage.input_tokens": 10,
-      "gen_ai.usage.output_tokens": 20,
+      "gen_ai.usage.output_tokens": 30,
     });
   });
 });

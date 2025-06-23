@@ -46,7 +46,6 @@ import {
   ATTR_GEN_AI_SYSTEM,
   GEN_AI_SYSTEM_VALUE_OPENAI,
   GEN_AI_SYSTEM_VALUE_GEMINI,
-  ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
   ATTR_GEN_AI_RESPONSE_ID,
   ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
   ATTR_GEN_AI_REQUEST_PRESENCE_PENALTY,
@@ -56,6 +55,8 @@ import {
   ATTR_GEN_AI_REQUEST_SEED,
   ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
+  ATTR_GEN_AI_COMPLETION,
+  ATTR_GEN_AI_PROMPT,
 } from "./semconv_incubating";
 
 /**
@@ -115,18 +116,7 @@ export const Attr = {
      * There doesn't seem to be a semconv for this
      */
     Provider: "gen_ai.provider",
-    Prompt: {
-      System: "gen_ai.prompt.system",
-      Role: "gen_ai.prompt.role",
-      Role_Values: {
-        // there might be others?
-        Assistant: "assistant",
-        System: "system",
-        User: "user",
-      },
-      Text: "gen_ai.prompt.text",
-      PreviousMessages: "gen_ai.prompt.previous_messages",
-    },
+    Prompt: ATTR_GEN_AI_PROMPT,
     Usage: {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
       OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
@@ -149,13 +139,13 @@ export const Attr = {
       Seed: ATTR_GEN_AI_REQUEST_SEED,
       StopSequences: ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
     },
+    Completion: ATTR_GEN_AI_COMPLETION,
     Response: {
       ID: ATTR_GEN_AI_RESPONSE_ID,
       /**
        * The model that was actually used (might be different bc routing) - only ever get this from the response, otherwise omit
        */
       Model: ATTR_GEN_AI_RESPONSE_MODEL,
-      FinishReason: ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
       ProviderMetadata: "gen_ai.response.provider_metadata",
       Text: "gen_ai.response.text",
     },
