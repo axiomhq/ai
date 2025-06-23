@@ -60,6 +60,8 @@ describe("span names", () => {
        * 🚨 This is not yet the final shape we want the sdk to have
        * So update this as we get closer to the attributes we like
        */
+      "gen_ai.completion":
+        '{"role":"assistant","content":"Mock response","finish_reason":"stop"}',
       "gen_ai.operation.name": "chat",
       "gen_ai.operation.task_name": "test-task",
       "gen_ai.operation.workflow_name": "test-workflow",
@@ -70,10 +72,8 @@ describe("span names", () => {
       "gen_ai.request.mode_type": "regular",
       "gen_ai.request.model": "model-name",
       "gen_ai.request.temperature": 0,
-      "gen_ai.response.finish_reasons": "stop",
       "gen_ai.response.id": "mock-response-id",
       "gen_ai.response.model": "mock-model",
-      "gen_ai.response.text": "Mock response",
       "gen_ai.usage.input_tokens": 10,
       "gen_ai.usage.output_tokens": 20,
     });

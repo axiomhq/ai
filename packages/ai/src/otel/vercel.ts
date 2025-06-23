@@ -3,6 +3,8 @@ import {
   type LanguageModelV1CallOptions,
   type LanguageModelV1ObjectGenerationMode,
   type LanguageModelV1Prompt,
+  type LanguageModelV1FunctionToolCall,
+  type LanguageModelV1FinishReason,
 } from "@ai-sdk/provider";
 
 import { trace, propagation, type Span } from "@opentelemetry/api";
@@ -31,6 +33,28 @@ export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attem
       model
     );
   span.setAttribute(Attr.GenAI.Cost.Estimated, cost.toFixed(6));
+}
+
+function formatCompletion({
+  text,
+  toolCalls,
+  finishReason,
+}: {
+  text: string | undefined;
+  toolCalls: LanguageModelV1FunctionToolCall[] | undefined;
+  finishReason: LanguageModelV1FinishReason;
+}) {
+  return {
+    role: "assistant",
+    content:
+      text ??
+      (toolCalls
+        ? toolCalls.length === 1 && toolCalls[0].toolName === "json"
+          ? toolCalls[0].args
+          : JSON.stringify(toolCalls)
+        : ""),
+    finish_reason: finishReason,
+  };
 }
 
 export function wrapAISDKModel<T extends object>(model: T): T {
@@ -110,7 +134,12 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
       const res = await this.model.doGenerate(options);
 
-      this.setPostCallAttributes(span, res);
+      const resWithToolCalls = {
+        ...res,
+        toolCalls: res.toolCalls || undefined,
+      };
+
+      this.setPostCallAttributes(span, resWithToolCalls);
 
       return res;
     });
@@ -138,8 +167,8 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           }
         | undefined = undefined;
       let fullText: string | undefined = undefined;
-      const toolCalls: Record<string, any> = {};
-      let finishReason: string | undefined = undefined;
+      const toolCallsMap: Record<string, any> = {};
+      let finishReason: LanguageModelV1FinishReason | undefined = undefined;
       let responseId: string | undefined = undefined;
       let responseModelId: string | undefined = undefined;
       let responseProviderMetadata: any = undefined;
@@ -177,7 +206,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                   fullText += chunk.textDelta;
                   break;
                 case "tool-call":
-                  toolCalls[chunk.toolCallId] = {
+                  toolCallsMap[chunk.toolCallId] = {
                     toolCallType: chunk.toolCallType,
                     toolCallId: chunk.toolCallId,
                     toolName: chunk.toolName,
@@ -185,15 +214,15 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                   };
                   break;
                 case "tool-call-delta":
-                  if (toolCalls[chunk.toolCallId] === undefined) {
-                    toolCalls[chunk.toolCallId] = {
+                  if (toolCallsMap[chunk.toolCallId] === undefined) {
+                    toolCallsMap[chunk.toolCallId] = {
                       toolCallType: chunk.toolCallType,
                       toolCallId: chunk.toolCallId,
                       toolName: chunk.toolName,
                       args: "",
                     };
                   }
-                  toolCalls[chunk.toolCallId].args += chunk.argsTextDelta;
+                  toolCallsMap[chunk.toolCallId].args += chunk.argsTextDelta;
                   break;
                 case "finish":
                   usage = chunk.usage;
@@ -204,6 +233,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
               controller.enqueue(chunk);
             },
             async flush(controller) {
+              // Convert toolCallsMap to array for postProcessOutput
+              const toolCallsArray: LanguageModelV1FunctionToolCall[] =
+                Object.values(toolCallsMap);
+
               // Construct result object for helper function
               const streamResult = {
                 response:
@@ -216,6 +249,8 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                 finishReason,
                 usage,
                 text: fullText,
+                toolCalls:
+                  toolCallsArray.length > 0 ? toolCallsArray : undefined,
                 providerMetadata: responseProviderMetadata,
               };
 
@@ -379,9 +414,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     modelId: string,
     result: {
       response?: { id?: string; modelId?: string };
-      finishReason?: string;
+      finishReason?: LanguageModelV1FinishReason;
       usage?: { promptTokens: number; completionTokens: number };
       text?: string;
+      toolCalls?: LanguageModelV1FunctionToolCall[];
       providerMetadata?: any;
     }
   ) {
@@ -393,9 +429,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
     if (result.response?.modelId) {
       span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
-    }
-    if (result.finishReason) {
-      span.setAttribute(Attr.GenAI.Response.FinishReason, result.finishReason);
     }
 
     // Set usage attributes
@@ -426,9 +459,14 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       );
     }
 
-    // Set response text (you may want to make this conditional based on a flag)
-    if (result.text) {
-      span.setAttribute(Attr.GenAI.Response.Text, result.text);
+    // Set completion in proper format
+    if (result.finishReason && (result.text || result.toolCalls)) {
+      const completion = formatCompletion({
+        text: result.text,
+        toolCalls: result.toolCalls,
+        finishReason: result.finishReason,
+      });
+      span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
     }
 
     // Set provider metadata if available
@@ -447,9 +485,10 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     span: Span,
     result: {
       response?: { id?: string; modelId?: string };
-      finishReason?: string;
+      finishReason?: LanguageModelV1FinishReason;
       usage?: { promptTokens: number; completionTokens: number };
       text?: string;
+      toolCalls?: LanguageModelV1FunctionToolCall[];
       providerMetadata?: any;
     }
   ) {
@@ -463,7 +502,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   // TODO: implement
   // - convertTools
   // - postProcessPrompt (we have putPromptOnSpan now but it's almost certainly wrong)
-  // - postProcessOutput
 }
 
 // TODO: better name
