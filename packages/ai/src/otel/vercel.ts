@@ -61,17 +61,6 @@ function formatCompletion({
   };
 }
 
-function convertTools(
-  tools: Array<LanguageModelV1FunctionTool | LanguageModelV1ProviderDefinedTool>
-) {
-  return tools.map((tool) => {
-    const { type: _, ...rest } = tool;
-    return {
-      type: tool.type,
-      function: rest,
-    };
-  });
-}
 
 function postProcessPrompt(prompt: LanguageModelV1Prompt): any[] {
   const results: any[] = [];
