@@ -7,6 +7,7 @@ import {
   type LanguageModelV1FinishReason,
   type LanguageModelV1TextPart,
   type LanguageModelV1ToolCallPart,
+  type LanguageModelV1StreamPart,
 } from "@ai-sdk/provider";
 
 import { trace, propagation, type Span } from "@opentelemetry/api";
@@ -311,7 +312,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
         ...ret,
         stream: ret.stream.pipeThrough(
           new TransformStream({
-            transform(chunk: any, controller) {
+            transform(chunk: LanguageModelV1StreamPart, controller) {
               // Track time to first token
               if (timeToFirstToken === undefined) {
                 timeToFirstToken = currentUnixTime() - startTime;
@@ -329,7 +330,9 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                   if (chunk.modelId) {
                     responseModelId = chunk.modelId;
                   }
+                  // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
                   if (chunk.providerMetadata) {
+                    // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
                     responseProviderMetadata = chunk.providerMetadata;
                   }
                   break;
