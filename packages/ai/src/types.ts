@@ -30,9 +30,3 @@ export type LibraryInput = {
   model: string;
   temperature: number;
 };
-
-export type EvalParams = {
-  data: { input: any; expected: any }[];
-  task: (input: any) => any;
-  scorers: Function[];
-};
