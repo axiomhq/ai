@@ -22,6 +22,7 @@ export const ATTR_EVAL_DATASET_SPLIT = "eval.dataset.split" as const;
 export const ATTR_EVAL_CASE_ID = "eval.case.id" as const;
 export const ATTR_EVAL_CASE_INDEX = "eval.case.index" as const;
 export const ATTR_EVAL_CASE_INPUT = "eval.case.input" as const;
+export const ATTR_EVAL_CASE_OUTPUT = "eval.case.ouput" as const;
 export const ATTR_EVAL_CASE_EXPECTED = "eval.case.expected" as const;
 export const ATTR_EVAL_CASE_METADATA = "eval.case.metadata" as const;
 // task

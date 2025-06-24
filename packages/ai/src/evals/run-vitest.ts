@@ -1,19 +1,6 @@
 import { createVitest, registerConsoleShortcuts } from "vitest/node";
 import { AxiomReporter } from "./reporter";
-import { flush, startSpan } from "./instrument";
-import { context, SpanStatusCode, trace } from "@opentelemetry/api";
-import { Attr } from "../otel/semconv/attributes";
-
-declare module "vitest" {
-  export interface ProvidedContext {
-    rootSpanId: string;
-    traceId: string;
-  }
-}
-
-const generateRunId = () => {
-  return crypto.randomUUID()
-}
+import { flush } from "./instrument";
 
 export const runVitest = async (file: string) => {
   const vi = await createVitest(
@@ -27,29 +14,7 @@ export const runVitest = async (file: string) => {
     }
   )
 
-  const span = startSpan('gen_ai.eval', {
-    attributes: {
-      [Attr.GenAI.Operation.Name]: 'eval.run',
-      [Attr.Eval.Run.ID]: generateRunId(),
-      // TODO: where to get run name, type, iteration and tags?
-    }
-  })
-
-  vi.provide('rootSpanId', span.spanContext().spanId)
-  vi.provide('traceId', span.spanContext().traceId)
-
-  await context.with(trace.setSpan(context.active(), span), async () => {
-    try {
-      await vi.start();
-      span.setStatus({ code: SpanStatusCode.OK })
-    } catch (e) {
-      span.recordException(e as Error)
-      span.setStatus({ code: SpanStatusCode.ERROR })
-      console.error(e)
-    } finally {
-      span.end()
-    }
-  })
+  await vi.start();
 
   const dispose = registerConsoleShortcuts(
     vi,
