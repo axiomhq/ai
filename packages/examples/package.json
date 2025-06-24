@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "install": "pnpm install --ignore-scripts",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest",
