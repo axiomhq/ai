@@ -1,6 +1,6 @@
 {
   "name": "@axiomhq/ai",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -29,6 +29,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./evals": {
+      "import": {
+        "types": "./dist/evals.d.ts",
+        "default": "./dist/evals.js"
+      },
+      "require": {
+        "types": "./dist/evals.d.cts",
+        "default": "./dist/evals.cjs"
+      }
     }
   },
   "keywords": [
@@ -56,7 +66,6 @@
     "ai": "^4.3.16",
     "commander": "^14.0.0",
     "fetch-retry": "^6.0.0",
-    "vitest": "catalog:",
     "handlebars": "^4.7.8",
     "nunjucks": "^3.2.4",
     "zod": "catalog:"
@@ -75,7 +84,8 @@
     "eslint": "catalog:",
     "openai": "^5.3.0",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "files": [
     "dist"

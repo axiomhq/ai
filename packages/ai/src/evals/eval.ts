@@ -38,7 +38,6 @@ export type EvalReport = {
 
 export const Eval = (name: string, params: EvalParams) => registerEval(name, params)
 
-
 async function registerEval(
   evalName: string,
   opts: EvalParams,

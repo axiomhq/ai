@@ -1,6 +1,5 @@
 import HTTPClient from "./httpClient";
 
-import { Eval, type EvalParams } from "./evals/eval";
 import type {
   Environment,
   LibraryInput,
@@ -126,8 +125,4 @@ export class Axiom extends HTTPClient {
     console.log(parsedPrompt);
     throw new Error("Not implemented");
   }
-
-    eval(name: string, params: EvalParams) {
-      return Eval(name, params);
-    }
 }
