@@ -1,5 +1,5 @@
-import { context, ROOT_CONTEXT, SpanStatusCode, trace, type Context } from "@opentelemetry/api";
-import { afterAll, describe, inject, it } from "vitest";
+import { context, SpanStatusCode, trace, type Context } from "@opentelemetry/api";
+import { afterAll, describe, it } from "vitest";
 import { flush, startSpan } from "./instrument";
 import { Attr } from "../otel/semconv/attributes";
 
@@ -10,6 +10,10 @@ declare module "vitest" {
 }
 
 export type EvalTask<TInput, TExpected> = (input: TInput, expected: TExpected) => Promise<any> | any
+
+const generateExperimentId = () => {
+  return crypto.randomUUID()
+}
 
 export type EvalParams = {
   data: () => Promise<{ input: any, expected: any }[]>,
@@ -47,35 +51,26 @@ async function registerEval(
   const datasetPromise =
     vitestOpts.modifier === "skip" ? Promise.resolve([]) : opts.data();
 
-
-  const parentSpanContext = {
-    spanId: inject('rootSpanId'),
-    traceId: inject('traceId'),
-    traceFlags: 1,
-  }
-  const parentCtx = trace.setSpanContext(ROOT_CONTEXT, parentSpanContext);
-
   const result = await describeFn(evalName, async () => {
     const dataset = await datasetPromise;
-
 
     const suiteSpan = startSpan(`eval ${evalName}`, {
       attributes: {
         [Attr.GenAI.Operation.Name]: 'eval',
-        [Attr.Eval.Experiment.ID]: evalName,
+        [Attr.Eval.Experiment.ID]: generateExperimentId(),
         [Attr.Eval.Experiment.Name]: evalName,
         [Attr.Eval.Experiment.Type]: 'regression', // TODO: where to get experiment type value from?
         [Attr.Eval.Experiment.Tags]: [], // TODO: where to get experiment tags from?
         [Attr.Eval.Experiment.Version]: "1.0.0", // TODO: where to get experiment version from?
-        [Attr.Eval.Experiment.Group]: "default", // TODO: where to get experiment group from?
-        [Attr.Eval.Experiment.BaseID]: "default", // TODO: where to get experiment base id from?
-        [Attr.Eval.Experiment.BaseName]: "default", // TODO: where to get experiment base name from?
+        // [Attr.Eval.Experiment.Group]: "default", // TODO: where to get experiment group from?
+        // [Attr.Eval.Experiment.BaseID]: "default", // TODO: where to get experiment base id from?
+        // [Attr.Eval.Experiment.BaseName]: "default", // TODO: where to get experiment base name from?
         [Attr.Eval.Experiment.Trials]: 1, // TODO: implement trials
         [Attr.Eval.Dataset.Name]: "test", // TODO: where to get dataset name from?
         [Attr.Eval.Dataset.Split]: "test", // TODO: where to get dataset split value from?
         [Attr.Eval.Dataset.Size]: dataset.length,
       },
-    }, parentCtx)
+    })
     const suiteContext = trace.setSpan(context.active(), suiteSpan)
 
     afterAll(async () => {
@@ -100,7 +95,7 @@ async function registerEval(
         const caseContext = trace.setSpan(context.active(), caseSpan)
 
         try {
-          const { output, scores, duration } = await runTask(caseContext, {
+          const { output, duration } = await runTask(caseContext, {
             index: data.index,
             expected: data.expected,
             input: data.input,
@@ -109,6 +104,55 @@ async function registerEval(
             threshold: opts.threshold,
           });
 
+          // run scorers
+          const scores = await Promise.all(
+            opts.scorers.map(async (scorer) => {
+              const scorerSpan = startSpan(`score ${scorer.name}`, {
+                attributes: {
+                  [Attr.GenAI.Operation.Name]: 'eval.score',
+                }
+              }, caseContext)
+
+              if (typeof scorer === "function") {
+                const start = performance.now();
+                const result = await scorer({
+                  input: data.input,
+                  output,
+                  expected: data.expected,
+                });
+                console.log({ result })
+
+                const duration = Math.round(performance.now() - start);
+                const scoreValue = result.score as number;
+                const passed = scoreValue >= opts.threshold;
+
+                scorerSpan.setAttributes({
+                  [Attr.Eval.Score.Name]: scorer.name,
+                  [Attr.Eval.Score.Value]: scoreValue,
+                  [Attr.Eval.Score.Threshold]: opts.threshold,
+                  [Attr.Eval.Score.Passed]: passed,
+                })
+
+
+                if (!passed) {
+                  scorerSpan.recordException(new Error(`Score did not pass`))
+                  scorerSpan.setStatus({ code: SpanStatusCode.ERROR })
+                } else {
+                  scorerSpan.setStatus({ code: SpanStatusCode.OK })
+                }
+                scorerSpan.end()
+
+                return { ...result, duration, startedAt: start }
+              } else {
+                // TODO: create custom scorer
+              }
+            })
+          );
+
+          // set case output
+          caseSpan.setAttributes({
+            [Attr.Eval.Case.Output]: output as string // TODO: what if output is other than a string?,
+          })
           caseSpan.setStatus({ code: SpanStatusCode.OK })
 
           task.meta.eval = {
@@ -147,6 +191,8 @@ async function registerEval(
           caseSpan.end()
         }
       })
+  }, {
+    timeout: 10000,
   })
 
   return result
@@ -215,62 +261,23 @@ const runTask = async <TInput, TExpected>(
     }
   }, caseContext)
 
-  const start = performance.now();
-  const output = await executeTask(opts.task, opts.input, opts.expected);
-  const duration = Math.round(performance.now() - start);
-
-  // set task output
-  taskSpan.setAttributes({
-    [Attr.Eval.Task.Output]: output as string // TODO: what if output is other than a string?,
-  })
-
-  const scores = await Promise.all(
-    opts.scorers.map(async (scorer) => {
-      const scorerSpan = startSpan(`score ${scorer.name}`, {
-        attributes: {
-          [Attr.GenAI.Operation.Name]: 'eval.score',
-        }
-      }, caseContext)
-
-      if (typeof scorer === "function") {
-        const start = performance.now();
-        const result = scorer({
-          input: opts.input,
-          output,
-          expected: opts.expected,
-        });
-        const duration = Math.round(performance.now() - start);
-        const scoreValue = result.score as number;
-        const passed = scoreValue >= opts.threshold;
-
-        scorerSpan.setAttributes({
-          [Attr.Eval.Score.Name]: scorer.name,
-          [Attr.Eval.Score.Value]: scoreValue,
-          [Attr.Eval.Score.Threshold]: opts.threshold,
-          [Attr.Eval.Score.Passed]: passed,
-        })
-        if (!passed) {
-          scorerSpan.recordException(new Error("Score did not pass"))
-          scorerSpan.setStatus({ code: SpanStatusCode.ERROR })
-        } else {
-          scorerSpan.setStatus({ code: SpanStatusCode.OK })
-        }
-        scorerSpan.end()
-
-        return { ...result, duration, startedAt: start }
-      } else {
-        // TODO: create scorer
-      }
+  const { output, duration } = await context.with(trace.setSpan(context.active(), taskSpan), async () => {
+    const start = performance.now();
+    const output = await executeTask(opts.task, opts.input, opts.expected);
+    const duration = Math.round(performance.now() - start);
+    // set task output
+    taskSpan.setAttributes({
+      [Attr.Eval.Task.Output]: output as string // TODO: what if output is other than a string?,
     })
-  );
 
+    taskSpan.setStatus({ code: SpanStatusCode.OK })
+    taskSpan.end()
 
-  taskSpan.setStatus({ code: SpanStatusCode.OK })
-  taskSpan.end()
+    return { output, duration }
+  })
 
   return {
     output,
-    scores,
     duration,
   };
 };

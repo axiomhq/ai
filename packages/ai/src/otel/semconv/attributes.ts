@@ -27,6 +27,7 @@ import {
   ATTR_EVAL_TASK_TRIAL,
   ATTR_EVAL_TASK_TYPE,
   ATTR_EVAL_TASK_NAME,
+  ATTR_EVAL_CASE_OUTPUT,
 } from "./eval_proposal";
 
 import {
@@ -191,6 +192,7 @@ export const Attr = {
       ID: ATTR_EVAL_CASE_ID,
       Index: ATTR_EVAL_CASE_INDEX,
       Input: ATTR_EVAL_CASE_INPUT,
+      Output: ATTR_EVAL_CASE_OUTPUT,
       Expected: ATTR_EVAL_CASE_EXPECTED,
       Metadata: ATTR_EVAL_CASE_METADATA,
     },
