@@ -1,9 +1,9 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/bin.ts"],
+  entry: ["src/index.ts", "src/bin.ts", "src/evals.ts"],
   format: ["esm", "cjs"],
-  external: ["@opentelemetry/api"], // don't bundle it
+  external: ["@opentelemetry/api", "vitest"], // don't bundle vitest
   dts: true, // generate .d.ts files
   clean: true, // clean dist before build
   sourcemap: true,
