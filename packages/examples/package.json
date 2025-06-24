@@ -4,7 +4,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "install": "pnpm install --ignore-scripts",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest",
@@ -27,7 +26,6 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
-    "vitest": "catalog:",
-    "vitest-evals": "^0.3.0"
+    "vitest": "catalog:"
   }
 }
