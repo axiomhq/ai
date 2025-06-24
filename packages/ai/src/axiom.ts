@@ -125,6 +125,4 @@ export class Axiom extends HTTPClient {
     console.log(parsedPrompt);
     throw new Error("Not implemented");
   }
-
-    // eval method moved to separate @axiomhq/ai/evals entry point
 }
