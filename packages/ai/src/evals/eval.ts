@@ -9,6 +9,8 @@ declare module "vitest" {
   }
 }
 
+const DEFAULT_TIMEOUT = 10000
+
 export type EvalTask<TInput, TExpected> = (input: TInput, expected: TExpected) => Promise<any> | any
 
 const generateExperimentId = () => {
@@ -120,7 +122,6 @@ async function registerEval(
                   output,
                   expected: data.expected,
                 });
-                console.log({ result })
 
                 const duration = Math.round(performance.now() - start);
                 const scoreValue = result.score as number;
@@ -191,9 +192,7 @@ async function registerEval(
           caseSpan.end()
         }
       })
-  }, {
-    timeout: 10000,
-  })
+  }, DEFAULT_TIMEOUT)
 
   return result
 }
