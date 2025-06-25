@@ -10,6 +10,7 @@ export const runVitest = async (file: string) => {
       mode: "test",
       include: [file ? file : "**/*.eval.ts"],
       reporters: ['verbose', new AxiomReporter()],
+      environment: "node",
       browser: undefined,
     }
   )
