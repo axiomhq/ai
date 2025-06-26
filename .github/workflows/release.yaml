@@ -63,9 +63,8 @@ jobs:
           echo "Updated package.json:"
           cat package.json
       - name: Validate package.json
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.WATCHLYHQ_NPM_KEY }}" >> .npmrc
-          pnpm pack --dry-run
+        working-directory: packages/ai
+        run: pnpm pack
       - name: Publish to GitHub Package Registry
         working-directory: packages/ai
         env:
