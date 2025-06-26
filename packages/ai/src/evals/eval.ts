@@ -42,7 +42,9 @@ export type EvalReport = {
   threshold: number | undefined,
 }
 
-export const Eval = (name: string, params: EvalParams) => registerEval(name, params)
+export const Eval = (name: string, params: EvalParams): void => {
+  registerEval(name, params).catch(console.error);
+}
 
 async function registerEval(
   evalName: string,
