@@ -114,7 +114,8 @@ export const findNunjucksConditionalFunctions = (
 
   try {
     // Access the parser through the nunjucks module
-    const { parser } = require("nunjucks");
+    // @ts-expect-error - parser is not typed
+    const { parser } = nunjucks;
     const ast = parser.parse(template);
     walkNunjucksAST(ast, conditionalFunctions);
   } catch (error) {
