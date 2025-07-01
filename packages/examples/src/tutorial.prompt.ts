@@ -1,20 +1,20 @@
-import { Axiom, type Prompt } from "@axiomhq/ai";
-import { z } from "zod";
+import { Axiom, type Prompt } from '@axiomhq/ai';
+import { z } from 'zod';
 
-const ai = new Axiom("API_KEY");
+const ai = new Axiom('API_KEY');
 
 const samplePrompt = {
-  name: "Email Summarizer",
-  slug: "email-summarizer",
+  name: 'Email Summarizer',
+  slug: 'email-summarizer',
   messages: [
     {
-      role: "system",
+      role: 'system',
       content:
-        "Summarize emails concisely, highlighting action items, the user is named {{ getUserName() }}",
+        'Summarize emails concisely, highlighting action items, the user is named {{ getUserName() }}',
     },
     {
-      role: "user",
-      content: "this is my {{ email_content }} and sdflsdfnbskdf",
+      role: 'user',
+      content: 'this is my {{ email_content }} and sdflsdfnbskdf',
     },
   ],
   // model: {
@@ -28,23 +28,23 @@ const samplePrompt = {
     email_content: z.string(),
     getUserName: z.function().returns(z.string()),
   },
-  id: "email-summarizer",
-  environment: "production",
-  version: "1.0.0",
+  id: 'email-summarizer',
+  environment: 'production',
+  version: '1.0.0',
 } satisfies Prompt;
 
 async function promptInternal(ai: Axiom) {
   const prompt = await ai.prompts.create({
-    name: "Email Summarizer",
-    slug: "email-summarizer",
+    name: 'Email Summarizer',
+    slug: 'email-summarizer',
     messages: [
       {
-        role: "system",
-        content: "Summarize emails concisely, highlighting action items.",
+        role: 'system',
+        content: 'Summarize emails concisely, highlighting action items.',
       },
       {
-        role: "user",
-        content: "this is my {{email_content}} and sdflsdfnbskdf",
+        role: 'user',
+        content: 'this is my {{email_content}} and sdflsdfnbskdf',
       },
     ],
     // model: {
@@ -61,19 +61,19 @@ async function promptInternal(ai: Axiom) {
 
   // Deploy to production
   await ai.prompts.deploy(prompt.id, {
-    environment: "production",
+    environment: 'production',
     version: prompt.version,
   });
 
   ai.run(prompt, {
-    email_content: "Hello, how are you?",
+    email_content: 'Hello, how are you?',
   });
 }
 
 const promptUsage = async (ai: Axiom) => {
   const prompt = await ai.run(samplePrompt, {
-    email_content: "Hello, how are you?",
-    getUserName: () => "John Doe",
+    email_content: 'Hello, how are you?',
+    getUserName: () => 'John Doe',
   });
 
   console.log(prompt);
@@ -81,7 +81,7 @@ const promptUsage = async (ai: Axiom) => {
 
 promptInternal(ai)
   .then(() => {
-    console.log("done");
+    console.log('done');
   })
   .catch((error) => {
     console.error(error);
@@ -89,7 +89,7 @@ promptInternal(ai)
 
 promptUsage(ai)
   .then(() => {
-    console.log("done");
+    console.log('done');
   })
   .catch((error) => {
     console.error(error);

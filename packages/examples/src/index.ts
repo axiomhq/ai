@@ -1,3 +1,3 @@
-import { Axiom } from '@axiomhq/ai'
+import { Axiom } from '@axiomhq/ai';
 
-new Axiom('API_KEY')
+new Axiom('API_KEY');
