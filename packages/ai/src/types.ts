@@ -1,10 +1,10 @@
-import { z } from "zod";
-export type Environment = "production" | "staging" | "development" | null;
+import { z } from 'zod';
+export type Environment = 'production' | 'staging' | 'development' | null;
 
 export type PromptInput = {
   name: string;
   slug: string; // e.g: 'my-prompt'
-  messages: { role: "system" | "user" | "assistant"; content: string }[];
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
   // model: {
   //   id: string; // e.g: 'gpt-4'
   //   provider: string; // e.g: 'openai'
@@ -19,7 +19,7 @@ export type PromptInput = {
 
 export type Prompt = PromptInput & {
   id: string;
-  environment: "production" | "staging" | "development" | null;
+  environment: 'production' | 'staging' | 'development' | null;
   version: string;
 };
 

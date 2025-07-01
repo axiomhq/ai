@@ -1,23 +1,23 @@
-import { Levenshtein } from 'autoevals'
-import { Eval } from '@axiomhq/ai'
+import { Levenshtein } from 'autoevals';
+import { Eval } from '@axiomhq/ai';
 
-Eval("text-match-eval", {
+Eval('text-match-eval', {
   data: async () => {
     // The scenarios you wish to evaluate
     return [
       {
-        input: "test",
-        expected: "hi, test!",
+        input: 'test',
+        expected: 'hi, test!',
       },
       {
-        input: "foobar",
-        expected: "hello, foobar!",
-      }
+        input: 'foobar',
+        expected: 'hello, foobar!',
+      },
     ];
   },
 
   task: async (input: string, expected: string) => {
-    return `hi, ${input}!`
+    return `hi, ${input}!`;
   },
 
   // Scorers determine if the response was acceptable - in this case we're using
@@ -35,26 +35,26 @@ Eval("text-match-eval", {
 
   // A check to determine if these tests should run. This is helpful to control tests so they only
   // in certain situations, for example if a model providers API key is defined.
-  skipIf: () => true
-})
+  skipIf: () => true,
+});
 
-Eval("support-ticket-system-eval", {
+Eval('support-ticket-system-eval', {
   data: async () => {
     // The scenarios you wish to evaluate
     return [
       {
-        input: "islam",
-        expected: "hi, islam!",
+        input: 'islam',
+        expected: 'hi, islam!',
       },
       {
-        input: "neil",
-        expected: "hello, neil!",
-      }
+        input: 'neil',
+        expected: 'hello, neil!',
+      },
     ];
   },
 
   task: async (input: string, expected: string) => {
-    return `hello, ${input}`
+    return `hello, ${input}`;
   },
 
   // Scorers determine if the response was acceptable - in this case we're using
@@ -72,5 +72,5 @@ Eval("support-ticket-system-eval", {
 
   // A check to determine if these tests should run. This is helpful to control tests so they only
   // in certain situations, for example if a model providers API key is defined.
-  skipIf: () => true
-})
+  skipIf: () => true,
+});

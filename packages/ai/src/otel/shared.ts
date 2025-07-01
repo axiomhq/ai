@@ -1,4 +1,4 @@
-import type { Tracer } from "@opentelemetry/api";
+import type { Tracer } from '@opentelemetry/api';
 
 import type {
   GEN_AI_OPERATION_NAME_VALUE_CHAT,
@@ -6,7 +6,7 @@ import type {
   GEN_AI_OPERATION_NAME_VALUE_EMBEDDINGS,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
   GEN_AI_OPERATION_NAME_VALUE_TEXT_COMPLETION,
-} from "./semconv/semconv_incubating";
+} from './semconv/semconv_incubating';
 
 // Axiom AI Resources singleton for configuration management
 export class AxiomAIResources {
@@ -42,9 +42,6 @@ export type GenAIOperation =
   | typeof GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL
   | typeof GEN_AI_OPERATION_NAME_VALUE_TEXT_COMPLETION;
 
-export function createGenAISpanName(
-  operation: GenAIOperation,
-  suffix?: string
-): string {
+export function createGenAISpanName(operation: GenAIOperation, suffix?: string): string {
   return suffix ? `${operation} ${suffix}` : operation;
 }

@@ -11,7 +11,7 @@ import {
   type CoreSystemMessage,
   type CoreToolMessage,
   type FinishReason,
-} from "ai";
+} from 'ai';
 
 /**
  * OpenAI System Message - matches Core type exactly
@@ -23,11 +23,11 @@ export type OpenAISystemMessage = CoreSystemMessage;
  * Based on OpenAI's content part structure
  */
 export interface OpenAIUserContentPart {
-  type: "text" | "image_url"; // Strict OpenAI spec types only
+  type: 'text' | 'image_url'; // Strict OpenAI spec types only
   text?: string;
   image_url?: {
     url: string;
-    detail?: "low" | "high" | "auto"; // Fixed: removed 'raw' to match OpenAI spec
+    detail?: 'low' | 'high' | 'auto'; // Fixed: removed 'raw' to match OpenAI spec
   };
 }
 
@@ -36,11 +36,11 @@ export interface OpenAIUserContentPart {
  * Based on OpenAI's assistant content part structure
  */
 export interface OpenAIAssistantContentPart {
-  type: "text" | "image_url";
+  type: 'text' | 'image_url';
   text?: string;
   image_url?: {
     url: string;
-    detail?: "low" | "high" | "auto";
+    detail?: 'low' | 'high' | 'auto';
   };
 }
 
@@ -48,7 +48,7 @@ export interface OpenAIAssistantContentPart {
  * OpenAI User Message - uses OpenAI content part structure
  * Differences: image_url type and additional properties for extensibility
  */
-export type OpenAIUserMessage = Omit<CoreUserMessage, "content"> & {
+export type OpenAIUserMessage = Omit<CoreUserMessage, 'content'> & {
   content: OpenAIUserContentPart[] | string; // Allow string content or array of parts
 };
 
@@ -56,7 +56,7 @@ export type OpenAIUserMessage = Omit<CoreUserMessage, "content"> & {
  * OpenAI Assistant Message - supports both text content and tool calls
  * Content can be string, null (for tool-only responses), or array of parts (multimodal)
  */
-export type OpenAIAssistantMessage = Omit<CoreAssistantMessage, "content"> & {
+export type OpenAIAssistantMessage = Omit<CoreAssistantMessage, 'content'> & {
   content: string | null | OpenAIAssistantContentPart[]; // OpenAI supports multimodal assistant responses
   tool_calls?: OpenAIToolCall[]; // Array of tool calls made by the assistant
 };
@@ -68,10 +68,7 @@ export type OpenAIAssistantMessage = Omit<CoreAssistantMessage, "content"> & {
  * Note: role is 'tool', content MUST be stringified JSON result
  * OpenAI spec: content is required and should contain the result of the tool call
  */
-export type OpenAIToolMessage = Omit<
-  CoreToolMessage,
-  "toolCallId" | "content"
-> & {
+export type OpenAIToolMessage = Omit<CoreToolMessage, 'toolCallId' | 'content'> & {
   tool_call_id: string; // OpenAI uses snake_case
   content: string; // OpenAI requires stringified JSON result
 };
@@ -89,7 +86,7 @@ export type OpenAIMessage =
  * Extended finish reason enum that includes OpenAI-specific values
  * Note: Extends the base FinishReason from ai package with additional OpenAI values
  */
-export type OpenAIFinishReason = FinishReason | "tool_calls" | "content_filter";
+export type OpenAIFinishReason = FinishReason | 'tool_calls' | 'content_filter';
 
 /**
  * OpenAI Choice - represents a single completion choice with finish reason
@@ -116,7 +113,7 @@ export interface OpenAICompletion {
  */
 export interface OpenAIToolCall {
   id: string;
-  type: "function";
+  type: 'function';
   function: {
     name: string;
     arguments: string; // JSON string

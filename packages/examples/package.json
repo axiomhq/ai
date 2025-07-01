@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint './**/*.{js,ts}' --quiet",
     "test": "vitest",
     "check-types": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
@@ -22,7 +25,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
     "@types/node": "^22.15.29",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
