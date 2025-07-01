@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup && chmod +x dist/bin.js",
-    "format": "eslint './**/*.{js,ts}' --quiet --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -82,6 +83,7 @@
     "@types/node": "^22.15.29",
     "@types/nunjucks": "^3.2.6",
     "eslint": "catalog:",
+    "prettier": "catalog:",
     "openai": "^5.3.0",
     "tsup": "catalog:",
     "typescript": "catalog:",

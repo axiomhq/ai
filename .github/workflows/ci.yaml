@@ -40,5 +40,6 @@ jobs:
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
+      - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm test

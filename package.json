@@ -6,10 +6,13 @@
     "build": "turbo build",
     "test": "turbo test",
     "format": "turbo run format",
+    "format:prettier": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "turbo run lint",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
+    "prettier": "catalog:",
     "turbo": "^2.5.4"
   },
   "packageManager": "pnpm@10.11.1"
