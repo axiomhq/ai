@@ -1,5 +1,5 @@
-import Handlebars from "handlebars";
-import { prepareAdvancedContext, executeFunctions } from "./shared";
+import Handlebars from 'handlebars';
+import { prepareAdvancedContext, executeFunctions } from './shared';
 
 /**
  * @description Walks through a Handlebars AST to find functions used in control structures
@@ -7,10 +7,10 @@ import { prepareAdvancedContext, executeFunctions } from "./shared";
  * @param functionsFound Set to collect function names
  */
 const walkHandlebarsAST = (node: any, functionsFound: Set<string>) => {
-  if (!node || typeof node !== "object") return;
+  if (!node || typeof node !== 'object') return;
 
   switch (node.type) {
-    case "Program":
+    case 'Program':
       // Root program node - walk through body
       if (node.body && Array.isArray(node.body)) {
         node.body.forEach((child: any) => {
@@ -19,9 +19,9 @@ const walkHandlebarsAST = (node: any, functionsFound: Set<string>) => {
       }
       break;
 
-    case "BlockStatement":
+    case 'BlockStatement':
       // Block helpers like {{#if}}, {{#each}}, {{#unless}}
-      if (["if", "unless", "each", "with"].includes(node.path?.original)) {
+      if (['if', 'unless', 'each', 'with'].includes(node.path?.original)) {
         // Extract functions from the condition/iterable
         if (node.params && node.params.length > 0) {
           node.params.forEach((param: any) => {
@@ -45,12 +45,12 @@ const walkHandlebarsAST = (node: any, functionsFound: Set<string>) => {
       }
       break;
 
-    case "MustacheStatement":
+    case 'MustacheStatement':
       // Only process if it's in a control structure context, not output
       // We'll skip these as they're typically output expressions
       break;
 
-    case "ContentStatement":
+    case 'ContentStatement':
       // Static content - ignore
       break;
 
@@ -71,17 +71,17 @@ const walkHandlebarsAST = (node: any, functionsFound: Set<string>) => {
  * @param functionsFound Set to collect function names
  */
 const extractHandlebarsFunctions = (node: any, functionsFound: Set<string>) => {
-  if (!node || typeof node !== "object") return;
+  if (!node || typeof node !== 'object') return;
 
   switch (node.type) {
-    case "PathExpression":
+    case 'PathExpression':
       // Simple path like {{variable}} - could be a function
-      if (node.original && typeof node.original === "string") {
+      if (node.original && typeof node.original === 'string') {
         functionsFound.add(node.original);
       }
       break;
 
-    case "SubExpression":
+    case 'SubExpression':
       // Helper calls like {{helper arg1 arg2}}
       if (node.path && node.path.original) {
         functionsFound.add(node.path.original);
@@ -101,9 +101,7 @@ const extractHandlebarsFunctions = (node: any, functionsFound: Set<string>) => {
  * @param template The template string to analyze
  * @returns Array of function names that need to be executed for control structures
  */
-export const findHandlebarsConditionalFunctions = (
-  template: string
-): string[] => {
+export const findHandlebarsConditionalFunctions = (template: string): string[] => {
   const conditionalFunctions = new Set<string>();
 
   try {
@@ -139,22 +137,21 @@ export const findHandlebarsConditionalFunctions = (
  */
 export const handlebarsParse = async (
   prompt: string,
-  { context }: { context: Record<string, any> }
+  { context }: { context: Record<string, any> },
 ) => {
   // Use advanced context preparation to handle conditional functions
-  const { processedContext, outputFunctions, processedTemplate } =
-    await prepareAdvancedContext(
-      prompt,
-      context,
-      "handlebars",
-      (id) => () => new Handlebars.SafeString(`{{{${id}}}}`)
-    );
+  const { processedContext, outputFunctions, processedTemplate } = await prepareAdvancedContext(
+    prompt,
+    context,
+    'handlebars',
+    (id) => () => new Handlebars.SafeString(`{{{${id}}}}`),
+  );
 
   const template = Handlebars.compile(processedTemplate);
   const templateWithPlaceholders = template(processedContext);
 
   if (!templateWithPlaceholders) {
-    return "";
+    return '';
   }
 
   // Execute remaining output functions
@@ -163,5 +160,5 @@ export const handlebarsParse = async (
   const finalTemplate = Handlebars.compile(templateWithPlaceholders);
   const finalString = finalTemplate(finalContext);
 
-  return finalString ?? "";
+  return finalString ?? '';
 };

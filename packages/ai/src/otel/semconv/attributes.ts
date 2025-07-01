@@ -28,7 +28,7 @@ import {
   ATTR_EVAL_TASK_TYPE,
   ATTR_EVAL_TASK_NAME,
   ATTR_EVAL_CASE_OUTPUT,
-} from "./eval_proposal";
+} from './eval_proposal';
 
 import {
   ATTR_GEN_AI_USAGE_INPUT_TOKENS,
@@ -58,7 +58,7 @@ import {
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
   ATTR_GEN_AI_COMPLETION,
   ATTR_GEN_AI_PROMPT,
-} from "./semconv_incubating";
+} from './semconv_incubating';
 
 /**
  * When adding something new here, please:
@@ -76,19 +76,19 @@ export const Attr = {
    * Shared between all features
    */
   Dataset: {
-    Name: "dataset.name",
-    Description: "dataset.description",
+    Name: 'dataset.name',
+    Description: 'dataset.description',
   },
   Dashboard: {
-    Name: "dashboard.name",
-    Description: "dashboard.description",
+    Name: 'dashboard.name',
+    Description: 'dashboard.description',
   },
   Query: {
-    APL: "query.apl",
+    APL: 'query.apl',
   },
-  OrgId: "org_id",
-  UserId: "user_id",
-  HasAccessToken: "has_access_token",
+  OrgId: 'org_id',
+  UserId: 'user_id',
+  HasAccessToken: 'has_access_token',
   GenAI: {
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
@@ -100,8 +100,8 @@ export const Attr = {
         Chat: GEN_AI_OPERATION_NAME_VALUE_CHAT,
       },
       // TODO: bikeshed `WorkflowName` and `TaskName`
-      WorkflowName: "gen_ai.operation.workflow_name",
-      TaskName: "gen_ai.operation.task_name",
+      WorkflowName: 'gen_ai.operation.workflow_name',
+      TaskName: 'gen_ai.operation.task_name',
     },
     Output: {
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
@@ -116,7 +116,7 @@ export const Attr = {
      * The provider that is hosting the model, eg AWS Bedrock
      * There doesn't seem to be a semconv for this
      */
-    Provider: "gen_ai.provider",
+    Provider: 'gen_ai.provider',
     Prompt: ATTR_GEN_AI_PROMPT,
     Usage: {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
@@ -124,7 +124,7 @@ export const Attr = {
     },
     Cost: {
       // TODO: bikeshed this
-      Estimated: "gen_ai.cost.estimated",
+      Estimated: 'gen_ai.cost.estimated',
     },
     Request: {
       FrequencyPenalty: ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
@@ -147,8 +147,8 @@ export const Attr = {
        * The model that was actually used (might be different bc routing) - only ever get this from the response, otherwise omit
        */
       Model: ATTR_GEN_AI_RESPONSE_MODEL,
-      ProviderMetadata: "gen_ai.response.provider_metadata",
-      Text: "gen_ai.response.text",
+      ProviderMetadata: 'gen_ai.response.provider_metadata',
+      Text: 'gen_ai.response.text',
     },
     /**
      * From OTel docs:
@@ -164,7 +164,7 @@ export const Attr = {
       Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
       Gemini: GEN_AI_SYSTEM_VALUE_GEMINI,
       OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
-      Vercel: "vercel",
+      Vercel: 'vercel',
     },
     Tool: {},
   },
@@ -186,7 +186,7 @@ export const Attr = {
     Dataset: {
       Name: ATTR_EVAL_DATASET_NAME,
       Split: ATTR_EVAL_DATASET_SPLIT,
-      Size: ATTR_EVAL_DATASET_SIZE
+      Size: ATTR_EVAL_DATASET_SIZE,
     },
     Case: {
       ID: ATTR_EVAL_CASE_ID,
@@ -209,6 +209,6 @@ export const Attr = {
       Passed: ATTR_EVAL_SCORE_PASSED,
       Scorer: ATTR_EVAL_SCORE_SCORER,
       Metadata: ATTR_EVAL_SCORE_METADATA,
-    }
-  }
+    },
+  },
 } as const;

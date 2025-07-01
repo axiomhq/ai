@@ -1,7 +1,7 @@
-import { FetchClient } from "./fetchClient.js";
+import { FetchClient } from './fetchClient.js';
 
-const Version = "AXIOM_VERSION";
-const AxiomURL = "https://api.axiom.co";
+const Version = 'AXIOM_VERSION';
+const AxiomURL = 'https://api.axiom.co';
 
 /**
  * ClientOptions is used to configure the HTTPClient and provide the necessary
@@ -34,20 +34,19 @@ export default abstract class HTTPClient {
 
   constructor({ apiKey, url }: ClientOptions) {
     if (!apiKey) {
-      console.warn("Missing Axiom token");
+      console.warn('Missing Axiom token');
     }
 
     const baseUrl = url ?? AxiomURL;
 
     const headers: HeadersInit = {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + apiKey,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + apiKey,
     };
-    if (typeof window === "undefined") {
-      headers["User-Agent"] = "axiom-js/" + Version;
+    if (typeof window === 'undefined') {
+      headers['User-Agent'] = 'axiom-js/' + Version;
     }
-
 
     this.client = new FetchClient({
       baseUrl,

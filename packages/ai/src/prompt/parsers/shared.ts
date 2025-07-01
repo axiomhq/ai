@@ -1,5 +1,5 @@
-import { findNunjucksConditionalFunctions } from "./nunjucks";
-import { findHandlebarsConditionalFunctions } from "./hadlebars";
+import { findNunjucksConditionalFunctions } from './nunjucks';
+import { findHandlebarsConditionalFunctions } from './hadlebars';
 
 /**
  * @description Prepares the context for template rendering by replacing functions with unique placeholders.
@@ -9,14 +9,14 @@ import { findHandlebarsConditionalFunctions } from "./hadlebars";
  */
 export const prepareFunctions = (
   context: Record<string, any>,
-  placeholderFactory: (id: string) => any
+  placeholderFactory: (id: string) => any,
 ) => {
   const functions: { id: string; func: (...args: any[]) => any }[] = [];
   const newContext = { ...context };
 
   for (const key of Object.keys(newContext)) {
-    if (typeof newContext[key] === "function") {
-      const id = `__FUNC_RESULT_${crypto.randomUUID().replace(/-/g, "")}`;
+    if (typeof newContext[key] === 'function') {
+      const id = `__FUNC_RESULT_${crypto.randomUUID().replace(/-/g, '')}`;
       const originalFunc = newContext[key];
 
       functions.push({ id, func: originalFunc });
@@ -33,7 +33,7 @@ export const prepareFunctions = (
  * @returns A context object where keys are function IDs and values are their results.
  */
 export const executeFunctions = async (
-  functions: { id: string; func: (...args: any[]) => any }[]
+  functions: { id: string; func: (...args: any[]) => any }[],
 ) => {
   const functionPromises = functions.map(async ({ id, func }) => {
     const result = await func();
@@ -57,9 +57,9 @@ export const executeFunctions = async (
  */
 export const findConditionalFunctions = (
   template: string,
-  engine: "nunjucks" | "handlebars"
+  engine: 'nunjucks' | 'handlebars',
 ): string[] => {
-  if (engine === "nunjucks") {
+  if (engine === 'nunjucks') {
     return findNunjucksConditionalFunctions(template);
   } else {
     return findHandlebarsConditionalFunctions(template);
@@ -71,15 +71,13 @@ export const findConditionalFunctions = (
  */
 export const categorizeFunctions = (
   allFunctionNames: string[],
-  conditionalFunctionNames: string[]
+  conditionalFunctionNames: string[],
 ): { conditionalFunctions: string[]; outputFunctions: string[] } => {
   const conditionalSet = new Set(conditionalFunctionNames);
 
   return {
     conditionalFunctions: conditionalFunctionNames,
-    outputFunctions: allFunctionNames.filter(
-      (name) => !conditionalSet.has(name)
-    ),
+    outputFunctions: allFunctionNames.filter((name) => !conditionalSet.has(name)),
   };
 };
 
@@ -91,12 +89,12 @@ export const categorizeFunctions = (
  */
 export const executeConditionalFunctions = async (
   context: Record<string, any>,
-  functionsToExecute: string[]
+  functionsToExecute: string[],
 ): Promise<Record<string, any>> => {
   const updatedContext = { ...context };
 
   for (const funcName of functionsToExecute) {
-    if (typeof context[funcName] === "function") {
+    if (typeof context[funcName] === 'function') {
       try {
         updatedContext[funcName] = await context[funcName]();
       } catch (error) {
@@ -121,8 +119,8 @@ export const executeConditionalFunctions = async (
 export const prepareAdvancedContext = async (
   template: string,
   context: Record<string, any>,
-  engine: "nunjucks" | "handlebars",
-  placeholderFactory: (id: string) => any
+  engine: 'nunjucks' | 'handlebars',
+  placeholderFactory: (id: string) => any,
 ) => {
   // Step 1: Find functions used in conditionals/loops via AST analysis
   const conditionalFunctions = findConditionalFunctions(template, engine);
@@ -132,33 +130,27 @@ export const prepareAdvancedContext = async (
   const templateReplacements: Record<string, any> = {};
 
   for (const funcName of conditionalFunctions) {
-    if (typeof context[funcName] === "function") {
+    if (typeof context[funcName] === 'function') {
       try {
         const result = await context[funcName]();
         templateReplacements[funcName] = result;
 
         // Replace function calls in template with the result
-        if (engine === "nunjucks") {
+        if (engine === 'nunjucks') {
           // Replace {% if funcName() %} with {% if funcName %}
           const callPattern = new RegExp(
             `(\\{%\\s*(?:if|elif|unless)\\s+)${funcName}\\s*\\(\\s*\\)`,
-            "g"
+            'g',
           );
-          processedTemplate = processedTemplate.replace(
-            callPattern,
-            `$1${funcName}`
-          );
+          processedTemplate = processedTemplate.replace(callPattern, `$1${funcName}`);
 
           // Replace {% for item in funcName() %} patterns
           const loopPattern = new RegExp(
             `(\\{%\\s*for\\s+\\w+\\s+in\\s+)${funcName}\\s*\\(\\s*\\)`,
-            "g"
+            'g',
           );
-          processedTemplate = processedTemplate.replace(
-            loopPattern,
-            `$1${funcName}`
-          );
-        } else if (engine === "handlebars") {
+          processedTemplate = processedTemplate.replace(loopPattern, `$1${funcName}`);
+        } else if (engine === 'handlebars') {
           // Handlebars doesn't use () for function calls in conditionals, so no replacement needed
         }
       } catch (error) {
@@ -174,8 +166,8 @@ export const prepareAdvancedContext = async (
 
   for (const [key, value] of Object.entries(outputContext)) {
     // Only create placeholders for functions that weren't executed in step 2
-    if (typeof value === "function" && !conditionalFunctions.includes(key)) {
-      const id = `__FUNC_RESULT_${crypto.randomUUID().replace(/-/g, "")}`;
+    if (typeof value === 'function' && !conditionalFunctions.includes(key)) {
+      const id = `__FUNC_RESULT_${crypto.randomUUID().replace(/-/g, '')}`;
       outputFunctions.push({ id, func: value });
       outputContext[key] = placeholderFactory(id);
     }
