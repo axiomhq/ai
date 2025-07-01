@@ -10,10 +10,10 @@ import type {
   LanguageModelV1FunctionToolCall,
   LanguageModelV1StreamPart,
   ProviderV1,
-} from "@ai-sdk/provider";
-import { MockEmbeddingModelV1 } from "ai/test";
-import { MockImageModelV1 } from "./TEMP_mock-image-model-v1";
-import { MockLanguageModelV1 } from "ai/test";
+} from '@ai-sdk/provider';
+import { MockEmbeddingModelV1 } from 'ai/test';
+import { MockImageModelV1 } from './TEMP_mock-image-model-v1';
+import { MockLanguageModelV1 } from 'ai/test';
 
 // Response types for different model behaviors
 export interface MockLanguageModelResponse {
@@ -29,12 +29,12 @@ export interface MockLanguageModelResponse {
     | string
     | Array<
         | {
-            type: "text";
+            type: 'text';
             text: string;
             signature?: string;
           }
         | {
-            type: "redacted";
+            type: 'redacted';
             data: string;
           }
       >;
@@ -71,10 +71,7 @@ export interface MockProviderConfig {
 }
 
 export class MockProvider implements ProviderV1 {
-  private languageModelResponses = new Map<
-    string,
-    MockLanguageModelResponse[]
-  >();
+  private languageModelResponses = new Map<string, MockLanguageModelResponse[]>();
   private streamResponses = new Map<string, MockStreamResponse[]>();
   private embeddingResponses = new Map<string, MockEmbeddingResponse[]>();
   private imageResponses = new Map<string, MockImageResponse[]>();
@@ -87,7 +84,7 @@ export class MockProvider implements ProviderV1 {
 
   constructor(config: MockProviderConfig = {}) {
     this.config = {
-      providerId: "mock-provider",
+      providerId: 'mock-provider',
       defaultDelay: 0,
       throwOnMissingResponse: false,
       ...config,
@@ -99,7 +96,7 @@ export class MockProvider implements ProviderV1 {
     return new MockLanguageModelV1({
       provider: this.config.providerId!,
       modelId,
-      defaultObjectGenerationMode: "json",
+      defaultObjectGenerationMode: 'json',
       doGenerate: async (options: LanguageModelV1CallOptions) => {
         const callCount = this.languageModelCallCounts.get(modelId) || 0;
         this.languageModelCallCounts.set(modelId, callCount + 1);
@@ -107,9 +104,7 @@ export class MockProvider implements ProviderV1 {
         const responses = this.languageModelResponses.get(modelId);
         if (!responses || responses.length === 0) {
           if (this.config.throwOnMissingResponse) {
-            throw new Error(
-              `No mock response configured for language model: ${modelId}`
-            );
+            throw new Error(`No mock response configured for language model: ${modelId}`);
           }
           return this.getDefaultLanguageModelResponse();
         }
@@ -121,17 +116,17 @@ export class MockProvider implements ProviderV1 {
         }
 
         return {
-          text: response.text || "",
+          text: response.text || '',
           toolCalls: response.toolCalls,
-          finishReason: response.finishReason || "stop",
+          finishReason: response.finishReason || 'stop',
           usage: response.usage || { promptTokens: 10, completionTokens: 20 },
           warnings: response.warnings || [],
           reasoning: response.reasoning,
           rawCall: { rawPrompt: options.prompt, rawSettings: {} },
           rawResponse: { headers: {} },
           providerMetadata: {},
-          request: { body: "" },
-          response: { id: "mock-response-id", modelId },
+          request: { body: '' },
+          response: { id: 'mock-response-id', modelId },
         };
       },
       doStream: async (options: LanguageModelV1CallOptions) => {
@@ -141,9 +136,7 @@ export class MockProvider implements ProviderV1 {
         const responses = this.streamResponses.get(modelId);
         if (!responses || responses.length === 0) {
           if (this.config.throwOnMissingResponse) {
-            throw new Error(
-              `No mock stream response configured for language model: ${modelId}`
-            );
+            throw new Error(`No mock stream response configured for language model: ${modelId}`);
           }
           return this.getDefaultStreamResponse();
         }
@@ -155,7 +148,7 @@ export class MockProvider implements ProviderV1 {
           rawCall: { rawPrompt: options.prompt, rawSettings: {} },
           rawResponse: { headers: {} },
           warnings: [],
-          request: { body: "" },
+          request: { body: '' },
         };
       },
     });
@@ -173,9 +166,7 @@ export class MockProvider implements ProviderV1 {
         const responses = this.embeddingResponses.get(modelId);
         if (!responses || responses.length === 0) {
           if (this.config.throwOnMissingResponse) {
-            throw new Error(
-              `No mock response configured for embedding model: ${modelId}`
-            );
+            throw new Error(`No mock response configured for embedding model: ${modelId}`);
           }
           return this.getDefaultEmbeddingResponse(values.length);
         }
@@ -203,9 +194,7 @@ export class MockProvider implements ProviderV1 {
         const responses = this.imageResponses.get(modelId);
         if (!responses || responses.length === 0) {
           if (this.config.throwOnMissingResponse) {
-            throw new Error(
-              `No mock response configured for image model: ${modelId}`
-            );
+            throw new Error(`No mock response configured for image model: ${modelId}`);
           }
           return this.getDefaultImageResponse();
         }
@@ -226,10 +215,7 @@ export class MockProvider implements ProviderV1 {
   }
 
   // Configuration Methods
-  addLanguageModelResponse(
-    modelId: string,
-    response: MockLanguageModelResponse
-  ): this {
+  addLanguageModelResponse(modelId: string, response: MockLanguageModelResponse): this {
     if (!this.languageModelResponses.has(modelId)) {
       this.languageModelResponses.set(modelId, []);
     }
@@ -262,16 +248,13 @@ export class MockProvider implements ProviderV1 {
   }
 
   // Utility Methods
-  getCallCount(
-    modelType: "language" | "embedding" | "image",
-    modelId: string
-  ): number {
+  getCallCount(modelType: 'language' | 'embedding' | 'image', modelId: string): number {
     switch (modelType) {
-      case "language":
+      case 'language':
         return this.languageModelCallCounts.get(modelId) || 0;
-      case "embedding":
+      case 'embedding':
         return this.embeddingCallCounts.get(modelId) || 0;
-      case "image":
+      case 'image':
         return this.imageCallCounts.get(modelId) || 0;
     }
   }
@@ -289,27 +272,27 @@ export class MockProvider implements ProviderV1 {
   // Private helper methods
   private getDefaultLanguageModelResponse() {
     return {
-      text: "Mock response",
-      finishReason: "stop" as LanguageModelV1FinishReason,
+      text: 'Mock response',
+      finishReason: 'stop' as LanguageModelV1FinishReason,
       usage: { promptTokens: 10, completionTokens: 20 },
       warnings: [],
       rawCall: { rawPrompt: [], rawSettings: {} },
       rawResponse: { headers: {} },
       providerMetadata: {},
-      request: { body: "" },
-      response: { id: "mock-response-id", modelId: "mock-model" },
+      request: { body: '' },
+      response: { id: 'mock-response-id', modelId: 'mock-model' },
     };
   }
 
   private getDefaultStreamResponse() {
     return {
       stream: this.createMockStream({
-        chunks: ["Mock", " stream", " response"],
+        chunks: ['Mock', ' stream', ' response'],
       }),
       rawCall: { rawPrompt: [], rawSettings: {} },
       rawResponse: { headers: {} },
       warnings: [],
-      request: { body: "" },
+      request: { body: '' },
     };
   }
 
@@ -324,28 +307,28 @@ export class MockProvider implements ProviderV1 {
   private getDefaultImageResponse() {
     // A simple 1x1 transparent PNG as base64
     const transparentPng =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
     return {
       images: [transparentPng],
       warnings: [],
       response: {
         timestamp: new Date(),
-        modelId: "mock-model",
+        modelId: 'mock-model',
         headers: {} as Record<string, string> | undefined,
       },
     };
   }
 
   private createMockStream(
-    response: MockStreamResponse
+    response: MockStreamResponse,
   ): ReadableStream<LanguageModelV1StreamPart> {
     return new ReadableStream({
       async start(controller) {
         // Response metadata
         controller.enqueue({
-          type: "response-metadata",
-          id: "mock-response-id",
-          modelId: "mock-model",
+          type: 'response-metadata',
+          id: 'mock-response-id',
+          modelId: 'mock-model',
         });
 
         // Text chunks
@@ -354,15 +337,15 @@ export class MockProvider implements ProviderV1 {
             await new Promise((resolve) => setTimeout(resolve, response.delay));
           }
           controller.enqueue({
-            type: "text-delta",
+            type: 'text-delta',
             textDelta: chunk,
           });
         }
 
         // Finish
         controller.enqueue({
-          type: "finish",
-          finishReason: response.finishReason || "stop",
+          type: 'finish',
+          finishReason: response.finishReason || 'stop',
           usage: response.usage || {
             promptTokens: 10,
             completionTokens: response.chunks.length,
@@ -385,10 +368,10 @@ export function createMockProvider(config?: MockProviderConfig): MockProvider {
 export const mockResponses = {
   text: (
     text: string,
-    options?: Partial<MockLanguageModelResponse>
+    options?: Partial<MockLanguageModelResponse>,
   ): MockLanguageModelResponse => ({
     text,
-    finishReason: "stop",
+    finishReason: 'stop',
     usage: { promptTokens: 10, completionTokens: text.length },
     ...options,
   }),
@@ -396,35 +379,29 @@ export const mockResponses = {
   textWithTools: (
     text: string,
     toolCalls: LanguageModelV1FunctionToolCall[],
-    options?: Partial<MockLanguageModelResponse>
+    options?: Partial<MockLanguageModelResponse>,
   ): MockLanguageModelResponse => ({
     text,
     toolCalls,
-    finishReason: "tool-calls",
+    finishReason: 'tool-calls',
     usage: { promptTokens: 10, completionTokens: text.length },
     ...options,
   }),
 
-  stream: (
-    chunks: string[],
-    options?: Partial<MockStreamResponse>
-  ): MockStreamResponse => ({
+  stream: (chunks: string[], options?: Partial<MockStreamResponse>): MockStreamResponse => ({
     chunks,
-    finishReason: "stop",
+    finishReason: 'stop',
     usage: { promptTokens: 10, completionTokens: chunks.length },
     ...options,
   }),
 
-  embedding: (
-    dimension: number = 512,
-    count: number = 1
-  ): MockEmbeddingResponse => ({
+  embedding: (dimension: number = 512, count: number = 1): MockEmbeddingResponse => ({
     embeddings: Array(count)
       .fill(null)
       .map(() =>
         Array(dimension)
           .fill(0)
-          .map(() => Math.random() - 0.5)
+          .map(() => Math.random() - 0.5),
       ),
     usage: { tokens: count * 5 },
   }),
@@ -434,14 +411,14 @@ export const mockResponses = {
       ? images
       : [
           images ||
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
         ],
   }),
 
   error: (message: string): MockLanguageModelResponse => ({
-    text: "",
-    finishReason: "error",
-    warnings: [{ type: "other", message }],
+    text: '',
+    finishReason: 'error',
+    warnings: [{ type: 'other', message }],
     usage: { promptTokens: 0, completionTokens: 0 },
   }),
 };

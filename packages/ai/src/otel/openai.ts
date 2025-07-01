@@ -1,33 +1,33 @@
-import { trace, propagation, type Span } from "@opentelemetry/api";
-import { Attr } from "./semconv/attributes";
-import { createStartActiveSpan } from "./startActiveSpan";
-import { currentUnixTime } from "../util/currentUnixTime";
-import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
-import OpenAI from "openai";
-import type { ChatCompletion } from "openai/resources/chat/completions";
-import type { ChatCompletionCreateParams } from "openai/resources/chat/completions";
-import { createGenAISpanName, type GenAIOperation } from "./shared";
+import { trace, propagation, type Span } from '@opentelemetry/api';
+import { Attr } from './semconv/attributes';
+import { createStartActiveSpan } from './startActiveSpan';
+import { currentUnixTime } from '../util/currentUnixTime';
+import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from 'src/pricing';
+import OpenAI from 'openai';
+import type { ChatCompletion } from 'openai/resources/chat/completions';
+import type { ChatCompletionCreateParams } from 'openai/resources/chat/completions';
+import { createGenAISpanName, type GenAIOperation } from './shared';
 
 // 🚨 temporarily commented out some stuff here that involves attributes we're no longer using in the vercel implementation
 
-const WITHSPAN_BAGGAGE_KEY = "__withspan_gen_ai_call";
+const WITHSPAN_BAGGAGE_KEY = '__withspan_gen_ai_call';
 
 export function wrapOpenAI<T extends object>(openai: T): T {
   const oai: unknown = openai;
   if (
     oai &&
-    typeof oai === "object" &&
-    "chat" in oai &&
-    typeof oai.chat === "object" &&
+    typeof oai === 'object' &&
+    'chat' in oai &&
+    typeof oai.chat === 'object' &&
     oai.chat &&
-    "completions" in oai.chat &&
-    typeof oai.chat.completions === "object" &&
+    'completions' in oai.chat &&
+    typeof oai.chat.completions === 'object' &&
     oai.chat.completions &&
-    "create" in oai.chat.completions
+    'create' in oai.chat.completions
   ) {
     return new AxiomWrappedOpenAI(oai as any) as unknown as T;
   } else {
-    console.warn("Unsupported OpenAI library (potentially v3). Not wrapping.");
+    console.warn('Unsupported OpenAI library (potentially v3). Not wrapping.');
     return openai;
   }
 }
@@ -41,31 +41,27 @@ class AxiomWrappedOpenAI {
 
   private async withSpanHandling<T>(
     operation: (span: Span) => Promise<T>,
-    spanName: string
+    spanName: string,
   ): Promise<T> {
     const bag = propagation.getActiveBaggage();
-    const isWithinWithSpan =
-      bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === "true";
+    const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
     if (isWithinWithSpan) {
       const activeSpan = trace.getActiveSpan();
       if (!activeSpan) {
-        throw new Error("Expected active span when within withSpan");
+        throw new Error('Expected active span when within withSpan');
       }
       // Update the span name to be more descriptive
       activeSpan.updateName(spanName);
       return operation(activeSpan);
     } else {
-      const tracer = trace.getTracer("@axiomhq/ai");
+      const tracer = trace.getTracer('@axiomhq/ai');
       const startActiveSpan = createStartActiveSpan(tracer);
       return startActiveSpan(spanName, null, operation);
     }
   }
 
-  private setPreCallAttributes(
-    span: Span,
-    options: ChatCompletionCreateParams
-  ) {
+  private setPreCallAttributes(span: Span, options: ChatCompletionCreateParams) {
     const {
       model,
       messages,
@@ -87,8 +83,8 @@ class AxiomWrappedOpenAI {
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: model,
-      [Attr.GenAI.Provider]: "openai",
-      [Attr.GenAI.System]: "openai",
+      [Attr.GenAI.Provider]: 'openai',
+      [Attr.GenAI.System]: 'openai',
     });
 
     // Set prompt attributes
@@ -141,8 +137,8 @@ class AxiomWrappedOpenAI {
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: model,
-      [Attr.GenAI.Provider]: "openai",
-      [Attr.GenAI.System]: "openai",
+      [Attr.GenAI.Provider]: 'openai',
+      [Attr.GenAI.System]: 'openai',
     });
 
     // Set prompt attributes for responses API
@@ -154,16 +150,12 @@ class AxiomWrappedOpenAI {
     // }
   }
 
-  private setPostCallAttributes(
-    span: Span,
-    result: ChatCompletion,
-    startTime: number
-  ) {
+  private setPostCallAttributes(span: Span, result: ChatCompletion, startTime: number) {
     const bag = propagation.getActiveBaggage();
 
     // Set total request duration
     const endTime = currentUnixTime();
-    span.setAttribute("gen_ai.request.duration_ms", endTime - startTime);
+    span.setAttribute('gen_ai.request.duration_ms', endTime - startTime);
 
     // Set response attributes
     if (result.id) {
@@ -181,48 +173,34 @@ class AxiomWrappedOpenAI {
 
     // Set usage attributes
     if (result.usage) {
-      span.setAttribute(
-        Attr.GenAI.Usage.InputTokens,
-        result.usage.prompt_tokens
-      );
-      span.setAttribute(
-        Attr.GenAI.Usage.OutputTokens,
-        result.usage.completion_tokens
-      );
+      span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.prompt_tokens);
+      span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completion_tokens);
 
       // Check for experimental pricing estimation
       const shouldEstimatePricing =
-        bag?.getEntry(
-          "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
-        )?.value === "true";
+        bag?.getEntry('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing')
+          ?.value === 'true';
       if (shouldEstimatePricing) {
         _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
           result.usage.prompt_tokens,
           result.usage.completion_tokens,
-          result.model
+          result.model,
         );
       }
     }
 
     // Set response text
     if (result.choices[0]?.message?.content) {
-      span.setAttribute(
-        Attr.GenAI.Response.Text,
-        result.choices[0].message.content
-      );
+      span.setAttribute(Attr.GenAI.Response.Text, result.choices[0].message.content);
     }
   }
 
-  private setPostCallAttributesForResponses(
-    span: Span,
-    result: any,
-    startTime: number
-  ) {
+  private setPostCallAttributesForResponses(span: Span, result: any, startTime: number) {
     const bag = propagation.getActiveBaggage();
 
     // Set total request duration
     const endTime = currentUnixTime();
-    span.setAttribute("gen_ai.request.duration_ms", endTime - startTime);
+    span.setAttribute('gen_ai.request.duration_ms', endTime - startTime);
 
     // Set response attributes for responses API
     if (result.id) {
@@ -234,25 +212,18 @@ class AxiomWrappedOpenAI {
 
     // Set usage attributes if available
     if (result.usage) {
-      span.setAttribute(
-        Attr.GenAI.Usage.InputTokens,
-        result.usage.input_tokens || 0
-      );
-      span.setAttribute(
-        Attr.GenAI.Usage.OutputTokens,
-        result.usage.output_tokens || 0
-      );
+      span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.input_tokens || 0);
+      span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.output_tokens || 0);
 
       // Check for experimental pricing estimation
       const shouldEstimatePricing =
-        bag?.getEntry(
-          "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
-        )?.value === "true";
+        bag?.getEntry('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing')
+          ?.value === 'true';
       if (shouldEstimatePricing) {
         _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
           result.usage.input_tokens || 0,
           result.usage.output_tokens || 0,
-          result.model
+          result.model,
         );
       }
     }
@@ -266,10 +237,7 @@ class AxiomWrappedOpenAI {
   chat = {
     completions: {
       create: (options: any) => {
-        const spanName = this.spanName(
-          Attr.GenAI.Operation.Name_Values.Chat,
-          options.model
-        );
+        const spanName = this.spanName(Attr.GenAI.Operation.Name_Values.Chat, options.model);
         return this.withSpanHandling(async (span) => {
           this.setPreCallAttributes(span, options);
 
@@ -286,10 +254,7 @@ class AxiomWrappedOpenAI {
 
   responses = {
     create: (options: any) => {
-      const spanName = this.spanName(
-        Attr.GenAI.Operation.Name_Values.Chat,
-        options.model
-      );
+      const spanName = this.spanName(Attr.GenAI.Operation.Name_Values.Chat, options.model);
       return this.withSpanHandling(async (span) => {
         // Use responses-specific attributes
         this.setPreCallAttributesForResponses(span, options);

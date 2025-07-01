@@ -1,25 +1,25 @@
-import { describe, expect, it, beforeAll } from "vitest";
-import { wrapOpenAI } from "../../src/otel/openai";
-import OpenAI from "openai";
+import { describe, expect, it, beforeAll } from 'vitest';
+import { wrapOpenAI } from '../../src/otel/openai';
+import OpenAI from 'openai';
 
-describe("wrapOpenAI", () => {
+describe('wrapOpenAI', () => {
   beforeAll(() => {
-    process.env.OPENAI_API_KEY = "test-key";
+    process.env.OPENAI_API_KEY = 'test-key';
   });
 
-  it("should wrap the OpenAI client", () => {
+  it('should wrap the OpenAI client', () => {
     const client = wrapOpenAI(new OpenAI());
 
     expect(client).toBeDefined();
   });
 
-  it("should have completions", () => {
+  it('should have completions', () => {
     const client = wrapOpenAI(new OpenAI());
 
     expect(client.chat.completions.create).toBeDefined();
   });
 
-  it("should have responses", () => {
+  it('should have responses', () => {
     const client = wrapOpenAI(new OpenAI());
 
     expect(client.responses.create).toBeDefined();

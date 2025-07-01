@@ -1,5 +1,5 @@
-import nunjucks from "nunjucks";
-import { prepareAdvancedContext, executeFunctions } from "./shared";
+import nunjucks from 'nunjucks';
+import { prepareAdvancedContext, executeFunctions } from './shared';
 
 /**
  * @description Walks through a Nunjucks AST to find functions used in control structures
@@ -7,7 +7,7 @@ import { prepareAdvancedContext, executeFunctions } from "./shared";
  * @param functionsFound Set to collect function names
  */
 const walkNunjucksAST = (node: any, functionsFound: Set<string>) => {
-  if (!node || typeof node !== "object") return;
+  if (!node || typeof node !== 'object') return;
 
   // Handle different node types that can contain conditions or iterables
   // Check if this is an If node by looking for cond property
@@ -36,7 +36,7 @@ const walkNunjucksAST = (node: any, functionsFound: Set<string>) => {
   }
 
   // Walk through other common properties that might contain child nodes
-  ["body", "else_", "target", "iter"].forEach((prop) => {
+  ['body', 'else_', 'target', 'iter'].forEach((prop) => {
     if (node[prop]) {
       walkNunjucksAST(node[prop], functionsFound);
     }
@@ -49,7 +49,7 @@ const walkNunjucksAST = (node: any, functionsFound: Set<string>) => {
  * @param functionsFound Set to collect function names
  */
 const extractNunjucksFunctions = (node: any, functionsFound: Set<string>) => {
-  if (!node || typeof node !== "object") return;
+  if (!node || typeof node !== 'object') return;
 
   // Check for function calls - these have a 'name' property and 'args' property
   if (node.name && node.args) {
@@ -68,7 +68,7 @@ const extractNunjucksFunctions = (node: any, functionsFound: Set<string>) => {
   }
 
   // Check for simple symbol references
-  if (node.value && typeof node.value === "string" && !node.children) {
+  if (node.value && typeof node.value === 'string' && !node.children) {
     // This is a simple symbol
     functionsFound.add(node.value);
     return;
@@ -107,9 +107,7 @@ const extractNunjucksFunctions = (node: any, functionsFound: Set<string>) => {
  * @param template The template string to analyze
  * @returns Array of function names that need to be executed for control structures
  */
-export const findNunjucksConditionalFunctions = (
-  template: string
-): string[] => {
+export const findNunjucksConditionalFunctions = (template: string): string[] => {
   const conditionalFunctions = new Set<string>();
 
   try {
@@ -148,39 +146,32 @@ export const findNunjucksConditionalFunctions = (
  */
 export const nunjucksParse = async (
   prompt: string,
-  { context }: { context: Record<string, any> }
+  { context }: { context: Record<string, any> },
 ) => {
   // Use advanced context preparation to handle conditional functions
-  const { processedContext, outputFunctions, processedTemplate } =
-    await prepareAdvancedContext(
-      prompt,
-      context,
-      "nunjucks",
-      (id) => () => `{{ ${id} }}`
-    );
+  const { processedContext, outputFunctions, processedTemplate } = await prepareAdvancedContext(
+    prompt,
+    context,
+    'nunjucks',
+    (id) => () => `{{ ${id} }}`,
+  );
 
   const firstPassEnv = nunjucks.configure({
     autoescape: false,
     throwOnUndefined: true,
   });
 
-  const templateWithPlaceholders = await new Promise<string | null>(
-    (resolve, reject) => {
-      firstPassEnv.renderString(
-        processedTemplate,
-        processedContext,
-        (err, result) => {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        }
-      );
-    }
-  );
+  const templateWithPlaceholders = await new Promise<string | null>((resolve, reject) => {
+    firstPassEnv.renderString(processedTemplate, processedContext, (err, result) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve(result);
+    });
+  });
 
   if (!templateWithPlaceholders) {
-    return "";
+    return '';
   }
 
   // Execute remaining output functions
@@ -191,17 +182,13 @@ export const nunjucksParse = async (
     throwOnUndefined: true,
   });
   const finalString = await new Promise<string | null>((resolve, reject) => {
-    defaultEnvironment.renderString(
-      templateWithPlaceholders,
-      finalContext,
-      (err, result) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve(result);
+    defaultEnvironment.renderString(templateWithPlaceholders, finalContext, (err, result) => {
+      if (err) {
+        return reject(err);
       }
-    );
+      resolve(result);
+    });
   });
 
-  return finalString ?? "";
+  return finalString ?? '';
 };

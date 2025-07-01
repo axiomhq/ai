@@ -1,22 +1,23 @@
 {
-    "$schema": "https://turborepo.com/schema.json",
-    "tasks": {
-      "lint": {},
-      "format": {},
-      "build": {
-        "dependsOn": ["^build"],
-        "outputs": ["dist/**"]
-      },
-      "test": {
-        "dependsOn": ["^build"],
-        "outputs": ["coverage/**"]
-      },
-      "typecheck": {
-        "dependsOn": ["^typecheck"]
-      },
-      "dev": {
-        "persistent": true,
-        "cache": false
-      }
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
+    "lint": {},
+    "format": {},
+    "format:check": {},
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false
     }
   }
+}

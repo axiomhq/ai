@@ -14,10 +14,7 @@ import { generateText } from 'ai';
 const mockProvider = createMockProvider();
 
 // Configure a response
-mockProvider.addLanguageModelResponse(
-  'my-model',
-  mockResponses.text('Hello, world!')
-);
+mockProvider.addLanguageModelResponse('my-model', mockResponses.text('Hello, world!'));
 
 // Use it in your tests
 const model = mockProvider.languageModel('my-model');
@@ -35,9 +32,9 @@ expect(result.text).toBe('Hello, world!');
 
 ```typescript
 const mockProvider = createMockProvider({
-  providerId: 'my-test-provider',     // Custom provider name
-  throwOnMissingResponse: true,       // Strict mode - throw if no response configured
-  defaultDelay: 100,                  // Default delay for all responses
+  providerId: 'my-test-provider', // Custom provider name
+  throwOnMissingResponse: true, // Strict mode - throw if no response configured
+  defaultDelay: 100, // Default delay for all responses
 });
 ```
 
@@ -58,18 +55,15 @@ The mock provider supports different types of responses:
 
 ```typescript
 // Simple response
-mockProvider.addLanguageModelResponse(
-  'gpt-4',
-  mockResponses.text('I am a helpful AI assistant.')
-);
+mockProvider.addLanguageModelResponse('gpt-4', mockResponses.text('I am a helpful AI assistant.'));
 
 // Response with custom usage data
 mockProvider.addLanguageModelResponse(
   'gpt-4',
   mockResponses.text('Complex answer', {
     usage: { promptTokens: 50, completionTokens: 200 },
-    finishReason: 'stop'
-  })
+    finishReason: 'stop',
+  }),
 );
 ```
 
@@ -84,9 +78,9 @@ mockProvider
 
 // Each call gets the next response
 const model = mockProvider.languageModel('chat-model');
-await generateText({ model, prompt: 'Hello' });        // "Hi there!"
+await generateText({ model, prompt: 'Hello' }); // "Hi there!"
 await generateText({ model, prompt: 'What can you do?' }); // "How can I help?"
-await generateText({ model, prompt: 'Help me code' });     // "Sure thing!"
+await generateText({ model, prompt: 'Help me code' }); // "Sure thing!"
 await generateText({ model, prompt: 'Another question' }); // "Sure thing!" (reuses last)
 ```
 
@@ -102,7 +96,7 @@ const toolCall = {
 
 mockProvider.addLanguageModelResponse(
   'tool-model',
-  mockResponses.textWithTools('Let me calculate that.', [toolCall])
+  mockResponses.textWithTools('Let me calculate that.', [toolCall]),
 );
 
 const result = await generateText({
@@ -123,10 +117,7 @@ expect(result.toolResults[0].result).toBe('4');
 ### Streaming
 
 ```typescript
-mockProvider.addStreamResponse(
-  'stream-model',
-  mockResponses.stream(['Hello', ' ', 'world', '!'])
-);
+mockProvider.addStreamResponse('stream-model', mockResponses.stream(['Hello', ' ', 'world', '!']));
 
 const result = streamText({
   model: mockProvider.languageModel('stream-model'),
@@ -146,7 +137,7 @@ expect(chunks).toEqual(['Hello', ' ', 'world', '!']);
 ```typescript
 mockProvider.addEmbeddingResponse(
   'embed-model',
-  mockResponses.embedding(512, 1) // 512 dimensions, 1 embedding
+  mockResponses.embedding(512, 1), // 512 dimensions, 1 embedding
 );
 
 const result = await embed({
@@ -163,13 +154,13 @@ expect(result.embedding).toHaveLength(512);
 // Simulate slow responses
 mockProvider.addLanguageModelResponse(
   'slow-model',
-  mockResponses.text('This took a while', { delay: 1000 })
+  mockResponses.text('This took a while', { delay: 1000 }),
 );
 
 // Simulate slow streaming
 mockProvider.addStreamResponse(
   'slow-stream',
-  mockResponses.stream(['Slow', ' stream'], { delay: 500 })
+  mockResponses.stream(['Slow', ' stream'], { delay: 500 }),
 );
 ```
 
@@ -179,7 +170,7 @@ mockProvider.addStreamResponse(
 // Simulate errors and warnings
 mockProvider.addLanguageModelResponse(
   'error-model',
-  mockResponses.error('Model temporarily unavailable')
+  mockResponses.error('Model temporarily unavailable'),
 );
 
 const result = await generateText({
@@ -263,15 +254,15 @@ const testSuite = createFeatureTestSuite({
   name: 'Mock Provider Tests',
   models: {
     languageModels: [
-      createLanguageModelWithCapabilities(
-        mockProvider.languageModel('test-model'),
-        ['textCompletion', 'toolCalls', 'objectGeneration', 'imageInput']
-      ),
+      createLanguageModelWithCapabilities(mockProvider.languageModel('test-model'), [
+        'textCompletion',
+        'toolCalls',
+        'objectGeneration',
+        'imageInput',
+      ]),
     ],
     embeddingModels: [
-      createEmbeddingModelWithCapabilities(
-        mockProvider.textEmbeddingModel('embed-model')
-      ),
+      createEmbeddingModelWithCapabilities(mockProvider.textEmbeddingModel('embed-model')),
     ],
   },
 });
@@ -282,9 +273,11 @@ const testSuite = createFeatureTestSuite({
 ### MockProvider
 
 #### Constructor
+
 - `createMockProvider(config?: MockProviderConfig): MockProvider`
 
 #### Methods
+
 - `languageModel(modelId: string): LanguageModelV1`
 - `textEmbeddingModel(modelId: string): EmbeddingModelV1<string>`
 - `imageModel(modelId: string): ImageModelV1`

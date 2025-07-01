@@ -1,0 +1,12 @@
+# Build outputs
+dist/
+**/*.js
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Coverage reports
+coverage/

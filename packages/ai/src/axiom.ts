@@ -1,22 +1,17 @@
-import HTTPClient from "./httpClient";
+import HTTPClient from './httpClient';
 
-import type {
-  Environment,
-  LibraryInput,
-  Prompt,
-  PromptInput,
-} from "./types";
-import { parse } from "./prompt";
+import type { Environment, LibraryInput, Prompt, PromptInput } from './types';
+import { parse } from './prompt';
 
 export type ClientOptions = {
   onError?: (error: Error) => void;
-  parser?: "nunjucks" | "handlebars";
+  parser?: 'nunjucks' | 'handlebars';
 };
 
 export class Axiom extends HTTPClient {
   constructor(
     apiKey: string,
-    private opts: ClientOptions = {}
+    private opts: ClientOptions = {},
   ) {
     super({ apiKey });
 
@@ -76,7 +71,7 @@ export class Axiom extends HTTPClient {
 
     deploy: async (
       promptId: string,
-      { environment, version }: { environment: Environment; version: string }
+      { environment, version }: { environment: Environment; version: string },
     ) => {
       return await this.client.put<Prompt>(`/prompts/${promptId}/deploy`, {
         body: JSON.stringify({ promptId, environment, version }),
@@ -101,7 +96,7 @@ export class Axiom extends HTTPClient {
    */
   async withAxiom(
     _TODO_USE_THIS_scope: { workflow: string; task: string },
-    fn: () => Promise<any>
+    fn: () => Promise<any>,
   ) {
     // TODO: create a span and attach scope
     // TODO: add a trace to the span
@@ -120,9 +115,9 @@ export class Axiom extends HTTPClient {
     let parsedPrompt: Prompt;
     parsedPrompt = await parse(prompt, {
       context: inputs,
-      parser: "nunjucks",
+      parser: 'nunjucks',
     });
     console.log(parsedPrompt);
-    throw new Error("Not implemented");
+    throw new Error('Not implemented');
   }
 }

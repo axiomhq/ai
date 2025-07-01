@@ -1,17 +1,13 @@
-import z from "zod";
-import type { Prompt } from "../types";
+import z from 'zod';
+import type { Prompt } from '../types';
 
-const getParser = async (parser: "nunjucks" | "handlebars") => {
-  if (parser === "nunjucks") {
-    const nunjucks = await import("./parsers/nunjucks").then(
-      (m) => m.nunjucksParse
-    );
+const getParser = async (parser: 'nunjucks' | 'handlebars') => {
+  if (parser === 'nunjucks') {
+    const nunjucks = await import('./parsers/nunjucks').then((m) => m.nunjucksParse);
     return nunjucks;
   }
-  if (parser === "handlebars") {
-    const handlebars = await import("./parsers/hadlebars").then(
-      (m) => m.handlebarsParse
-    );
+  if (parser === 'handlebars') {
+    const handlebars = await import('./parsers/hadlebars').then((m) => m.handlebarsParse);
     return handlebars;
   }
   throw new Error(`Invalid parser: ${parser}`);
@@ -21,11 +17,11 @@ export const parse = async (
   prompt: Prompt,
   {
     context: unsafeContext = {},
-    parser: parserName = "nunjucks",
+    parser: parserName = 'nunjucks',
   }: {
     context?: Record<string, any>;
-    parser?: "nunjucks" | "handlebars";
-  }
+    parser?: 'nunjucks' | 'handlebars';
+  },
 ) => {
   const zodSchema = (args: Record<string, z.ZodSchema>) => {
     return z.object(args);

@@ -1,12 +1,13 @@
 import globals from 'globals';
 import tsdoc from 'eslint-plugin-tsdoc';
 import tsParser from '@typescript-eslint/parser';
+// @ts-expect-error TODO: idk
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 /**
- * A custom ESLint configuration for libraries that use Next.js.
+ * A custom ESLint configuration for libraries.
  *
- * @type {import("eslint").Linter.Config}
+ * @type {import("eslint").Linter.Config[]}
  * */
 export const config = [
   eslintConfigPrettier,

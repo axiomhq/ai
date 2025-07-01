@@ -9,19 +9,16 @@ import {
   type LanguageModelV1ToolCallPart,
   type LanguageModelV1StreamPart,
   type LanguageModelV1ProviderMetadata,
-} from "@ai-sdk/provider";
+} from '@ai-sdk/provider';
 
-import { trace, propagation, type Span } from "@opentelemetry/api";
-import { Attr } from "./semconv/attributes";
-import { createStartActiveSpan } from "./startActiveSpan";
-import { currentUnixTime } from "../util/currentUnixTime";
-import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from "src/pricing";
-import { WITHSPAN_BAGGAGE_KEY } from "./withSpanBaggageKey";
-import { createGenAISpanName } from "./shared";
-import type {
-  OpenAIMessage,
-  OpenAIAssistantMessage,
-} from "./vercelTypes";
+import { trace, propagation, type Span } from '@opentelemetry/api';
+import { Attr } from './semconv/attributes';
+import { createStartActiveSpan } from './startActiveSpan';
+import { currentUnixTime } from '../util/currentUnixTime';
+import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from 'src/pricing';
+import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
+import { createGenAISpanName } from './shared';
+import type { OpenAIMessage, OpenAIAssistantMessage } from './vercelTypes';
 
 export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
@@ -34,12 +31,11 @@ export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attem
   inputTokens: number;
   outputTokens: number;
 }) {
-  const cost =
-    _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
-      inputTokens,
-      outputTokens,
-      model
-    );
+  const cost = _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
+    inputTokens,
+    outputTokens,
+    model,
+  );
   span.setAttribute(Attr.GenAI.Cost.Estimated, cost.toFixed(6));
 }
 
@@ -51,15 +47,15 @@ function formatCompletion({
   toolCalls: LanguageModelV1FunctionToolCall[] | undefined;
 }): OpenAIAssistantMessage {
   return {
-    role: "assistant",
+    role: 'assistant',
     content:
       text ??
       (toolCalls && toolCalls.length > 0
         ? null // Content is null when we have no text but do have tool calls
-        : ""),
+        : ''),
     tool_calls: toolCalls?.map((toolCall, index) => ({
       id: toolCall.toolCallId,
-      type: "function" as const,
+      type: 'function' as const,
       function: {
         name: toolCall.toolName,
         arguments: toolCall.args,
@@ -73,21 +69,21 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
   const results: OpenAIMessage[] = [];
   for (const message of prompt) {
     switch (message.role) {
-      case "system":
+      case 'system':
         results.push({
-          role: "system",
+          role: 'system',
           content: message.content,
         });
         break;
-      case "assistant":
-        const textPart = message.content.find(
-          (part) => part.type === "text"
-        ) as LanguageModelV1TextPart | undefined;
+      case 'assistant':
+        const textPart = message.content.find((part) => part.type === 'text') as
+          | LanguageModelV1TextPart
+          | undefined;
         const toolCallParts = message.content.filter(
-          (part) => part.type === "tool-call"
+          (part) => part.type === 'tool-call',
         ) as LanguageModelV1ToolCallPart[];
         results.push({
-          role: "assistant",
+          role: 'assistant',
           content: textPart?.text || null,
           ...(toolCallParts.length > 0
             ? {
@@ -97,33 +93,29 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
                     name: part.toolName,
                     arguments: JSON.stringify(part.args),
                   },
-                  type: "function",
+                  type: 'function',
                 })),
               }
             : {}),
         });
         break;
-      case "user":
+      case 'user':
         results.push({
-          role: "user",
+          role: 'user',
           content: message.content.map((part) => {
             switch (part.type) {
-              case "text":
+              case 'text':
                 return {
-                  type: "text",
+                  type: 'text',
                   text: part.text,
-                  ...(part.providerMetadata
-                    ? { providerMetadata: part.providerMetadata }
-                    : {}),
+                  ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
                 };
-              case "image":
+              case 'image':
                 return {
-                  type: "image_url",
+                  type: 'image_url',
                   image_url: {
                     url: part.image.toString(),
-                    ...(part.providerMetadata
-                      ? { providerMetadata: part.providerMetadata }
-                      : {}),
+                    ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
                   },
                 };
               default:
@@ -133,10 +125,10 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
           }),
         });
         break;
-      case "tool":
+      case 'tool':
         for (const part of message.content) {
           results.push({
-            role: "tool",
+            role: 'tool',
             tool_call_id: part.toolCallId,
             content: JSON.stringify(part.result),
           });
@@ -150,13 +142,13 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
 export function wrapAISDKModel<T extends LanguageModelV1>(model: T): T {
   const m = model;
   if (
-    m?.specificationVersion === "v1" &&
-    typeof m?.provider === "string" &&
-    typeof m?.modelId === "string"
+    m?.specificationVersion === 'v1' &&
+    typeof m?.provider === 'string' &&
+    typeof m?.modelId === 'string'
   ) {
     return new AxiomWrappedLanguageModelV1(m) as never as T;
   } else {
-    console.warn("Unsupported AI SDK model. Not wrapping.");
+    console.warn('Unsupported AI SDK model. Not wrapping.');
     return model;
   }
 }
@@ -192,24 +184,21 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     return this.model.supportsUrl;
   }
 
-  private async withSpanHandling<T>(
-    operation: (span: Span) => Promise<T>
-  ): Promise<T> {
+  private async withSpanHandling<T>(operation: (span: Span) => Promise<T>): Promise<T> {
     const bag = propagation.getActiveBaggage();
-    const isWithinWithSpan =
-      bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === "true";
+    const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
     if (isWithinWithSpan) {
       // Reuse existing span created by withSpan
       const activeSpan = trace.getActiveSpan();
       if (!activeSpan) {
-        throw new Error("Expected active span when within withSpan");
+        throw new Error('Expected active span when within withSpan');
       }
       activeSpan.updateName(this.spanName());
       return operation(activeSpan);
     } else {
       // Create new span only if not within withSpan
-      const tracer = trace.getTracer("@axiomhq/ai");
+      const tracer = trace.getTracer('@axiomhq/ai');
       const startActiveSpan = createStartActiveSpan(tracer);
       const name = this.spanName();
 
@@ -261,9 +250,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       let finishReason: LanguageModelV1FinishReason | undefined = undefined;
       let responseId: string | undefined = undefined;
       let responseModelId: string | undefined = undefined;
-      let responseProviderMetadata:
-        | LanguageModelV1ProviderMetadata
-        | undefined = undefined;
+      let responseProviderMetadata: LanguageModelV1ProviderMetadata | undefined = undefined;
 
       return {
         ...ret,
@@ -273,14 +260,11 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
               // Track time to first token
               if (timeToFirstToken === undefined) {
                 timeToFirstToken = currentUnixTime() - startTime;
-                span.setAttribute(
-                  "gen_ai.response.time_to_first_token",
-                  timeToFirstToken
-                );
+                span.setAttribute('gen_ai.response.time_to_first_token', timeToFirstToken);
               }
 
               switch (chunk.type) {
-                case "response-metadata":
+                case 'response-metadata':
                   if (chunk.id) {
                     responseId = chunk.id;
                   }
@@ -293,13 +277,13 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                     responseProviderMetadata = chunk.providerMetadata;
                   }
                   break;
-                case "text-delta":
+                case 'text-delta':
                   if (fullText === undefined) {
-                    fullText = "";
+                    fullText = '';
                   }
                   fullText += chunk.textDelta;
                   break;
-                case "tool-call":
+                case 'tool-call':
                   toolCallsMap[chunk.toolCallId] = {
                     toolCallType: chunk.toolCallType,
                     toolCallId: chunk.toolCallId,
@@ -307,18 +291,18 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                     args: chunk.args,
                   } as LanguageModelV1FunctionToolCall;
                   break;
-                case "tool-call-delta":
+                case 'tool-call-delta':
                   if (toolCallsMap[chunk.toolCallId] === undefined) {
                     toolCallsMap[chunk.toolCallId] = {
                       toolCallType: chunk.toolCallType,
                       toolCallId: chunk.toolCallId,
                       toolName: chunk.toolName,
-                      args: "",
+                      args: '',
                     } as LanguageModelV1FunctionToolCall;
                   }
                   toolCallsMap[chunk.toolCallId].args += chunk.argsTextDelta;
                   break;
-                case "finish":
+                case 'finish':
                   usage = chunk.usage;
                   finishReason = chunk.finishReason;
                   break;
@@ -328,8 +312,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
             },
             async flush(controller) {
               // Convert toolCallsMap to array for postProcessOutput
-              const toolCallsArray: LanguageModelV1FunctionToolCall[] =
-                Object.values(toolCallsMap);
+              const toolCallsArray: LanguageModelV1FunctionToolCall[] = Object.values(toolCallsMap);
 
               // Construct result object for helper function
               const streamResult = {
@@ -343,20 +326,15 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                 finishReason,
                 usage,
                 text: fullText,
-                toolCalls:
-                  toolCallsArray.length > 0 ? toolCallsArray : undefined,
+                toolCalls: toolCallsArray.length > 0 ? toolCallsArray : undefined,
                 providerMetadata: responseProviderMetadata,
               };
 
-              AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
-                span,
-                modelId,
-                streamResult
-              );
+              AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, modelId, streamResult);
 
               controller.terminate();
             },
-          })
+          }),
         ),
       };
     });
@@ -364,10 +342,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
   private spanName(): string {
     // TODO: do we ever want to not use "chat"?
-    return createGenAISpanName(
-      Attr.GenAI.Operation.Name_Values.Chat,
-      this.modelId
-    );
+    return createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, this.modelId);
   }
 
   private setScopeAttributes(span: Span) {
@@ -375,25 +350,16 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set workflow and task attributes from baggage
     if (bag) {
-      if (bag.getEntry("workflow")?.value) {
-        span.setAttribute(
-          Attr.GenAI.Operation.WorkflowName,
-          bag.getEntry("workflow")!.value
-        );
+      if (bag.getEntry('workflow')?.value) {
+        span.setAttribute(Attr.GenAI.Operation.WorkflowName, bag.getEntry('workflow')!.value);
       }
-      if (bag.getEntry("task")?.value) {
-        span.setAttribute(
-          Attr.GenAI.Operation.TaskName,
-          bag.getEntry("task")!.value
-        );
+      if (bag.getEntry('task')?.value) {
+        span.setAttribute(Attr.GenAI.Operation.TaskName, bag.getEntry('task')!.value);
       }
     }
   }
 
-  private setPreCallAttributes(
-    span: Span,
-    options: LanguageModelV1CallOptions
-  ) {
+  private setPreCallAttributes(span: Span, options: LanguageModelV1CallOptions) {
     const {
       prompt,
       maxTokens,
@@ -451,10 +417,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set stop sequences
     if (stopSequences && stopSequences.length > 0) {
-      span.setAttribute(
-        Attr.GenAI.Request.StopSequences,
-        JSON.stringify(stopSequences)
-      );
+      span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(stopSequences));
     }
 
     // Set response format
@@ -463,28 +426,23 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
 
     // Set input format
-    span.setAttribute("gen_ai.request.input_format", inputFormat);
+    span.setAttribute('gen_ai.request.input_format', inputFormat);
 
     // Set mode information
-    span.setAttribute("gen_ai.request.mode_type", mode.type);
-    if (mode.type === "regular" && mode.tools) {
-      span.setAttribute("gen_ai.request.tools_count", mode.tools.length);
+    span.setAttribute('gen_ai.request.mode_type', mode.type);
+    if (mode.type === 'regular' && mode.tools) {
+      span.setAttribute('gen_ai.request.tools_count', mode.tools.length);
       if (mode.toolChoice) {
         span.setAttribute(
-          "gen_ai.request.tool_choice",
-          typeof mode.toolChoice === "string"
-            ? mode.toolChoice
-            : JSON.stringify(mode.toolChoice)
+          'gen_ai.request.tool_choice',
+          typeof mode.toolChoice === 'string' ? mode.toolChoice : JSON.stringify(mode.toolChoice),
         );
       }
     }
 
     // Set provider metadata if present in request
     if (providerMetadata && Object.keys(providerMetadata).length > 0) {
-      span.setAttribute(
-        "gen_ai.request.provider_metadata",
-        JSON.stringify(providerMetadata)
-      );
+      span.setAttribute('gen_ai.request.provider_metadata', JSON.stringify(providerMetadata));
     }
   }
 
@@ -499,7 +457,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       text?: string;
       toolCalls?: LanguageModelV1FunctionToolCall[];
       providerMetadata?: LanguageModelV1ProviderMetadata;
-    }
+    },
   ) {
     const bag = propagation.getActiveBaggage();
 
@@ -513,30 +471,21 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set usage attributes
     if (result.usage) {
-      span.setAttribute(
-        Attr.GenAI.Usage.InputTokens,
-        result.usage.promptTokens
-      );
-      span.setAttribute(
-        Attr.GenAI.Usage.OutputTokens,
-        result.usage.completionTokens
-      );
+      span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.promptTokens);
+      span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completionTokens);
     }
 
     // Check for experimental pricing estimation (after we have usage data)
     const shouldEstimatePricing =
-      bag?.getEntry(
-        "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing"
-      )?.value === "true";
+      bag?.getEntry('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing')
+        ?.value === 'true';
     if (shouldEstimatePricing && result.usage) {
-      _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing(
-        {
-          span,
-          model: modelId,
-          inputTokens: result.usage.promptTokens,
-          outputTokens: result.usage.completionTokens,
-        }
-      );
+      _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
+        span,
+        model: modelId,
+        inputTokens: result.usage.promptTokens,
+        outputTokens: result.usage.completionTokens,
+      });
     }
 
     // Set completion in proper format
@@ -546,19 +495,16 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
         toolCalls: result.toolCalls,
       });
       span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
-      
+
       // Store finish reason separately as per semantic conventions
-      span.setAttribute("gen_ai.response.finish_reasons", JSON.stringify([result.finishReason]));
+      span.setAttribute('gen_ai.response.finish_reasons', JSON.stringify([result.finishReason]));
     }
 
     // Set provider metadata if available
-    if (
-      result.providerMetadata &&
-      Object.keys(result.providerMetadata).length > 0
-    ) {
+    if (result.providerMetadata && Object.keys(result.providerMetadata).length > 0) {
       span.setAttribute(
         Attr.GenAI.Response.ProviderMetadata,
-        JSON.stringify(result.providerMetadata)
+        JSON.stringify(result.providerMetadata),
       );
     }
   }
@@ -572,12 +518,8 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       text?: string;
       toolCalls?: LanguageModelV1FunctionToolCall[];
       providerMetadata?: LanguageModelV1ProviderMetadata;
-    }
+    },
   ) {
-    AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
-      span,
-      this.modelId,
-      result
-    );
+    AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, this.modelId, result);
   }
 }

@@ -11,7 +11,7 @@
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
-    
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -21,5 +21,16 @@
     "types": ["node"]
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", ".git", "coverage", "build", "examples", "internal", "tests", "test", ".github"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".git",
+    "coverage",
+    "build",
+    "examples",
+    "internal",
+    "tests",
+    "test",
+    ".github"
+  ]
 }

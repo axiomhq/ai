@@ -1,12 +1,12 @@
-import { defineConfig } from "vitest/config";
-import { resolve } from "path";
+import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
   test: {
-    environment: "node",
-    include: ["__test__/**/*.test.ts"],
+    environment: 'node',
+    include: ['__test__/**/*.test.ts'],
     globals: true,
-    pool: "forks",
+    pool: 'forks',
     // TODO: ensure that this allows parallel tests
     poolOptions: {
       forks: {
@@ -16,7 +16,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      src: resolve(__dirname, "./src"),
+      src: resolve(__dirname, './src'),
     },
   },
 });
