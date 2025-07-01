@@ -1,2 +1,19 @@
-**/*.yaml
-**/*.md
+# Build outputs
+dist/
+**/dist/**
+
+# Dependencies
+node_modules/
+**/node_modules/**
+
+# Logs
+*.log
+
+# Coverage reports
+coverage/
+**/coverage/**
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
