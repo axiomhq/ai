@@ -1,5 +1,11 @@
 import z from 'zod';
 import type { Prompt } from '../types';
+import type {
+  AxiomPromptMetadata,
+  ParsedMessage,
+  ParsedMessagesArray,
+  ParsedPrompt,
+} from '../types/metadata';
 
 const getParser = async (parser: 'nunjucks' | 'handlebars') => {
   if (parser === 'nunjucks') {
@@ -22,14 +28,17 @@ export const parse = async (
     context?: Record<string, any>;
     parser?: 'nunjucks' | 'handlebars';
   },
-) => {
+): Promise<ParsedPrompt> => {
   const zodSchema = (args: Record<string, z.ZodSchema>) => {
     return z.object(args);
   };
 
-  const context = zodSchema(prompt.arguments).parse(unsafeContext);
+  // TODO: @gabriel using the zod type was destroying the app type checker
+  // Cast the arguments to zod schemas for internal validation
+  const zodArguments = prompt.arguments as Record<string, z.ZodSchema>;
+  const context = zodSchema(zodArguments).parse(unsafeContext);
 
-  const messagesPromises = prompt.messages.map(async (message) => {
+  const messagesPromises = prompt.messages.map(async (message): Promise<ParsedMessage> => {
     const parser = await getParser(parserName);
     return {
       ...message,
@@ -37,7 +46,41 @@ export const parse = async (
     };
   });
 
-  const messages = await Promise.all(messagesPromises);
+  const parsedMessages: ParsedMessage[] = await Promise.all(messagesPromises);
 
-  return { ...prompt, messages: messages };
+  // Create metadata object from prompt
+  const promptMetadata: AxiomPromptMetadata = {
+    id: prompt.id,
+    name: prompt.name,
+    slug: prompt.slug,
+    environment: prompt.environment,
+    version: prompt.version,
+  };
+
+  // Attach metadata to the first message's providerOptions for detection in the wrapper
+  // The Vercel SDK converts providerOptions -> providerMetadata in convertToLanguageModelMessage
+  if (parsedMessages.length > 0) {
+    const firstMessage = parsedMessages[0];
+    firstMessage.providerOptions = {
+      ...firstMessage.providerOptions,
+      _axiomMeta: promptMetadata,
+    };
+  }
+
+  // Also create a Proxy for direct access in tests
+  const messages = new Proxy(parsedMessages, {
+    get(target: ParsedMessage[], prop: string | symbol, receiver: unknown): any {
+      // Special metadata access
+      if (prop === '_axiomMeta') {
+        return promptMetadata;
+      }
+      // All other properties (array methods, indices, etc.)
+      return Reflect.get(target, prop, receiver) as ParsedMessage | undefined;
+    },
+  }) as ParsedMessagesArray;
+
+  return {
+    ...prompt,
+    messages: messages,
+  };
 };

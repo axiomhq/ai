@@ -1,5 +1,8 @@
-import { z } from 'zod';
 export type Environment = 'production' | 'staging' | 'development' | null;
+
+export interface ValidationSchema {
+  parse(input: unknown): any;
+}
 
 export type PromptInput = {
   name: string;
@@ -14,7 +17,8 @@ export type PromptInput = {
   //   };
   // };
   /* map of key-value pairs that are passed to the prompt */
-  arguments: Record<string, z.Schema>;
+  // TODO: @gabriel using the zod type was destroying the app type checker
+  arguments: Record<string, ValidationSchema>;
 };
 
 export type Prompt = PromptInput & {

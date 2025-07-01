@@ -5,3 +5,4 @@ export * from './otel/shared';
 export * from './otel/withSpan';
 export * from './pricing';
 export * from './types';
+export * from './types/metadata';

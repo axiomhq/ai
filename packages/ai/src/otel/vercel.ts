@@ -19,6 +19,7 @@ import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from 'src/p
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 import { createGenAISpanName } from './shared';
 import type { OpenAIMessage, OpenAIAssistantMessage } from './vercelTypes';
+import type { AxiomPromptMetadata } from '../types/metadata';
 
 export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
   span,
@@ -379,6 +380,21 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     // Set prompt attributes (full conversation history)
     const processedPrompt = postProcessPrompt(prompt);
     span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
+
+    // Extract and set Axiom prompt metadata if available
+    // Check if the first message has _axiomMeta in providerMetadata
+    const firstMessage = prompt?.[0];
+    const axiomMeta = firstMessage?.providerMetadata?._axiomMeta as AxiomPromptMetadata | undefined;
+
+    if (axiomMeta) {
+      if (axiomMeta.id) span.setAttribute(Attr.GenAI.PromptMetadata.ID, axiomMeta.id);
+      if (axiomMeta.name) span.setAttribute(Attr.GenAI.PromptMetadata.Name, axiomMeta.name);
+      if (axiomMeta.slug) span.setAttribute(Attr.GenAI.PromptMetadata.Slug, axiomMeta.slug);
+      if (axiomMeta.version)
+        span.setAttribute(Attr.GenAI.PromptMetadata.Version, axiomMeta.version);
+      if (axiomMeta.environment)
+        span.setAttribute(Attr.GenAI.PromptMetadata.Environment, axiomMeta.environment);
+    }
 
     // Set request attributes
     span.setAttributes({

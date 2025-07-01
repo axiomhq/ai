@@ -166,6 +166,14 @@ export const Attr = {
       OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
       Vercel: 'vercel',
     },
+    PromptMetadata: {
+      // TODO: bikeshed - `gen_ai.prompt` is already a semconv attribute so idk if we also want `gen_ai.prompt.foo`
+      ID: 'gen_ai.prompt_metadata.id',
+      Name: 'gen_ai.prompt_metadata.name',
+      Slug: 'gen_ai.prompt_metadata.slug',
+      Version: 'gen_ai.prompt_metadata.version',
+      Environment: 'gen_ai.prompt_metadata.environment',
+    },
     Tool: {},
   },
   Eval: {
