@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '../../src/prompt/index';
 import { z } from 'zod';
 import type { Prompt } from '../../src/types';
+import type { ParsedMessage } from '../../src/types/metadata';
 
 describe('Prompt Metadata', () => {
   const mockPrompt: Prompt = {
@@ -134,6 +135,79 @@ describe('Prompt Metadata', () => {
       expect(parsed[0].role).toBe('system');
       expect(parsed[1].content).toBe('Hello Test!');
       expect(parsed._axiomMeta).toBeUndefined();
+    });
+  });
+
+  describe('providerOptions metadata attachment', () => {
+    it('should attach metadata to the last message providerOptions', async () => {
+      const result = await parse(mockPrompt, {
+        context: { name: 'Test' },
+      });
+
+      // Check that metadata is NOT on the first message
+      expect(result.messages[0].providerOptions?._axiomMeta).toBeUndefined();
+
+      // Check that metadata IS on the last message
+      const lastMessage = result.messages[result.messages.length - 1];
+      expect(lastMessage.providerOptions?._axiomMeta).toEqual({
+        id: 'prompt-123',
+        name: 'Test Prompt',
+        slug: 'test-prompt',
+        environment: 'development',
+        version: '1.0.0',
+      });
+    });
+
+    it('should attach metadata to the last message even with single message', async () => {
+      const singleMessagePrompt: Prompt = {
+        id: 'single-123',
+        name: 'Single Message',
+        slug: 'single-message',
+        environment: 'staging',
+        version: '2.0.0',
+        messages: [{ role: 'user', content: 'Hello' }],
+        arguments: {},
+      };
+
+      const result = await parse(singleMessagePrompt, { context: {} });
+
+      expect(result.messages[0].providerOptions?._axiomMeta).toEqual({
+        id: 'single-123',
+        name: 'Single Message',
+        slug: 'single-message',
+        environment: 'staging',
+        version: '2.0.0',
+      });
+    });
+
+    it('should preserve existing providerOptions when adding metadata', async () => {
+      const promptWithOptions: Prompt = {
+        ...mockPrompt,
+        messages: [
+          { role: 'system', content: 'System message' },
+          { 
+            role: 'user', 
+            content: 'User message', 
+            providerOptions: { customOption: 'value' } 
+          },
+        ] as ParsedMessage[],
+      };
+
+      const result = await parse(promptWithOptions, {
+        context: { name: 'Test' },
+      });
+
+      const lastMessage = result.messages[result.messages.length - 1];
+      expect(lastMessage.providerOptions).toEqual({
+        customOption: 'value',
+        _axiomMeta: {
+          id: 'prompt-123',
+          name: 'Test Prompt',
+          slug: 'test-prompt',
+          environment: 'development',
+          version: '1.0.0',
+        },
+      });
     });
   });
 });
