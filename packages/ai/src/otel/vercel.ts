@@ -382,9 +382,9 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
 
     // Extract and set Axiom prompt metadata if available
-    // Check if the first message has _axiomMeta in providerMetadata
-    const firstMessage = prompt?.[0];
-    const axiomMeta = firstMessage?.providerMetadata?._axiomMeta as AxiomPromptMetadata | undefined;
+    // Check if the last message has _axiomMeta in providerMetadata
+    const lastMessage = prompt?.[prompt.length - 1];
+    const axiomMeta = lastMessage?.providerMetadata?._axiomMeta as AxiomPromptMetadata | undefined;
 
     if (axiomMeta) {
       if (axiomMeta.id) span.setAttribute(Attr.GenAI.PromptMetadata.ID, axiomMeta.id);

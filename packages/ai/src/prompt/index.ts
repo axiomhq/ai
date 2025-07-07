@@ -57,12 +57,12 @@ export const parse = async (
     version: prompt.version,
   };
 
-  // Attach metadata to the first message's providerOptions for detection in the wrapper
+  // Attach metadata to the last message's providerOptions for detection in the wrapper
   // The Vercel SDK converts providerOptions -> providerMetadata in convertToLanguageModelMessage
   if (parsedMessages.length > 0) {
-    const firstMessage = parsedMessages[0];
-    firstMessage.providerOptions = {
-      ...firstMessage.providerOptions,
+    const lastMessage = parsedMessages[parsedMessages.length - 1];
+    lastMessage.providerOptions = {
+      ...lastMessage.providerOptions,
       _axiomMeta: promptMetadata,
     };
   }
