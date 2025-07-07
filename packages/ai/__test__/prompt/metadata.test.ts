@@ -185,10 +185,10 @@ describe('Prompt Metadata', () => {
         ...mockPrompt,
         messages: [
           { role: 'system', content: 'System message' },
-          { 
-            role: 'user', 
-            content: 'User message', 
-            providerOptions: { customOption: 'value' } 
+          {
+            role: 'user',
+            content: 'User message',
+            providerOptions: { customOption: 'value' },
           },
         ] as ParsedMessage[],
       };
