@@ -15,29 +15,9 @@ import { trace, propagation, type Span } from '@opentelemetry/api';
 import { Attr } from './semconv/attributes';
 import { createStartActiveSpan } from './startActiveSpan';
 import { currentUnixTime } from '../util/currentUnixTime';
-import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from 'src/pricing';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 import { createGenAISpanName } from './shared';
 import type { OpenAIMessage, OpenAIAssistantMessage } from './vercelTypes';
-
-export function _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
-  span,
-  model,
-  inputTokens,
-  outputTokens,
-}: {
-  span: Span;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-}) {
-  const cost = _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
-    inputTokens,
-    outputTokens,
-    model,
-  );
-  span.setAttribute(Attr.GenAI.Cost.Estimated, cost.toFixed(6));
-}
 
 function formatCompletion({
   text,
@@ -473,19 +453,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     if (result.usage) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.promptTokens);
       span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completionTokens);
-    }
-
-    // Check for experimental pricing estimation (after we have usage data)
-    const shouldEstimatePricing =
-      bag?.getEntry('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing')
-        ?.value === 'true';
-    if (shouldEstimatePricing && result.usage) {
-      _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_attemptToEnrichSpanWithPricing({
-        span,
-        model: modelId,
-        inputTokens: result.usage.promptTokens,
-        outputTokens: result.usage.completionTokens,
-      });
     }
 
     // Set completion in proper format

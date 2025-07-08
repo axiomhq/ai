@@ -2,7 +2,6 @@ import { trace, propagation, type Span } from '@opentelemetry/api';
 import { Attr } from './semconv/attributes';
 import { createStartActiveSpan } from './startActiveSpan';
 import { currentUnixTime } from '../util/currentUnixTime';
-import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from 'src/pricing';
 import OpenAI from 'openai';
 import type { ChatCompletion } from 'openai/resources/chat/completions';
 import type { ChatCompletionCreateParams } from 'openai/resources/chat/completions';
@@ -175,18 +174,6 @@ class AxiomWrappedOpenAI {
     if (result.usage) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.prompt_tokens);
       span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completion_tokens);
-
-      // Check for experimental pricing estimation
-      const shouldEstimatePricing =
-        bag?.getEntry('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing')
-          ?.value === 'true';
-      if (shouldEstimatePricing) {
-        _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
-          result.usage.prompt_tokens,
-          result.usage.completion_tokens,
-          result.model,
-        );
-      }
     }
 
     // Set response text
@@ -196,8 +183,6 @@ class AxiomWrappedOpenAI {
   }
 
   private setPostCallAttributesForResponses(span: Span, result: any, startTime: number) {
-    const bag = propagation.getActiveBaggage();
-
     // Set total request duration
     const endTime = currentUnixTime();
     span.setAttribute('gen_ai.request.duration_ms', endTime - startTime);
@@ -214,18 +199,6 @@ class AxiomWrappedOpenAI {
     if (result.usage) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.input_tokens || 0);
       span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.output_tokens || 0);
-
-      // Check for experimental pricing estimation
-      const shouldEstimatePricing =
-        bag?.getEntry('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing')
-          ?.value === 'true';
-      if (shouldEstimatePricing) {
-        _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing.calculateCost(
-          result.usage.input_tokens || 0,
-          result.usage.output_tokens || 0,
-          result.model,
-        );
-      }
     }
 
     // Set response text for responses API
