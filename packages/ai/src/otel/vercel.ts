@@ -429,7 +429,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   // this is static because we would need to hold a reference to the instance in `executeStream` otherwise
   private static setPostCallAttributesStatic(
     span: Span,
-    modelId: string,
     result: {
       response?: { id?: string; modelId?: string };
       finishReason?: LanguageModelV1FinishReason;
@@ -439,8 +438,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       providerMetadata?: LanguageModelV1ProviderMetadata;
     },
   ) {
-    const bag = propagation.getActiveBaggage();
-
     // Set response attributes
     if (result.response?.id) {
       span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
