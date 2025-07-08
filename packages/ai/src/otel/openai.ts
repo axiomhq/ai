@@ -150,8 +150,6 @@ class AxiomWrappedOpenAI {
   }
 
   private setPostCallAttributes(span: Span, result: ChatCompletion, startTime: number) {
-    const bag = propagation.getActiveBaggage();
-
     // Set total request duration
     const endTime = currentUnixTime();
     span.setAttribute('gen_ai.request.duration_ms', endTime - startTime);
