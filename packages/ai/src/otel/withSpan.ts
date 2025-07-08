@@ -7,7 +7,6 @@ import {
   type Tracer,
 } from '@opentelemetry/api';
 import { createStartActiveSpan } from './startActiveSpan';
-import { _SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_Pricing } from 'src/pricing';
 import { AxiomAIResources } from './shared';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 
@@ -27,7 +26,6 @@ export function withSpan<Return>(
   fn: (span: Span) => Promise<Return>,
   opts?: {
     tracer?: Tracer;
-    __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing?: boolean;
   },
 ): Promise<Return> {
   const tracer =
@@ -40,11 +38,6 @@ export function withSpan<Return>(
       task: { value: meta.task },
       // TODO: maybe we can just check the active span name instead?
       [WITHSPAN_BAGGAGE_KEY]: { value: 'true' }, // Mark that we're inside withSpan
-      ...(opts?.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing && {
-        __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED_unstable_estimatePricing: {
-          value: 'true',
-        },
-      }),
     });
 
     const ctx = propagation.setBaggage(context.active(), bag);
