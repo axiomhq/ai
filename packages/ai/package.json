@@ -1,6 +1,6 @@
 {
   "name": "@axiomhq/ai",
-  "version": "0.15.1",
+  "version": "0.0.1",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -13,7 +13,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --run",
     "test:watch": "vitest --watch"
   },
   "types": "./dist/index.d.ts",

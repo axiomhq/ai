@@ -16,7 +16,7 @@ import { Attr } from './semconv/attributes';
 import { createStartActiveSpan } from './startActiveSpan';
 import { currentUnixTime } from '../util/currentUnixTime';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
-import { createGenAISpanName } from './shared';
+import { createGenAISpanName, AxiomAIResources } from './shared';
 import type { OpenAIMessage, OpenAIAssistantMessage } from './vercelTypes';
 
 function formatCompletion({
@@ -165,6 +165,15 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   }
 
   private async withSpanHandling<T>(operation: (span: Span) => Promise<T>): Promise<T> {
+    const { tracer, mode } = AxiomAIResources.getInstance().getTracerWithModeDetection();
+    
+    // For local spans, skip baggage checking since it doesn't work with local context
+    if (mode === 'local') {
+      const startActiveSpan = createStartActiveSpan(tracer);
+      const name = this.spanName();
+      return startActiveSpan(name, null, operation);
+    }
+
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
@@ -178,7 +187,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       return operation(activeSpan);
     } else {
       // Create new span only if not within withSpan
-      const tracer = trace.getTracer('@axiomhq/ai');
       const startActiveSpan = createStartActiveSpan(tracer);
       const name = this.spanName();
 

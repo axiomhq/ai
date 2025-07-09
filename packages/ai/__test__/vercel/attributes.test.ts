@@ -5,6 +5,7 @@ import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { generateText } from 'ai';
 import { createMockProvider, mockResponses } from './mock-provider/mock-provider';
+import { initAxiomAI } from '../../src/otel/shared';
 import { SpanKind } from '@opentelemetry/api';
 
 let memoryExporter: InMemorySpanExporter;
@@ -17,6 +18,7 @@ beforeAll(() => {
     spanProcessors: [spanProcessor],
   });
   tracerProvider.register();
+  initAxiomAI();
 });
 
 beforeEach(() => {

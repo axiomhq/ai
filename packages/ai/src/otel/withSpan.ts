@@ -1,6 +1,5 @@
 import {
   context,
-  trace,
   propagation,
   type Span,
   type Baggage,
@@ -29,7 +28,7 @@ export function withSpan<Return>(
   },
 ): Promise<Return> {
   const tracer =
-    opts?.tracer ?? AxiomAIResources.getInstance().getTracer() ?? trace.getTracer('@axiomhq/ai');
+    opts?.tracer ?? AxiomAIResources.getInstance().getTracerWithModeDetection().tracer;
 
   const startActiveSpan = createStartActiveSpan(tracer);
   return startActiveSpan('gen_ai.call_llm', null, async (span) => {

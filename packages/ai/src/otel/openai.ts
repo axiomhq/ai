@@ -5,7 +5,7 @@ import { currentUnixTime } from '../util/currentUnixTime';
 import OpenAI from 'openai';
 import type { ChatCompletion } from 'openai/resources/chat/completions';
 import type { ChatCompletionCreateParams } from 'openai/resources/chat/completions';
-import { createGenAISpanName, type GenAIOperation } from './shared';
+import { createGenAISpanName, type GenAIOperation, AxiomAIResources } from './shared';
 
 // 🚨 temporarily commented out some stuff here that involves attributes we're no longer using in the vercel implementation
 
@@ -42,6 +42,14 @@ class AxiomWrappedOpenAI {
     operation: (span: Span) => Promise<T>,
     spanName: string,
   ): Promise<T> {
+    const { tracer, mode } = AxiomAIResources.getInstance().getTracerWithModeDetection();
+    
+    // For local spans, skip baggage checking since it doesn't work with local context
+    if (mode === 'local') {
+      const startActiveSpan = createStartActiveSpan(tracer);
+      return startActiveSpan(spanName, null, operation);
+    }
+
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
@@ -54,7 +62,6 @@ class AxiomWrappedOpenAI {
       activeSpan.updateName(spanName);
       return operation(activeSpan);
     } else {
-      const tracer = trace.getTracer('@axiomhq/ai');
       const startActiveSpan = createStartActiveSpan(tracer);
       return startActiveSpan(spanName, null, operation);
     }
