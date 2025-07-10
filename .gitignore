@@ -1,0 +1,7 @@
+node_modules/
+.turbo
+**/*/tsconfig.tsbuildinfo
+**/*/dist
+.env
+.DS_Store
+axiomhq-ai-*.tgz
