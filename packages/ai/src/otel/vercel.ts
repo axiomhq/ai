@@ -25,24 +25,26 @@ function formatCompletion({
 }: {
   text: string | undefined;
   toolCalls: LanguageModelV1FunctionToolCall[] | undefined;
-}): OpenAIAssistantMessage {
-  return {
-    role: 'assistant',
-    content:
-      text ??
-      (toolCalls && toolCalls.length > 0
-        ? null // Content is null when we have no text but do have tool calls
-        : ''),
-    tool_calls: toolCalls?.map((toolCall, index) => ({
-      id: toolCall.toolCallId,
-      type: 'function' as const,
-      function: {
-        name: toolCall.toolName,
-        arguments: toolCall.args,
-      },
-      index,
-    })),
-  };
+}): OpenAIAssistantMessage[] {
+  return [
+    {
+      role: 'assistant',
+      content:
+        text ??
+        (toolCalls && toolCalls.length > 0
+          ? null // Content is null when we have no text but do have tool calls
+          : ''),
+      tool_calls: toolCalls?.map((toolCall, index) => ({
+        id: toolCall.toolCallId,
+        type: 'function' as const,
+        function: {
+          name: toolCall.toolName,
+          arguments: toolCall.args,
+        },
+        index,
+      })),
+    },
+  ];
 }
 
 function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
