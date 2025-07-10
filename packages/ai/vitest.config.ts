@@ -13,6 +13,9 @@ export default defineConfig({
         isolate: true,
       },
     },
+    coverage: {
+      enabled: true
+    }
   },
   resolve: {
     alias: {
