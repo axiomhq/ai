@@ -1,3 +1,3 @@
-import { trace } from "@opentelemetry/api";
+import { trace } from '@opentelemetry/api';
 
-export const tracer = trace.getTracer("my-tracer");
+export const tracer = trace.getTracer('my-tracer');
