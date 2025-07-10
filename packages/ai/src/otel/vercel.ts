@@ -353,9 +353,9 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       seed,
       stopSequences,
       responseFormat,
-      inputFormat,
+      // inputFormat,
       mode,
-      providerMetadata,
+      // providerMetadata,
     } = options;
 
     // Set prompt attributes (full conversation history)
@@ -366,7 +366,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     span.setAttributes({
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
-      [Attr.GenAI.Provider]: this.provider,
+      // [Attr.GenAI.Provider]: this.provider,
       // TODO: there is currently no good way to get the system from the vercel sdk.
       // we would need a lookup table or regex stuff or similar. fragile either way.
       // @see: docs for `ATTR_GEN_AI_SYSTEM`)
@@ -406,11 +406,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Output.Type, responseFormat.type);
     }
 
-    // Set input format
-    span.setAttribute('gen_ai.request.input_format', inputFormat);
-
     // Set mode information
-    span.setAttribute('gen_ai.request.mode_type', mode.type);
     if (mode.type === 'regular' && mode.tools) {
       span.setAttribute('gen_ai.request.tools_count', mode.tools.length);
       if (mode.toolChoice) {
@@ -419,11 +415,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           typeof mode.toolChoice === 'string' ? mode.toolChoice : JSON.stringify(mode.toolChoice),
         );
       }
-    }
-
-    // Set provider metadata if present in request
-    if (providerMetadata && Object.keys(providerMetadata).length > 0) {
-      span.setAttribute('gen_ai.request.provider_metadata', JSON.stringify(providerMetadata));
     }
   }
 
@@ -437,6 +428,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       usage?: { promptTokens: number; completionTokens: number };
       text?: string;
       toolCalls?: LanguageModelV1FunctionToolCall[];
+      // TODO: not currently used
       providerMetadata?: LanguageModelV1ProviderMetadata;
     },
   ) {
@@ -464,14 +456,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
       // Store finish reason separately as per semantic conventions
       span.setAttribute('gen_ai.response.finish_reasons', JSON.stringify([result.finishReason]));
-    }
-
-    // Set provider metadata if available
-    if (result.providerMetadata && Object.keys(result.providerMetadata).length > 0) {
-      span.setAttribute(
-        Attr.GenAI.Response.ProviderMetadata,
-        JSON.stringify(result.providerMetadata),
-      );
     }
   }
 
