@@ -13,7 +13,7 @@ export default async function Page() {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful ai that answers questions.',
+          content: 'You are a helpful aI that answers questions.',
         },
         {
           role: 'user',
