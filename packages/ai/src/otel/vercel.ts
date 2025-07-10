@@ -330,11 +330,11 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set workflow and task attributes from baggage
     if (bag) {
-      if (bag.getEntry('workflow')?.value) {
-        span.setAttribute(Attr.GenAI.Operation.WorkflowName, bag.getEntry('workflow')!.value);
+      if (bag.getEntry('agentName')?.value) {
+        span.setAttribute(Attr.GenAI.Agent.Name, bag.getEntry('agentName')!.value);
       }
-      if (bag.getEntry('task')?.value) {
-        span.setAttribute(Attr.GenAI.Operation.TaskName, bag.getEntry('task')!.value);
+      if (bag.getEntry('operationName')?.value) {
+        span.setAttribute(Attr.GenAI.Operation.Name, bag.getEntry('operationName')!.value);
       }
     }
   }
@@ -362,7 +362,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set request attributes
     span.setAttributes({
-      [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
       [Attr.GenAI.Provider]: this.provider,
