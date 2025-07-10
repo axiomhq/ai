@@ -4,7 +4,7 @@ import { resolve } from 'path';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['__test__/**/*.test.ts'],
+    include: ['test/**/*.test.ts'],
     globals: true,
     pool: 'forks',
     // TODO: ensure that this allows parallel tests
