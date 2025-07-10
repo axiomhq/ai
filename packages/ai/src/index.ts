@@ -3,4 +3,5 @@ export * from './otel/openai';
 export * from './otel/vercel';
 export * from './otel/shared';
 export * from './otel/withSpan';
+export * from './otel/localExport';
 export * from './types';

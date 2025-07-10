@@ -11,8 +11,21 @@ import {
   type Tracer,
   type Context,
 } from '@opentelemetry/api';
+// Browser-compatible random bytes generation
+function randomBytes(length: number): Buffer {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    // Browser environment
+    const array = new Uint8Array(length);
+    window.crypto.getRandomValues(array);
+    return Buffer.from(array);
+  } else {
+    // Node.js environment
+    const crypto = require('crypto');
+    return crypto.randomBytes(length);
+  }
+}
 
-interface LocalSpanData {
+export interface LocalSpanData {
   name: string;
   startTime: number;
   endTime?: number;
@@ -36,17 +49,35 @@ interface LocalSpanData {
   }>;
 }
 
-type FlushHandler = (spans: LocalSpanData[]) => void;
+type FlushHandler = (spans: LocalSpanData[]) => void | Promise<void>;
+
+/**
+ * Configuration options for LocalSpanBuffer
+ */
+interface LocalSpanBufferConfig {
+  /** Maximum number of spans to buffer before auto-flush (default: 1000) */
+  maxSpans?: number;
+  /** Time in milliseconds to wait before auto-flush (default: 1000) */
+  flushInterval?: number;
+}
 
 class LocalSpanBuffer {
   private spans: LocalSpanData[] = [];
   private flushTimer?: NodeJS.Timeout;
-  private readonly maxSpans = 1000;
-  private readonly flushInterval = 1000; // 1 second
+  private readonly maxSpans: number;
+  private readonly flushInterval: number;
   private flushHandlers: FlushHandler[] = [];
   private debugEnabled = process.env.AXIOM_AI_DEBUG === 'true';
+  private static shutdownHandlersRegistered = false;
 
-  constructor() {
+  /**
+   * Create a new LocalSpanBuffer with configurable options
+   * @param config Configuration options (maxSpans, flushInterval)
+   */
+  constructor(config: LocalSpanBufferConfig = {}) {
+    this.maxSpans = config.maxSpans ?? 1000;
+    this.flushInterval = config.flushInterval ?? 1000;
+
     this.setupShutdownHandler();
     this.setupDefaultFlushHandler();
   }
@@ -61,7 +92,7 @@ class LocalSpanBuffer {
     const batchInfo = {
       timestamp: new Date().toISOString(),
       spanCount: spans.length,
-      spans: spans.map(span => ({
+      spans: spans.map((span) => ({
         traceId: span.traceId,
         spanId: span.spanId,
         parentSpanId: span.parentSpanId,
@@ -72,12 +103,12 @@ class LocalSpanBuffer {
         duration: span.endTime ? span.endTime - span.startTime : undefined,
         status: span.status,
         attributes: span.attributes,
-        events: span.events.map(event => ({
+        events: span.events.map((event) => ({
           name: event.name,
           time: new Date(event.time).toISOString(),
           attributes: event.attributes,
         })),
-        exceptions: span.exceptions.map(exc => ({
+        exceptions: span.exceptions.map((exc) => ({
           name: exc.name,
           message: exc.message,
           stack: exc.stack,
@@ -124,31 +155,43 @@ class LocalSpanBuffer {
       if (this.debugEnabled) {
         console.log(`[AxiomAI LocalSpans] Triggering flush due to max spans (${this.maxSpans})`);
       }
-      this.flush();
+      this.flush().catch((error) => {
+        console.error('[AxiomAI LocalSpans] Error during scheduled flush:', error);
+      });
     } else if (!this.flushTimer) {
       this.flushTimer = setTimeout(() => {
         if (this.debugEnabled) {
-          console.log(`[AxiomAI LocalSpans] Triggering flush due to timeout (${this.flushInterval}ms)`);
+          console.log(
+            `[AxiomAI LocalSpans] Triggering flush due to timeout (${this.flushInterval}ms)`,
+          );
         }
-        this.flush();
+        this.flush().catch((error) => {
+          console.error('[AxiomAI LocalSpans] Error during scheduled flush:', error);
+        });
       }, this.flushInterval);
+      this.flushTimer.unref();
     }
   }
 
-  private flush(): void {
+  private async flush(): Promise<void> {
     if (this.spans.length === 0) return;
 
     const spansToFlush = this.spans.splice(0);
     this.clearFlushTimer();
 
-    // Call all registered flush handlers
-    this.flushHandlers.forEach(handler => {
+    // Call all registered flush handlers and wait for them to complete
+    const promises = this.flushHandlers.map(async (handler) => {
       try {
-        handler(spansToFlush);
+        const result = handler(spansToFlush);
+        if (result instanceof Promise) {
+          await result;
+        }
       } catch (error) {
         console.error('[AxiomAI LocalSpans] Error in flush handler:', error);
       }
     });
+
+    await Promise.all(promises);
   }
 
   private clearFlushTimer(): void {
@@ -159,6 +202,10 @@ class LocalSpanBuffer {
   }
 
   private setupShutdownHandler(): void {
+    if (LocalSpanBuffer.shutdownHandlersRegistered) {
+      return;
+    }
+
     const handleShutdown = () => {
       if (this.debugEnabled) {
         console.log('[AxiomAI LocalSpans] Graceful shutdown - flushing remaining spans');
@@ -172,20 +219,33 @@ class LocalSpanBuffer {
     process.on('SIGTERM', handleShutdown);
     process.on('uncaughtException', handleShutdown);
     process.on('unhandledRejection', handleShutdown);
+
+    LocalSpanBuffer.shutdownHandlersRegistered = true;
   }
 
-  // Force flush for testing or manual triggers
-  forceFlush(): void {
-    this.flush();
+  /**
+   * Force flush for testing or manual triggers
+   */
+  async forceFlush(): Promise<void> {
+    return this.flush();
   }
 
-  // Get current buffer stats for debugging
+  /**
+   * Get current buffer stats for debugging
+   */
   getStats(): { spanCount: number; maxSpans: number; flushInterval: number } {
     return {
       spanCount: this.spans.length,
       maxSpans: this.maxSpans,
       flushInterval: this.flushInterval,
     };
+  }
+
+  /**
+   * Static method to reset shutdown handlers flag for testing
+   */
+  static resetShutdownHandlers(): void {
+    LocalSpanBuffer.shutdownHandlersRegistered = false;
   }
 }
 
@@ -196,12 +256,7 @@ export class LocalSpan implements Span {
   private data: LocalSpanData;
   private ended = false;
 
-  constructor(
-    name: string,
-    kind: SpanKind,
-    parentSpanId?: string,
-    links?: Link[],
-  ) {
+  constructor(name: string, kind: SpanKind, parentSpanId?: string, links?: Link[]) {
     this.data = {
       name,
       startTime: Date.now(),
@@ -217,11 +272,13 @@ export class LocalSpan implements Span {
   }
 
   private generateSpanId(): string {
-    return Math.random().toString(36).substring(2, 15);
+    // OTel Span IDs are 16 hex characters
+    return randomBytes(8).toString('hex').toLowerCase();
   }
 
   private generateTraceId(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    // OTel Trace IDs are 32 hex characters
+    return randomBytes(16).toString('hex').toLowerCase();
   }
 
   spanContext(): SpanContext {
@@ -290,8 +347,7 @@ export class LocalSpan implements Span {
 
     this.ended = true;
     this.data.endTime = typeof endTime === 'number' ? endTime : Date.now();
-    
-    // Add to buffer for flushing
+
     spanBuffer.addSpan(this.data);
   }
 
@@ -335,15 +391,8 @@ export class LocalTracer implements Tracer {
     return new LocalSpan(name, kind, undefined, links);
   }
 
-  startActiveSpan<F extends (span: Span) => any>(
-    name: string,
-    fn: F,
-  ): ReturnType<F>;
-  startActiveSpan<F extends (span: Span) => any>(
-    name: string,
-    options: any,
-    fn: F,
-  ): ReturnType<F>;
+  startActiveSpan<F extends (span: Span) => any>(name: string, fn: F): ReturnType<F>;
+  startActiveSpan<F extends (span: Span) => any>(name: string, options: any, fn: F): ReturnType<F>;
   startActiveSpan<F extends (span: Span) => any>(
     name: string,
     options: any,
@@ -374,10 +423,10 @@ export class LocalTracer implements Tracer {
     }
 
     const span = this.startSpan(name, options);
-    
+
     try {
       const result = fn(span);
-      
+
       // Handle both sync and async functions
       if (result && typeof result.then === 'function') {
         return result.then(
@@ -390,7 +439,7 @@ export class LocalTracer implements Tracer {
             span.setStatus({ code: 2 /* ERROR */ });
             span.end();
             throw error;
-          }
+          },
         ) as ReturnType<F>;
       } else {
         span.end();
@@ -405,8 +454,7 @@ export class LocalTracer implements Tracer {
   }
 }
 
-// Export buffer for testing and configuration
 export const getSpanBuffer = () => spanBuffer;
 
-// Export flush handler type for extensibility
-export type { FlushHandler };
+export { LocalSpanBuffer };
+export type { FlushHandler, LocalSpanBufferConfig };

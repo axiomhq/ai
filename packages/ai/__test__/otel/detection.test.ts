@@ -22,17 +22,26 @@ describe('OTel Detection', () => {
   });
 
   describe('isOtelProviderActive', () => {
-    it('should return false for NoopTracerProvider', () => {
+    it('should return false for NoopTracerProvider (method-based detection)', () => {
+      const mockNonRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(false),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NoopTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'NoopTracer' },
+          startSpan: vi.fn().mockReturnValue(mockNonRecordingSpan),
+          startActiveSpan: vi.fn(),
         }),
       };
 
       getTracerProviderSpy.mockReturnValue(mockProvider);
 
       expect(isOtelProviderActive()).toBe(false);
+      expect(mockNonRecordingSpan.isRecording).toHaveBeenCalled();
+      expect(mockNonRecordingSpan.end).toHaveBeenCalled();
     });
 
     it('should return false for ProxyTracerProvider', () => {
@@ -40,6 +49,8 @@ describe('OTel Detection', () => {
         constructor: { name: 'ProxyTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'NoopTracer' },
+          startSpan: vi.fn(),
+          startActiveSpan: vi.fn(),
         }),
       };
 
@@ -48,17 +59,66 @@ describe('OTel Detection', () => {
       expect(isOtelProviderActive()).toBe(false);
     });
 
-    it('should return true for active provider', () => {
+    it('should return true for active provider with recording spans', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         }),
       };
 
       getTracerProviderSpy.mockReturnValue(mockProvider);
 
       expect(isOtelProviderActive()).toBe(true);
+      expect(mockRecordingSpan.isRecording).toHaveBeenCalled();
+      expect(mockRecordingSpan.end).toHaveBeenCalled();
+    });
+
+    it('should return false when provider lacks getTracer method', () => {
+      const mockProvider = {
+        constructor: { name: 'InvalidProvider' },
+        // Missing getTracer method
+      };
+
+      getTracerProviderSpy.mockReturnValue(mockProvider);
+
+      expect(isOtelProviderActive()).toBe(false);
+    });
+
+    it('should return false when tracer lacks required methods', () => {
+      const mockProvider = {
+        constructor: { name: 'SomeProvider' },
+        getTracer: vi.fn().mockReturnValue({
+          constructor: { name: 'InvalidTracer' },
+          // Missing startSpan and startActiveSpan methods
+        }),
+      };
+
+      getTracerProviderSpy.mockReturnValue(mockProvider);
+
+      expect(isOtelProviderActive()).toBe(false);
+    });
+
+    it('should return false when span creation fails', () => {
+      const mockProvider = {
+        constructor: { name: 'SomeProvider' },
+        getTracer: vi.fn().mockReturnValue({
+          constructor: { name: 'SomeTracer' },
+          startSpan: vi.fn().mockReturnValue(null),
+          startActiveSpan: vi.fn(),
+        }),
+      };
+
+      getTracerProviderSpy.mockReturnValue(mockProvider);
+
+      expect(isOtelProviderActive()).toBe(false);
     });
 
     it('should return false on error', () => {
@@ -67,6 +127,50 @@ describe('OTel Detection', () => {
       });
 
       expect(isOtelProviderActive()).toBe(false);
+    });
+
+    it('should work with minified constructor names', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
+      const mockProvider = {
+        constructor: { name: 'a' }, // Minified name
+        getTracer: vi.fn().mockReturnValue({
+          constructor: { name: 'b' }, // Minified name
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
+        }),
+      };
+
+      getTracerProviderSpy.mockReturnValue(mockProvider);
+
+      expect(isOtelProviderActive()).toBe(true);
+      expect(mockRecordingSpan.isRecording).toHaveBeenCalled();
+      expect(mockRecordingSpan.end).toHaveBeenCalled();
+    });
+
+    it('should work with completely absent constructor names', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
+      const mockProvider = {
+        constructor: {}, // No name property
+        getTracer: vi.fn().mockReturnValue({
+          constructor: {}, // No name property
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
+        }),
+      };
+
+      getTracerProviderSpy.mockReturnValue(mockProvider);
+
+      expect(isOtelProviderActive()).toBe(true);
+      expect(mockRecordingSpan.isRecording).toHaveBeenCalled();
+      expect(mockRecordingSpan.end).toHaveBeenCalled();
     });
   });
 
@@ -108,10 +212,17 @@ describe('OTel Detection', () => {
 
   describe('hasActiveOtelInstrumentation', () => {
     it('should return true if provider is active', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         }),
       };
 
@@ -122,10 +233,17 @@ describe('OTel Detection', () => {
     });
 
     it('should return true if active span exists', () => {
+      const mockNonRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(false),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NoopTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'NoopTracer' },
+          startSpan: vi.fn().mockReturnValue(mockNonRecordingSpan),
+          startActiveSpan: vi.fn(),
         }),
       };
 
@@ -140,10 +258,17 @@ describe('OTel Detection', () => {
     });
 
     it('should return false if neither provider nor span is active', () => {
+      const mockNonRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(false),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NoopTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'NoopTracer' },
+          startSpan: vi.fn().mockReturnValue(mockNonRecordingSpan),
+          startActiveSpan: vi.fn(),
         }),
       };
 
@@ -156,10 +281,17 @@ describe('OTel Detection', () => {
 
   describe('getOtelDebugInfo', () => {
     it('should return debug information', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
           constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         }),
       };
 

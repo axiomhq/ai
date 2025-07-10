@@ -111,10 +111,17 @@ describe('Three-Mode Detection System', () => {
 
   describe('Mode 3a: initAxiomAI not called + OTel active', () => {
     it('should throw error when active provider exists', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
-          constructor: { name: 'Tracer' }
+          constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         })
       };
       getTracerProviderSpy.mockReturnValue(mockProvider);
@@ -126,10 +133,17 @@ describe('Three-Mode Detection System', () => {
     });
 
     it('should throw error when active span exists', () => {
+      const mockNonRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(false),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NoopTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
-          constructor: { name: 'NoopTracer' }
+          constructor: { name: 'NoopTracer' },
+          startSpan: vi.fn().mockReturnValue(mockNonRecordingSpan),
+          startActiveSpan: vi.fn(),
         })
       };
       const mockSpan = {
@@ -145,10 +159,17 @@ describe('Three-Mode Detection System', () => {
     });
 
     it('should provide helpful error message', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
-          constructor: { name: 'Tracer' }
+          constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         })
       };
       getTracerProviderSpy.mockReturnValue(mockProvider);
@@ -159,10 +180,17 @@ describe('Three-Mode Detection System', () => {
     });
 
     it('should include documentation links in error', () => {
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
-          constructor: { name: 'Tracer' }
+          constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         })
       };
       getTracerProviderSpy.mockReturnValue(mockProvider);
@@ -181,10 +209,17 @@ describe('Three-Mode Detection System', () => {
       ];
       
       providerTypes.forEach(providerType => {
+        const mockRecordingSpan = {
+          isRecording: vi.fn().mockReturnValue(true),
+          end: vi.fn(),
+        };
+
         const mockProvider = {
           constructor: { name: providerType },
           getTracer: vi.fn().mockReturnValue({
-            constructor: { name: 'Tracer' }
+            constructor: { name: 'Tracer' },
+            startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+            startActiveSpan: vi.fn(),
           })
         };
         getTracerProviderSpy.mockReturnValue(mockProvider);
@@ -280,10 +315,17 @@ describe('Three-Mode Detection System', () => {
 
     it('should handle reinitialization after error', () => {
       // First, trigger mode 3a error
+      const mockRecordingSpan = {
+        isRecording: vi.fn().mockReturnValue(true),
+        end: vi.fn(),
+      };
+
       const mockProvider = {
         constructor: { name: 'NodeTracerProvider' },
         getTracer: vi.fn().mockReturnValue({
-          constructor: { name: 'Tracer' }
+          constructor: { name: 'Tracer' },
+          startSpan: vi.fn().mockReturnValue(mockRecordingSpan),
+          startActiveSpan: vi.fn(),
         })
       };
       getTracerProviderSpy.mockReturnValue(mockProvider);

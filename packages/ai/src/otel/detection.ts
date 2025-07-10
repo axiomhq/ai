@@ -1,11 +1,50 @@
 import { trace, ProxyTracerProvider } from '@opentelemetry/api';
 
-// OpenTelemetry class names
-const NOOP_TRACER_PROVIDER_NAME = 'NoopTracerProvider';
-const NOOP_TRACER_NAME = 'NoopTracer';
+/**
+ * Gets a safe type name for an object, handling minified constructors
+ * @param obj The object to get the type name for
+ * @returns A string representing the type, or 'unknown' if cannot be determined
+ */
+function getSafeTypeName(obj: any): string {
+  if (!obj) return 'unknown';
+  
+  // Try constructor.name first (may be minified)
+  if (obj.constructor?.name && obj.constructor.name !== 'Object') {
+    return obj.constructor.name;
+  }
+  
+  // Fallback to checking for specific OTel patterns
+  if (obj instanceof ProxyTracerProvider) {
+    return 'ProxyTracerProvider';
+  }
+  
+  // Check for common OTel methods to infer type
+  if (typeof obj.getTracer === 'function') {
+    // Try to detect if it's a noop by checking if tracer creates recording spans
+    try {
+      const tracer = obj.getTracer('type-detection');
+      if (typeof tracer.startSpan === 'function') {
+        const span = tracer.startSpan('test');
+        const isRecording = span?.isRecording() || false;
+        span?.end();
+        return isRecording ? 'ActiveTracerProvider' : 'NoopTracerProvider';
+      }
+    } catch {
+      // Error during detection, keep trying other methods
+    }
+    return 'TracerProvider';
+  }
+  
+  if (typeof obj.startSpan === 'function') {
+    return 'Tracer';
+  }
+  
+  return 'unknown';
+}
 
 /**
  * Checks if there's an active OpenTelemetry tracer provider that is not a NoopTracerProvider
+ * Uses method-based detection instead of constructor.name to be more robust against minification
  * @returns true if an active OTel provider is detected
  */
 export function isOtelProviderActive(): boolean {
@@ -17,16 +56,32 @@ export function isOtelProviderActive(): boolean {
       return false;
     }
 
-    // Check for NoopTracerProvider by constructor name
-    if (provider.constructor.name === NOOP_TRACER_PROVIDER_NAME) {
+    // Check if provider has expected methods
+    if (typeof provider.getTracer !== 'function') {
       return false;
     }
 
-    // Additional check: try to get a tracer and see if it's a noop tracer
+    // Get a tracer and check if it has expected methods
     const tracer = provider.getTracer('test');
-    const tracerConstructorName = tracer.constructor.name;
+    if (typeof tracer.startSpan !== 'function' || typeof tracer.startActiveSpan !== 'function') {
+      return false;
+    }
 
-    return tracerConstructorName !== NOOP_TRACER_NAME;
+    // Test if the tracer is functional by attempting to create a span
+    // NoopTracer will return a NonRecordingSpan which has limited functionality
+    const span = tracer.startSpan('test-span');
+    if (!span) {
+      return false;
+    }
+
+    // Check if the span has recording capabilities
+    // NonRecordingSpan (from NoopTracer) returns false for isRecording()
+    const isRecording = span.isRecording();
+    
+    // Clean up the test span
+    span.end();
+
+    return isRecording;
   } catch (error) {
     return false;
   }
@@ -46,7 +101,7 @@ export function hasActiveSpan(): boolean {
 }
 
 /**
- * Comprehensive check for active OpenTelemetry instrumentation
+ * Check for active OpenTelemetry instrumentation
  * This checks both for an active provider and potential active spans
  * @returns true if active OTel instrumentation is detected
  */
@@ -76,10 +131,10 @@ export function getOtelDebugInfo(): {
 
   try {
     const provider = trace.getTracerProvider();
-    providerType = provider.constructor.name;
+    providerType = getSafeTypeName(provider);
 
     const tracer = provider.getTracer('debug');
-    tracerType = tracer.constructor.name;
+    tracerType = getSafeTypeName(tracer);
 
     if (hasActiveSpanValue) {
       const activeSpan = trace.getActiveSpan();
