@@ -214,9 +214,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
       const ret = await this.model.doStream(options);
 
-      // `this` is not available in the transform callback, so we need to capture the model ID here
-      const modelId = this.modelId;
-
       // Track streaming metrics
       let timeToFirstToken: number | undefined = undefined;
       let usage:
@@ -310,7 +307,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
                 providerMetadata: responseProviderMetadata,
               };
 
-              AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, modelId, streamResult);
+              AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, streamResult);
 
               controller.terminate();
             },
@@ -484,6 +481,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       providerMetadata?: LanguageModelV1ProviderMetadata;
     },
   ) {
-    AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, this.modelId, result);
+    AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, result);
   }
 }
