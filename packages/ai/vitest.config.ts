@@ -14,8 +14,8 @@ export default defineConfig({
       },
     },
     coverage: {
-      enabled: true
-    }
+      enabled: true,
+    },
   },
   resolve: {
     alias: {
