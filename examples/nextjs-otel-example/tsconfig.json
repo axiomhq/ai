@@ -25,6 +25,13 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts", "src/instrumentation.ts", "src/instrumentation.node.ts"],
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/instrumentation.ts",
+    "src/instrumentation.node.ts"
+  ],
   "exclude": ["node_modules"]
 }
