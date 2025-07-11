@@ -72,23 +72,6 @@ import {
  * @see: https://github.com/open-telemetry/opentelemetry-js/tree/c89cb38d0fec39d54cf3fcb35c429a8129e9c909/semantic-conventions#unstable-semconv
  */
 export const Attr = {
-  /**
-   * Shared between all features
-   */
-  Dataset: {
-    Name: 'dataset.name',
-    Description: 'dataset.description',
-  },
-  Dashboard: {
-    Name: 'dashboard.name',
-    Description: 'dashboard.description',
-  },
-  Query: {
-    APL: 'query.apl',
-  },
-  OrgId: 'org_id',
-  UserId: 'user_id',
-  HasAccessToken: 'has_access_token',
   GenAI: {
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
@@ -99,9 +82,6 @@ export const Attr = {
         ExecuteTool: GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
         Chat: GEN_AI_OPERATION_NAME_VALUE_CHAT,
       },
-      // TODO: bikeshed `WorkflowName` and `TaskName`
-      WorkflowName: 'gen_ai.operation.workflow_name',
-      TaskName: 'gen_ai.operation.task_name',
     },
     Capability: {
       Name: 'gen_ai.capability.name',
@@ -128,10 +108,6 @@ export const Attr = {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
       OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
     },
-    Cost: {
-      // TODO: bikeshed this
-      Estimated: 'gen_ai.cost.estimated',
-    },
     Request: {
       FrequencyPenalty: ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
       /**
@@ -153,8 +129,6 @@ export const Attr = {
        * The model that was actually used (might be different bc routing) - only ever get this from the response, otherwise omit
        */
       Model: ATTR_GEN_AI_RESPONSE_MODEL,
-      ProviderMetadata: 'gen_ai.response.provider_metadata',
-      Text: 'gen_ai.response.text',
     },
     /**
      * From OTel docs:
