@@ -356,9 +356,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       seed,
       stopSequences,
       responseFormat,
-      // inputFormat,
       mode,
-      // providerMetadata,
     } = options;
 
     // Set prompt attributes (full conversation history)
@@ -370,11 +368,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
-      // [Attr.GenAI.Provider]: this.provider,
-      // TODO: there is currently no good way to get the system from the vercel sdk.
-      // we would need a lookup table or regex stuff or similar. fragile either way.
-      // @see: docs for `ATTR_GEN_AI_SYSTEM`)
-      // [Attr.GenAI.System]: "_OTHER",
     });
 
     // Set optional request attributes
@@ -432,7 +425,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       usage?: { promptTokens: number; completionTokens: number };
       text?: string;
       toolCalls?: LanguageModelV1FunctionToolCall[];
-      // TODO: not currently used
       providerMetadata?: LanguageModelV1ProviderMetadata;
     },
   ) {
