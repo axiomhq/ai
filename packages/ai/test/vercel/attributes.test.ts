@@ -59,6 +59,7 @@ describe('span names', () => {
       'gen_ai.request.temperature': 0,
       'gen_ai.response.id': 'mock-response-id',
       'gen_ai.response.model': 'mock-model',
+      'gen_ai.response.provider_metadata': '{}',
       'gen_ai.usage.input_tokens': 10,
       'gen_ai.usage.output_tokens': 20,
     });
