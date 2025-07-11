@@ -11,11 +11,8 @@ import { AxiomAIResources } from './shared';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 
 type WithSpanMeta = {
-  agentName: string;
-  /**
-   * TODO: is this ok? usually it should be one of the values from GenAIOperation
-   */
-  operationName: string;
+  capability: string;
+  step: string;
 };
 
 /**
@@ -35,8 +32,8 @@ export function withSpan<Return>(
   const startActiveSpan = createStartActiveSpan(tracer);
   return startActiveSpan('gen_ai.call_llm', null, async (span) => {
     const bag: Baggage = propagation.createBaggage({
-      agentName: { value: meta.agentName },
-      operationName: { value: meta.operationName },
+      capability: { value: meta.capability },
+      step: { value: meta.step },
       // TODO: maybe we can just check the active span name instead?
       [WITHSPAN_BAGGAGE_KEY]: { value: 'true' }, // Mark that we're inside withSpan
     });
