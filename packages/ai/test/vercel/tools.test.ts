@@ -77,7 +77,6 @@ describe('tool call attributes', () => {
       'gen_ai.request.tools_count': 1,
       'gen_ai.response.id': 'mock-response-id',
       'gen_ai.response.model': 'tool-model',
-      'gen_ai.response.provider_metadata': '{}',
       'gen_ai.usage.input_tokens': 10,
       'gen_ai.usage.output_tokens': 30,
     });
