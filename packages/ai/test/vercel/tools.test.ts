@@ -46,7 +46,7 @@ describe('tool call attributes', () => {
 
     const model = wrapAISDKModel(mockProvider.languageModel('tool-model'));
 
-    await withSpan({ agentName: 'test-agent', operationName: 'test-operation' }, async () => {
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
       return await generateText({
         model,
         prompt: 'What is 2+2?',
@@ -67,8 +67,9 @@ describe('tool call attributes', () => {
       'gen_ai.completion':
         '[{\"role\":\"assistant\",\"content\":\"Let me calculate that for you.\",\"tool_calls\":[{\"id\":\"call-123\",\"type\":\"function\",\"function\":{\"name\":\"calculator\",\"arguments\":\"{\\\"expression\\\": \\\"2+2\\\"}\"},\"index\":0}]}]',
       'gen_ai.response.finish_reasons': '["tool-calls"]',
-      'gen_ai.operation.name': 'test-operation',
-      'gen_ai.agent.name': 'test-agent',
+      'gen_ai.operation.name': 'chat',
+      'gen_ai.capability.name': 'test-capability',
+      'gen_ai.step.name': 'test-step',
       'gen_ai.output.type': 'text',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.request.temperature': 0,

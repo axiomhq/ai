@@ -33,7 +33,7 @@ describe('span names', () => {
     mockProvider.addLanguageModelResponse('test', mockResponses.text('Hello, world!'));
     const model = wrapAISDKModel(mockProvider.languageModel('model-name'));
 
-    await withSpan({ agentName: 'test-agent', operationName: 'test-operation' }, async () => {
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
       return await generateText({
         model,
         prompt: 'Hello, world!',
@@ -51,8 +51,9 @@ describe('span names', () => {
       'gen_ai.completion': '[{"role":"assistant","content":"Mock response"}]',
       // '{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mock response\"},\"finish_reason\":\"stop\"}]}',
       'gen_ai.response.finish_reasons': '["stop"]',
-      'gen_ai.operation.name': 'test-operation',
-      'gen_ai.agent.name': 'test-agent',
+      'gen_ai.operation.name': 'chat',
+      'gen_ai.capability.name': 'test-capability',
+      'gen_ai.step.name': 'test-step',
       'gen_ai.output.type': 'text',
       'gen_ai.request.model': 'model-name',
       'gen_ai.request.temperature': 0,

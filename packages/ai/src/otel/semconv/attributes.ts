@@ -58,7 +58,6 @@ import {
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
   ATTR_GEN_AI_COMPLETION,
   ATTR_GEN_AI_PROMPT,
-  ATTR_GEN_AI_AGENT_NAME,
 } from './semconv_incubating';
 
 /**
@@ -91,9 +90,6 @@ export const Attr = {
   UserId: 'user_id',
   HasAccessToken: 'has_access_token',
   GenAI: {
-    Agent: {
-      Name: ATTR_GEN_AI_AGENT_NAME,
-    },
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
       Name_Values: {
@@ -106,6 +102,12 @@ export const Attr = {
       // TODO: bikeshed `WorkflowName` and `TaskName`
       WorkflowName: 'gen_ai.operation.workflow_name',
       TaskName: 'gen_ai.operation.task_name',
+    },
+    Capability: {
+      Name: 'gen_ai.capability.name',
+    },
+    Step: {
+      Name: 'gen_ai.step.name',
     },
     Output: {
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
