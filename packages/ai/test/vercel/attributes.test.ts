@@ -5,7 +5,6 @@ import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { generateText } from 'ai';
 import { createMockProvider, mockResponses } from './mock-provider/mock-provider';
-import { SpanKind } from '@opentelemetry/api';
 
 let memoryExporter: InMemorySpanExporter;
 let tracerProvider: NodeTracerProvider;
@@ -34,7 +33,7 @@ describe('span names', () => {
     mockProvider.addLanguageModelResponse('test', mockResponses.text('Hello, world!'));
     const model = wrapAISDKModel(mockProvider.languageModel('model-name'));
 
-    await withSpan({ workflow: 'test-workflow', task: 'test-task' }, async () => {
+    await withSpan({ agentName: 'test-agent', operationName: 'test-operation' }, async () => {
       return await generateText({
         model,
         prompt: 'Hello, world!',
@@ -49,16 +48,12 @@ describe('span names', () => {
        * So update this as we get closer to the attributes we like
        */
       'gen_ai.prompt': '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
-      'gen_ai.completion': '{"role":"assistant","content":"Mock response"}',
+      'gen_ai.completion': '[{"role":"assistant","content":"Mock response"}]',
       // '{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mock response\"},\"finish_reason\":\"stop\"}]}',
       'gen_ai.response.finish_reasons': '["stop"]',
-      'gen_ai.operation.name': 'chat',
-      'gen_ai.operation.task_name': 'test-task',
-      'gen_ai.operation.workflow_name': 'test-workflow',
+      'gen_ai.operation.name': 'test-operation',
+      'gen_ai.agent.name': 'test-agent',
       'gen_ai.output.type': 'text',
-      'gen_ai.provider': 'mock-provider',
-      'gen_ai.request.input_format': 'prompt',
-      'gen_ai.request.mode_type': 'regular',
       'gen_ai.request.model': 'model-name',
       'gen_ai.request.temperature': 0,
       'gen_ai.response.id': 'mock-response-id',
