@@ -9,7 +9,7 @@ import {
   type LanguageModelV1ToolCallPart,
   type LanguageModelV1StreamPart,
   type LanguageModelV1ProviderMetadata,
-} from '@ai-sdk/provider';
+} from '@ai-sdk/providerv1';
 
 import { trace, propagation, type Span } from '@opentelemetry/api';
 import { Attr } from './semconv/attributes';
