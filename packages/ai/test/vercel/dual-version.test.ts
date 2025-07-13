@@ -30,7 +30,6 @@ afterAll(async () => {
 });
 
 describe('Dual Version Support', () => {
-
   describe('Version Detection', () => {
     it('should detect and wrap v1 models correctly', async () => {
       const mockProvider = createMockProvider();
@@ -41,20 +40,17 @@ describe('Dual Version Support', () => {
       });
 
       const model = wrapAISDKModel(mockProvider.languageModel('test-model'));
-      
-      const result = await withSpan(
-        { capability: 'chat', step: 'generate' },
-        async () => {
-          return await generateText({
-            model,
-            prompt: 'Hello',
-          });
-        }
-      );
+
+      const result = await withSpan({ capability: 'chat', step: 'generate' }, async () => {
+        return await generateText({
+          model,
+          prompt: 'Hello',
+        });
+      });
 
       expect(result.text).toBe('Hello from v1!');
       expect(model.specificationVersion).toBe('v1');
-      
+
       const spans = memoryExporter.getFinishedSpans();
       expect(spans).toHaveLength(1);
       expect(spans[0].name).toBe('chat test-model');
@@ -70,20 +66,17 @@ describe('Dual Version Support', () => {
       });
 
       const model = wrapAISDKModel(mockProvider.languageModel('test-model-v2'));
-      
-      const result = await withSpan(
-        { capability: 'chat', step: 'generate' },
-        async () => {
-          return await generateTextV5({
-            model,
-            prompt: 'Hello',
-          });
-        }
-      );
+
+      const result = await withSpan({ capability: 'chat', step: 'generate' }, async () => {
+        return await generateTextV5({
+          model,
+          prompt: 'Hello',
+        });
+      });
 
       expect(result.text).toBe('Hello from v2!');
       expect(model.specificationVersion).toBe('v2');
-      
+
       const spans = memoryExporter.getFinishedSpans();
       expect(spans).toHaveLength(1);
       expect(spans[0].name).toBe('chat test-model-v2');
@@ -98,12 +91,12 @@ describe('Dual Version Support', () => {
       } as any;
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       const wrapped = wrapAISDKModel(unsupportedModel);
-      
+
       expect(wrapped).toBe(unsupportedModel); // Should return unwrapped
       expect(consoleSpy).toHaveBeenCalledWith('Unsupported AI SDK model. Not wrapping.');
-      
+
       consoleSpy.mockRestore();
     });
   });
@@ -118,20 +111,17 @@ describe('Dual Version Support', () => {
       });
 
       const model = wrapAISDKModel(mockProvider.languageModel('test-model'));
-      
-      await withSpan(
-        { capability: 'chat', step: 'generate' },
-        async () => {
-          return await generateText({
-            model,
-            prompt: 'Test prompt',
-          });
-        }
-      );
+
+      await withSpan({ capability: 'chat', step: 'generate' }, async () => {
+        return await generateText({
+          model,
+          prompt: 'Test prompt',
+        });
+      });
 
       const spans = memoryExporter.getFinishedSpans();
       const span = spans[0];
-      
+
       expect(span.attributes['gen_ai.usage.input_tokens']).toBe(20);
       expect(span.attributes['gen_ai.usage.output_tokens']).toBe(30);
     });
@@ -145,20 +135,17 @@ describe('Dual Version Support', () => {
       });
 
       const model = wrapAISDKModel(mockProvider.languageModel('test-model'));
-      
-      await withSpan(
-        { capability: 'chat', step: 'generate' },
-        async () => {
-          return await generateTextV5({
-            model,
-            prompt: 'Test prompt',
-          });
-        }
-      );
+
+      await withSpan({ capability: 'chat', step: 'generate' }, async () => {
+        return await generateTextV5({
+          model,
+          prompt: 'Test prompt',
+        });
+      });
 
       const spans = memoryExporter.getFinishedSpans();
       const span = spans[0];
-      
+
       expect(span.attributes['gen_ai.usage.input_tokens']).toBe(25);
       expect(span.attributes['gen_ai.usage.output_tokens']).toBe(35);
     });
@@ -174,17 +161,14 @@ describe('Dual Version Support', () => {
       });
 
       const model = wrapAISDKModel(mockProvider.languageModel('test-model'));
-      
-      await withSpan(
-        { capability: 'chat', step: 'generate' },
-        async () => {
-          return await generateText({
-            model,
-            prompt: 'Test',
-          });
-        }
-      );
-      
+
+      await withSpan({ capability: 'chat', step: 'generate' }, async () => {
+        return await generateText({
+          model,
+          prompt: 'Test',
+        });
+      });
+
       const spans = memoryExporter.getFinishedSpans();
       expect(spans).toHaveLength(1);
       expect(spans[0].attributes['gen_ai.response.finish_reasons']).toBe('["length"]');
@@ -199,17 +183,14 @@ describe('Dual Version Support', () => {
       });
 
       const model = wrapAISDKModel(mockProvider.languageModel('test-model'));
-      
-      await withSpan(
-        { capability: 'chat', step: 'generate' },
-        async () => {
-          return await generateTextV5({
-            model,
-            prompt: 'Test',
-          });
-        }
-      );
-      
+
+      await withSpan({ capability: 'chat', step: 'generate' }, async () => {
+        return await generateTextV5({
+          model,
+          prompt: 'Test',
+        });
+      });
+
       const spans = memoryExporter.getFinishedSpans();
       expect(spans).toHaveLength(1);
       expect(spans[0].attributes['gen_ai.response.finish_reasons']).toBe('["length"]');

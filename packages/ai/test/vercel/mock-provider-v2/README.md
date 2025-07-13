@@ -295,15 +295,18 @@ Pre-built response builders:
 ## Differences from V4 Mock Provider
 
 ### Response Format Changes
+
 - Language model responses use `content` array instead of `text` property
 - Content items have explicit `type` field (`text`, `tool-call`, etc.)
 - Usage tracking uses `inputTokens`, `outputTokens`, and `totalTokens` instead of `promptTokens` and `completionTokens`
 
 ### Stream Changes
+
 - Stream parts include `stream-start` and `response-metadata` events
 - Text content uses `{ type: 'text', text: string }` format
 
 ### Type Updates
+
 - Uses `LanguageModelV2`, `EmbeddingModelV2`, `ImageModelV2` interfaces
 - Updated to `ProviderV2` specification
 
