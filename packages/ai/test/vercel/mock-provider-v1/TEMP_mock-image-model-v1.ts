@@ -2,7 +2,7 @@
  * 🚨 CAN REMOVE AFTER THIS GETS MERGED https://github.com/vercel/ai/pull/6747
  */
 
-import { ImageModelV1 } from '@ai-sdk/provider';
+import type { ImageModelV1 } from '@ai-sdk/providerv1';
 import { notImplemented } from './TEMP_not-implemented';
 
 export class MockImageModelV1 implements ImageModelV1 {

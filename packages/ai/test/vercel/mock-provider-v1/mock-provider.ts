@@ -10,10 +10,10 @@ import type {
   LanguageModelV1FunctionToolCall,
   LanguageModelV1StreamPart,
   ProviderV1,
-} from '@ai-sdk/provider';
-import { MockEmbeddingModelV1 } from 'ai/test';
+} from '@ai-sdk/providerv1';
+import { MockEmbeddingModelV1 } from 'aiv4/test';
 import { MockImageModelV1 } from './TEMP_mock-image-model-v1';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from 'aiv4/test';
 
 // Response types for different model behaviors
 export interface MockLanguageModelResponse {
@@ -115,6 +115,21 @@ export class MockProvider implements ProviderV1 {
           await new Promise((resolve) => setTimeout(resolve, response.delay));
         }
 
+        if (
+          response.finishReason === 'error' &&
+          response.warnings &&
+          response.warnings.length > 0
+        ) {
+          const warning = response.warnings[0];
+          const err =
+            'details' in warning
+              ? warning.details
+              : 'message' in warning
+                ? warning.message
+                : 'Unknown warning';
+          throw new Error(err);
+        }
+
         return {
           text: response.text || '',
           toolCalls: response.toolCalls,
@@ -187,7 +202,7 @@ export class MockProvider implements ProviderV1 {
     return new MockImageModelV1({
       provider: this.config.providerId!,
       modelId,
-      doGenerate: async (options: ImageModelV1CallOptions) => {
+      doGenerate: async (_options: ImageModelV1CallOptions) => {
         const callCount = this.imageCallCounts.get(modelId) || 0;
         this.imageCallCounts.set(modelId, callCount + 1);
 
@@ -331,6 +346,11 @@ export class MockProvider implements ProviderV1 {
           modelId: 'mock-model',
         });
 
+        // Check if this is an error response
+        if (response.finishReason === 'error') {
+          throw new Error('Test error');
+        }
+
         // Text chunks
         for (const chunk of response.chunks) {
           if (response.delay) {
@@ -419,6 +439,12 @@ export const mockResponses = {
     text: '',
     finishReason: 'error',
     warnings: [{ type: 'other', message }],
+    usage: { promptTokens: 0, completionTokens: 0 },
+  }),
+
+  streamError: (_message: string): MockStreamResponse => ({
+    chunks: [],
+    finishReason: 'error',
     usage: { promptTokens: 0, completionTokens: 0 },
   }),
 };
