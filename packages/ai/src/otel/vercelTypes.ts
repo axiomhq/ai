@@ -11,7 +11,7 @@ import {
   type CoreSystemMessage,
   type CoreToolMessage,
   type FinishReason,
-} from 'ai';
+} from 'aiv4';
 
 /**
  * OpenAI System Message - matches Core type exactly
