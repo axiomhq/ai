@@ -115,21 +115,6 @@ export class MockProvider implements ProviderV1 {
           await new Promise((resolve) => setTimeout(resolve, response.delay));
         }
 
-        if (
-          response.finishReason === 'error' &&
-          response.warnings &&
-          response.warnings.length > 0
-        ) {
-          const warning = response.warnings[0];
-          const err =
-            'details' in warning
-              ? warning.details
-              : 'message' in warning
-                ? warning.message
-                : 'Unknown warning';
-          throw new Error(err);
-        }
-
         return {
           text: response.text || '',
           toolCalls: response.toolCalls,
