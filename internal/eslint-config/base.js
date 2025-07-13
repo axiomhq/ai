@@ -13,6 +13,10 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 export const config = [
   eslintConfigPrettier,
   {
+    ignores: ['**/dist/', '**/node_modules/', '**/coverage/'],
+  },
+  {
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     plugins: {
       tsdoc,
       '@typescript-eslint': tsEslint.plugin,
@@ -28,9 +32,5 @@ export const config = [
     rules: {
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
     },
-  },
-  {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
-    ignores: ['**/dist/', '**/node_modules/'],
   },
 ];
