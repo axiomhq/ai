@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateText, generateObject, streamText, embed } from 'ai';
+import { generateText, generateObject, streamText, embed } from 'aiv4';
 import { createMockProvider, mockResponses } from './mock-provider';
 import { z } from 'zod';
 
@@ -233,7 +233,7 @@ describe('MockProvider Example Usage', () => {
     it('should handle multiple embeddings', async () => {
       mockProvider.addEmbeddingResponse('multi-embed-model', mockResponses.embedding(256, 3));
 
-      const model = mockProvider.textEmbeddingModel('multi-embed-model');
+
       // Note: This would need embedMany function which might not exist
       // This is showing the concept
     });
@@ -246,7 +246,7 @@ describe('MockProvider Example Usage', () => {
 
       mockProvider.addImageResponse('image-model', mockResponses.image(customBase64));
 
-      const model = mockProvider.imageModel('image-model');
+
       // Note: This would use generateImage if available
       // const result = await generateImage({
       //   model,
