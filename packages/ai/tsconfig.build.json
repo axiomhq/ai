@@ -4,7 +4,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "dist-test", 
+    "dist-test",
     ".git",
     "coverage",
     "build",

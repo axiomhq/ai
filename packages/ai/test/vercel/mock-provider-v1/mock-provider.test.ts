@@ -233,7 +233,6 @@ describe('MockProvider Example Usage', () => {
     it('should handle multiple embeddings', async () => {
       mockProvider.addEmbeddingResponse('multi-embed-model', mockResponses.embedding(256, 3));
 
-
       // Note: This would need embedMany function which might not exist
       // This is showing the concept
     });
@@ -245,7 +244,6 @@ describe('MockProvider Example Usage', () => {
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77mgAAAABJRU5ErkJggg==';
 
       mockProvider.addImageResponse('image-model', mockResponses.image(customBase64));
-
 
       // Note: This would use generateImage if available
       // const result = await generateImage({
