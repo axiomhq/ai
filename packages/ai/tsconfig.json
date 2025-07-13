@@ -20,17 +20,16 @@
     "noUncheckedSideEffectImports": true,
     "types": ["node"]
   },
-  "include": ["src"],
+  "include": ["src", "test/**/*"],
   "exclude": [
     "node_modules",
     "dist",
+    "dist-test",
     ".git",
     "coverage",
     "build",
     "examples",
     "internal",
-    "tests",
-    "test",
     ".github"
   ]
 }
