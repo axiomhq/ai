@@ -9,13 +9,12 @@ describe('MockProvider V5 Example Usage', () => {
   beforeEach(() => {
     mockProvider = createMockProvider({
       providerId: 'test-provider',
-      throwOnMissingResponse: false, // Set to true for stricter testing
+      throwOnMissingResponse: false,
     });
   });
 
   describe('Language Model Tests', () => {
     it('should generate simple text', async () => {
-      // Configure the mock response
       mockProvider.addLanguageModelResponse('test-model', mockResponses.text('Hello, world!'));
 
       const model = mockProvider.languageModel('test-model');
@@ -198,8 +197,6 @@ describe('MockProvider V5 Example Usage', () => {
         prompt: 'Generate a person object',
       });
 
-      // Note: In real tests, you'd mock the object generation more specifically
-      // This is a simplified example
       expect(result.object).toBeDefined();
     });
   });
@@ -226,29 +223,6 @@ describe('MockProvider V5 Example Usage', () => {
        */
       expect(result.usage.tokens).toBe(10);
       expect(mockProvider.getCallCount('embedding', 'embed-model')).toBe(1);
-    });
-
-    it('should handle multiple embeddings', async () => {
-      mockProvider.addEmbeddingResponse('multi-embed-model', mockResponses.embedding(256, 3));
-
-      // Note: This would need embedMany function which might not exist
-      // This is showing the concept
-    });
-  });
-
-  describe('Image Model Tests', () => {
-    it('should generate images', async () => {
-      const customBase64 =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77mgAAAABJRU5ErkJggg==';
-
-      mockProvider.addImageResponse('image-model', mockResponses.image(customBase64));
-
-      // Note: This would use generateImage if available
-      // const result = await generateImage({
-      //   model,
-      //   prompt: 'A beautiful sunset',
-      // });
-      // expect(result.image.base64).toBe(customBase64);
     });
   });
 

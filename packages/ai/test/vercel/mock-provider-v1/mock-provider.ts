@@ -324,19 +324,16 @@ export class MockProvider implements ProviderV1 {
   ): ReadableStream<LanguageModelV1StreamPart> {
     return new ReadableStream({
       async start(controller) {
-        // Response metadata
         controller.enqueue({
           type: 'response-metadata',
           id: 'mock-response-id',
           modelId: 'mock-model',
         });
 
-        // Check if this is an error response
         if (response.finishReason === 'error') {
           throw new Error('Test error');
         }
 
-        // Text chunks
         for (const chunk of response.chunks) {
           if (response.delay) {
             await new Promise((resolve) => setTimeout(resolve, response.delay));
