@@ -4,8 +4,6 @@ import { type LanguageModelV2 } from '@ai-sdk/providerv2';
 import { AxiomWrappedLanguageModelV1, isLanguageModelV1 } from './AxiomWrappedLanguageModelV1';
 import { AxiomWrappedLanguageModelV2, isLanguageModelV2 } from './AxiomWrappedLanguageModelV2';
 
-// Type guards for version detection
-
 /**
  * Wraps an AI SDK model to provide OpenTelemetry instrumentation.
  *
