@@ -9,14 +9,6 @@ import { AxiomWrappedLanguageModelV2, isLanguageModelV2 } from './AxiomWrappedLa
  *
  * Supports both AI SDK v4 (LanguageModelV1) and v5 (LanguageModelV2) models.
  *
- * Features:
- * - OpenTelemetry span creation with semantic conventions
- * - Request/response attribute tracking
- * - Token usage monitoring (v1: promptTokens/completionTokens, v2: inputTokens/outputTokens)
- * - Streaming response instrumentation
- * - Tool call tracking and formatting
- * - Compatible with withSpan for nested instrumentation
- *
  * @param model - Language model implementing LanguageModelV1 or LanguageModelV2 interface
  * @returns Wrapped model with identical interface but added instrumentation
  */

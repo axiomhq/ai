@@ -344,7 +344,7 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
 
       // Store finish reason separately as per semantic conventions
-      span.setAttribute('gen_ai.response.finish_reasons', JSON.stringify([result.finishReason]));
+      span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([result.finishReason]));
     }
   }
 

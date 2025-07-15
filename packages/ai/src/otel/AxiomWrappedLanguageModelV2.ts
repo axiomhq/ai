@@ -81,7 +81,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
 
   async doStream(options: LanguageModelV2CallOptions) {
     return this.withSpanHandling(async (span) => {
-      const startTime = currentUnixTime(); // Unix timestamp
+      const startTime = currentUnixTime();
 
       this.setScopeAttributes(span);
       this.setPreCallAttributes(span, options);
@@ -136,10 +136,8 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
               controller.enqueue(chunk);
             },
             async flush(controller) {
-              // Convert toolCallsMap to array
               const toolCallsArray: LanguageModelV2ToolCall[] = Object.values(toolCallsMap);
 
-              // Construct result object for helper function
               const streamResult = {
                 response: responseMetadata,
                 finishReason,
@@ -167,7 +165,6 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
   private setScopeAttributes(span: Span) {
     const bag = propagation.getActiveBaggage();
 
-    // Set workflow and task attributes from baggage
     if (bag) {
       const capability = bag.getEntry('capability')?.value;
       if (capability) {
@@ -182,14 +179,12 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
   }
 
   private setPreCallAttributes(span: Span, options: LanguageModelV2CallOptions) {
-    // Set request attributes
     span.setAttributes({
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
     });
 
-    // Set optional request attributes
     if (options.maxOutputTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Request.MaxTokens, options.maxOutputTokens);
     }
@@ -212,22 +207,18 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       span.setAttribute(Attr.GenAI.Request.Seed, options.seed);
     }
 
-    // Set stop sequences
     if (options.stopSequences && options.stopSequences.length > 0) {
       span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(options.stopSequences));
     }
 
-    // Set response format
     if (options.responseFormat) {
       span.setAttribute(Attr.GenAI.Output.Type, options.responseFormat.type);
     }
 
-    // Set prompt attributes (full conversation history)
     const processedPrompt = postProcessPromptV2(options.prompt);
     span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
   }
 
-  // Static method for setting post-call attributes
   private static setPostCallAttributesStatic(
     span: Span,
     _modelId: string,
@@ -238,7 +229,6 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       content?: Array<LanguageModelV2Content>;
     },
   ) {
-    // Set response attributes
     if (result.response?.id) {
       span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
     }
@@ -246,7 +236,6 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
     }
 
-    // Set usage attributes (v2 uses different token naming)
     if (result.usage) {
       if (result.usage.inputTokens !== undefined) {
         span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.inputTokens);
@@ -256,13 +245,11 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       }
     }
 
-    // Set completion in proper format
     if (result.finishReason && result.content) {
       const completion = formatCompletionV2(result.content);
       span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
 
-      // Store finish reason separately as per semantic conventions
-      span.setAttribute('gen_ai.response.finish_reasons', JSON.stringify([result.finishReason]));
+      span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([result.finishReason]));
     }
   }
 
