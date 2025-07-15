@@ -34,7 +34,7 @@ describe('span names', () => {
     mockProvider.addLanguageModelResponse('test', mockResponses.text('Hello, world!'));
     const model = wrapAISDKModel(mockProvider.languageModel('model-name'));
 
-    await withSpan({ workflow: 'test-workflow', task: 'test-task' }, async () => {
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
       return await generateText({
         model,
         prompt: 'Hello, world!',
@@ -52,7 +52,7 @@ describe('span names', () => {
     mockProvider.addLanguageModelResponse('test', mockResponses.text('Hello, world!'));
     const model = wrapAISDKModel(mockProvider.languageModel('model-name'));
 
-    await withSpan({ workflow: 'test-workflow', task: 'test-task' }, async () => {
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
       return await generateText({
         model,
         prompt: 'Hello, world!',
@@ -68,7 +68,7 @@ describe('span names', () => {
     mockProvider.addLanguageModelResponse('test', mockResponses.text('Hello, world!'));
     const model = wrapAISDKModel(mockProvider.languageModel('model-name'));
 
-    await withSpan({ workflow: 'test-workflow', task: 'test-task' }, async (span) => {
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async (span) => {
       span.setAttribute('foo', 'bar');
 
       return await generateText({

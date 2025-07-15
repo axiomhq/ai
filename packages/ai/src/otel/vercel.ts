@@ -25,24 +25,26 @@ function formatCompletion({
 }: {
   text: string | undefined;
   toolCalls: LanguageModelV1FunctionToolCall[] | undefined;
-}): OpenAIAssistantMessage {
-  return {
-    role: 'assistant',
-    content:
-      text ??
-      (toolCalls && toolCalls.length > 0
-        ? null // Content is null when we have no text but do have tool calls
-        : ''),
-    tool_calls: toolCalls?.map((toolCall, index) => ({
-      id: toolCall.toolCallId,
-      type: 'function' as const,
-      function: {
-        name: toolCall.toolName,
-        arguments: toolCall.args,
-      },
-      index,
-    })),
-  };
+}): OpenAIAssistantMessage[] {
+  return [
+    {
+      role: 'assistant',
+      content:
+        text ??
+        (toolCalls && toolCalls.length > 0
+          ? null // Content is null when we have no text but do have tool calls
+          : ''),
+      tool_calls: toolCalls?.map((toolCall, index) => ({
+        id: toolCall.toolCallId,
+        type: 'function' as const,
+        function: {
+          name: toolCall.toolName,
+          arguments: toolCall.args,
+        },
+        index,
+      })),
+    },
+  ];
 }
 
 function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
@@ -330,11 +332,14 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set workflow and task attributes from baggage
     if (bag) {
-      if (bag.getEntry('workflow')?.value) {
-        span.setAttribute(Attr.GenAI.Operation.WorkflowName, bag.getEntry('workflow')!.value);
+      const capability = bag.getEntry('capability')?.value;
+      if (capability) {
+        span.setAttribute(Attr.GenAI.Capability.Name, capability);
       }
-      if (bag.getEntry('task')?.value) {
-        span.setAttribute(Attr.GenAI.Operation.TaskName, bag.getEntry('task')!.value);
+
+      const step = bag.getEntry('step')?.value;
+      if (step) {
+        span.setAttribute(Attr.GenAI.Step.Name, step);
       }
     }
   }
@@ -351,9 +356,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       seed,
       stopSequences,
       responseFormat,
-      inputFormat,
       mode,
-      providerMetadata,
     } = options;
 
     // Set prompt attributes (full conversation history)
@@ -365,11 +368,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
-      [Attr.GenAI.Provider]: this.provider,
-      // TODO: there is currently no good way to get the system from the vercel sdk.
-      // we would need a lookup table or regex stuff or similar. fragile either way.
-      // @see: docs for `ATTR_GEN_AI_SYSTEM`)
-      // [Attr.GenAI.System]: "_OTHER",
     });
 
     // Set optional request attributes
@@ -405,11 +403,7 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Output.Type, responseFormat.type);
     }
 
-    // Set input format
-    span.setAttribute('gen_ai.request.input_format', inputFormat);
-
     // Set mode information
-    span.setAttribute('gen_ai.request.mode_type', mode.type);
     if (mode.type === 'regular' && mode.tools) {
       span.setAttribute('gen_ai.request.tools_count', mode.tools.length);
       if (mode.toolChoice) {
@@ -418,11 +412,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           typeof mode.toolChoice === 'string' ? mode.toolChoice : JSON.stringify(mode.toolChoice),
         );
       }
-    }
-
-    // Set provider metadata if present in request
-    if (providerMetadata && Object.keys(providerMetadata).length > 0) {
-      span.setAttribute('gen_ai.request.provider_metadata', JSON.stringify(providerMetadata));
     }
   }
 
@@ -463,14 +452,6 @@ class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
       // Store finish reason separately as per semantic conventions
       span.setAttribute('gen_ai.response.finish_reasons', JSON.stringify([result.finishReason]));
-    }
-
-    // Set provider metadata if available
-    if (result.providerMetadata && Object.keys(result.providerMetadata).length > 0) {
-      span.setAttribute(
-        Attr.GenAI.Response.ProviderMetadata,
-        JSON.stringify(result.providerMetadata),
-      );
     }
   }
 

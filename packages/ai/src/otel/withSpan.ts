@@ -11,10 +11,8 @@ import { AxiomAIResources } from './shared';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 
 type WithSpanMeta = {
-  // TODO: BEFORE RELEASE - i think we will name these something else. but leaving like this for now to
-  // not break
-  workflow: string;
-  task: string;
+  capability: string;
+  step: string;
 };
 
 /**
@@ -34,8 +32,8 @@ export function withSpan<Return>(
   const startActiveSpan = createStartActiveSpan(tracer);
   return startActiveSpan('gen_ai.call_llm', null, async (span) => {
     const bag: Baggage = propagation.createBaggage({
-      workflow: { value: meta.workflow },
-      task: { value: meta.task },
+      capability: { value: meta.capability },
+      step: { value: meta.step },
       // TODO: maybe we can just check the active span name instead?
       [WITHSPAN_BAGGAGE_KEY]: { value: 'true' }, // Mark that we're inside withSpan
     });
