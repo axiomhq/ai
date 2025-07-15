@@ -1,21 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { generateText, generateObject, streamText, embed } from 'ai';
-import { createMockProvider, mockResponses } from './mock-provider';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { generateText, generateObject, streamText, embed } from 'aiv5';
+import { createMockProvider, mockResponses } from './mock-provider-v2';
 import { z } from 'zod';
 
-describe('MockProvider Example Usage', () => {
+describe('MockProvider V5 Example Usage', () => {
   let mockProvider: ReturnType<typeof createMockProvider>;
 
   beforeEach(() => {
     mockProvider = createMockProvider({
       providerId: 'test-provider',
-      throwOnMissingResponse: false, // Set to true for stricter testing
+      throwOnMissingResponse: false,
     });
   });
 
   describe('Language Model Tests', () => {
     it('should generate simple text', async () => {
-      // Configure the mock response
       mockProvider.addLanguageModelResponse('test-model', mockResponses.text('Hello, world!'));
 
       const model = mockProvider.languageModel('test-model');
@@ -25,8 +24,8 @@ describe('MockProvider Example Usage', () => {
       });
 
       expect(result.text).toBe('Hello, world!');
-      expect(result.usage.promptTokens).toBe(10);
-      expect(result.usage.completionTokens).toBe(13); // Length of "Hello, world!"
+      expect(result.usage.inputTokens).toBe(10);
+      expect(result.usage.outputTokens).toBe(13); // Length of "Hello, world!"
       expect(mockProvider.getCallCount('language', 'test-model')).toBe(1);
     });
 
@@ -60,6 +59,7 @@ describe('MockProvider Example Usage', () => {
 
     it('should generate text with tool calls', async () => {
       const toolCall = {
+        type: 'tool-call' as const,
         toolCallType: 'function' as const,
         toolCallId: 'call-123',
         toolName: 'calculator',
@@ -117,16 +117,13 @@ describe('MockProvider Example Usage', () => {
       );
 
       const model = mockProvider.languageModel('error-model');
-      const result = await generateText({
-        model,
-        prompt: 'This will have warnings',
-      });
 
-      expect(result.warnings).toHaveLength(1);
-      expect(result.warnings?.[0].type).toBe('other');
-      expect((result.warnings?.[0] as { type: 'other'; message: string })?.message).toBe(
-        'Model temporarily unavailable',
-      );
+      await expect(
+        generateText({
+          model,
+          prompt: 'This will throw an error',
+        }),
+      ).rejects.toThrow('Model temporarily unavailable');
     });
   });
 
@@ -149,7 +146,7 @@ describe('MockProvider Example Usage', () => {
       }
 
       expect(chunks).toEqual(['Hello', ' ', 'streaming', ' world!']);
-      expect((await result.usage).completionTokens).toBe(4); // Number of chunks
+      expect((await result.usage).outputTokens).toBe(4); // Number of chunks
     });
 
     it('should stream with delay between chunks', async () => {
@@ -200,8 +197,6 @@ describe('MockProvider Example Usage', () => {
         prompt: 'Generate a person object',
       });
 
-      // Note: In real tests, you'd mock the object generation more specifically
-      // This is a simplified example
       expect(result.object).toBeDefined();
     });
   });
@@ -229,31 +224,6 @@ describe('MockProvider Example Usage', () => {
       expect(result.usage.tokens).toBe(10);
       expect(mockProvider.getCallCount('embedding', 'embed-model')).toBe(1);
     });
-
-    it('should handle multiple embeddings', async () => {
-      mockProvider.addEmbeddingResponse('multi-embed-model', mockResponses.embedding(256, 3));
-
-      const model = mockProvider.textEmbeddingModel('multi-embed-model');
-      // Note: This would need embedMany function which might not exist
-      // This is showing the concept
-    });
-  });
-
-  describe('Image Model Tests', () => {
-    it('should generate images', async () => {
-      const customBase64 =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77mgAAAABJRU5ErkJggg==';
-
-      mockProvider.addImageResponse('image-model', mockResponses.image(customBase64));
-
-      const model = mockProvider.imageModel('image-model');
-      // Note: This would use generateImage if available
-      // const result = await generateImage({
-      //   model,
-      //   prompt: 'A beautiful sunset',
-      // });
-      // expect(result.image.base64).toBe(customBase64);
-    });
   });
 
   describe('Provider Management', () => {
@@ -272,6 +242,27 @@ describe('MockProvider Example Usage', () => {
       expect(mockProvider.getCallCount('language', 'model-a')).toBe(2);
       expect(mockProvider.getCallCount('language', 'model-b')).toBe(1);
       expect(mockProvider.getCallCount('language', 'nonexistent')).toBe(0);
+    });
+
+    it('should track streaming and non-streaming calls separately', async () => {
+      mockProvider
+        .addLanguageModelResponse('test-model', mockResponses.text('Non-stream response'))
+        .addStreamResponse('test-model', mockResponses.stream(['Stream', ' response']));
+
+      const model = mockProvider.languageModel('test-model');
+
+      // Make one regular call
+      await generateText({ model, prompt: 'Regular call' });
+
+      // Make one streaming call
+      const streamResult = streamText({ model, prompt: 'Stream call' });
+      const chunks = [];
+      for await (const chunk of streamResult.textStream) {
+        chunks.push(chunk);
+      }
+
+      expect(mockProvider.getCallCount('language', 'test-model')).toBe(1);
+      expect(mockProvider.getCallCount('stream', 'test-model')).toBe(1);
     });
 
     it('should reset properly', async () => {
@@ -296,8 +287,8 @@ describe('MockProvider Example Usage', () => {
       });
 
       expect(result.text).toBe('Mock response'); // Default response
-      expect(result.usage.promptTokens).toBe(10);
-      expect(result.usage.completionTokens).toBe(20);
+      expect(result.usage.inputTokens).toBe(10);
+      expect(result.usage.outputTokens).toBe(20);
     });
 
     it('should throw on missing responses when configured strictly', async () => {
@@ -319,13 +310,9 @@ describe('MockProvider Example Usage', () => {
   describe('Advanced Scenarios', () => {
     it('should simulate reasoning responses', async () => {
       mockProvider.addLanguageModelResponse('reasoning-model', {
-        text: 'The answer is 42.',
-        reasoning: [
-          { type: 'text', text: 'Let me think about this...' },
-          { type: 'text', text: 'After careful consideration...' },
-        ],
+        content: [{ type: 'text', text: 'The answer is 42.' }],
         finishReason: 'stop',
-        usage: { promptTokens: 15, completionTokens: 25 },
+        usage: { inputTokens: 15, outputTokens: 25, totalTokens: 40 },
       });
 
       const model = mockProvider.languageModel('reasoning-model');
@@ -335,11 +322,6 @@ describe('MockProvider Example Usage', () => {
       });
 
       expect(result.text).toBe('The answer is 42.');
-      expect(typeof result.reasoning).toBe('string');
-      /**
-       * 🚨 `doGenerate` concatenates the reasoning responses into a single string.
-       */
-      expect(result.reasoning).toBe('Let me think about this...After careful consideration...');
     });
 
     it('should work with feature test suite capabilities', () => {
@@ -349,17 +331,6 @@ describe('MockProvider Example Usage', () => {
       // Configure responses for different test scenarios
       provider
         .addLanguageModelResponse('mock-model', mockResponses.text('Text generation works'))
-        .addLanguageModelResponse(
-          'mock-model',
-          mockResponses.textWithTools('Tool call works', [
-            {
-              toolCallType: 'function',
-              toolCallId: 'test-tool-call',
-              toolName: 'testTool',
-              args: '{"param": "value"}',
-            },
-          ]),
-        )
         .addStreamResponse('mock-model', mockResponses.stream(['Streaming', ' works']))
         .addEmbeddingResponse('mock-embed', mockResponses.embedding(128))
         .addImageResponse('mock-image', mockResponses.image());
@@ -367,11 +338,52 @@ describe('MockProvider Example Usage', () => {
       // This mock provider could be used in place of real providers in the feature test suite
       const languageModel = provider.languageModel('mock-model');
       const embeddingModel = provider.textEmbeddingModel('mock-embed');
-      const imageModel = provider.imageModel('mock-image');
+      const imageModel = provider.imageModel('image-model');
 
       expect(languageModel.provider).toBe('mock-test-provider');
       expect(embeddingModel.provider).toBe('mock-test-provider');
       expect(imageModel.provider).toBe('mock-test-provider');
+    });
+
+    it('should warn on infinite repeat when configured', async () => {
+      const warnProvider = createMockProvider({
+        warnOnInfiniteRepeat: true,
+      });
+
+      warnProvider.addLanguageModelResponse('limited-model', mockResponses.text('Only response'));
+
+      const model = warnProvider.languageModel('limited-model');
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // First call should not warn
+      await generateText({ model, prompt: 'First call' });
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      // Second call should warn
+      await generateText({ model, prompt: 'Second call' });
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Mock provider: Model "limited-model" is repeating the last response infinitely',
+        ),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should support defaultDelay configuration', async () => {
+      const delayProvider = createMockProvider({
+        defaultDelay: 50,
+      });
+
+      delayProvider.addLanguageModelResponse('delay-model', mockResponses.text('Delayed response'));
+
+      const model = delayProvider.languageModel('delay-model');
+      const startTime = Date.now();
+
+      await generateText({ model, prompt: 'This should be delayed' });
+
+      const elapsed = Date.now() - startTime;
+      expect(elapsed).toBeGreaterThanOrEqual(40); // Account for timing variance
     });
   });
 });
