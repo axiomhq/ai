@@ -2,6 +2,8 @@ import { generateText } from 'ai';
 import { geminiFlash } from '@/shared/gemini';
 import { withSpan } from '@axiomhq/ai';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Page() {
   const userId = 123;
   const res = await withSpan({ capability: 'help_user', step: 'get_capital' }, (span) => {
