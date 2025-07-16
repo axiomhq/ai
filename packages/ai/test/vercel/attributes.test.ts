@@ -55,6 +55,7 @@ describe('span names', () => {
       'gen_ai.capability.name': 'test-capability',
       'gen_ai.step.name': 'test-step',
       'gen_ai.output.type': 'text',
+      'gen_ai.provider.name': 'mock-provider',
       'gen_ai.request.model': 'model-name',
       'gen_ai.request.temperature': 0,
       'gen_ai.response.id': 'mock-response-id',

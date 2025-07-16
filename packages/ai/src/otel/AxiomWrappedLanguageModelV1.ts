@@ -237,6 +237,33 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     }
   }
 
+  private determineOutputType({
+    responseFormat,
+    mode,
+  }: {
+    responseFormat: LanguageModelV1CallOptions['responseFormat'];
+    mode: LanguageModelV1CallOptions['mode'];
+  }): string | undefined {
+    if (responseFormat?.type) {
+      switch (responseFormat.type) {
+        case 'json':
+          return Attr.GenAI.Output.Type_Values.Json;
+        case 'text':
+          return Attr.GenAI.Output.Type_Values.Text;
+      }
+    }
+
+    if (mode?.type === 'object-json' || mode?.type === 'object-tool') {
+      return Attr.GenAI.Output.Type_Values.Json;
+    }
+
+    if (mode?.type === 'regular') {
+      return Attr.GenAI.Output.Type_Values.Text;
+    }
+
+    return undefined;
+  }
+
   private setPreCallAttributes(span: Span, options: LanguageModelV1CallOptions) {
     const {
       prompt,
@@ -259,9 +286,14 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     // Set request attributes
     span.setAttributes({
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-      [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
+      [Attr.GenAI.Provider]: this.model.provider,
     });
+
+    const outputType = this.determineOutputType({ responseFormat, mode });
+    if (outputType) {
+      span.setAttribute(Attr.GenAI.Output.Type, outputType);
+    }
 
     // Set optional request attributes
     if (maxTokens !== undefined) {
@@ -289,11 +321,6 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     // Set stop sequences
     if (stopSequences && stopSequences.length > 0) {
       span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(stopSequences));
-    }
-
-    // Set response format
-    if (responseFormat) {
-      span.setAttribute(Attr.GenAI.Output.Type, responseFormat.type);
     }
 
     // Set mode information
