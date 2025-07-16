@@ -199,20 +199,20 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       [Attr.GenAI.Request.Model]: this.modelId,
       [Attr.GenAI.Provider]: this.model.provider,
     });
-    
-    // Check for tools in options (V2 handles tools differently than V1)
-    // Tools might be encoded in prompt or other fields
-    if ('tools' in options && Array.isArray((options as any).tools)) {
-      const tools = (options as any).tools;
-      const availableTools = tools.map((tool: any) => ({
-        type: tool.type || 'function',
-        function: {
-          name: tool.name || tool.function?.name,
-          description: tool.description || tool.function?.description,
-          parameters: tool.parameters || tool.function?.parameters,
-        },
+
+    if ('tools' in options && Array.isArray(options.tools)) {
+      const availableTools = options.tools.map((tool) => ({
+        type: tool.type,
+        function:
+          tool.type === 'function'
+            ? {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters,
+              }
+            : tool,
       }));
-      span.setAttribute('gen_ai.request.tools', JSON.stringify(availableTools));
+      span.setAttribute(Attr.GenAI.Request.Tools.Available, JSON.stringify(availableTools));
     }
 
     const outputType = this.determineOutputType(options);
