@@ -63,6 +63,17 @@ import {
   ATTR_GEN_AI_TOOL_TYPE,
   ATTR_GEN_AI_REQUEST_CHOICE_COUNT,
   ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
+  ATTR_GEN_AI_CONVERSATION_ID,
+  ATTR_GEN_AI_TOOL_DESCRIPTION,
+  ATTR_GEN_AI_DATA_SOURCE_ID,
+  GEN_AI_OPERATION_NAME_VALUE_CREATE_AGENT,
+  GEN_AI_OPERATION_NAME_VALUE_INVOKE_AGENT,
+  GEN_AI_OPERATION_NAME_VALUE_EMBEDDINGS,
+  GEN_AI_OPERATION_NAME_VALUE_GENERATE_CONTENT,
+  ATTR_GEN_AI_AGENT_DESCRIPTION,
+  ATTR_GEN_AI_AGENT_ID,
+  ATTR_GEN_AI_AGENT_NAME,
+  ATTR_GEN_AI_REQUEST_ENCODING_FORMATS,
 } from './semconv_incubating';
 
 /**
@@ -77,9 +88,39 @@ import {
  * @see: https://github.com/open-telemetry/opentelemetry-js/tree/c89cb38d0fec39d54cf3fcb35c429a8129e9c909/semantic-conventions#unstable-semconv
  */
 export const Attr = {
+  Axiom: {
+    GenAI: {
+      SchemaURL: 'axiom.gen_ai.schema_url',
+      SDK: {
+        Name: 'axiom.gen_ai.sdk.name',
+        Version: 'axiom.gen_ai.sdk.version',
+      },
+    },
+  },
   GenAI: {
+    /**
+     * These two are used to identify the span
+     */
+    Capability: {
+      Name: 'gen_ai.capability.name', // proprietary to axiom
+    },
+    Step: {
+      Name: 'gen_ai.step.name', // proprietary to axiom
+    },
+    /**
+     * Regular attributes
+     */
+    Agent: {
+      Description: ATTR_GEN_AI_AGENT_DESCRIPTION, // not yet used by axiom-ai
+      ID: ATTR_GEN_AI_AGENT_ID, // not yet used by axiom-ai
+      Name: ATTR_GEN_AI_AGENT_NAME, // not yet used by axiom-ai
+    },
+    Completion: ATTR_GEN_AI_COMPLETION, // OTel suggests to use events API for this now
     Conversation: {
-      ID: 'gen_ai.conversation.id',
+      ID: ATTR_GEN_AI_CONVERSATION_ID, // not yet used by axiom-ai, anyway probably needs to be provided by user
+    },
+    DataSource: {
+      ID: ATTR_GEN_AI_DATA_SOURCE_ID, // not used in axiom-ai yet
     },
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
@@ -87,15 +128,13 @@ export const Attr = {
         /**
          * Note that "text_completion" is deprecated in favor of "chat" for both OpenAI and Anthropic
          */
-        ExecuteTool: GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
         Chat: GEN_AI_OPERATION_NAME_VALUE_CHAT,
+        CreateAgent: GEN_AI_OPERATION_NAME_VALUE_CREATE_AGENT,
+        Embeddings: GEN_AI_OPERATION_NAME_VALUE_EMBEDDINGS,
+        ExecuteTool: GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
+        GenerateContent: GEN_AI_OPERATION_NAME_VALUE_GENERATE_CONTENT,
+        InvokeAgent: GEN_AI_OPERATION_NAME_VALUE_INVOKE_AGENT,
       },
-    },
-    Capability: {
-      Name: 'gen_ai.capability.name',
-    },
-    Step: {
-      Name: 'gen_ai.step.name',
     },
     Output: {
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
@@ -110,35 +149,31 @@ export const Attr = {
      * The provider that is hosting the model, eg AWS Bedrock
      * There doesn't seem to be a semconv for this
      */
-    Provider: 'gen_ai.provider',
-    Prompt: ATTR_GEN_AI_PROMPT,
-    Usage: {
-      InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
-      OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
-    },
+    Provider: 'gen_ai.provider.name', // proprietary to axiom-ai, not yet used by axiom-ai
+    Prompt: ATTR_GEN_AI_PROMPT, // OTel suggests to use the events api for this
     Request: {
+      ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT, // not yet used by axiom-ai
+      EncodingFormats: ATTR_GEN_AI_REQUEST_ENCODING_FORMATS, // not yet used by axiom-ai
       FrequencyPenalty: ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
+      MaxTokens: ATTR_GEN_AI_REQUEST_MAX_TOKENS,
       /**
        * The model you asked for
        */
       Model: ATTR_GEN_AI_REQUEST_MODEL,
-      MaxTokens: ATTR_GEN_AI_REQUEST_MAX_TOKENS,
       PresencePenalty: ATTR_GEN_AI_REQUEST_PRESENCE_PENALTY,
-      Temperature: ATTR_GEN_AI_REQUEST_TEMPERATURE,
-      TopP: ATTR_GEN_AI_REQUEST_TOP_P,
-      TopK: ATTR_GEN_AI_REQUEST_TOP_K,
       Seed: ATTR_GEN_AI_REQUEST_SEED,
       StopSequences: ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
-      ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT,
+      Temperature: ATTR_GEN_AI_REQUEST_TEMPERATURE,
+      TopK: ATTR_GEN_AI_REQUEST_TOP_K,
+      TopP: ATTR_GEN_AI_REQUEST_TOP_P,
     },
-    Completion: ATTR_GEN_AI_COMPLETION,
     Response: {
+      FinishReasons: ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
       ID: ATTR_GEN_AI_RESPONSE_ID,
       /**
        * The model that was actually used (might be different bc routing) - only ever get this from the response, otherwise omit
        */
-      Model: ATTR_GEN_AI_RESPONSE_MODEL,
-      FinishReasons: ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
+      Model: ATTR_GEN_AI_RESPONSE_MODEL, // somehow not landing on the span for google models? check up on this...
     },
     /**
      * From OTel docs:
@@ -149,7 +184,7 @@ export const Attr = {
      * the actual system.
      * ```
      */
-    System: ATTR_GEN_AI_SYSTEM,
+    System: ATTR_GEN_AI_SYSTEM, // not yet used by axiom-ai
     System_Values: {
       Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
       Gemini: GEN_AI_SYSTEM_VALUE_GEMINI,
@@ -157,18 +192,23 @@ export const Attr = {
       Vercel: 'vercel',
     },
     Tool: {
-      CallID: ATTR_GEN_AI_TOOL_CALL_ID,
-      Name: ATTR_GEN_AI_TOOL_NAME,
-      Type: ATTR_GEN_AI_TOOL_TYPE,
+      CallID: ATTR_GEN_AI_TOOL_CALL_ID, // not yet used by axiom-ai
+      Description: ATTR_GEN_AI_TOOL_DESCRIPTION, // not yet used by axiom-ai
+      Name: ATTR_GEN_AI_TOOL_NAME, // not yet used by axiom-ai
+      Type: ATTR_GEN_AI_TOOL_TYPE, // not yet used by axiom-ai
       /**
        * Note, OTel Semantic Convention puts these on `gen_ai.choice` events
        * @see https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/#event-gen_aichoice
        */
-      Arguments: 'gen_ai.tool.arguments',
+      Arguments: 'gen_ai.tool.arguments', // not yet used by axiom-ai
       /**
        * Note, OTel Semantic Convention puts these on `gen_ai.tool.message` events
        */
-      Message: 'gen_ai.tool.message',
+      Message: 'gen_ai.tool.message', // not yet used by axiom-ai
+    },
+    Usage: {
+      InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
+      OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
     },
   },
   Eval: {
