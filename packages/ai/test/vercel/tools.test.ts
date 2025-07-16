@@ -71,6 +71,7 @@ describe('tool call attributes', () => {
       'gen_ai.capability.name': 'test-capability',
       'gen_ai.step.name': 'test-step',
       'gen_ai.output.type': 'text',
+      'gen_ai.provider.name': 'mock-provider',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.request.temperature': 0,
       'gen_ai.request.tool_choice': '{"type":"auto"}',

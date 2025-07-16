@@ -178,12 +178,32 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
     }
   }
 
+  private determineOutputType(options: LanguageModelV2CallOptions): string | undefined {
+    if (options.responseFormat?.type) {
+      switch (options.responseFormat.type) {
+        case 'json':
+          return Attr.GenAI.Output.Type_Values.Json;
+        case 'text':
+          return Attr.GenAI.Output.Type_Values.Text;
+      }
+    }
+
+    // (v2 types don't have `mode`)
+
+    return undefined;
+  }
+
   private setPreCallAttributes(span: Span, options: LanguageModelV2CallOptions) {
     span.setAttributes({
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-      [Attr.GenAI.Output.Type]: Attr.GenAI.Output.Type_Values.Text,
       [Attr.GenAI.Request.Model]: this.modelId,
+      [Attr.GenAI.Provider]: this.model.provider,
     });
+
+    const outputType = this.determineOutputType(options);
+    if (outputType) {
+      span.setAttribute(Attr.GenAI.Output.Type, outputType);
+    }
 
     if (options.maxOutputTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Request.MaxTokens, options.maxOutputTokens);
@@ -209,10 +229,6 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
 
     if (options.stopSequences && options.stopSequences.length > 0) {
       span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(options.stopSequences));
-    }
-
-    if (options.responseFormat) {
-      span.setAttribute(Attr.GenAI.Output.Type, options.responseFormat.type);
     }
 
     const processedPrompt = postProcessPromptV2(options.prompt);
