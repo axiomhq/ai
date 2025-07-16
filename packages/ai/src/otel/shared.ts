@@ -45,3 +45,24 @@ export type GenAIOperation =
 export function createGenAISpanName(operation: GenAIOperation, suffix?: string): string {
   return suffix ? `${operation} ${suffix}` : operation;
 }
+
+// Re-export completion types and utilities
+export type {
+  CompletionArray,
+  CompletionArrayMessage,
+  CompletionAssistantMessage,
+  CompletionToolMessage,
+  CompletionUserMessage,
+  CompletionSystemMessage,
+  CompletionToolCall,
+  ToolCallMetadata,
+  FormatToolCallsOptions,
+  FormattedCompletionResult,
+} from './completionTypes';
+
+export {
+  formatToolCallsInCompletion,
+  formatV1ToolCallsInCompletion,
+  aggregateStreamingToolCalls,
+  createToolCallMetadata,
+} from './completionUtils';
