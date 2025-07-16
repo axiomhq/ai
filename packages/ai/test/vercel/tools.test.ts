@@ -74,9 +74,9 @@ describe('tool call attributes', () => {
       'gen_ai.provider.name': 'mock-provider',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.request.temperature': 0,
-      'gen_ai.request.tool_choice': '{"type":"auto"}',
-      'gen_ai.request.tools_count': 1,
-      'gen_ai.request.tools': '[{"type":"function","function":{"name":"calculator","description":"Perform mathematical calculations","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}]',
+      'gen_ai.request.tools.available':
+        '[{"type":"function","function":{"name":"calculator","description":"Perform mathematical calculations","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}]',
+      'gen_ai.request.tools.choice': '{"type":"auto"}',
       'gen_ai.response.id': 'mock-response-id',
       'gen_ai.response.model': 'tool-model',
       'gen_ai.usage.input_tokens': 10,
@@ -117,25 +117,83 @@ describe('tool call attributes', () => {
 
     const spans = memoryExporter.getFinishedSpans();
     expect(spans.length).toBe(1);
-    
-    const toolsAttribute = spans[0].attributes['gen_ai.request.tools'] as string;
+
+    const toolsAttribute = spans[0].attributes['gen_ai.request.tools.available'] as string;
     const parsedTools = JSON.parse(toolsAttribute);
-    
-    expect(parsedTools).toEqual([{
-      "type": "function",
-      "function": {
-        "name": "calculator",
-        "description": "Perform mathematical calculations",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "expression": {
-              "type": "string"
-            }
+
+    expect(parsedTools).toEqual([
+      {
+        type: 'function',
+        function: {
+          name: 'calculator',
+          description: 'Perform mathematical calculations',
+          parameters: {
+            type: 'object',
+            properties: {
+              expression: {
+                type: 'string',
+              },
+            },
+            required: ['expression'],
+            additionalProperties: false,
+            $schema: 'http://json-schema.org/draft-07/schema#',
           },
-          "required": ["expression"]
-        }
-      }
-    }]);
+        },
+      },
+    ]);
+  });
+
+  it('should capture tools count with multiple function tools', async () => {
+    const mockProvider = createMockProvider();
+
+    const toolCall = {
+      toolCallType: 'function' as const,
+      toolCallId: 'call-456',
+      toolName: 'searchDatabase',
+      args: '{"query": "test query"}',
+    };
+
+    mockProvider.addLanguageModelResponse(
+      'tool-model',
+      mockResponses.textWithTools('Let me search that for you.', [toolCall]),
+    );
+
+    const model = wrapAISDKModel(mockProvider.languageModel('tool-model'));
+
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
+      return await generateText({
+        model,
+        prompt: 'Search for something',
+        tools: {
+          searchDatabase: {
+            description: 'Search through a database',
+            parameters: z.object({ query: z.string() }),
+            execute: async ({ query }) => `Found results for: ${query}`,
+          },
+          retrieveData: {
+            description: 'Retrieve data from external source',
+            parameters: z.object({ id: z.string() }),
+            execute: async ({ id }) => `Data for ID: ${id}`,
+          },
+          calculateMetrics: {
+            description: 'Calculate performance metrics',
+            parameters: z.object({ data: z.array(z.number()) }),
+            execute: async ({ data }: { data: number[] }) =>
+              data.reduce((a: number, b: number) => a + b, 0).toString(),
+          },
+        },
+      });
+    });
+
+    const spans = memoryExporter.getFinishedSpans();
+    expect(spans.length).toBe(1);
+
+    const toolsAttribute = spans[0].attributes['gen_ai.request.tools.available'] as string;
+    const parsedTools = JSON.parse(toolsAttribute);
+
+    expect(parsedTools).toHaveLength(3);
+    expect(parsedTools[0].type).toBe('function');
+    expect(parsedTools[1].type).toBe('function');
+    expect(parsedTools[2].type).toBe('function');
   });
 });
