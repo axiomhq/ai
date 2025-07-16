@@ -166,6 +166,7 @@ export const Attr = {
       Temperature: ATTR_GEN_AI_REQUEST_TEMPERATURE,
       Tools: {
         Available: 'gen_ai.request.tools.available',
+        Choice: 'gen_ai.request.tools.choice',
       },
       TopK: ATTR_GEN_AI_REQUEST_TOP_K,
       TopP: ATTR_GEN_AI_REQUEST_TOP_P,

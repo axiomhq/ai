@@ -327,7 +327,7 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     if (mode.type === 'regular' && mode.tools) {
       if (mode.toolChoice) {
         span.setAttribute(
-          'gen_ai.request.tool_choice',
+          Attr.GenAI.Request.Tools.Choice,
           typeof mode.toolChoice === 'string' ? mode.toolChoice : JSON.stringify(mode.toolChoice),
         );
       }

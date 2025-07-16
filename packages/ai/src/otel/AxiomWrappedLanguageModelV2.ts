@@ -201,6 +201,15 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
     });
 
     if ('tools' in options && Array.isArray(options.tools)) {
+      if ('toolChoice' in options && options.toolChoice) {
+        span.setAttribute(
+          Attr.GenAI.Request.Tools.Choice,
+          typeof options.toolChoice === 'string'
+            ? options.toolChoice
+            : JSON.stringify(options.toolChoice),
+        );
+      }
+
       const availableTools = options.tools.map((tool) => ({
         type: tool.type,
         function:
