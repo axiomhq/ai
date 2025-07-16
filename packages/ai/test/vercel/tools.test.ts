@@ -76,6 +76,7 @@ describe('tool call attributes', () => {
       'gen_ai.request.temperature': 0,
       'gen_ai.request.tool_choice': '{"type":"auto"}',
       'gen_ai.request.tools_count': 1,
+      'gen_ai.request.tools': '[{"type":"function","function":{"name":"calculator","description":"Perform mathematical calculations","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}]',
       'gen_ai.response.id': 'mock-response-id',
       'gen_ai.response.model': 'tool-model',
       'gen_ai.usage.input_tokens': 10,
