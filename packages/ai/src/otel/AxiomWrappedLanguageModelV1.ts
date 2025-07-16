@@ -323,7 +323,7 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(stopSequences));
     }
 
-    // Set mode information
+    // Set mode information and available tools
     if (mode.type === 'regular' && mode.tools) {
       span.setAttribute('gen_ai.request.tools_count', mode.tools.length);
       if (mode.toolChoice) {
@@ -332,6 +332,17 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
           typeof mode.toolChoice === 'string' ? mode.toolChoice : JSON.stringify(mode.toolChoice),
         );
       }
+      
+      // Set available tools
+      const availableTools = mode.tools.map((tool) => ({
+        type: tool.type,
+        function: tool.type === 'function' ? {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters,
+        } : tool,
+      }));
+      span.setAttribute('gen_ai.request.tools', JSON.stringify(availableTools));
     }
   }
 

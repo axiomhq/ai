@@ -164,6 +164,7 @@ export const Attr = {
       Seed: ATTR_GEN_AI_REQUEST_SEED,
       StopSequences: ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
       Temperature: ATTR_GEN_AI_REQUEST_TEMPERATURE,
+      Tools: 'gen_ai.request.tools',
       TopK: ATTR_GEN_AI_REQUEST_TOP_K,
       TopP: ATTR_GEN_AI_REQUEST_TOP_P,
     },
