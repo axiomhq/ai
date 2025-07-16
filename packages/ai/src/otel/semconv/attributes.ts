@@ -58,6 +58,11 @@ import {
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
   ATTR_GEN_AI_COMPLETION,
   ATTR_GEN_AI_PROMPT,
+  ATTR_GEN_AI_TOOL_CALL_ID,
+  ATTR_GEN_AI_TOOL_NAME,
+  ATTR_GEN_AI_TOOL_TYPE,
+  ATTR_GEN_AI_REQUEST_CHOICE_COUNT,
+  ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
 } from './semconv_incubating';
 
 /**
@@ -72,24 +77,10 @@ import {
  * @see: https://github.com/open-telemetry/opentelemetry-js/tree/c89cb38d0fec39d54cf3fcb35c429a8129e9c909/semantic-conventions#unstable-semconv
  */
 export const Attr = {
-  /**
-   * Shared between all features
-   */
-  Dataset: {
-    Name: 'dataset.name',
-    Description: 'dataset.description',
-  },
-  Dashboard: {
-    Name: 'dashboard.name',
-    Description: 'dashboard.description',
-  },
-  Query: {
-    APL: 'query.apl',
-  },
-  OrgId: 'org_id',
-  UserId: 'user_id',
-  HasAccessToken: 'has_access_token',
   GenAI: {
+    Conversation: {
+      ID: 'gen_ai.conversation.id',
+    },
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
       Name_Values: {
@@ -99,9 +90,12 @@ export const Attr = {
         ExecuteTool: GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
         Chat: GEN_AI_OPERATION_NAME_VALUE_CHAT,
       },
-      // TODO: bikeshed `WorkflowName` and `TaskName`
-      WorkflowName: 'gen_ai.operation.workflow_name',
-      TaskName: 'gen_ai.operation.task_name',
+    },
+    Capability: {
+      Name: 'gen_ai.capability.name',
+    },
+    Step: {
+      Name: 'gen_ai.step.name',
     },
     Output: {
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
@@ -122,10 +116,6 @@ export const Attr = {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
       OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
     },
-    Cost: {
-      // TODO: bikeshed this
-      Estimated: 'gen_ai.cost.estimated',
-    },
     Request: {
       FrequencyPenalty: ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
       /**
@@ -139,6 +129,7 @@ export const Attr = {
       TopK: ATTR_GEN_AI_REQUEST_TOP_K,
       Seed: ATTR_GEN_AI_REQUEST_SEED,
       StopSequences: ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
+      ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT,
     },
     Completion: ATTR_GEN_AI_COMPLETION,
     Response: {
@@ -147,8 +138,7 @@ export const Attr = {
        * The model that was actually used (might be different bc routing) - only ever get this from the response, otherwise omit
        */
       Model: ATTR_GEN_AI_RESPONSE_MODEL,
-      ProviderMetadata: 'gen_ai.response.provider_metadata',
-      Text: 'gen_ai.response.text',
+      FinishReasons: ATTR_GEN_AI_RESPONSE_FINISH_REASONS,
     },
     /**
      * From OTel docs:
@@ -166,7 +156,20 @@ export const Attr = {
       OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
       Vercel: 'vercel',
     },
-    Tool: {},
+    Tool: {
+      CallID: ATTR_GEN_AI_TOOL_CALL_ID,
+      Name: ATTR_GEN_AI_TOOL_NAME,
+      Type: ATTR_GEN_AI_TOOL_TYPE,
+      /**
+       * Note, OTel Semantic Convention puts these on `gen_ai.choice` events
+       * @see https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/#event-gen_aichoice
+       */
+      Arguments: 'gen_ai.tool.arguments',
+      /**
+       * Note, OTel Semantic Convention puts these on `gen_ai.tool.message` events
+       */
+      Message: 'gen_ai.tool.message',
+    },
   },
   Eval: {
     Run: {
