@@ -5,9 +5,8 @@
   "scripts": {
     "build": "turbo build",
     "test": "turbo test",
-    "format": "prettier --write . && turbo run format",
-    "format:prettier": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check",
     "lint": "turbo run lint",
     "typecheck": "turbo typecheck"
   },

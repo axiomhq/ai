@@ -11,7 +11,6 @@ const geminiProvider = createGoogleGenerativeAI({
 });
 
 export const geminiFlash = wrapAISDKModel(geminiProvider('gemini-2.5-flash-preview-04-17'));
-
 ```
 
 ## Install
