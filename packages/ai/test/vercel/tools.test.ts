@@ -83,4 +83,59 @@ describe('tool call attributes', () => {
       'gen_ai.usage.output_tokens': 30,
     });
   });
+
+  it('should format tools according to otel spec exactly', async () => {
+    const mockProvider = createMockProvider();
+
+    const toolCall = {
+      toolCallType: 'function' as const,
+      toolCallId: 'call-123',
+      toolName: 'calculator',
+      args: '{"expression": "2+2"}',
+    };
+
+    mockProvider.addLanguageModelResponse(
+      'tool-model',
+      mockResponses.textWithTools('Let me calculate that for you.', [toolCall]),
+    );
+
+    const model = wrapAISDKModel(mockProvider.languageModel('tool-model'));
+
+    await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
+      return await generateText({
+        model,
+        prompt: 'What is 2+2?',
+        tools: {
+          calculator: {
+            description: 'Perform mathematical calculations',
+            parameters: z.object({ expression: z.string() }),
+            execute: async ({ expression }) => eval(expression).toString(),
+          },
+        },
+      });
+    });
+
+    const spans = memoryExporter.getFinishedSpans();
+    expect(spans.length).toBe(1);
+    
+    const toolsAttribute = spans[0].attributes['gen_ai.request.tools'] as string;
+    const parsedTools = JSON.parse(toolsAttribute);
+    
+    expect(parsedTools).toEqual([{
+      "type": "function",
+      "function": {
+        "name": "calculator",
+        "description": "Perform mathematical calculations",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string"
+            }
+          },
+          "required": ["expression"]
+        }
+      }
+    }]);
+  });
 });
