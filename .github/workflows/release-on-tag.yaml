@@ -1,0 +1,48 @@
+on:
+  push:
+    tags:
+      - ai-v*
+
+env:
+  PNPM_VERSION: 10.11.1
+  NODE_VERSION: 22
+
+jobs:
+  # publish to github packages
+  publish:
+    name: Publish AI package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@axiomhq'
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: ./node_modules/.cache/turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm build
+      - name: Validate package.json
+        working-directory: packages/ai
+        run: pnpm pack
+      - name: Publish to GitHub Package Registry
+        working-directory: packages/ai
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
+        run: |
+          # Publish the package
+          pnpm publish --access restricted --no-git-checks
+      - uses: softprops/action-gh-release@v2
