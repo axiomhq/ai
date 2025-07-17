@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
 import type { OpenAIMessage } from 'src/otel/vercelTypes';
 import {
   formatToolCallsInCompletion,
-  formatV1ToolCallsInCompletion,
   aggregateStreamingToolCalls,
   createToolCallMetadata,
 } from 'src/otel/completionUtils';
@@ -189,50 +187,6 @@ describe('completionUtils', () => {
         duration_ms: 5000,
         status: 'ok',
         span_id: 'span_123',
-      });
-    });
-  });
-
-  describe('formatV1ToolCallsInCompletion', () => {
-    it('should format V1 tool calls correctly', () => {
-      const promptMessages: OpenAIMessage[] = [
-        {
-          role: 'user',
-          content: 'Test V1 tool calls',
-        },
-      ];
-
-      const toolCalls: LanguageModelV1FunctionToolCall[] = [
-        {
-          toolCallId: 'call_123',
-          toolName: 'test_tool',
-          args: '{"param": "value"}',
-          toolCallType: 'function',
-        },
-      ];
-
-      const result = formatV1ToolCallsInCompletion({
-        promptMessages,
-        toolCalls,
-        includeTimestamps: false,
-      });
-
-      expect(result).toHaveLength(2);
-      expect(result[1]).toEqual({
-        role: 'assistant',
-        content: null,
-        timestamp: undefined,
-        tool_calls: [
-          {
-            id: 'call_123',
-            type: 'function',
-            function: {
-              name: 'test_tool',
-              arguments: '{"param": "value"}',
-            },
-            index: 0,
-          },
-        ],
       });
     });
   });

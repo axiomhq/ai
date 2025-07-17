@@ -102,10 +102,10 @@ export const Attr = {
      * These two are used to identify the span
      */
     Capability: {
-      Name: 'gen_ai.capability.name', // proprietary to axiom
+      Name: 'gen_ai.capability.name', // proprietary to axiom-ai
     },
     Step: {
-      Name: 'gen_ai.step.name', // proprietary to axiom
+      Name: 'gen_ai.step.name', // proprietary to axiom-ai
     },
     /**
      * Regular attributes
@@ -197,19 +197,19 @@ export const Attr = {
       Vercel: 'vercel',
     },
     Tool: {
-      CallID: ATTR_GEN_AI_TOOL_CALL_ID, // not yet used by axiom-ai
-      Description: ATTR_GEN_AI_TOOL_DESCRIPTION, // not yet used by axiom-ai
-      Name: ATTR_GEN_AI_TOOL_NAME, // not yet used by axiom-ai
-      Type: ATTR_GEN_AI_TOOL_TYPE, // not yet used by axiom-ai
+      CallID: ATTR_GEN_AI_TOOL_CALL_ID,
+      Description: ATTR_GEN_AI_TOOL_DESCRIPTION,
+      Name: ATTR_GEN_AI_TOOL_NAME,
+      Type: ATTR_GEN_AI_TOOL_TYPE,
       /**
        * Note, OTel Semantic Convention puts these on `gen_ai.choice` events
        * @see https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/#event-gen_aichoice
        */
-      Arguments: 'gen_ai.tool.arguments', // not yet used by axiom-ai
+      Arguments: 'gen_ai.tool.arguments',
       /**
        * Note, OTel Semantic Convention puts these on `gen_ai.tool.message` events
        */
-      Message: 'gen_ai.tool.message', // not yet used by axiom-ai
+      Message: 'gen_ai.tool.message',
     },
     Usage: {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
