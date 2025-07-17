@@ -14,12 +14,13 @@ import {
 import { trace, propagation, type Span } from '@opentelemetry/api';
 
 import type { OpenAIMessage } from './vercelTypes';
-import { Attr } from './semconv/attributes';
+import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from './semconv/attributes';
 import { createGenAISpanName } from './shared';
 import { currentUnixTime } from 'src/util/currentUnixTime';
 import { createStartActiveSpan } from './startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 import { createSimpleCompletion } from './completionUtils';
+import packageJson from '../../package.json';
 
 export function isLanguageModelV1(model: any): model is LanguageModelV1 {
   return (
@@ -292,6 +293,9 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Request.Model]: this.modelId,
       [Attr.GenAI.Provider]: this.model.provider,
+      [Attr.Axiom.GenAI.SchemaURL]: `${SCHEMA_BASE_URL}${SCHEMA_VERSION}`,
+      [Attr.Axiom.GenAI.SDK.Name]: packageJson.name,
+      [Attr.Axiom.GenAI.SDK.Version]: packageJson.version,
     });
 
     const outputType = this.determineOutputType({ responseFormat, mode });

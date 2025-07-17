@@ -10,13 +10,14 @@ import {
 } from '@ai-sdk/providerv2';
 
 import { trace, propagation, type Span } from '@opentelemetry/api';
-import { Attr } from './semconv/attributes';
+import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from './semconv/attributes';
 import { createStartActiveSpan } from './startActiveSpan';
 import { currentUnixTime } from '../util/currentUnixTime';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 import { createGenAISpanName } from './shared';
 import type { OpenAIMessage } from './vercelTypes';
 import { formatV2ToolCallsInCompletion } from './completionUtils';
+import packageJson from '../../package.json';
 
 export function isLanguageModelV2(model: any): model is LanguageModelV2 {
   return (
@@ -210,6 +211,9 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Request.Model]: this.modelId,
       [Attr.GenAI.Provider]: this.model.provider,
+      [Attr.Axiom.GenAI.SchemaURL]: `${SCHEMA_BASE_URL}${SCHEMA_VERSION}`,
+      [Attr.Axiom.GenAI.SDK.Name]: packageJson.name,
+      [Attr.Axiom.GenAI.SDK.Version]: packageJson.version,
     });
 
     if ('tools' in options && Array.isArray(options.tools)) {

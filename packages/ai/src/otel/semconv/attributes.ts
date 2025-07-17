@@ -76,6 +76,9 @@ import {
   ATTR_GEN_AI_REQUEST_ENCODING_FORMATS,
 } from './semconv_incubating';
 
+export const SCHEMA_VERSION = '0.0.1';
+export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
+
 /**
  * When adding something new here, please:
  * 1. Make sure it doesn't already exist as part of OTel Semantic Conventions (use that instead)
