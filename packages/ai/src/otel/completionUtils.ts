@@ -79,21 +79,6 @@ function convertToCompletionMessages(
 }
 
 /**
- * Converts V1 tool calls to completion format
- */
-function convertV1ToolCalls(toolCalls: LanguageModelV1FunctionToolCall[]) {
-  return toolCalls.map((toolCall, index) => ({
-    id: toolCall.toolCallId,
-    type: 'function' as const,
-    function: {
-      name: toolCall.toolName,
-      arguments: toolCall.args,
-    },
-    index,
-  }));
-}
-
-/**
  * Creates tool result messages from tool execution results
  */
 function createToolResultMessages(
@@ -168,18 +153,16 @@ export function formatToolCallsInCompletion(
 }
 
 /**
- * Formats V1 tool calls for completion array
- * Convenience function for V1 model wrapper
+ * Creates a simple completion array with just assistant text response
+ * Used for V1 model wrapper where tool calls are handled separately
  */
-export function formatV1ToolCallsInCompletion({
+export function createSimpleCompletion({
   promptMessages = [],
   text,
-  toolCalls = [],
   includeTimestamps = true,
 }: {
   promptMessages?: OpenAIMessage[];
   text?: string;
-  toolCalls?: LanguageModelV1FunctionToolCall[];
   includeTimestamps?: boolean;
 }): CompletionArray {
   const timestamp = includeTimestamps ? createTimestamp() : undefined;
@@ -187,17 +170,12 @@ export function formatV1ToolCallsInCompletion({
   // Convert prompt messages
   const historyMessages = convertToCompletionMessages(promptMessages, includeTimestamps);
 
-  // Create assistant message
+  // Create assistant message with text only
   const assistantMessage: CompletionAssistantMessage = {
     role: 'assistant',
-    content: text ?? (toolCalls.length > 0 ? null : ''),
+    content: text ?? '',
     timestamp,
   };
-
-  // Add tool calls if present
-  if (toolCalls.length > 0) {
-    assistantMessage.tool_calls = convertV1ToolCalls(toolCalls);
-  }
 
   return [...historyMessages, assistantMessage];
 }

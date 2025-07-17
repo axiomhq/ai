@@ -1,7 +1,7 @@
-import { generateText } from 'ai';
+import { generateText, tool } from 'ai';
 import { z } from 'zod';
 import { geminiFlash } from '@/shared/gemini';
-import { withSpan } from '@axiomhq/ai';
+import { withSpan, wrapToolV1 } from '@axiomhq/ai';
 
 export default async function Page() {
   const userId = 123;
@@ -24,32 +24,33 @@ export default async function Page() {
         },
       ],
       tools: {
-        getWeather: {
-          description: 'Get the current weather for a city',
-          parameters: z.object({
-            city: z.string().describe('The city to get weather for'),
-            country: z.string().describe('The country the city is in'),
-          }),
-          execute: async ({ city, country }) => {
-            // Simulate API call delay
-            await new Promise((resolve) => setTimeout(resolve, 500));
+        getWeather: wrapToolV1(
+          'getWeather',
+          tool({
+            description: 'Get the current weather for a city',
+            parameters: z.object({
+              city: z.string().describe('The city to get weather for'),
+              country: z.string().describe('The country the city is in'),
+            }),
+            execute: async ({ city, country }, opts) => {
+              // Simulate API call delay
+              await new Promise((resolve) => setTimeout(resolve, 500));
 
-            // Return mock weather data
-            return {
-              city,
-              country,
-              temperature: 22,
-              condition: 'sunny',
-              humidity: 45,
-              windSpeed: 12,
-            };
-          },
-        },
+              // Return mock weather data
+              return {
+                city,
+                country,
+                temperature: 22,
+                condition: 'sunny',
+                humidity: 45,
+                windSpeed: 12,
+              };
+            },
+          }),
+        ),
       },
     });
   });
-
-  console.log('tktk res', res);
 
   return (
     <div>
