@@ -112,7 +112,7 @@ importers:
         specifier: ^5.0.0
         version: 5.8.3
 
-  examples/example-instrumentation-nextjs:
+  examples/example-instrumentation-nextjs-v4:
     dependencies:
       '@ai-sdk/google':
         specifier: ^1.2.22
@@ -144,6 +144,61 @@ importers:
       ai:
         specifier: ^4.3.16
         version: 4.3.17(react@18.3.1)(zod@3.25.76)
+      next:
+        specifier: latest
+        version: 15.4.1(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 18.7.11
+        version: 18.7.11
+      '@types/react':
+        specifier: 18.2.8
+        version: 18.2.8
+      typescript:
+        specifier: 4.7.4
+        version: 4.7.4
+
+  examples/example-instrumentation-nextjs-v5:
+    dependencies:
+      '@ai-sdk/google':
+        specifier: ^2.0.0-beta.12
+        version: 2.0.0-canary.20(zod@3.25.76)
+      '@axiomhq/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
+      '@opentelemetry/exporter-jaeger':
+        specifier: ^2.0.1
+        version: 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: ^0.202.0
+        version: 0.202.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources':
+        specifier: ^2.0.1
+        version: 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-node':
+        specifier: ^0.202.0
+        version: 0.202.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node':
+        specifier: ^2.0.1
+        version: 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.34.0
+        version: 1.36.0
+      ai:
+        specifier: ^5.0.0-beta.23
+        version: 5.0.0-canary.24(zod@3.25.76)
       next:
         specifier: latest
         version: 15.4.1(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -310,6 +365,12 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.0.0
+
+  '@ai-sdk/google@2.0.0-canary.20':
+    resolution: {integrity: sha512-2LqcuiADGzr8mqzHfHU+E7Prjl5Vb4aqFKUibp1GF2pLy9i4dx+4lwRRn5noYBoKQcjJTKtO+PkPW2eErvunKg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.24.0
 
   '@ai-sdk/openai@1.3.23':
     resolution: {integrity: sha512-86U7rFp8yacUAOE/Jz8WbGcwMCqWvjK33wk5DXkfnAOEn3mx2r7tNSJdjukQFZbAK97VMXGPPHxF+aEARDXRXQ==}
@@ -3453,6 +3514,12 @@ snapshots:
     dependencies:
       '@ai-sdk/provider': 1.1.3
       '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
+      zod: 3.25.76
+
+  '@ai-sdk/google@2.0.0-canary.20(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0-canary.14
+      '@ai-sdk/provider-utils': 3.0.0-canary.19(zod@3.25.76)
       zod: 3.25.76
 
   '@ai-sdk/openai@1.3.23(zod@3.25.76)':
