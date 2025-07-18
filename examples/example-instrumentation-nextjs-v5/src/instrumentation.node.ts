@@ -6,18 +6,13 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { initAxiomAI } from '@axiomhq/ai';
 import { tracer } from './tracer';
 
-console.log('tktk env', {
-  AXIOM_TOKEN: process.env.AXIOM_TOKEN,
-  AXIOM_DATASET: process.env.AXIOM_DATASET,
-});
-
 const sdk = new NodeSDK({
   resource: resourceFromAttributes({
     [ATTR_SERVICE_NAME]: 'nextjs-otel-example',
   }) as Resource,
   spanProcessor: new SimpleSpanProcessor(
     new OTLPTraceExporter({
-      url: `https://api.dev.axiomtestlabs.co/v1/traces`,
+      url: `https://api.axiom.co/v1/traces`,
       headers: {
         Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
         'X-Axiom-Dataset': process.env.AXIOM_DATASET!,
