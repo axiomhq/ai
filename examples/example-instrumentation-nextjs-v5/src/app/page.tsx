@@ -1,4 +1,4 @@
-import { generateText, tool } from 'ai';
+import { generateText, stepCountIs, tool } from 'ai';
 import { z } from 'zod';
 import { geminiFlash } from '@/shared/gemini';
 import { withSpan, wrapTool } from '@axiomhq/ai';
@@ -11,7 +11,7 @@ export default async function Page() {
 
     return generateText({
       model: geminiFlash,
-      maxSteps: 5,
+      stopWhen: stepCountIs(5),
       messages: [
         {
           role: 'system',
@@ -28,7 +28,7 @@ export default async function Page() {
           'findDirections',
           tool({
             description: 'Find directions to a location',
-            parameters: z.object({
+            inputSchema: z.object({
               from: z.string().describe('The location to start from'),
               to: z.string().describe('The location to find directions to'),
             }),
