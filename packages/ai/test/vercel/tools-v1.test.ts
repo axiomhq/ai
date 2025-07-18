@@ -7,7 +7,7 @@ import { generateText, tool } from 'aiv4';
 import { createMockProvider, mockResponses } from './mock-provider-v1/mock-provider';
 
 import { z } from 'zod';
-import { wrapToolV1 } from 'src';
+import { wrapTool } from 'src';
 
 let memoryExporter: InMemorySpanExporter;
 let tracerProvider: NodeTracerProvider;
@@ -46,14 +46,17 @@ describe('tool call attributes', () => {
       mockResponses.textWithTools('Let me search that for you.', [toolCall]),
     );
 
+    mockProvider.addLanguageModelResponse('tool-model', mockResponses.text('I found a result...'));
+
     const model = wrapAISDKModel(mockProvider.languageModel('tool-model'));
 
     await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
-      return await generateText({
+      const res = await generateText({
         model,
+        maxSteps: 9,
         prompt: 'Search for something',
         tools: {
-          searchDatabase: wrapToolV1(
+          searchDatabase: wrapTool(
             'searchDatabase',
             tool({
               description: 'Search through a database',
@@ -61,7 +64,7 @@ describe('tool call attributes', () => {
               execute: async ({ query }) => `Found results for: ${query}`,
             }),
           ),
-          retrieveData: wrapToolV1(
+          retrieveData: wrapTool(
             'retrieveData',
             tool({
               description: 'Retrieve data from external source',
@@ -69,7 +72,7 @@ describe('tool call attributes', () => {
               execute: async ({ id }) => `Data for ID: ${id}`,
             }),
           ),
-          calculateMetrics: wrapToolV1(
+          calculateMetrics: wrapTool(
             'calculateMetrics',
             tool({
               description: 'Calculate performance metrics',
@@ -80,6 +83,8 @@ describe('tool call attributes', () => {
           ),
         },
       });
+      console.log('tktk res', JSON.stringify(res, null, 2));
+      return res;
     });
 
     const spans = memoryExporter.getFinishedSpans();
@@ -106,12 +111,45 @@ describe('tool call attributes', () => {
       'axiom.gen_ai.sdk.name': '@axiomhq/ai',
       'axiom.gen_ai.sdk.version': '0.0.1',
       'gen_ai.capability.name': 'test-capability',
-      'gen_ai.prompt':
-        '[{"role":"user","content":[{"type":"text","text":"Search for something"}]}]',
-      'gen_ai.completion': '[{"role":"assistant","content":"Let me search that for you."}]',
+      'gen_ai.prompt': JSON.stringify([
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Search for something',
+            },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: 'Let me search that for you.',
+          tool_calls: [
+            {
+              id: 'call-456',
+              function: {
+                name: 'searchDatabase',
+                arguments: '{"query":"test query"}',
+              },
+              type: 'function',
+            },
+          ],
+        },
+        {
+          role: 'tool',
+          tool_call_id: 'call-456',
+          content: '"Found results for: test query"',
+        },
+      ]),
+      'gen_ai.completion': JSON.stringify([
+        {
+          role: 'assistant',
+          content: 'I found a result...',
+        },
+      ]),
       'gen_ai.operation.name': 'chat',
       'gen_ai.output.type': 'text',
-      'gen_ai.response.finish_reasons': '["tool-calls"]',
+      'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.provider.name': 'mock-provider',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.request.temperature': 0,
@@ -119,7 +157,7 @@ describe('tool call attributes', () => {
       'gen_ai.response.model': 'tool-model',
       'gen_ai.step.name': 'test-step',
       'gen_ai.usage.input_tokens': 10,
-      'gen_ai.usage.output_tokens': 27,
+      'gen_ai.usage.output_tokens': 19,
     });
   });
 });
