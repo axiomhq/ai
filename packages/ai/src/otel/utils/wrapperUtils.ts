@@ -40,6 +40,17 @@ export function setScopeAttributes(span: Span): void {
 }
 
 /**
+ * Sets Axiom-specific base attributes on a span
+ */
+export function setAxiomBaseAttributes(span: Span): void {
+  span.setAttributes({
+    [Attr.Axiom.GenAI.SchemaURL]: `${SCHEMA_BASE_URL}${SCHEMA_VERSION}`,
+    [Attr.Axiom.GenAI.SDK.Name]: packageJson.name,
+    [Attr.Axiom.GenAI.SDK.Version]: packageJson.version,
+  });
+}
+
+/**
  * Sets common base attributes on a span
  */
 export function setBaseAttributes(span: Span, provider: string, modelId: string): void {
@@ -47,10 +58,9 @@ export function setBaseAttributes(span: Span, provider: string, modelId: string)
     [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
     [Attr.GenAI.Request.Model]: modelId,
     [Attr.GenAI.Provider]: provider,
-    [Attr.Axiom.GenAI.SchemaURL]: `${SCHEMA_BASE_URL}${SCHEMA_VERSION}`,
-    [Attr.Axiom.GenAI.SDK.Name]: packageJson.name,
-    [Attr.Axiom.GenAI.SDK.Version]: packageJson.version,
   });
+  
+  setAxiomBaseAttributes(span);
 }
 
 /**

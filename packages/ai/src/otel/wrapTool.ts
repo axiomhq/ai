@@ -5,6 +5,7 @@ import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
 import { typedEntries } from 'src/util/typedEntries';
 import { AxiomAIResources } from './shared';
+import { setAxiomBaseAttributes } from './utils/wrapperUtils';
 
 type Tool = ToolV4 | ToolV5;
 
@@ -42,6 +43,9 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
       const spanName = `${Attr.GenAI.Operation.Name_Values.ExecuteTool} ${toolName}`;
 
       return startActiveSpan(spanName, null, async (span: Span) => {
+        // Set Axiom base attributes
+        setAxiomBaseAttributes(span);
+        
         span.setAttribute(Attr.GenAI.Tool.CallID, opts.toolCallId);
         span.setAttribute(Attr.GenAI.Operation.Name, Attr.GenAI.Operation.Name_Values.ExecuteTool);
         span.setAttribute(Attr.GenAI.Tool.Name, toolName);
