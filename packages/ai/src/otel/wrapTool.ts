@@ -45,7 +45,7 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
       return startActiveSpan(spanName, null, async (span: Span) => {
         // Set Axiom base attributes
         setAxiomBaseAttributes(span);
-        
+
         span.setAttribute(Attr.GenAI.Tool.CallID, opts.toolCallId);
         span.setAttribute(Attr.GenAI.Operation.Name, Attr.GenAI.Operation.Name_Values.ExecuteTool);
         span.setAttribute(Attr.GenAI.Tool.Name, toolName);
