@@ -94,6 +94,9 @@ describe('tool call attributes', () => {
     expect(toolSpan).toBeDefined();
     expect(toolSpan?.name).toBe('execute_tool searchDatabase');
     expect(toolSpan?.attributes).toEqual({
+      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
+      'axiom.gen_ai.sdk.name': '@axiomhq/ai',
+      'axiom.gen_ai.sdk.version': '0.0.1',
       'gen_ai.operation.name': 'execute_tool',
       'gen_ai.tool.call.id': 'call-456',
       'gen_ai.tool.description': 'Search through a database',
