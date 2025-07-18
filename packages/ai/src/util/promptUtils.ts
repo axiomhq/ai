@@ -4,51 +4,53 @@ import type { OpenAIMessage } from '../otel/vercelTypes';
 export type ToolResultMap = Map<string, any>;
 
 /**
- * Appends tool calls and their results to a conversation prompt.
- * 
- * This function takes an existing conversation prompt and adds:
- * 1. An assistant message containing the tool calls
- * 2. Tool result messages for each tool call with results
- * 
- * @param prompt - The existing conversation prompt
- * @param toolCalls - The tool calls made by the assistant
- * @param toolResults - Map of tool names to their results
- * @returns Updated prompt with tool calls and results appended
+* Appends tool calls and their results to a conversation prompt.
+*
+* This function takes an existing conversation prompt and adds:
+* 1. An assistant message containing the tool calls
+* 2. Tool result messages for each tool call with results
+*
+* @param prompt - The existing conversation prompt
+* @param toolCalls - The tool calls made by the assistant
+* @param toolResults - Map of tool names to their results
+* @param assistantContent - Optional assistant message content to include with tool calls
+* @returns Updated prompt with tool calls and results appended
  */
 export function appendToolCalls(
-  prompt: OpenAIMessage[], 
-  toolCalls: LanguageModelV1FunctionToolCall[], 
-  toolResults: ToolResultMap
+prompt: OpenAIMessage[],
+toolCalls: LanguageModelV1FunctionToolCall[],
+  toolResults: ToolResultMap,
+assistantContent?: string | null
 ): OpenAIMessage[] {
-  const updatedPrompt = [...prompt];
+const updatedPrompt = [...prompt];
 
-  // Add assistant message with tool calls
-  updatedPrompt.push({
-    role: 'assistant',
-    content: null,
-    tool_calls: toolCalls.map((toolCall) => ({
-      id: toolCall.toolCallId,
-      type: 'function',
-      function: {
-        name: toolCall.toolName,
-        arguments:
-          typeof toolCall.args === 'string' ? toolCall.args : JSON.stringify(toolCall.args),
-      },
-    })),
-  });
+// Add assistant message with tool calls
+updatedPrompt.push({
+role: 'assistant',
+content: assistantContent || null,
+tool_calls: toolCalls.map((toolCall) => ({
+id: toolCall.toolCallId,
+function: {
+  name: toolCall.toolName,
+arguments:
+  typeof toolCall.args === 'string' ? toolCall.args : JSON.stringify(toolCall.args),
+},
+type: 'function',
+})),
+});
 
-  // Add tool result messages with real data
+// Add tool result messages with real data
   for (const toolCall of toolCalls) {
-    const realToolResult = toolResults.get(toolCall.toolName);
+const realToolResult = toolResults.get(toolCall.toolName);
 
-    if (realToolResult) {
-      updatedPrompt.push({
-        role: 'tool',
-        tool_call_id: toolCall.toolCallId,
-        content: JSON.stringify(realToolResult),
-      });
+if (realToolResult) {
+updatedPrompt.push({
+role: 'tool',
+  tool_call_id: toolCall.toolCallId,
+    content: JSON.stringify(realToolResult),
+    });
     }
-  }
+}
 
   return updatedPrompt;
 }
@@ -97,4 +99,48 @@ export function extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, a
   }
 
   return toolResultsMap;
+}
+
+/**
+ * Extracts tool results from a V2 prompt structure.
+ * 
+ * V2 prompts use a "parts" array structure where:
+ * - Tool calls are in assistant messages as 'tool-call' parts
+ * - Tool results are in 'tool' role messages as 'tool-result' parts with 'output' property
+ * 
+ * @param prompt - The V2 prompt array (any[] to match the actual structure used in V2)
+ * @returns Map of tool names to their results
+ */
+export function extractToolResultsFromPromptV2(prompt: any[]): Map<string, any> {
+  const idToName = new Map<string, string>();
+  const results = new Map<string, any>();
+
+  // 1. Collect tool-call ids → names from assistant messages
+  for (const message of prompt) {
+    if (message.role === 'assistant' && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part.type === 'tool-call') {
+          idToName.set(part.toolCallId, part.toolName);
+        }
+      }
+    }
+  }
+
+  // 2. Collect tool results from tool role messages
+  for (const message of prompt) {
+    if (message.role === 'tool' && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        // In V2, tool result parts have toolCallId and result properties
+        if (part.toolCallId && part.result !== undefined) {
+          const toolName = idToName.get(part.toolCallId);
+          if (toolName) {
+            // Use result property (actual V2 format) with fallback to output for v5 compatibility
+            results.set(toolName, part.result ?? part.output ?? part);
+          }
+        }
+      }
+    }
+  }
+
+  return results;
 }
