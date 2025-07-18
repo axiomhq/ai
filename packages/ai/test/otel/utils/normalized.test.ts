@@ -1,11 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
 import type { LanguageModelV2ToolCall } from '@ai-sdk/providerv2';
-import {
-  normalizeV1ToolCalls,
-  normalizeV2ToolCalls,
-  updatePromptWithToolCalls,
-} from '../../../src/otel/utils/normalized';
+import { normalizeV1ToolCalls, normalizeV2ToolCalls } from '../../../src/otel/utils/normalized';
+import { appendToolCalls } from 'src/util/promptUtils';
 
 describe('normalized.ts', () => {
   describe('normalizeV1ToolCall', () => {
@@ -115,7 +112,7 @@ describe('normalized.ts', () => {
     });
   });
 
-  describe('updatePromptWithToolCalls', () => {
+  describe('appendToolCalls', () => {
     it('should append tool calls and results to prompt', () => {
       const originalPrompt = [{ role: 'user' as const, content: 'Hello' }];
 
@@ -130,7 +127,7 @@ describe('normalized.ts', () => {
 
       const toolResults = new Map([['get_weather', { temperature: 72, conditions: 'sunny' }]]);
 
-      const result = updatePromptWithToolCalls(
+      const result = appendToolCalls(
         originalPrompt,
         toolCalls,
         toolResults,
@@ -175,7 +172,7 @@ describe('normalized.ts', () => {
 
       const toolResults = new Map();
 
-      const result = updatePromptWithToolCalls(originalPrompt, toolCalls, toolResults, null);
+      const result = appendToolCalls(originalPrompt, toolCalls, toolResults, null);
 
       expect(result).toEqual([
         { role: 'user', content: 'Hello' },
