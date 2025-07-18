@@ -11,7 +11,7 @@
     "examples",
     "internal",
     "tests",
-    "test",
+    // "test",
     ".github"
   ]
 }

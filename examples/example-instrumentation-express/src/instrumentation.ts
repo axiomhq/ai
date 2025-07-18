@@ -27,10 +27,7 @@ export const setupTracing = (serviceName: string): Tracer => {
     resource: resourceFromAttributes({
       [ATTR_SERVICE_NAME]: serviceName,
     }),
-    spanProcessors: [
-      new SimpleSpanProcessor(exporter),
-      // new SimpleSpanProcessor(new ConsoleSpanExporter()),
-    ],
+    spanProcessors: [new SimpleSpanProcessor(exporter)],
   });
   // Set the tracer provider for the already-registered instrumentations
   registerInstrumentations({

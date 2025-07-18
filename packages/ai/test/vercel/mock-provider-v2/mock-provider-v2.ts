@@ -394,8 +394,9 @@ export class MockProvider implements ProviderV2 {
               await new Promise((resolve) => setTimeout(resolve, effectiveDelay));
             }
             controller.enqueue({
-              type: 'text',
-              text: chunk,
+              type: 'text-delta',
+              id: 'text-id',
+              delta: chunk,
             });
           }
 
