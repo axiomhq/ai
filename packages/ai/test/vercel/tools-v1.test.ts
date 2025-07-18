@@ -83,7 +83,6 @@ describe('tool call attributes', () => {
           ),
         },
       });
-      console.log('tktk res', JSON.stringify(res, null, 2));
       return res;
     });
 

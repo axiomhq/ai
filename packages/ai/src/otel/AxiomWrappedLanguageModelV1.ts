@@ -11,18 +11,22 @@ import {
   type LanguageModelV1ProviderMetadata,
 } from '@ai-sdk/providerv1';
 
-import { trace, propagation, type Span } from '@opentelemetry/api';
+import { type Span } from '@opentelemetry/api';
 
 import type { OpenAIMessage, OpenAIUserContentPart } from './vercelTypes';
-import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from './semconv/attributes';
+import { Attr } from './semconv/attributes';
 
-import { createGenAISpanName } from './shared';
 import { currentUnixTime } from 'src/util/currentUnixTime';
-import { createStartActiveSpan } from './startActiveSpan';
-import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 import { createSimpleCompletion } from './completionUtils';
 import { appendToolCalls, extractToolResultsFromRawPrompt } from '../util/promptUtils';
-import packageJson from '../../package.json';
+import {
+  setScopeAttributes,
+  setBaseAttributes,
+  setRequestParameterAttributes,
+  withSpanHandling,
+  determineOutputTypeV1,
+  type CommonSpanContext,
+} from './utils/wrapperUtils';
 
 // TODO: @cje - use these instead of current `result` type
 type DoGenerateReturn = Awaited<ReturnType<LanguageModelV1['doGenerate']>>;
@@ -30,7 +34,7 @@ type RawPrompt = DoGenerateReturn['rawCall']['rawPrompt'];
 type RawSettings = DoGenerateReturn['rawCall']['rawSettings'];
 // type DoStreamReturn = Awaited<ReturnType<LanguageModelV1['doStream']>>;
 
-interface GenAiSpanContext {
+interface GenAiSpanContext extends CommonSpanContext {
   originalPrompt: OpenAIMessage[];
   rawCall?: {
     rawPrompt?: RawPrompt;
@@ -204,35 +208,19 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   private async withSpanHandling<T>(
     operation: (span: Span, context: GenAiSpanContext) => Promise<T>,
   ): Promise<T> {
-    const bag = propagation.getActiveBaggage();
-    const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
-
-    const context: GenAiSpanContext = {
-      originalPrompt: [],
-      rawCall: undefined,
-    };
-
-    if (isWithinWithSpan) {
-      // Reuse existing span created by withSpan
-      const activeSpan = trace.getActiveSpan();
-      if (!activeSpan) {
-        throw new Error('Expected active span when within withSpan');
-      }
-      activeSpan.updateName(this.spanName());
-      return operation(activeSpan, context);
-    } else {
-      // Create new span only if not within withSpan
-      const tracer = trace.getTracer('@axiomhq/ai');
-      const startActiveSpan = createStartActiveSpan(tracer);
-      const name = this.spanName();
-
-      return startActiveSpan(name, null, (span) => operation(span, context));
-    }
+    return withSpanHandling(this.modelId, async (span, commonContext) => {
+      const context: GenAiSpanContext = {
+        ...commonContext,
+        originalPrompt: [],
+        rawCall: undefined,
+      };
+      return operation(span, context);
+    });
   }
 
   async doGenerate(options: LanguageModelV1CallOptions) {
     return this.withSpanHandling(async (span, context) => {
-      this.setScopeAttributes(span);
+      setScopeAttributes(span);
       this.setPreCallAttributes(span, options, context);
 
       const res = await this.model.doGenerate(options);
@@ -249,7 +237,7 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
   async doStream(options: LanguageModelV1CallOptions) {
     return this.withSpanHandling(async (span, context) => {
-      this.setScopeAttributes(span);
+      setScopeAttributes(span);
       this.setPreCallAttributes(span, options, context);
 
       const { stream, ...head } = await this.model.doStream(options);
@@ -294,52 +282,7 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     });
   }
 
-  private spanName(): string {
-    return createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, this.modelId);
-  }
 
-  private setScopeAttributes(span: Span) {
-    const bag = propagation.getActiveBaggage();
-
-    if (bag) {
-      const capability = bag.getEntry('capability')?.value;
-      if (capability) {
-        span.setAttribute(Attr.GenAI.Capability.Name, capability);
-      }
-
-      const step = bag.getEntry('step')?.value;
-      if (step) {
-        span.setAttribute(Attr.GenAI.Step.Name, step);
-      }
-    }
-  }
-
-  private determineOutputType({
-    responseFormat,
-    mode,
-  }: {
-    responseFormat: LanguageModelV1CallOptions['responseFormat'];
-    mode: LanguageModelV1CallOptions['mode'];
-  }): string | undefined {
-    if (responseFormat?.type) {
-      switch (responseFormat.type) {
-        case 'json':
-          return Attr.GenAI.Output.Type_Values.Json;
-        case 'text':
-          return Attr.GenAI.Output.Type_Values.Text;
-      }
-    }
-
-    if (mode?.type === 'object-json' || mode?.type === 'object-tool') {
-      return Attr.GenAI.Output.Type_Values.Json;
-    }
-
-    if (mode?.type === 'regular') {
-      return Attr.GenAI.Output.Type_Values.Text;
-    }
-
-    return undefined;
-  }
 
   private setPreCallAttributes(
     span: Span,
@@ -368,44 +311,23 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
 
-    span.setAttributes({
-      [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-      [Attr.GenAI.Request.Model]: this.modelId,
-      [Attr.GenAI.Provider]: this.model.provider,
-      [Attr.Axiom.GenAI.SchemaURL]: `${SCHEMA_BASE_URL}${SCHEMA_VERSION}`,
-      [Attr.Axiom.GenAI.SDK.Name]: packageJson.name,
-      [Attr.Axiom.GenAI.SDK.Version]: packageJson.version,
-    });
+    setBaseAttributes(span, this.model.provider, this.modelId);
 
-    const outputType = this.determineOutputType({ responseFormat, mode });
+    const outputType = determineOutputTypeV1({ responseFormat, mode });
     if (outputType) {
       span.setAttribute(Attr.GenAI.Output.Type, outputType);
     }
 
-    if (maxTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.MaxTokens, maxTokens);
-    }
-    if (frequencyPenalty !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.FrequencyPenalty, frequencyPenalty);
-    }
-    if (presencePenalty !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.PresencePenalty, presencePenalty);
-    }
-    if (temperature !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.Temperature, temperature);
-    }
-    if (topP !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.TopP, topP);
-    }
-    if (topK !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.TopK, topK);
-    }
-    if (seed !== undefined) {
-      span.setAttribute(Attr.GenAI.Request.Seed, seed);
-    }
-    if (stopSequences && stopSequences.length > 0) {
-      span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(stopSequences));
-    }
+    setRequestParameterAttributes(span, {
+      maxTokens,
+      frequencyPenalty,
+      presencePenalty,
+      temperature,
+      topP,
+      topK,
+      seed,
+      stopSequences,
+    });
   }
 }
 
@@ -425,7 +347,7 @@ function buildSpanAttributes(
       (context.rawCall?.rawPrompt as any[]) || [],
     );
 
-    const updatedPrompt = appendToolCalls(originalPrompt, result.toolCalls, toolResultsMap);
+    const updatedPrompt = appendToolCalls(originalPrompt, result.toolCalls, toolResultsMap, result.text);
 
     attributes[Attr.GenAI.Prompt] = JSON.stringify(updatedPrompt);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AxiomWrappedLanguageModelV1 } from '../src/otel/AxiomWrappedLanguageModelV1';
+import { extractToolResultsFromRawPrompt } from '../src/util/promptUtils';
 
 describe('tool results extraction', () => {
   it('should extract tool results from Google AI format rawPrompt', () => {
@@ -50,9 +50,7 @@ describe('tool results extraction', () => {
       }
     ];
 
-    // Access the private static method using bracket notation
-    const extractMethod = (AxiomWrappedLanguageModelV1 as any).extractToolResultsFromRawPrompt;
-    const toolResultsMap = extractMethod(rawPrompt);
+    const toolResultsMap = extractToolResultsFromRawPrompt(rawPrompt);
 
     expect(toolResultsMap.size).toBe(1);
     expect(toolResultsMap.get('getWeather')).toEqual({
@@ -66,12 +64,10 @@ describe('tool results extraction', () => {
   });
 
   it('should return empty map for invalid rawPrompt', () => {
-    const extractMethod = (AxiomWrappedLanguageModelV1 as any).extractToolResultsFromRawPrompt;
-    
-    expect(extractMethod(null).size).toBe(0);
-    expect(extractMethod(undefined).size).toBe(0);
-    expect(extractMethod([]).size).toBe(0);
-    expect(extractMethod('not an array').size).toBe(0);
+    expect(extractToolResultsFromRawPrompt(null as any).size).toBe(0);
+    expect(extractToolResultsFromRawPrompt(undefined as any).size).toBe(0);
+    expect(extractToolResultsFromRawPrompt([]).size).toBe(0);
+    expect(extractToolResultsFromRawPrompt('not an array' as any).size).toBe(0);
   });
 
   it('should handle rawPrompt without tool results', () => {
@@ -87,8 +83,7 @@ describe('tool results extraction', () => {
       }
     ];
 
-    const extractMethod = (AxiomWrappedLanguageModelV1 as any).extractToolResultsFromRawPrompt;
-    const toolResultsMap = extractMethod(rawPrompt);
+    const toolResultsMap = extractToolResultsFromRawPrompt(rawPrompt);
 
     expect(toolResultsMap.size).toBe(0);
   });
