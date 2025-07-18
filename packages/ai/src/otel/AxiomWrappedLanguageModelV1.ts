@@ -13,20 +13,160 @@ import {
 
 import { trace, propagation, type Span } from '@opentelemetry/api';
 
-import type { OpenAIMessage } from './vercelTypes';
+import type { OpenAIMessage, OpenAIUserContentPart } from './vercelTypes';
 import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from './semconv/attributes';
+
 import { createGenAISpanName } from './shared';
 import { currentUnixTime } from 'src/util/currentUnixTime';
 import { createStartActiveSpan } from './startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
 import { createSimpleCompletion } from './completionUtils';
+import { appendToolCalls, extractToolResultsFromRawPrompt } from '../util/promptUtils';
 import packageJson from '../../package.json';
 
-export function isLanguageModelV1(model: any): model is LanguageModelV1 {
+// TODO: @cje - use these instead of current `result` type
+type DoGenerateReturn = Awaited<ReturnType<LanguageModelV1['doGenerate']>>;
+type RawPrompt = DoGenerateReturn['rawCall']['rawPrompt'];
+type RawSettings = DoGenerateReturn['rawCall']['rawSettings'];
+// type DoStreamReturn = Awaited<ReturnType<LanguageModelV1['doStream']>>;
+
+interface GenAiSpanContext {
+  originalPrompt: OpenAIMessage[];
+  rawCall?: {
+    rawPrompt?: RawPrompt;
+    rawSettings?: RawSettings;
+  };
+}
+
+interface BuildSpanAttributesInput {
+  modelId: string;
+  context: GenAiSpanContext;
+  result: {
+    response?: { id?: string; modelId?: string };
+    finishReason?: LanguageModelV1FinishReason;
+    usage?: { promptTokens: number; completionTokens: number };
+    text?: string;
+    toolCalls?: LanguageModelV1FunctionToolCall[];
+    providerMetadata?: LanguageModelV1ProviderMetadata;
+  };
+}
+
+class ToolCallAggregator {
+  private readonly calls: Record<string, LanguageModelV1FunctionToolCall> = {};
+
+  handleChunk(chunk: LanguageModelV1StreamPart): void {
+    switch (chunk.type) {
+      case 'tool-call':
+        this.calls[chunk.toolCallId] = {
+          toolCallType: chunk.toolCallType,
+          toolCallId: chunk.toolCallId,
+          toolName: chunk.toolName,
+          args: chunk.args,
+        };
+        break;
+      case 'tool-call-delta':
+        if (!this.calls[chunk.toolCallId]) {
+          this.calls[chunk.toolCallId] = {
+            toolCallType: chunk.toolCallType,
+            toolCallId: chunk.toolCallId,
+            toolName: chunk.toolName,
+            args: '',
+          };
+        }
+        this.calls[chunk.toolCallId].args += chunk.argsTextDelta;
+        break;
+    }
+  }
+
+  get result(): LanguageModelV1FunctionToolCall[] {
+    return Object.values(this.calls);
+  }
+}
+
+class TextAggregator {
+  private content = '';
+
+  feed(chunk: LanguageModelV1StreamPart): void {
+    if (chunk.type === 'text-delta') {
+      this.content += chunk.textDelta;
+    }
+  }
+
+  get text(): string | undefined {
+    return this.content || undefined;
+  }
+}
+
+class StreamStats {
+  private startTime: number;
+  private timeToFirstToken?: number;
+  private _usage?: { promptTokens: number; completionTokens: number };
+  private _finishReason?: LanguageModelV1FinishReason;
+  private _responseId?: string;
+  private _responseModelId?: string;
+  private _providerMetadata?: LanguageModelV1ProviderMetadata;
+
+  constructor() {
+    this.startTime = currentUnixTime();
+  }
+
+  feed(chunk: LanguageModelV1StreamPart): void {
+    // Track time to first token on any chunk
+    if (this.timeToFirstToken === undefined) {
+      this.timeToFirstToken = currentUnixTime() - this.startTime;
+    }
+
+    switch (chunk.type) {
+      case 'response-metadata':
+        if (chunk.id) {
+          this._responseId = chunk.id;
+        }
+        if (chunk.modelId) {
+          this._responseModelId = chunk.modelId;
+        }
+        // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
+        if (chunk.providerMetadata) {
+          // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
+          this._providerMetadata = chunk.providerMetadata;
+        }
+        break;
+      case 'finish':
+        this._usage = chunk.usage;
+        this._finishReason = chunk.finishReason;
+        break;
+    }
+  }
+
+  get result() {
+    return {
+      response:
+        this._responseId || this._responseModelId
+          ? {
+              id: this._responseId,
+              modelId: this._responseModelId,
+            }
+          : undefined,
+      finishReason: this._finishReason,
+      usage: this._usage,
+      providerMetadata: this._providerMetadata,
+    };
+  }
+
+  get firstTokenTime(): number | undefined {
+    return this.timeToFirstToken;
+  }
+}
+
+export function isLanguageModelV1(model: unknown): model is LanguageModelV1 {
   return (
-    model?.specificationVersion === 'v1' &&
-    typeof model?.provider === 'string' &&
-    typeof model?.modelId === 'string'
+    model != null &&
+    typeof model === 'object' &&
+    'specificationVersion' in model &&
+    'provider' in model &&
+    'modelId' in model &&
+    (model as any).specificationVersion === 'v1' &&
+    typeof (model as any).provider === 'string' &&
+    typeof (model as any).modelId === 'string'
   );
 }
 
@@ -61,9 +201,16 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     return this.model.supportsUrl;
   }
 
-  private async withSpanHandling<T>(operation: (span: Span) => Promise<T>): Promise<T> {
+  private async withSpanHandling<T>(
+    operation: (span: Span, context: GenAiSpanContext) => Promise<T>,
+  ): Promise<T> {
     const bag = propagation.getActiveBaggage();
     const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
+
+    const context: GenAiSpanContext = {
+      originalPrompt: [],
+      rawCall: undefined,
+    };
 
     if (isWithinWithSpan) {
       // Reuse existing span created by withSpan
@@ -72,144 +219,72 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
         throw new Error('Expected active span when within withSpan');
       }
       activeSpan.updateName(this.spanName());
-      return operation(activeSpan);
+      return operation(activeSpan, context);
     } else {
       // Create new span only if not within withSpan
       const tracer = trace.getTracer('@axiomhq/ai');
       const startActiveSpan = createStartActiveSpan(tracer);
       const name = this.spanName();
 
-      return startActiveSpan(name, null, operation);
+      return startActiveSpan(name, null, (span) => operation(span, context));
     }
   }
 
   async doGenerate(options: LanguageModelV1CallOptions) {
-    return this.withSpanHandling(async (span) => {
+    return this.withSpanHandling(async (span, context) => {
       this.setScopeAttributes(span);
-      this.setPreCallAttributes(span, options);
+      this.setPreCallAttributes(span, options, context);
 
       const res = await this.model.doGenerate(options);
 
-      // Store rawCall data on span for access in post-call processing
-      (span as any)._rawCall = res.rawCall;
+      // Store rawCall data in context for access in post-call processing
+      context.rawCall = res.rawCall;
 
-      await this.setPostCallAttributes(span, res);
+      const attrs = buildSpanAttributes({ modelId: this.modelId, context, result: res });
+      span.setAttributes(attrs);
 
       return res;
     });
   }
 
   async doStream(options: LanguageModelV1CallOptions) {
-    return this.withSpanHandling(async (span) => {
-      const startTime = currentUnixTime(); // Unix timestamp
-
+    return this.withSpanHandling(async (span, context) => {
       this.setScopeAttributes(span);
+      this.setPreCallAttributes(span, options, context);
 
-      this.setPreCallAttributes(span, options);
-
-      const ret = await this.model.doStream(options);
+      const { stream, ...head } = await this.model.doStream(options);
 
       // `this` is not available in the transform callback, so we need to capture values here
       const modelId = this.modelId;
+      const spanContext = context;
 
-      // Track streaming metrics
-      let timeToFirstToken: number | undefined = undefined;
-      let usage:
-        | {
-            promptTokens: number;
-            completionTokens: number;
-          }
-        | undefined = undefined;
-      let fullText: string | undefined = undefined;
-      const toolCallsMap: Record<string, LanguageModelV1FunctionToolCall> = {};
-      let finishReason: LanguageModelV1FinishReason | undefined = undefined;
-      let responseId: string | undefined = undefined;
-      let responseModelId: string | undefined = undefined;
-      let responseProviderMetadata: LanguageModelV1ProviderMetadata | undefined = undefined;
+      const stats = new StreamStats();
+      const toolAggregator = new ToolCallAggregator();
+      const textAggregator = new TextAggregator();
 
       return {
-        ...ret,
-        stream: ret.stream.pipeThrough(
+        ...head,
+        stream: stream.pipeThrough(
           new TransformStream({
             transform(chunk: LanguageModelV1StreamPart, controller) {
-              // Track time to first token
-              if (timeToFirstToken === undefined) {
-                timeToFirstToken = currentUnixTime() - startTime;
-                span.setAttribute('gen_ai.response.time_to_first_token', timeToFirstToken);
-              }
-
-              switch (chunk.type) {
-                case 'response-metadata':
-                  if (chunk.id) {
-                    responseId = chunk.id;
-                  }
-                  if (chunk.modelId) {
-                    responseModelId = chunk.modelId;
-                  }
-                  // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
-                  if (chunk.providerMetadata) {
-                    // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
-                    responseProviderMetadata = chunk.providerMetadata;
-                  }
-                  break;
-                case 'text-delta':
-                  if (fullText === undefined) {
-                    fullText = '';
-                  }
-                  fullText += chunk.textDelta;
-                  break;
-                case 'tool-call':
-                  toolCallsMap[chunk.toolCallId] = {
-                    toolCallType: chunk.toolCallType,
-                    toolCallId: chunk.toolCallId,
-                    toolName: chunk.toolName,
-                    args: chunk.args,
-                  } as LanguageModelV1FunctionToolCall;
-                  break;
-                case 'tool-call-delta':
-                  if (toolCallsMap[chunk.toolCallId] === undefined) {
-                    toolCallsMap[chunk.toolCallId] = {
-                      toolCallType: chunk.toolCallType,
-                      toolCallId: chunk.toolCallId,
-                      toolName: chunk.toolName,
-                      args: '',
-                    } as LanguageModelV1FunctionToolCall;
-                  }
-                  toolCallsMap[chunk.toolCallId].args += chunk.argsTextDelta;
-                  break;
-                case 'finish':
-                  usage = chunk.usage;
-                  finishReason = chunk.finishReason;
-                  break;
-              }
+              stats.feed(chunk);
+              toolAggregator.handleChunk(chunk);
+              textAggregator.feed(chunk);
 
               controller.enqueue(chunk);
             },
             async flush(controller) {
-              // Convert toolCallsMap to array for postProcessOutput
-              const toolCallsArray: LanguageModelV1FunctionToolCall[] = Object.values(toolCallsMap);
-
-              // Construct result object for helper function
-              const streamResult = {
-                response:
-                  responseId || responseModelId
-                    ? {
-                        id: responseId,
-                        modelId: responseModelId,
-                      }
-                    : undefined,
-                finishReason,
-                usage,
-                text: fullText,
-                toolCalls: toolCallsArray.length > 0 ? toolCallsArray : undefined,
-                providerMetadata: responseProviderMetadata,
-              };
-
-              await AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(
-                span,
+              const attrs = buildSpanAttributes({
                 modelId,
-                streamResult,
-              );
+                context: spanContext,
+                result: {
+                  ...head,
+                  ...stats.result,
+                  toolCalls: toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
+                  text: textAggregator.text,
+                },
+              });
+              span.setAttributes(attrs);
 
               controller.terminate();
             },
@@ -226,7 +301,6 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
   private setScopeAttributes(span: Span) {
     const bag = propagation.getActiveBaggage();
 
-    // Set workflow and task attributes from baggage
     if (bag) {
       const capability = bag.getEntry('capability')?.value;
       if (capability) {
@@ -267,7 +341,11 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     return undefined;
   }
 
-  private setPreCallAttributes(span: Span, options: LanguageModelV1CallOptions) {
+  private setPreCallAttributes(
+    span: Span,
+    options: LanguageModelV1CallOptions,
+    context: GenAiSpanContext,
+  ) {
     const {
       prompt,
       maxTokens,
@@ -286,11 +364,10 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     const processedPrompt = postProcessPrompt(prompt);
 
     // Store the original prompt for later use in post-call processing
-    (span as any)._originalPrompt = processedPrompt;
+    context.originalPrompt = processedPrompt;
 
     span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
 
-    // Set request attributes
     span.setAttributes({
       [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
       [Attr.GenAI.Request.Model]: this.modelId,
@@ -305,7 +382,6 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Output.Type, outputType);
     }
 
-    // Set optional request attributes
     if (maxTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Request.MaxTokens, maxTokens);
     }
@@ -331,152 +407,54 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Request.StopSequences, JSON.stringify(stopSequences));
     }
   }
+}
 
-  // this is static because we would need to hold a reference to the instance in `executeStream` otherwise
-  private static async setPostCallAttributesStatic(
-    span: Span,
-    _modelId: string,
-    result: {
-      response?: { id?: string; modelId?: string };
-      finishReason?: LanguageModelV1FinishReason;
-      usage?: { promptTokens: number; completionTokens: number };
-      text?: string;
-      toolCalls?: LanguageModelV1FunctionToolCall[];
-      providerMetadata?: LanguageModelV1ProviderMetadata;
-    },
-  ) {
-    // Set response attributes
-    if (result.response?.id) {
-      span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
-    }
-    if (result.response?.modelId) {
-      span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
-    }
+function buildSpanAttributes(
+  input: BuildSpanAttributesInput,
+): Record<string, string | number | boolean | string[]> {
+  const attributes: Record<string, string | number | boolean | string[]> = {};
+  const { result, context } = input;
 
-    // Set usage attributes
-    if (result.usage) {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.promptTokens);
-      span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completionTokens);
-    }
+  // Update prompt to include tool calls and tool results if they exist
+  // (we're putting the tool calls/results on the prompt for semantic
+  // reasons, but we only have access to them post-call with the vercel sdk)
+  if (result.toolCalls && result.toolCalls.length > 0) {
+    const originalPrompt = context.originalPrompt || [];
 
-    // Update prompt to include tool calls and tool results if they exist
-    if (result.toolCalls && result.toolCalls.length > 0) {
-      const originalPrompt = (span as any)._originalPrompt || [];
-      const updatedPrompt = [...originalPrompt];
+    const toolResultsMap = extractToolResultsFromRawPrompt(
+      (context.rawCall?.rawPrompt as any[]) || [],
+    );
 
-      // Add assistant message with tool calls
-      updatedPrompt.push({
-        role: 'assistant',
-        content: null,
-        tool_calls: result.toolCalls.map((toolCall) => ({
-          id: toolCall.toolCallId,
-          type: 'function',
-          function: {
-            name: toolCall.toolName,
-            arguments:
-              typeof toolCall.args === 'string' ? toolCall.args : JSON.stringify(toolCall.args),
-          },
-        })),
-      });
+    const updatedPrompt = appendToolCalls(originalPrompt, result.toolCalls, toolResultsMap);
 
-      // Extract real tool results from rawCall.rawPrompt if available
-      const toolResultsMap = AxiomWrappedLanguageModelV1.extractToolResultsFromRawPrompt(
-        (span as any)._rawCall?.rawPrompt,
-      );
-
-      // Add tool result messages with real data
-      for (const toolCall of result.toolCalls) {
-        const realToolResult = toolResultsMap.get(toolCall.toolName);
-
-        if (realToolResult) {
-          // Use the real tool result from the conversation
-          console.log('tktk realToolResult', realToolResult);
-          updatedPrompt.push({
-            role: 'tool',
-            tool_call_id: toolCall.toolCallId,
-            content: JSON.stringify(realToolResult),
-          });
-        } else {
-          console.error(
-            'tktk no real tool result found for tool call',
-            JSON.stringify(
-              { toolCall, toolResultsMap, rawPrompt: (span as any)._rawCall?.rawPrompt },
-              null,
-              2,
-            ),
-          );
-        }
-      }
-
-      // Update the prompt attribute with the complete conversation history
-      span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(updatedPrompt));
-    }
-
-    // Create simple completion array with just assistant text
-    if (result.text) {
-      const completion = createSimpleCompletion({
-        promptMessages: [], // Don't include conversation history for V1 compatibility
-        text: result.text,
-        includeTimestamps: false, // Match existing test expectations
-      });
-      span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
-    }
-
-    // Store finish reason separately as per semantic conventions
-    if (result.finishReason) {
-      span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([result.finishReason]));
-    }
+    attributes[Attr.GenAI.Prompt] = JSON.stringify(updatedPrompt);
   }
 
-  private static extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, any> {
-    const toolResultsMap = new Map<string, any>();
-
-    if (!Array.isArray(rawPrompt)) {
-      return toolResultsMap;
-    }
-
-    // Look for tool results in different message formats
-    for (const message of rawPrompt) {
-      // Google AI format: user message with functionResponse parts
-      if (message?.role === 'user' && Array.isArray(message.parts)) {
-        for (const part of message.parts) {
-          if (part?.functionResponse) {
-            const functionResponse = part.functionResponse;
-            if (functionResponse.name && functionResponse.response) {
-              // Store by function name since that's what we have access to
-              toolResultsMap.set(
-                functionResponse.name,
-                functionResponse.response.content || functionResponse.response,
-              );
-            }
-          }
-        }
-      }
-
-      // OpenAI format: tool role messages with tool_call_id
-      if (message?.role === 'tool' && message?.tool_call_id && message?.content) {
-        // For OpenAI format, we'd need to map back from tool_call_id to tool name
-        // This is more complex as we'd need to track the tool calls first
-        // For now, we'll skip this but it could be implemented later
-      }
-    }
-
-    return toolResultsMap;
+  // Create simple completion array with just assistant text
+  if (result.text) {
+    const completion = createSimpleCompletion({
+      text: result.text,
+    });
+    attributes[Attr.GenAI.Completion] = JSON.stringify(completion);
   }
 
-  private async setPostCallAttributes(
-    span: Span,
-    result: {
-      response?: { id?: string; modelId?: string };
-      finishReason?: LanguageModelV1FinishReason;
-      usage?: { promptTokens: number; completionTokens: number };
-      text?: string;
-      toolCalls?: LanguageModelV1FunctionToolCall[];
-      providerMetadata?: LanguageModelV1ProviderMetadata;
-    },
-  ) {
-    await AxiomWrappedLanguageModelV1.setPostCallAttributesStatic(span, this.modelId, result);
+  if (result.response?.id) {
+    attributes[Attr.GenAI.Response.ID] = result.response.id;
   }
+  if (result.response?.modelId) {
+    attributes[Attr.GenAI.Response.Model] = result.response.modelId;
+  }
+
+  if (result.usage) {
+    attributes[Attr.GenAI.Usage.InputTokens] = result.usage.promptTokens;
+    attributes[Attr.GenAI.Usage.OutputTokens] = result.usage.completionTokens;
+  }
+
+  if (result.finishReason) {
+    attributes[Attr.GenAI.Response.FinishReasons] = JSON.stringify([result.finishReason]);
+  }
+
+  return attributes;
 }
 
 function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
@@ -516,7 +494,7 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
       case 'user':
         results.push({
           role: 'user',
-          content: message.content.map((part) => {
+          content: message.content.map((part): OpenAIUserContentPart => {
             switch (part.type) {
               case 'text':
                 return {
@@ -533,8 +511,15 @@ function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
                   },
                 };
               default:
-                // Handle unknown content types by passing them through
-                return part as any;
+                // Convert unknown content types to text for compatibility
+                return {
+                  type: 'text',
+                  text:
+                    `[${part.type}]` +
+                    (typeof part === 'object' && part !== null
+                      ? JSON.stringify(part)
+                      : String(part)),
+                };
             }
           }),
         });

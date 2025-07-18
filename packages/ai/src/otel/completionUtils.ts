@@ -156,28 +156,14 @@ export function formatToolCallsInCompletion(
  * Creates a simple completion array with just assistant text response
  * Used for V1 model wrapper where tool calls are handled separately
  */
-export function createSimpleCompletion({
-  promptMessages = [],
-  text,
-  includeTimestamps = true,
-}: {
-  promptMessages?: OpenAIMessage[];
-  text?: string;
-  includeTimestamps?: boolean;
-}): CompletionArray {
-  const timestamp = includeTimestamps ? createTimestamp() : undefined;
-
-  // Convert prompt messages
-  const historyMessages = convertToCompletionMessages(promptMessages, includeTimestamps);
-
+export function createSimpleCompletion({ text }: { text?: string }): CompletionArray {
   // Create assistant message with text only
   const assistantMessage: CompletionAssistantMessage = {
     role: 'assistant',
     content: text ?? '',
-    timestamp,
   };
 
-  return [...historyMessages, assistantMessage];
+  return [assistantMessage];
 }
 
 /**
