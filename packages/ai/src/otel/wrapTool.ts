@@ -1,17 +1,17 @@
 import { type Span, trace } from '@opentelemetry/api';
 import { type Tool as ToolV4 } from 'aiv4';
 import { type Tool as ToolV5 } from 'aiv5';
-import { AxiomAIResources } from './shared';
 import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
 import { typedEntries } from 'src/util/typedEntries';
+import { AxiomAIResources } from './shared';
 
 type Tool = ToolV4 | ToolV5;
 
 /**
  * Type representing a wrapped tool with preserved TypeScript signatures
  */
-export type WrappedTool<T extends Tool> = T;
+type WrappedTool<T extends Tool> = T;
 
 /**
  * Wraps a tool to create child spans when the tool's execute method is called.

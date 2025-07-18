@@ -2,8 +2,15 @@ import { trace, propagation, type Span } from '@opentelemetry/api';
 import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from '../semconv/attributes';
 import { createStartActiveSpan } from '../startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
-import { createGenAISpanName } from '../shared';
+// Removed import of createGenAISpanName since it's no longer exported
 import packageJson from '../../../package.json';
+
+/**
+ * Creates a standardized span name for GenAI operations
+ */
+function createGenAISpanName(operation: string, suffix?: string): string {
+  return suffix ? `${operation} ${suffix}` : operation;
+}
 
 /**
  * Common span context interface for both V1 and V2
