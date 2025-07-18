@@ -1,4 +1,5 @@
 import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
+import type { NormalizedToolCall } from '../otel/utils/normalized';
 import type { LanguageModelV2Prompt } from '@ai-sdk/providerv2';
 import type { OpenAIMessage } from '../otel/vercelTypes';
 
@@ -19,8 +20,8 @@ export type ToolResultMap = Map<string, unknown>;
  */
 export function appendToolCalls(
 prompt: OpenAIMessage[],
-toolCalls: LanguageModelV1FunctionToolCall[],
-  toolResults: ToolResultMap,
+toolCalls: LanguageModelV1FunctionToolCall[] | NormalizedToolCall[],
+toolResults: ToolResultMap,
 assistantContent?: string | null
 ): OpenAIMessage[] {
 const updatedPrompt = [...prompt];
