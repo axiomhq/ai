@@ -82,8 +82,6 @@ export function normalizeV2ToolCalls(toolCalls: LanguageModelV2ToolCall[]): Norm
   return toolCalls.map(normalizeV2ToolCall);
 }
 
-//////////////
-
 /**
  * Converts a V1 prompt to OpenAI message format
  */
@@ -256,46 +254,4 @@ export function promptV2ToOpenAI(prompt: LanguageModelV2Prompt): OpenAIMessage[]
   }
 
   return results;
-}
-
-/**
- * Shared post-processing logic for updating prompts with tool calls and results
- * TODO: BEFORE MERGE - use or delete
- */
-export function updatePromptWithToolCalls(
-  originalPrompt: OpenAIMessage[],
-  toolCalls: NormalizedToolCall[],
-  toolResults: Map<string, unknown>,
-  assistantText?: string | null,
-): OpenAIMessage[] {
-  const updatedPrompt = [...originalPrompt];
-
-  // Add assistant message with tool calls
-  updatedPrompt.push({
-    role: 'assistant',
-    content: assistantText || null,
-    tool_calls: toolCalls.map((toolCall) => ({
-      id: toolCall.toolCallId,
-      function: {
-        name: toolCall.toolName,
-        arguments: toolCall.args,
-      },
-      type: 'function',
-    })),
-  });
-
-  // Add tool result messages with real data
-  for (const toolCall of toolCalls) {
-    const realToolResult = toolResults.get(toolCall.toolName);
-
-    if (realToolResult) {
-      updatedPrompt.push({
-        role: 'tool',
-        tool_call_id: toolCall.toolCallId,
-        content: JSON.stringify(realToolResult),
-      });
-    }
-  }
-
-  return updatedPrompt;
 }
