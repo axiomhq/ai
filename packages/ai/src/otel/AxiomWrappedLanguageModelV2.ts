@@ -7,6 +7,9 @@ import {
   type LanguageModelV2ToolCall,
   type LanguageModelV2Usage,
   type LanguageModelV2ResponseMetadata,
+  type LanguageModelV2Prompt,
+  type LanguageModelV2TextPart,
+  type LanguageModelV2ToolCallPart,
 } from '@ai-sdk/providerv2';
 
 import { type Span } from '@opentelemetry/api';
@@ -25,7 +28,7 @@ import {
 
 interface GenAiSpanContext extends CommonSpanContext {
   originalPrompt: OpenAIMessage[];
-  originalV2Prompt: any[]; // TODO: @cje - type this
+  originalV2Prompt: LanguageModelV2Prompt;
 }
 
 export function isLanguageModelV2(model: any): model is LanguageModelV2 {
@@ -218,9 +221,6 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       // Set completion array as span attribute
       parentSpan.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
     }
-
-    // TODO: Create child spans for tool calls
-    // This is disabled temporarily to make existing tests pass
   }
 
   private static async setPostCallAttributesStatic(
@@ -339,7 +339,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
   }
 }
 
-function postProcessPromptV2(prompt: any[]): OpenAIMessage[] {
+function postProcessPromptV2(prompt: LanguageModelV2Prompt): OpenAIMessage[] {
   const results: OpenAIMessage[] = [];
   for (const message of prompt) {
     switch (message.role) {
@@ -350,18 +350,18 @@ function postProcessPromptV2(prompt: any[]): OpenAIMessage[] {
         });
         break;
       case 'assistant':
-        const textContent = message.content.find((part: any) => part.type === 'text');
-        const toolCalls = message.content.filter((part: any) => part.type === 'tool-call');
+        const textContent = message.content.find((part): part is LanguageModelV2TextPart => part.type === 'text');
+        const toolCalls = message.content.filter((part): part is LanguageModelV2ToolCallPart => part.type === 'tool-call');
         results.push({
           role: 'assistant',
           content: textContent?.text || null,
           ...(toolCalls.length > 0
             ? {
-                tool_calls: toolCalls.map((part: any) => ({
+                tool_calls: toolCalls.map((part) => ({
                   id: part.toolCallId,
                   function: {
                     name: part.toolName,
-                    arguments: JSON.stringify(part.args),
+                    arguments: typeof part.args === 'string' ? part.args : JSON.stringify(part.args),
                   },
                   type: 'function',
                 })),

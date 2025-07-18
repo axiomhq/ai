@@ -1,7 +1,8 @@
 import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
+import type { LanguageModelV2Prompt } from '@ai-sdk/providerv2';
 import type { OpenAIMessage } from '../otel/vercelTypes';
 
-export type ToolResultMap = Map<string, any>;
+export type ToolResultMap = Map<string, unknown>;
 
 /**
 * Appends tool calls and their results to a conversation prompt.
@@ -65,8 +66,10 @@ role: 'tool',
  * @param rawPrompt - The raw prompt array from the model provider
  * @returns Map of tool names to their results
  */
-export function extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, any> {
-  const toolResultsMap = new Map<string, any>();
+// TODO: @cje - This should be typed based on the specific provider's raw prompt format
+// but it needs to handle multiple providers (Google AI, OpenAI, etc.)
+export function extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, unknown> {
+  const toolResultsMap = new Map<string, unknown>();
 
   if (!Array.isArray(rawPrompt)) {
     return toolResultsMap;
@@ -108,12 +111,12 @@ export function extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, a
  * - Tool calls are in assistant messages as 'tool-call' parts
  * - Tool results are in 'tool' role messages as 'tool-result' parts with 'output' property
  * 
- * @param prompt - The V2 prompt array (any[] to match the actual structure used in V2)
+ * @param prompt - The V2 prompt array
  * @returns Map of tool names to their results
  */
-export function extractToolResultsFromPromptV2(prompt: any[]): Map<string, any> {
+export function extractToolResultsFromPromptV2(prompt: LanguageModelV2Prompt): Map<string, unknown> {
   const idToName = new Map<string, string>();
-  const results = new Map<string, any>();
+  const results = new Map<string, unknown>();
 
   // 1. Collect tool-call ids → names from assistant messages
   for (const message of prompt) {
@@ -134,8 +137,7 @@ export function extractToolResultsFromPromptV2(prompt: any[]): Map<string, any> 
         if (part.toolCallId && part.result !== undefined) {
           const toolName = idToName.get(part.toolCallId);
           if (toolName) {
-            // Use result property (actual V2 format) with fallback to output for v5 compatibility
-            results.set(toolName, part.result ?? part.output ?? part);
+            results.set(toolName, part.result);
           }
         }
       }
