@@ -90,12 +90,10 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
       const res = await this.model.doGenerate(options);
 
-      const resWithToolCalls = {
-        ...res,
-        toolCalls: res.toolCalls || undefined,
-      };
+      // Store rawCall data on span for access in post-call processing
+      (span as any)._rawCall = res.rawCall;
 
-      await this.setPostCallAttributes(span, resWithToolCalls);
+      await this.setPostCallAttributes(span, res);
 
       return res;
     });
@@ -286,6 +284,10 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
 
     // Set prompt attributes (full conversation history)
     const processedPrompt = postProcessPrompt(prompt);
+
+    // Store the original prompt for later use in post-call processing
+    (span as any)._originalPrompt = processedPrompt;
+
     span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
 
     // Set request attributes
@@ -357,6 +359,59 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completionTokens);
     }
 
+    // Update prompt to include tool calls and tool results if they exist
+    if (result.toolCalls && result.toolCalls.length > 0) {
+      const originalPrompt = (span as any)._originalPrompt || [];
+      const updatedPrompt = [...originalPrompt];
+
+      // Add assistant message with tool calls
+      updatedPrompt.push({
+        role: 'assistant',
+        content: null,
+        tool_calls: result.toolCalls.map((toolCall) => ({
+          id: toolCall.toolCallId,
+          type: 'function',
+          function: {
+            name: toolCall.toolName,
+            arguments:
+              typeof toolCall.args === 'string' ? toolCall.args : JSON.stringify(toolCall.args),
+          },
+        })),
+      });
+
+      // Extract real tool results from rawCall.rawPrompt if available
+      const toolResultsMap = AxiomWrappedLanguageModelV1.extractToolResultsFromRawPrompt(
+        (span as any)._rawCall?.rawPrompt,
+      );
+
+      // Add tool result messages with real data
+      for (const toolCall of result.toolCalls) {
+        const realToolResult = toolResultsMap.get(toolCall.toolName);
+
+        if (realToolResult) {
+          // Use the real tool result from the conversation
+          console.log('tktk realToolResult', realToolResult);
+          updatedPrompt.push({
+            role: 'tool',
+            tool_call_id: toolCall.toolCallId,
+            content: JSON.stringify(realToolResult),
+          });
+        } else {
+          console.error(
+            'tktk no real tool result found for tool call',
+            JSON.stringify(
+              { toolCall, toolResultsMap, rawPrompt: (span as any)._rawCall?.rawPrompt },
+              null,
+              2,
+            ),
+          );
+        }
+      }
+
+      // Update the prompt attribute with the complete conversation history
+      span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(updatedPrompt));
+    }
+
     // Create simple completion array with just assistant text
     if (result.text) {
       const completion = createSimpleCompletion({
@@ -371,6 +426,42 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     if (result.finishReason) {
       span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([result.finishReason]));
     }
+  }
+
+  private static extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, any> {
+    const toolResultsMap = new Map<string, any>();
+
+    if (!Array.isArray(rawPrompt)) {
+      return toolResultsMap;
+    }
+
+    // Look for tool results in different message formats
+    for (const message of rawPrompt) {
+      // Google AI format: user message with functionResponse parts
+      if (message?.role === 'user' && Array.isArray(message.parts)) {
+        for (const part of message.parts) {
+          if (part?.functionResponse) {
+            const functionResponse = part.functionResponse;
+            if (functionResponse.name && functionResponse.response) {
+              // Store by function name since that's what we have access to
+              toolResultsMap.set(
+                functionResponse.name,
+                functionResponse.response.content || functionResponse.response,
+              );
+            }
+          }
+        }
+      }
+
+      // OpenAI format: tool role messages with tool_call_id
+      if (message?.role === 'tool' && message?.tool_call_id && message?.content) {
+        // For OpenAI format, we'd need to map back from tool_call_id to tool name
+        // This is more complex as we'd need to track the tool calls first
+        // For now, we'll skip this but it could be implemented later
+      }
+    }
+
+    return toolResultsMap;
   }
 
   private async setPostCallAttributes(

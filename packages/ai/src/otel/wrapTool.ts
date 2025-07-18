@@ -1,8 +1,11 @@
 import { type Span, trace } from '@opentelemetry/api';
-import { type Tool } from 'aiv4';
+import { type Tool as ToolV4 } from 'aiv4';
+import { type Tool as ToolV5 } from 'aiv5';
 import { AxiomAIResources } from './shared';
 import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
+
+type Tool = ToolV4 | ToolV5;
 
 /**
  * Wraps a tool to create child spans when the tool's execute method is called.
@@ -11,8 +14,13 @@ import { Attr } from './semconv/attributes';
  * @param tool The tool to wrap
  * @returns The same tool but with a wrapped execute method that creates spans
  */
-export function wrapToolV1<T extends Tool>(toolName: string, tool: T): T {
-  if (!('execute' in tool)) {
+export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
+  if (!tool || typeof tool !== 'object') {
+    console.error('Invalid tool provided to wrapToolV1');
+    return tool;
+  }
+
+  if (!('execute' in tool) || typeof tool.execute !== 'function') {
     console.error('Cannot wrap a tool that does not have an execute method');
     return tool;
   }
@@ -47,7 +55,7 @@ export function wrapToolV1<T extends Tool>(toolName: string, tool: T): T {
         }
 
         // Execute the original tool function
-        const result = await tool.execute!(args, opts);
+        const result = await tool.execute!(args, opts as any);
 
         // Set the tool result message
         try {
