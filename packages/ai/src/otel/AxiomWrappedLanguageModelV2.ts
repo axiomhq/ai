@@ -24,6 +24,7 @@ import {
   type CommonSpanContext,
 } from './utils/wrapperUtils';
 import { promptV2ToOpenAI, normalizeV2ToolCalls } from './utils/normalized';
+import { ToolCallAggregatorV2, TextAggregatorV2, StreamStatsV2 } from './streaming/aggregators';
 
 interface GenAiSpanContext extends CommonSpanContext {
   originalPrompt: OpenAIMessage[];
@@ -100,53 +101,29 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       const modelId = this.modelId;
       const spanContext = context;
 
-      // Track streaming metrics
-      let usage: LanguageModelV2Usage | undefined = undefined;
-      let fullText: string | undefined = undefined;
-      const toolCallsMap: Record<string, LanguageModelV2ToolCall> = {};
-      let finishReason: LanguageModelV2FinishReason | undefined = undefined;
-      let responseMetadata: LanguageModelV2ResponseMetadata | undefined = undefined;
+      const stats = new StreamStatsV2();
+      const toolAggregator = new ToolCallAggregatorV2();
+      const textAggregator = new TextAggregatorV2();
 
       return {
         ...ret,
         stream: ret.stream.pipeThrough(
           new TransformStream({
             transform(chunk: LanguageModelV2StreamPart, controller) {
-              switch (chunk.type) {
-                case 'response-metadata':
-                  responseMetadata = {
-                    id: chunk.id,
-                    modelId: chunk.modelId,
-                    timestamp: chunk.timestamp,
-                  };
-                  break;
-                case 'text':
-                  if (fullText === undefined) {
-                    fullText = '';
-                  }
-                  fullText += chunk.text;
-                  break;
-                case 'tool-call':
-                  toolCallsMap[chunk.toolCallId] = chunk;
-                  break;
-                case 'finish':
-                  usage = chunk.usage;
-                  finishReason = chunk.finishReason;
-                  break;
-              }
+              stats.feed(chunk);
+              toolAggregator.handleChunk(chunk);
+              textAggregator.feed(chunk);
 
               controller.enqueue(chunk);
             },
             async flush(controller) {
-              const toolCallsArray: LanguageModelV2ToolCall[] = Object.values(toolCallsMap);
-
               const streamResult = {
-                response: responseMetadata,
-                finishReason,
-                usage,
+                ...stats.result,
                 content: [
-                  ...(fullText ? [{ type: 'text' as const, text: fullText }] : []),
-                  ...toolCallsArray,
+                  ...(textAggregator.text
+                    ? [{ type: 'text' as const, text: textAggregator.text }]
+                    : []),
+                  ...toolAggregator.result,
                 ],
               };
 

@@ -9,9 +9,9 @@ describe('tool results extraction', () => {
         role: 'user',
         parts: [
           {
-            text: 'What is the current weather in Madrid, Spain?'
-          }
-        ]
+            text: 'What is the current weather in Madrid, Spain?',
+          },
+        ],
       },
       {
         role: 'model',
@@ -21,11 +21,11 @@ describe('tool results extraction', () => {
               name: 'getWeather',
               args: {
                 city: 'Madrid',
-                country: 'Spain'
-              }
-            }
-          }
-        ]
+                country: 'Spain',
+              },
+            },
+          },
+        ],
       },
       {
         role: 'user',
@@ -41,13 +41,13 @@ describe('tool results extraction', () => {
                   temperature: 22,
                   condition: 'sunny',
                   humidity: 45,
-                  windSpeed: 12
-                }
-              }
-            }
-          }
-        ]
-      }
+                  windSpeed: 12,
+                },
+              },
+            },
+          },
+        ],
+      },
     ];
 
     const toolResultsMap = extractToolResultsFromRawPrompt(rawPrompt);
@@ -59,7 +59,7 @@ describe('tool results extraction', () => {
       temperature: 22,
       condition: 'sunny',
       humidity: 45,
-      windSpeed: 12
+      windSpeed: 12,
     });
   });
 
@@ -77,10 +77,10 @@ describe('tool results extraction', () => {
         content: [
           {
             type: 'text',
-            text: 'Hello'
-          }
-        ]
-      }
+            text: 'Hello',
+          },
+        ],
+      },
     ];
 
     const toolResultsMap = extractToolResultsFromRawPrompt(rawPrompt);

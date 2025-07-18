@@ -49,16 +49,19 @@ export function setBaseAttributes(span: Span, provider: string, modelId: string)
 /**
  * Sets common request parameter attributes on a span
  */
-export function setRequestParameterAttributes(span: Span, params: {
-  maxTokens?: number;
-  frequencyPenalty?: number;
-  presencePenalty?: number;
-  temperature?: number;
-  topP?: number;
-  topK?: number;
-  seed?: number;
-  stopSequences?: string[];
-}): void {
+export function setRequestParameterAttributes(
+  span: Span,
+  params: {
+    maxTokens?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    temperature?: number;
+    topP?: number;
+    topK?: number;
+    seed?: number;
+    stopSequences?: string[];
+  },
+): void {
   const {
     maxTokens,
     frequencyPenalty,
@@ -132,17 +135,20 @@ export async function withSpanHandling<T>(
 /**
  * Sets common response attributes on a span
  */
-export function setResponseAttributes(span: Span, response: {
-  id?: string;
-  modelId?: string;
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    promptTokens?: number;
-    completionTokens?: number;
-  };
-  finishReason?: string;
-}): void {
+export function setResponseAttributes(
+  span: Span,
+  response: {
+    id?: string;
+    modelId?: string;
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      promptTokens?: number;
+      completionTokens?: number;
+    };
+    finishReason?: string;
+  },
+): void {
   if (response.id) {
     span.setAttribute(Attr.GenAI.Response.ID, response.id);
   }
@@ -154,7 +160,7 @@ export function setResponseAttributes(span: Span, response: {
     // Handle both V1 and V2 usage formats
     const inputTokens = response.usage.inputTokens ?? response.usage.promptTokens;
     const outputTokens = response.usage.outputTokens ?? response.usage.completionTokens;
-    
+
     if (inputTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
     }
