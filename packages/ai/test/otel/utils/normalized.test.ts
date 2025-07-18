@@ -51,10 +51,9 @@ describe('normalized.ts', () => {
     it('should normalize a V2 tool call with string args', () => {
       const v2ToolCall: LanguageModelV2ToolCall = {
         type: 'tool-call',
-        toolCallType: 'function',
         toolCallId: 'call_789',
         toolName: 'search',
-        args: '{"query": "test"}',
+        input: '{"query": "test"}',
       };
 
       const result = normalizeV2ToolCalls([v2ToolCall]);
@@ -72,10 +71,9 @@ describe('normalized.ts', () => {
     it('should normalize a V2 tool call with object args', () => {
       const v2ToolCall: LanguageModelV2ToolCall = {
         type: 'tool-call',
-        toolCallType: 'function',
         toolCallId: 'call_abc',
         toolName: 'format',
-        args: JSON.stringify({ text: 'hello', format: 'uppercase' }),
+        input: JSON.stringify({ text: 'hello', format: 'uppercase' }),
       };
 
       const result = normalizeV2ToolCalls([v2ToolCall]);
@@ -93,10 +91,9 @@ describe('normalized.ts', () => {
     it('should clean up spacing in V2 tool call args', () => {
       const v2ToolCall: LanguageModelV2ToolCall = {
         type: 'tool-call',
-        toolCallType: 'function',
         toolCallId: 'call_def',
         toolName: 'test',
-        args: '{"key": "value", "number": 123}',
+        input: '{"key": "value", "number": 123}',
       };
 
       const result = normalizeV2ToolCalls([v2ToolCall]);

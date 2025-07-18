@@ -64,6 +64,7 @@ describe('MockProvider V5 Example Usage', () => {
         toolCallId: 'call-123',
         toolName: 'calculator',
         args: '{"expression": "2+2"}',
+        input: '{"expression": "2+2"}',
       };
 
       mockProvider.addLanguageModelResponse(
@@ -88,7 +89,7 @@ describe('MockProvider V5 Example Usage', () => {
       expect(result.text).toBe('I need to calculate that.');
       expect(result.toolCalls).toHaveLength(1);
       expect(result.toolCalls![0].toolName).toBe('calculator');
-      expect(result.toolResults![0].result).toBe('4');
+      expect(result.toolResults![0].output).toBe('4');
     });
 
     it('should simulate response delay', async () => {

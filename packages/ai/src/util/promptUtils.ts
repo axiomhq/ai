@@ -137,10 +137,10 @@ export function extractToolResultsFromPromptV2(
     if (message.role === 'tool' && Array.isArray(message.content)) {
       for (const part of message.content) {
         // In V2, tool result parts have toolCallId and result properties
-        if (part.toolCallId && part.result !== undefined) {
+        if (part.toolCallId && part.output !== undefined) {
           const toolName = idToName.get(part.toolCallId);
           if (toolName) {
-            results.set(toolName, part.result);
+            results.set(toolName, part.output);
           }
         }
       }
