@@ -6,64 +6,64 @@ import type { OpenAIMessage } from '../otel/vercelTypes';
 export type ToolResultMap = Map<string, unknown>;
 
 /**
-* Appends tool calls and their results to a conversation prompt.
-*
-* This function takes an existing conversation prompt and adds:
-* 1. An assistant message containing the tool calls
-* 2. Tool result messages for each tool call with results
-*
-* @param prompt - The existing conversation prompt
-* @param toolCalls - The tool calls made by the assistant
-* @param toolResults - Map of tool names to their results
-* @param assistantContent - Optional assistant message content to include with tool calls
-* @returns Updated prompt with tool calls and results appended
+ * Appends tool calls and their results to a conversation prompt.
+ *
+ * This function takes an existing conversation prompt and adds:
+ * 1. An assistant message containing the tool calls
+ * 2. Tool result messages for each tool call with results
+ *
+ * @param prompt - The existing conversation prompt
+ * @param toolCalls - The tool calls made by the assistant
+ * @param toolResults - Map of tool names to their results
+ * @param assistantContent - Optional assistant message content to include with tool calls
+ * @returns Updated prompt with tool calls and results appended
  */
 export function appendToolCalls(
-prompt: OpenAIMessage[],
-toolCalls: LanguageModelV1FunctionToolCall[] | NormalizedToolCall[],
-toolResults: ToolResultMap,
-assistantContent?: string | null
+  prompt: OpenAIMessage[],
+  toolCalls: LanguageModelV1FunctionToolCall[] | NormalizedToolCall[],
+  toolResults: ToolResultMap,
+  assistantContent?: string | null,
 ): OpenAIMessage[] {
-const updatedPrompt = [...prompt];
+  const updatedPrompt = [...prompt];
 
-// Add assistant message with tool calls
-updatedPrompt.push({
-role: 'assistant',
-content: assistantContent || null,
-tool_calls: toolCalls.map((toolCall) => ({
-id: toolCall.toolCallId,
-function: {
-  name: toolCall.toolName,
-arguments:
-  typeof toolCall.args === 'string' ? toolCall.args : JSON.stringify(toolCall.args),
-},
-type: 'function',
-})),
-});
+  // Add assistant message with tool calls
+  updatedPrompt.push({
+    role: 'assistant',
+    content: assistantContent || null,
+    tool_calls: toolCalls.map((toolCall) => ({
+      id: toolCall.toolCallId,
+      function: {
+        name: toolCall.toolName,
+        arguments:
+          typeof toolCall.args === 'string' ? toolCall.args : JSON.stringify(toolCall.args),
+      },
+      type: 'function',
+    })),
+  });
 
-// Add tool result messages with real data
+  // Add tool result messages with real data
   for (const toolCall of toolCalls) {
-const realToolResult = toolResults.get(toolCall.toolName);
+    const realToolResult = toolResults.get(toolCall.toolName);
 
-if (realToolResult) {
-updatedPrompt.push({
-role: 'tool',
-  tool_call_id: toolCall.toolCallId,
-    content: JSON.stringify(realToolResult),
-    });
+    if (realToolResult) {
+      updatedPrompt.push({
+        role: 'tool',
+        tool_call_id: toolCall.toolCallId,
+        content: JSON.stringify(realToolResult),
+      });
     }
-}
+  }
 
   return updatedPrompt;
 }
 
 /**
  * Extracts tool results from a raw prompt array.
- * 
+ *
  * Searches through different message formats to find tool results:
  * - Google AI format: user messages with functionResponse parts
  * - OpenAI format: tool role messages (future enhancement)
- * 
+ *
  * @param rawPrompt - The raw prompt array from the model provider
  * @returns Map of tool names to their results
  */
@@ -107,15 +107,17 @@ export function extractToolResultsFromRawPrompt(rawPrompt: any[]): Map<string, u
 
 /**
  * Extracts tool results from a V2 prompt structure.
- * 
+ *
  * V2 prompts use a "parts" array structure where:
  * - Tool calls are in assistant messages as 'tool-call' parts
  * - Tool results are in 'tool' role messages as 'tool-result' parts with 'output' property
- * 
+ *
  * @param prompt - The V2 prompt array
  * @returns Map of tool names to their results
  */
-export function extractToolResultsFromPromptV2(prompt: LanguageModelV2Prompt): Map<string, unknown> {
+export function extractToolResultsFromPromptV2(
+  prompt: LanguageModelV2Prompt,
+): Map<string, unknown> {
   const idToName = new Map<string, string>();
   const results = new Map<string, unknown>();
 
