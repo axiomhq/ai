@@ -2,18 +2,15 @@ import {
   type LanguageModelV1,
   type LanguageModelV1CallOptions,
   type LanguageModelV1ObjectGenerationMode,
-  type LanguageModelV1Prompt,
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
-  type LanguageModelV1TextPart,
-  type LanguageModelV1ToolCallPart,
   type LanguageModelV1StreamPart,
   type LanguageModelV1ProviderMetadata,
 } from '@ai-sdk/providerv1';
 
 import { type Span } from '@opentelemetry/api';
 
-import type { OpenAIMessage, OpenAIUserContentPart } from './vercelTypes';
+import type { OpenAIMessage } from './vercelTypes';
 import { Attr } from './semconv/attributes';
 
 import { currentUnixTime } from 'src/util/currentUnixTime';
@@ -27,6 +24,7 @@ import {
   determineOutputTypeV1,
   type CommonSpanContext,
 } from './utils/wrapperUtils';
+import { promptV1ToOpenAI, normalizeV1ToolCalls } from './utils/normalized';
 
 // TODO: @cje - use these instead of current `result` type
 type DoGenerateReturn = Awaited<ReturnType<LanguageModelV1['doGenerate']>>;
@@ -282,8 +280,6 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     });
   }
 
-
-
   private setPreCallAttributes(
     span: Span,
     options: LanguageModelV1CallOptions,
@@ -304,7 +300,7 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     } = options;
 
     // Set prompt attributes (full conversation history)
-    const processedPrompt = postProcessPrompt(prompt);
+    const processedPrompt = promptV1ToOpenAI(prompt);
 
     // Store the original prompt for later use in post-call processing
     context.originalPrompt = processedPrompt;
@@ -343,11 +339,19 @@ function buildSpanAttributes(
   if (result.toolCalls && result.toolCalls.length > 0) {
     const originalPrompt = context.originalPrompt || [];
 
+    // Normalize the tool calls to the common format
+    const normalizedToolCalls = normalizeV1ToolCalls(result.toolCalls);
+
     const toolResultsMap = extractToolResultsFromRawPrompt(
       (context.rawCall?.rawPrompt as any[]) || [],
     );
 
-    const updatedPrompt = appendToolCalls(originalPrompt, result.toolCalls, toolResultsMap, result.text);
+    const updatedPrompt = appendToolCalls(
+      originalPrompt,
+      normalizedToolCalls,
+      toolResultsMap,
+      result.text,
+    );
 
     attributes[Attr.GenAI.Prompt] = JSON.stringify(updatedPrompt);
   }
@@ -377,85 +381,4 @@ function buildSpanAttributes(
   }
 
   return attributes;
-}
-
-function postProcessPrompt(prompt: LanguageModelV1Prompt): OpenAIMessage[] {
-  const results: OpenAIMessage[] = [];
-  for (const message of prompt) {
-    switch (message.role) {
-      case 'system':
-        results.push({
-          role: 'system',
-          content: message.content,
-        });
-        break;
-      case 'assistant':
-        const textPart = message.content.find((part) => part.type === 'text') as
-          | LanguageModelV1TextPart
-          | undefined;
-        const toolCallParts = message.content.filter(
-          (part) => part.type === 'tool-call',
-        ) as LanguageModelV1ToolCallPart[];
-        results.push({
-          role: 'assistant',
-          content: textPart?.text || null,
-          ...(toolCallParts.length > 0
-            ? {
-                tool_calls: toolCallParts.map((part) => ({
-                  id: part.toolCallId,
-                  function: {
-                    name: part.toolName,
-                    arguments: JSON.stringify(part.args),
-                  },
-                  type: 'function',
-                })),
-              }
-            : {}),
-        });
-        break;
-      case 'user':
-        results.push({
-          role: 'user',
-          content: message.content.map((part): OpenAIUserContentPart => {
-            switch (part.type) {
-              case 'text':
-                return {
-                  type: 'text',
-                  text: part.text,
-                  ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
-                };
-              case 'image':
-                return {
-                  type: 'image_url',
-                  image_url: {
-                    url: part.image.toString(),
-                    ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
-                  },
-                };
-              default:
-                // Convert unknown content types to text for compatibility
-                return {
-                  type: 'text',
-                  text:
-                    `[${part.type}]` +
-                    (typeof part === 'object' && part !== null
-                      ? JSON.stringify(part)
-                      : String(part)),
-                };
-            }
-          }),
-        });
-        break;
-      case 'tool':
-        for (const part of message.content) {
-          results.push({
-            role: 'tool',
-            tool_call_id: part.toolCallId,
-            content: JSON.stringify(part.result),
-          });
-        }
-        break;
-    }
-  }
-  return results;
 }

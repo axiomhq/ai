@@ -8,8 +8,6 @@ import {
   type LanguageModelV2Usage,
   type LanguageModelV2ResponseMetadata,
   type LanguageModelV2Prompt,
-  type LanguageModelV2TextPart,
-  type LanguageModelV2ToolCallPart,
 } from '@ai-sdk/providerv2';
 
 import { type Span } from '@opentelemetry/api';
@@ -25,6 +23,7 @@ import {
   determineOutputTypeV2,
   type CommonSpanContext,
 } from './utils/wrapperUtils';
+import { promptV2ToOpenAI, normalizeV2ToolCalls } from './utils/normalized';
 
 interface GenAiSpanContext extends CommonSpanContext {
   originalPrompt: OpenAIMessage[];
@@ -79,7 +78,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       const res = await this.model.doGenerate(options);
 
       // Convert prompt to OpenAI messages for completion array
-      const promptMessages = postProcessPromptV2(options.prompt);
+      const promptMessages = promptV2ToOpenAI(options.prompt);
 
       await this.setPostCallAttributes(span, res, promptMessages, context);
 
@@ -93,7 +92,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       this.setPreCallAttributes(span, options, context);
 
       // Convert prompt to OpenAI messages for completion array
-      const promptMessages = postProcessPromptV2(options.prompt);
+      const promptMessages = promptV2ToOpenAI(options.prompt);
 
       const ret = await this.model.doStream(options);
 
@@ -190,7 +189,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       stopSequences: options.stopSequences,
     });
 
-    const processedPrompt = postProcessPromptV2(options.prompt);
+    const processedPrompt = promptV2ToOpenAI(options.prompt);
 
     // Store both the original V2 prompt and processed prompt for later use in post-call processing
     context.originalV2Prompt = options.prompt;
@@ -253,13 +252,11 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
         span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
       }
 
-      if (result.usage) {
-        if (result.usage.inputTokens !== undefined) {
-          span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.inputTokens);
-        }
-        if (result.usage.outputTokens !== undefined) {
-          span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.outputTokens);
-        }
+      if (result.usage?.inputTokens !== undefined) {
+        span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.inputTokens);
+      }
+      if (result.usage?.outputTokens !== undefined) {
+        span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.outputTokens);
       }
     }
 
@@ -267,16 +264,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
     if (toolCalls && toolCalls.length > 0) {
       const originalPrompt = context?.originalPrompt || [];
 
-      // Convert V2 tool calls to V1 format for compatibility with promptUtils
-      const v1ToolCalls = toolCalls.map((toolCall) => ({
-        toolCallType: 'function' as const,
-        toolCallId: toolCall.toolCallId,
-        toolName: toolCall.toolName,
-        args:
-          typeof toolCall.args === 'string'
-            ? toolCall.args.replace(/:\s+/g, ':') // not sure why we're getting back json with spaces in it
-            : JSON.stringify(toolCall.args),
-      }));
+      const normalizedToolCalls = normalizeV2ToolCalls(toolCalls);
 
       // Extract real tool results from the original V2 prompt structure
       const toolResultsMap = extractToolResultsFromPromptV2(context?.originalV2Prompt || []);
@@ -288,7 +276,7 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       // Use the standard prompt utility to append tool calls
       const updatedPrompt = appendToolCalls(
         originalPrompt,
-        v1ToolCalls,
+        normalizedToolCalls,
         toolResultsMap,
         assistantText,
       );
@@ -337,74 +325,4 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       context,
     );
   }
-}
-
-function postProcessPromptV2(prompt: LanguageModelV2Prompt): OpenAIMessage[] {
-  const results: OpenAIMessage[] = [];
-  for (const message of prompt) {
-    switch (message.role) {
-      case 'system':
-        results.push({
-          role: 'system',
-          content: message.content,
-        });
-        break;
-      case 'assistant':
-        const textContent = message.content.find((part): part is LanguageModelV2TextPart => part.type === 'text');
-        const toolCalls = message.content.filter((part): part is LanguageModelV2ToolCallPart => part.type === 'tool-call');
-        results.push({
-          role: 'assistant',
-          content: textContent?.text || null,
-          ...(toolCalls.length > 0
-            ? {
-                tool_calls: toolCalls.map((part) => ({
-                  id: part.toolCallId,
-                  function: {
-                    name: part.toolName,
-                    arguments: typeof part.args === 'string' ? part.args : JSON.stringify(part.args),
-                  },
-                  type: 'function',
-                })),
-              }
-            : {}),
-        });
-        break;
-      case 'user':
-        results.push({
-          role: 'user',
-          content: message.content.map((part: any) => {
-            switch (part.type) {
-              case 'text':
-                return {
-                  type: 'text',
-                  text: part.text,
-                  ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
-                };
-              case 'image':
-                return {
-                  type: 'image_url',
-                  image_url: {
-                    url: part.image.toString(),
-                    ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
-                  },
-                };
-              default:
-                // Handle unknown content types by passing them through
-                return part as any;
-            }
-          }),
-        });
-        break;
-      case 'tool':
-        for (const part of message.content) {
-          results.push({
-            role: 'tool',
-            tool_call_id: part.toolCallId,
-            content: JSON.stringify(part.result),
-          });
-        }
-        break;
-    }
-  }
-  return results;
 }
