@@ -59,7 +59,7 @@ export function setBaseAttributes(span: Span, provider: string, modelId: string)
     [Attr.GenAI.Request.Model]: modelId,
     [Attr.GenAI.Provider]: provider,
   });
-  
+
   setAxiomBaseAttributes(span);
 }
 
