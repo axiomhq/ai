@@ -4,8 +4,14 @@ import { type Tool as ToolV5 } from 'aiv5';
 import { AxiomAIResources } from './shared';
 import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
+import { typedEntries } from 'src/util/typedEntries';
 
 type Tool = ToolV4 | ToolV5;
+
+/**
+ * Type representing a wrapped tool with preserved TypeScript signatures
+ */
+export type WrappedTool<T extends Tool> = T;
 
 /**
  * Wraps a tool to create child spans when the tool's execute method is called.
@@ -69,4 +75,25 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
       });
     },
   };
+}
+
+/**
+ * Wraps multiple tools to create child spans when their execute methods are called.
+ *
+ * @param tools An object containing tools to wrap
+ * @returns The same object with all tools wrapped
+ */
+export function wrapTools<T extends Record<string, Tool>>(tools: T): T {
+  if (!tools || typeof tools !== 'object') {
+    console.error('Invalid tools object provided to wrapTools');
+    return tools as { [K in keyof T]: WrappedTool<T[K]> };
+  }
+
+  const wrappedTools = {} as { [K in keyof T]: WrappedTool<T[K]> };
+
+  for (const [toolName, tool] of typedEntries(tools)) {
+    wrappedTools[toolName] = wrapTool(toolName as string, tool);
+  }
+
+  return wrappedTools;
 }
