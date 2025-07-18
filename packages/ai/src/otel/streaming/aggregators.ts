@@ -141,8 +141,16 @@ export class TextAggregatorV2 {
   private content = '';
 
   feed(chunk: LanguageModelV2StreamPart): void {
-    if (chunk.type === 'text') {
-      this.content += chunk.text;
+    // TODO: @cje - is this enough?
+    switch (chunk.type) {
+      case 'text-start':
+        this.content = '';
+        break;
+      case 'text-delta':
+        this.content += chunk.delta;
+        break;
+      case 'text-end':
+        break;
     }
   }
 

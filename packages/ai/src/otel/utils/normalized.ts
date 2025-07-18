@@ -9,6 +9,7 @@ import type {
   LanguageModelV2ToolCall,
   LanguageModelV2TextPart,
   LanguageModelV2ToolCallPart,
+  LanguageModelV2ToolResultOutput,
 } from '@ai-sdk/providerv2';
 import type { OpenAIMessage, OpenAIUserContentPart } from '../vercelTypes';
 
@@ -59,9 +60,9 @@ function normalizeV2ToolCall(toolCall: LanguageModelV2ToolCall): NormalizedToolC
     toolCallId: toolCall.toolCallId,
     toolName: toolCall.toolName,
     args:
-      typeof toolCall.args === 'string'
-        ? toolCall.args.replace(/:\s+/g, ':') // Clean up spacing inconsistencies
-        : JSON.stringify(toolCall.args),
+      typeof toolCall.input === 'string'
+        ? toolCall.input.replace(/:\s+/g, ':')
+        : JSON.stringify(toolCall.input),
     toolCallType: 'function',
   };
 }
@@ -205,7 +206,7 @@ export function promptV2ToOpenAI(prompt: LanguageModelV2Prompt): OpenAIMessage[]
                   function: {
                     name: part.toolName,
                     arguments:
-                      typeof part.args === 'string' ? part.args : JSON.stringify(part.args),
+                      typeof part.input === 'string' ? part.input : JSON.stringify(part.input),
                   },
                   type: 'function',
                 })),
@@ -246,7 +247,7 @@ export function promptV2ToOpenAI(prompt: LanguageModelV2Prompt): OpenAIMessage[]
           results.push({
             role: 'tool',
             tool_call_id: part.toolCallId,
-            content: JSON.stringify(part.result),
+            content: formatV2ToolCallOutput(part.output),
           });
         }
         break;
@@ -254,4 +255,19 @@ export function promptV2ToOpenAI(prompt: LanguageModelV2Prompt): OpenAIMessage[]
   }
 
   return results;
+}
+
+function formatV2ToolCallOutput(output: LanguageModelV2ToolResultOutput) {
+  switch (output.type) {
+    case 'text':
+      return output.value;
+    case 'json':
+      return typeof output.value === 'string' ? output.value : JSON.stringify(output.value);
+    case 'error-text':
+      return output.value;
+    case 'error-json':
+      return typeof output.value === 'string' ? output.value : JSON.stringify(output.value);
+    case 'content':
+      return JSON.stringify(output.value);
+  }
 }

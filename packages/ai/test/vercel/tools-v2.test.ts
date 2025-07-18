@@ -3,7 +3,7 @@ import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-tr
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
-import { generateText, tool, maxSteps } from 'aiv5';
+import { generateText, tool, stepCountIs } from 'aiv5';
 import { createMockProvider, mockResponses } from './mock-provider-v2/mock-provider-v2';
 
 import { z } from 'zod';
@@ -39,7 +39,7 @@ describe('tool call attributes', () => {
       toolCallType: 'function' as const,
       toolCallId: 'call-456',
       toolName: 'searchDatabase',
-      args: '{"query": "test query"}',
+      input: '{"query": "test query"}',
     };
 
     mockProvider.addLanguageModelResponse(
@@ -54,14 +54,14 @@ describe('tool call attributes', () => {
     await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
       const res = await generateText({
         model,
-        continueUntil: maxSteps(2),
+        stopWhen: stepCountIs(5),
         prompt: 'Search for something',
         tools: {
           searchDatabase: wrapTool(
             'searchDatabase',
             tool({
               description: 'Search through a database',
-              parameters: z.object({ query: z.string() }),
+              inputSchema: z.object({ query: z.string() }),
               execute: async ({ query }) => `Found results for: ${query}`,
             }),
           ),
@@ -69,7 +69,7 @@ describe('tool call attributes', () => {
             'retrieveData',
             tool({
               description: 'Retrieve data from external source',
-              parameters: z.object({ id: z.string() }),
+              inputSchema: z.object({ id: z.string() }),
               execute: async ({ id }) => `Data for ID: ${id}`,
             }),
           ),
@@ -77,7 +77,7 @@ describe('tool call attributes', () => {
             'calculateMetrics',
             tool({
               description: 'Calculate performance metrics',
-              parameters: z.object({ data: z.array(z.number()) }),
+              inputSchema: z.object({ data: z.array(z.number()) }),
               execute: async ({ data }: { data: number[] }) =>
                 data.reduce((a: number, b: number) => a + b, 0).toString(),
             }),
@@ -138,7 +138,7 @@ describe('tool call attributes', () => {
         {
           role: 'tool',
           tool_call_id: 'call-456',
-          content: '"Found results for: test query"',
+          content: 'Found results for: test query',
         },
       ]),
       'gen_ai.completion': JSON.stringify([

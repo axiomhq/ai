@@ -74,7 +74,7 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
         return result;
       });
     },
-  };
+  } as WrappedTool<T>;
 }
 
 /**

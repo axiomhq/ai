@@ -141,10 +141,9 @@ describe('StreamingAggregators', () => {
 
         const toolCallChunk: LanguageModelV2StreamPart = {
           type: 'tool-call',
-          toolCallType: 'function',
           toolCallId: 'test-1',
           toolName: 'test-tool',
-          args: '{"param": "value"}',
+          input: '{"param": "value"}',
         };
 
         aggregator.handleChunk(toolCallChunk);
@@ -152,10 +151,9 @@ describe('StreamingAggregators', () => {
         expect(aggregator.result).toEqual([
           {
             type: 'tool-call',
-            toolCallType: 'function',
             toolCallId: 'test-1',
             toolName: 'test-tool',
-            args: '{"param": "value"}',
+            input: '{"param": "value"}',
           },
         ]);
       });
@@ -166,17 +164,15 @@ describe('StreamingAggregators', () => {
         const toolCall1: LanguageModelV2StreamPart = {
           type: 'tool-call',
           toolCallId: 'test-1',
-          toolCallType: 'function',
           toolName: 'test-tool-1',
-          args: '{"param": "value1"}',
+          input: '{"param": "value1"}',
         };
 
         const toolCall2: LanguageModelV2StreamPart = {
           type: 'tool-call',
           toolCallId: 'test-2',
-          toolCallType: 'function',
           toolName: 'test-tool-2',
-          args: '{"param": "value2"}',
+          input: '{"param": "value2"}',
         };
 
         aggregator.handleChunk(toolCall1);
@@ -193,17 +189,31 @@ describe('StreamingAggregators', () => {
         const aggregator = new TextAggregatorV2();
 
         const chunk1: LanguageModelV2StreamPart = {
-          type: 'text',
-          text: 'Hello ',
+          id: 'test-1',
+          type: 'text-start',
         };
 
         const chunk2: LanguageModelV2StreamPart = {
-          type: 'text',
-          text: 'world!',
+          id: 'test-2',
+          type: 'text-delta',
+          delta: 'Hello ',
+        };
+
+        const chunk3: LanguageModelV2StreamPart = {
+          id: 'test-3',
+          type: 'text-delta',
+          delta: 'world!',
+        };
+
+        const chunk4: LanguageModelV2StreamPart = {
+          id: 'test-4',
+          type: 'text-end',
         };
 
         aggregator.feed(chunk1);
         aggregator.feed(chunk2);
+        aggregator.feed(chunk3);
+        aggregator.feed(chunk4);
 
         expect(aggregator.text).toBe('Hello world!');
       });
@@ -264,11 +274,11 @@ describe('StreamingAggregators', () => {
         expect(stats.firstTokenTime).toBeUndefined();
 
         // Wait a tiny bit to ensure time passes
-        await new Promise((resolve) => setTimeout(resolve, 1));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         const textChunk: LanguageModelV2StreamPart = {
-          type: 'text',
-          text: 'Hello',
+          type: 'text-start',
+          id: 'text-id',
         };
 
         stats.feed(textChunk);
