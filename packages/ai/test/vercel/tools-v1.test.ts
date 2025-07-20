@@ -5,6 +5,7 @@ import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { generateText, tool } from 'aiv4';
 import { createMockProvider, mockResponses } from './mock-provider-v1/mock-provider';
+import packageJson from '../../package.json';
 
 import { z } from 'zod';
 import { wrapTool } from 'src';
@@ -95,7 +96,7 @@ describe('tool call attributes', () => {
     expect(toolSpan?.attributes).toEqual({
       'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
       'axiom.gen_ai.sdk.name': '@axiomhq/ai',
-      'axiom.gen_ai.sdk.version': '0.0.1',
+      'axiom.gen_ai.sdk.version': packageJson.version,
       'gen_ai.operation.name': 'execute_tool',
       'gen_ai.tool.call.id': 'call-456',
       'gen_ai.tool.description': 'Search through a database',
@@ -111,7 +112,7 @@ describe('tool call attributes', () => {
     expect(chatSpan?.attributes).toEqual({
       'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
       'axiom.gen_ai.sdk.name': '@axiomhq/ai',
-      'axiom.gen_ai.sdk.version': '0.0.1',
+      'axiom.gen_ai.sdk.version': packageJson.version,
       'gen_ai.capability.name': 'test-capability',
       'gen_ai.prompt': JSON.stringify([
         {
