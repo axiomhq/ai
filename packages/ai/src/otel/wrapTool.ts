@@ -23,7 +23,7 @@ type WrappedTool<T extends Tool> = T;
  */
 export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
   if (!tool || typeof tool !== 'object') {
-    console.error('Invalid tool provided to wrapToolV1');
+    console.error('Invalid tool provided to wrapTool');
     return tool;
   }
 
