@@ -1,6 +1,6 @@
 import { generateText, stepCountIs, tool } from 'ai';
 import { z } from 'zod';
-import { geminiFlash } from '@/shared/gemini';
+import { gpt4oMini } from '@/shared/openai';
 import { withSpan, wrapTool } from '@axiomhq/ai';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export default async function Page() {
     span.setAttribute('user_id', userId);
 
     return generateText({
-      model: geminiFlash,
+      model: gpt4oMini,
       stopWhen: stepCountIs(5),
       messages: [
         {
@@ -34,7 +34,8 @@ export default async function Page() {
               from: z.string().describe('The location to start from'),
               to: z.string().describe('The location to find directions to'),
             }),
-            execute: async ({ from, to }, opts) => {
+            execute: async (params, opts) => {
+              const { from, to } = params;
               // Simulate API call delay
               await new Promise((resolve) => setTimeout(resolve, 500));
 
