@@ -1,6 +1,6 @@
 import { generateText, tool } from 'ai';
 import { z } from 'zod';
-import { geminiFlash } from '@/shared/gemini';
+import { gpt4oMini } from '@/shared/openai';
 import { withSpan, wrapTool } from '@axiomhq/ai';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export default async function Page() {
     span.setAttribute('user_id', userId);
 
     return generateText({
-      model: geminiFlash,
+      model: gpt4oMini,
       maxSteps: 5,
       messages: [
         {
