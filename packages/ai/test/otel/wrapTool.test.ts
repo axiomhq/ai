@@ -49,7 +49,7 @@ describe('wrapTool', () => {
 
     const result = wrapTool('invalid', null as any);
 
-    expect(consoleSpy).toHaveBeenCalledWith('Invalid tool provided to wrapToolV1');
+    expect(consoleSpy).toHaveBeenCalledWith('Invalid tool provided to wrapTool');
     expect(result).toBe(null);
 
     consoleSpy.mockRestore();
