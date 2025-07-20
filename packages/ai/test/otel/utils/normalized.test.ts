@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
 import type { LanguageModelV2ToolCall } from '@ai-sdk/providerv2';
 import { normalizeV1ToolCalls, normalizeV2ToolCalls } from '../../../src/otel/utils/normalized';
-import { appendToolCalls } from 'src/util/promptUtils';
+import { appendToolCalls } from '../../../src/util/promptUtils';
 
 describe('normalized.ts', () => {
   describe('normalizeV1ToolCall', () => {

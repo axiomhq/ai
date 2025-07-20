@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import type { OpenAIMessage } from 'src/otel/vercelTypes';
+import type { OpenAIMessage } from '../../src/otel/vercelTypes';
 import {
   formatToolCallsInCompletion,
   aggregateStreamingToolCalls,
   createToolCallMetadata,
-} from 'src/otel/completionUtils';
+} from '../../src/otel/completionUtils';
 import type {
   CompletionArray,
   CompletionAssistantMessage,
   CompletionToolMessage,
-} from 'src/otel/completionTypes';
+} from '../../src/otel/completionTypes';
 
 describe('completionUtils', () => {
   describe('formatToolCallsInCompletion', () => {

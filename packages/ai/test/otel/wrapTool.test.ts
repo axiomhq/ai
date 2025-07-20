@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { wrapTool, wrapTools } from '../../src/otel/wrapTool';
-import type { WrappedTool } from 'src/otel/wrapTool.util';
+import type { WrappedTool } from '../../src/otel/wrapTool.util';
 
 // Mock tools for testing
 const mockTool = {
