@@ -387,20 +387,30 @@ export class MockProvider implements ProviderV2 {
             return;
           }
 
-          // Text chunks with defaultDelay support
-          for (const chunk of response.chunks) {
-            const effectiveDelay = response.delay ?? config.defaultDelay ?? 0;
-            if (effectiveDelay > 0) {
-              await new Promise((resolve) => setTimeout(resolve, effectiveDelay));
-            }
+          if (response.chunks.length > 0) {
             controller.enqueue({
-              type: 'text-delta',
+              type: 'text-start',
               id: 'text-id',
-              delta: chunk,
+            });
+
+            for (const chunk of response.chunks) {
+              const effectiveDelay = response.delay ?? config.defaultDelay ?? 0;
+              if (effectiveDelay > 0) {
+                await new Promise((resolve) => setTimeout(resolve, effectiveDelay));
+              }
+              controller.enqueue({
+                type: 'text-delta',
+                id: 'text-id',
+                delta: chunk,
+              });
+            }
+
+            controller.enqueue({
+              type: 'text-end',
+              id: 'text-id',
             });
           }
 
-          // Finish
           controller.enqueue({
             type: 'finish',
             finishReason: response.finishReason || 'stop',
