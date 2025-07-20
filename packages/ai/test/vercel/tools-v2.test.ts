@@ -3,12 +3,12 @@ import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-tr
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
+import { wrapTool } from '../../src/otel/wrapTool';
 import { generateText, tool, stepCountIs } from 'aiv5';
 import { createMockProvider, mockResponses } from './mock-provider-v2/mock-provider-v2';
 import packageJson from '../../package.json';
 
 import { z } from 'zod';
-import { wrapTool } from 'src';
 
 let memoryExporter: InMemorySpanExporter;
 let tracerProvider: NodeTracerProvider;

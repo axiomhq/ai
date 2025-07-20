@@ -3,7 +3,7 @@ import { type Tool as ToolV4 } from 'aiv4';
 import { type Tool as ToolV5 } from 'aiv5';
 import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
-import { typedEntries } from 'src/util/typedEntries';
+import { typedEntries } from '../util/typedEntries';
 import { AxiomAIResources } from './shared';
 import { setAxiomBaseAttributes } from './utils/wrapperUtils';
 
