@@ -3,43 +3,36 @@
  */
 
 import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
-import type { OpenAIMessage } from './vercelTypes';
+import { sanitizeMultimodalContent } from './utils/contentSanitizer';
 import type {
   CompletionArray,
-  CompletionArrayMessage,
-  CompletionAssistantMessage,
-  CompletionToolMessage,
-  CompletionUserMessage,
-  CompletionSystemMessage,
   FormatToolCallsOptions,
   FormattedCompletionResult,
-  ToolCallMetadata,
 } from './completionTypes';
-
-
+import type { OpenAIMessage, OpenAIAssistantMessage, OpenAIToolMessage } from './vercelTypes';
 
 /**
  * Converts OpenAI messages to completion array format
  */
-function convertToCompletionMessages(messages: OpenAIMessage[]): CompletionArrayMessage[] {
-  return messages.map((message): CompletionArrayMessage => {
+function convertToCompletionMessages(messages: OpenAIMessage[]): OpenAIMessage[] {
+  return messages.map((message): OpenAIMessage => {
     switch (message.role) {
       case 'system':
         return {
           role: 'system',
           content: message.content,
-        } as CompletionSystemMessage;
+        };
 
       case 'user':
         return {
           role: 'user',
-          content: message.content,
-        } as CompletionUserMessage;
+          content: sanitizeMultimodalContent(message.content) as string | any[],
+        };
 
       case 'assistant':
         return {
           role: 'assistant',
-          content: typeof message.content === 'string' ? message.content : message.content,
+          content: sanitizeMultimodalContent(message.content) as string | null,
           tool_calls: message.tool_calls?.map((toolCall) => ({
             id: toolCall.id,
             type: 'function' as const,
@@ -48,14 +41,14 @@ function convertToCompletionMessages(messages: OpenAIMessage[]): CompletionArray
               arguments: toolCall.function.arguments,
             },
           })),
-        } as CompletionAssistantMessage;
+        };
 
       case 'tool':
         return {
           role: 'tool',
           content: message.content,
           tool_call_id: message.tool_call_id,
-        } as CompletionToolMessage;
+        };
 
       default:
         throw new Error(`Unknown message role: ${(message as any).role}`);
@@ -70,14 +63,12 @@ function createToolResultMessages(
   toolResults: Array<{
     toolCallId: string;
     result: unknown;
-    metadata?: ToolCallMetadata;
   }>,
-): CompletionToolMessage[] {
+): OpenAIToolMessage[] {
   return toolResults.map((result) => ({
     role: 'tool' as const,
     content: typeof result.result === 'string' ? result.result : JSON.stringify(result.result),
     tool_call_id: result.toolCallId,
-    metadata: result.metadata,
   }));
 }
 
@@ -88,18 +79,13 @@ function createToolResultMessages(
 export function formatToolCallsInCompletion(
   options: FormatToolCallsOptions,
 ): FormattedCompletionResult {
-  const {
-    promptMessages = [],
-    text,
-    toolCalls = [],
-    toolResults = [],
-  } = options;
+  const { promptMessages = [], text, toolCalls = [], toolResults = [] } = options;
 
   // Convert prompt messages to completion format
   const historyMessages = convertToCompletionMessages(promptMessages);
 
   // Create assistant message with tool calls
-  const assistantMessage: CompletionAssistantMessage = {
+  const assistantMessage: OpenAIAssistantMessage = {
     role: 'assistant',
     content: text ?? (toolCalls.length > 0 ? null : ''),
   };
@@ -135,7 +121,7 @@ export function formatToolCallsInCompletion(
  */
 export function createSimpleCompletion({ text }: { text?: string }): CompletionArray {
   // Create assistant message with text only
-  const assistantMessage: CompletionAssistantMessage = {
+  const assistantMessage: OpenAIAssistantMessage = {
     role: 'assistant',
     content: text ?? '',
   };
@@ -164,7 +150,7 @@ export function formatV2ToolCallsInCompletion({
   const historyMessages = convertToCompletionMessages(promptMessages);
 
   // Create assistant message
-  const assistantMessage: CompletionAssistantMessage = {
+  const assistantMessage: OpenAIAssistantMessage = {
     role: 'assistant',
     content: text ?? (toolCalls.length > 0 ? null : ''),
   };
@@ -226,33 +212,4 @@ export function aggregateStreamingToolCalls(
     ...call,
     toolCallType: 'function' as const,
   }));
-}
-
-/**
- * Creates tool call metadata with timing information
- */
-export function createToolCallMetadata({
-  startTime,
-  endTime,
-  status = 'ok',
-  errorMessage,
-  spanId,
-  tokensUsed,
-}: {
-  startTime: Date;
-  endTime: Date;
-  status?: 'ok' | 'error' | 'timeout' | 'cancelled';
-  errorMessage?: string;
-  spanId?: string;
-  tokensUsed?: number;
-}): ToolCallMetadata {
-  return {
-    start_time: startTime.toISOString(),
-    end_time: endTime.toISOString(),
-    duration_ms: endTime.getTime() - startTime.getTime(),
-    status,
-    error_message: errorMessage,
-    span_id: spanId,
-    tokens_used: tokensUsed,
-  };
 }
