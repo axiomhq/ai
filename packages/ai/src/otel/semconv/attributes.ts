@@ -178,11 +178,6 @@ export const Attr = {
       Seed: ATTR_GEN_AI_REQUEST_SEED,
       StopSequences: ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
       Temperature: ATTR_GEN_AI_REQUEST_TEMPERATURE,
-      Tools: {
-        Available: 'gen_ai.request.tools.available',
-        Choice: 'gen_ai.request.tools.choice',
-        Count: 'gen_ai.request.tools.count',
-      },
       TopK: ATTR_GEN_AI_REQUEST_TOP_K,
       TopP: ATTR_GEN_AI_REQUEST_TOP_P,
     },
