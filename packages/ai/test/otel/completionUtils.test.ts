@@ -3,13 +3,9 @@ import type { OpenAIMessage } from '../../src/otel/vercelTypes';
 import {
   formatToolCallsInCompletion,
   aggregateStreamingToolCalls,
-  createToolCallMetadata,
 } from '../../src/otel/completionUtils';
-import type {
-  CompletionArray,
-  CompletionAssistantMessage,
-  CompletionToolMessage,
-} from '../../src/otel/completionTypes';
+import type { CompletionArray } from '../../src/otel/completionTypes';
+import type { OpenAIAssistantMessage, OpenAIToolMessage } from '../../src/otel/vercelTypes';
 
 describe('completionUtils', () => {
   describe('formatToolCallsInCompletion', () => {
@@ -140,35 +136,6 @@ describe('completionUtils', () => {
       );
       expect(result.assistantMessage.tool_calls).toHaveLength(1);
     });
-
-    it('should handle tool results with metadata', () => {
-      const startTime = new Date('2024-01-01T10:00:00Z');
-      const endTime = new Date('2024-01-01T10:00:05Z');
-      const metadata = createToolCallMetadata({
-        startTime,
-        endTime,
-        status: 'ok',
-        spanId: 'span_123',
-      });
-
-      const result = formatToolCallsInCompletion({
-        toolResults: [
-          {
-            toolCallId: 'call_123',
-            result: 'success',
-            metadata,
-          },
-        ],
-      });
-
-      expect(result.toolMessages[0].metadata).toEqual({
-        start_time: '2024-01-01T10:00:00.000Z',
-        end_time: '2024-01-01T10:00:05.000Z',
-        duration_ms: 5000,
-        status: 'ok',
-        span_id: 'span_123',
-      });
-    });
   });
 
   describe('aggregateStreamingToolCalls', () => {
@@ -230,46 +197,6 @@ describe('completionUtils', () => {
     });
   });
 
-  describe('createToolCallMetadata', () => {
-    it('should create metadata with correct timing', () => {
-      const startTime = new Date('2024-01-01T10:00:00Z');
-      const endTime = new Date('2024-01-01T10:00:05.500Z');
-
-      const metadata = createToolCallMetadata({
-        startTime,
-        endTime,
-        status: 'ok',
-        spanId: 'span_123',
-        tokensUsed: 150,
-      });
-
-      expect(metadata).toEqual({
-        start_time: '2024-01-01T10:00:00.000Z',
-        end_time: '2024-01-01T10:00:05.500Z',
-        duration_ms: 5500,
-        status: 'ok',
-        span_id: 'span_123',
-        tokens_used: 150,
-      });
-    });
-
-    it('should handle error status with message', () => {
-      const startTime = new Date();
-      const endTime = new Date(startTime.getTime() + 1000);
-
-      const metadata = createToolCallMetadata({
-        startTime,
-        endTime,
-        status: 'error',
-        errorMessage: 'Tool execution failed',
-      });
-
-      expect(metadata.status).toBe('error');
-      expect(metadata.error_message).toBe('Tool execution failed');
-      expect(metadata.duration_ms).toBe(1000);
-    });
-  });
-
   describe('type safety', () => {
     it('should enforce correct message types', () => {
       const completion: CompletionArray = [
@@ -288,7 +215,7 @@ describe('completionUtils', () => {
     });
 
     it('should enforce tool call structure', () => {
-      const assistantMessage: CompletionAssistantMessage = {
+      const assistantMessage: OpenAIAssistantMessage = {
         role: 'assistant',
         content: null,
         tool_calls: [
@@ -308,21 +235,14 @@ describe('completionUtils', () => {
     });
 
     it('should enforce tool message structure', () => {
-      const toolMessage: CompletionToolMessage = {
+      const toolMessage: OpenAIToolMessage = {
         role: 'tool',
         content: '{"result": "success"}',
         tool_call_id: 'call_123',
-        metadata: {
-          start_time: '2024-01-01T10:00:00Z',
-          end_time: '2024-01-01T10:00:05Z',
-          duration_ms: 5000,
-          status: 'ok',
-        },
       };
 
       expect(toolMessage.role).toBe('tool');
       expect(toolMessage.tool_call_id).toBe('call_123');
-      expect(toolMessage.metadata!.status).toBe('ok');
     });
   });
 });

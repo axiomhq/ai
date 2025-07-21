@@ -15,6 +15,7 @@ import { Attr } from './semconv/attributes';
 
 import { createSimpleCompletion } from './completionUtils';
 import { appendToolCalls, extractToolResultsFromRawPrompt } from '../util/promptUtils';
+import { sanitizeMultimodalContent } from './utils/contentSanitizer';
 import {
   setScopeAttributes,
   setBaseAttributes,
@@ -199,7 +200,10 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
     // Store the original prompt for later use in post-call processing
     context.originalPrompt = processedPrompt;
 
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
+    span.setAttribute(
+      Attr.GenAI.Prompt,
+      JSON.stringify(sanitizeMultimodalContent(processedPrompt)),
+    );
 
     setBaseAttributes(span, this.model.provider, this.modelId);
 
@@ -247,7 +251,7 @@ function buildSpanAttributes(
       result.text,
     );
 
-    attributes[Attr.GenAI.Prompt] = JSON.stringify(updatedPrompt);
+    attributes[Attr.GenAI.Prompt] = JSON.stringify(sanitizeMultimodalContent(updatedPrompt));
   }
 
   // Create simple completion array with just assistant text

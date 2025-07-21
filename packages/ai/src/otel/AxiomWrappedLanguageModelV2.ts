@@ -15,6 +15,7 @@ import { Attr } from './semconv/attributes';
 import type { OpenAIMessage } from './vercelTypes';
 import { createSimpleCompletion } from './completionUtils';
 import { appendToolCalls, extractToolResultsFromPromptV2 } from '../util/promptUtils';
+import { sanitizeMultimodalContent } from './utils/contentSanitizer';
 import {
   setScopeAttributes,
   setBaseAttributes,
@@ -172,7 +173,10 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
     context.originalV2Prompt = options.prompt;
     context.originalPrompt = processedPrompt;
 
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(processedPrompt));
+    span.setAttribute(
+      Attr.GenAI.Prompt,
+      JSON.stringify(sanitizeMultimodalContent(processedPrompt)),
+    );
   }
 
   private static async processToolCallsAndCreateSpans(
@@ -187,12 +191,16 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
 
     // Only set completion for final responses without tool calls
     // Tool call responses will be followed by additional calls, so we wait for the final response
-    if (toolCalls.length === 0 && assistantText) {
-      // Create simple completion array with assistant text only (mirroring V1 behavior)
-      // Tool calls are handled in the prompt, not completion
-      const completion = createSimpleCompletion({
-        text: assistantText,
-      });
+    if (toolCalls.length === 0) {
+      // Create completion with multimodal content support
+      const completion = [
+        {
+          role: 'assistant' as const,
+          content: sanitizeMultimodalContent(
+            content.length === 1 && assistantText ? assistantText : content,
+          ),
+        },
+      ];
 
       // Set completion array as span attribute
       parentSpan.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
@@ -259,7 +267,10 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       );
 
       // Update the prompt attribute with the complete conversation history
-      span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(updatedPrompt));
+      span.setAttribute(
+        Attr.GenAI.Prompt,
+        JSON.stringify(sanitizeMultimodalContent(updatedPrompt)),
+      );
     }
 
     // Process tool calls and create child spans
