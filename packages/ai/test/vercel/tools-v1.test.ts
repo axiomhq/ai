@@ -153,7 +153,6 @@ describe('tool call attributes', () => {
       'gen_ai.operation.name': 'chat',
       'gen_ai.output.type': 'text',
       'gen_ai.response.finish_reasons': '["stop"]',
-      'gen_ai.provider.name': 'mock-provider',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.request.temperature': 0,
       'gen_ai.response.id': 'mock-response-id',
