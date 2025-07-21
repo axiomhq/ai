@@ -57,8 +57,12 @@ export function setBaseAttributes(span: Span, provider: string, modelId: string)
   span.setAttributes({
     [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
     [Attr.GenAI.Request.Model]: modelId,
-    [Attr.GenAI.Provider]: provider,
   });
+
+  const systemValue = mapProviderToSystem(provider);
+  if (systemValue) {
+    span.setAttribute(Attr.GenAI.System, systemValue);
+  }
 
   setAxiomBaseAttributes(span);
 }
@@ -234,4 +238,95 @@ export function determineOutputTypeV2(options: {
   }
 
   return undefined;
+}
+
+/**
+ * Maps AI SDK provider IDs to OpenTelemetry gen_ai.system values
+ *
+ * @param provider - The provider ID from the AI SDK
+ * @returns The corresponding system value or '_OTHER' for unmapped providers, undefined for providers that shouldn't be mapped
+ */
+export function mapProviderToSystem(provider: string): string | undefined {
+  const OTHER_VALUE = '_OTHER';
+
+  // exact matches
+  switch (provider) {
+    case 'amazon-bedrock':
+      return Attr.GenAI.System_Values.AWSBedrock;
+    case 'anthropic':
+      return Attr.GenAI.System_Values.Anthropic;
+    case 'gateway':
+      return OTHER_VALUE;
+    case 'google':
+      return Attr.GenAI.System_Values.GCPGemini;
+    case 'groq':
+      return Attr.GenAI.System_Values.Groq;
+    case 'mistral':
+      return Attr.GenAI.System_Values.MistralAI;
+    case 'openai':
+      return Attr.GenAI.System_Values.OpenAI;
+    case 'openai-compatible':
+      return OTHER_VALUE;
+    case 'perplexity':
+      return Attr.GenAI.System_Values.Perplexity;
+    case 'replicate':
+      return OTHER_VALUE;
+    case 'togetherai':
+      return OTHER_VALUE;
+    case 'xai':
+      return Attr.GenAI.System_Values.XAI;
+
+    // Specialized providers that should not have system attribute
+    case 'assemblyai':
+    case 'deepgram':
+    case 'gladia':
+    case 'revai':
+      return undefined;
+
+    // startswith + fall through
+    default: {
+      if (provider.startsWith('azure.')) {
+        return Attr.GenAI.System_Values.AzureAIOpenAI;
+      }
+      if (provider.startsWith('cerebras.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('cohere.')) {
+        return Attr.GenAI.System_Values.Cohere;
+      }
+      if (provider.startsWith('deepinfra.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('deepseek.')) {
+        return Attr.GenAI.System_Values.Deepseek;
+      }
+      if (provider.startsWith('elevenlabs.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('fal.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('fireworks.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('google.vertex.')) {
+        return Attr.GenAI.System_Values.GCPVertexAI;
+      }
+      if (provider.startsWith('hume.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('lmnt.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('luma.')) {
+        return OTHER_VALUE;
+      }
+      if (provider.startsWith('vercel.')) {
+        return OTHER_VALUE;
+      }
+
+      // For unknown providers, don't set the attribute
+      return undefined;
+    }
+  }
 }
