@@ -40,7 +40,6 @@ describe('completionUtils', () => {
         promptMessages,
         toolCalls,
         toolResults,
-        includeTimestamps: false,
       });
 
       expect(result.completion).toHaveLength(3);
@@ -105,7 +104,6 @@ describe('completionUtils', () => {
         promptMessages,
         toolCalls,
         toolResults,
-        includeTimestamps: false,
       });
 
       expect(result.completion).toHaveLength(4);
@@ -135,29 +133,12 @@ describe('completionUtils', () => {
             result: { passed: 15, failed: 2, errors: ['test_user_auth failed'] },
           },
         ],
-        includeTimestamps: false,
       });
 
       expect(result.assistantMessage.content).toBe(
         "I'll analyze your code and run the tests for you.",
       );
       expect(result.assistantMessage.tool_calls).toHaveLength(1);
-    });
-
-    it('should include timestamps when requested', () => {
-      const result = formatToolCallsInCompletion({
-        promptMessages: [
-          {
-            role: 'user',
-            content: 'Test message',
-          },
-        ],
-        includeTimestamps: true,
-      });
-
-      expect(result.completion[0]).toHaveProperty('timestamp');
-      expect(result.completion[1]).toHaveProperty('timestamp');
-      expect(typeof result.completion[0].timestamp).toBe('string');
     });
 
     it('should handle tool results with metadata', () => {
@@ -178,7 +159,6 @@ describe('completionUtils', () => {
             metadata,
           },
         ],
-        includeTimestamps: false,
       });
 
       expect(result.toolMessages[0].metadata).toEqual({
@@ -296,12 +276,10 @@ describe('completionUtils', () => {
         {
           role: 'user',
           content: 'Test message',
-          timestamp: '2024-01-01T10:00:00Z',
         },
         {
           role: 'assistant',
           content: 'Response',
-          timestamp: '2024-01-01T10:00:01Z',
         },
       ];
 
