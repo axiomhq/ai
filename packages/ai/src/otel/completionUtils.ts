@@ -16,37 +16,24 @@ import type {
   ToolCallMetadata,
 } from './completionTypes';
 
-/**
- * Creates an ISO 8601 timestamp for the current time
- */
-function createTimestamp(): string {
-  return new Date().toISOString();
-}
+
 
 /**
- * Converts OpenAI messages to completion array format with timestamps
+ * Converts OpenAI messages to completion array format
  */
-function convertToCompletionMessages(
-  messages: OpenAIMessage[],
-  includeTimestamps = true,
-): CompletionArrayMessage[] {
-  const timestamp = includeTimestamps ? createTimestamp() : undefined;
-
+function convertToCompletionMessages(messages: OpenAIMessage[]): CompletionArrayMessage[] {
   return messages.map((message): CompletionArrayMessage => {
     switch (message.role) {
       case 'system':
         return {
           role: 'system',
           content: message.content,
-          timestamp,
         } as CompletionSystemMessage;
 
       case 'user':
         return {
           role: 'user',
-          content:
-            typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
-          timestamp,
+          content: message.content,
         } as CompletionUserMessage;
 
       case 'assistant':
@@ -61,7 +48,6 @@ function convertToCompletionMessages(
               arguments: toolCall.function.arguments,
             },
           })),
-          timestamp,
         } as CompletionAssistantMessage;
 
       case 'tool':
@@ -69,7 +55,6 @@ function convertToCompletionMessages(
           role: 'tool',
           content: message.content,
           tool_call_id: message.tool_call_id,
-          timestamp,
         } as CompletionToolMessage;
 
       default:
@@ -87,16 +72,12 @@ function createToolResultMessages(
     result: unknown;
     metadata?: ToolCallMetadata;
   }>,
-  includeTimestamps = true,
 ): CompletionToolMessage[] {
-  const timestamp = includeTimestamps ? createTimestamp() : undefined;
-
   return toolResults.map((result) => ({
     role: 'tool' as const,
     content: typeof result.result === 'string' ? result.result : JSON.stringify(result.result),
     tool_call_id: result.toolCallId,
     metadata: result.metadata,
-    timestamp,
   }));
 }
 
@@ -112,19 +93,15 @@ export function formatToolCallsInCompletion(
     text,
     toolCalls = [],
     toolResults = [],
-    includeTimestamps = true,
   } = options;
 
-  const timestamp = includeTimestamps ? createTimestamp() : undefined;
-
   // Convert prompt messages to completion format
-  const historyMessages = convertToCompletionMessages(promptMessages, includeTimestamps);
+  const historyMessages = convertToCompletionMessages(promptMessages);
 
   // Create assistant message with tool calls
   const assistantMessage: CompletionAssistantMessage = {
     role: 'assistant',
     content: text ?? (toolCalls.length > 0 ? null : ''),
-    timestamp,
   };
 
   // Add tool calls if present
@@ -140,7 +117,7 @@ export function formatToolCallsInCompletion(
   }
 
   // Create tool result messages
-  const toolMessages = createToolResultMessages(toolResults, includeTimestamps);
+  const toolMessages = createToolResultMessages(toolResults);
 
   // Build complete completion array
   const completion: CompletionArray = [...historyMessages, assistantMessage, ...toolMessages];
@@ -174,7 +151,6 @@ export function formatV2ToolCallsInCompletion({
   promptMessages = [],
   text,
   toolCalls = [],
-  includeTimestamps = true,
 }: {
   promptMessages?: OpenAIMessage[];
   text?: string;
@@ -183,18 +159,14 @@ export function formatV2ToolCallsInCompletion({
     toolName: string;
     args: unknown;
   }>;
-  includeTimestamps?: boolean;
 }): CompletionArray {
-  const timestamp = includeTimestamps ? createTimestamp() : undefined;
-
   // Convert prompt messages
-  const historyMessages = convertToCompletionMessages(promptMessages, includeTimestamps);
+  const historyMessages = convertToCompletionMessages(promptMessages);
 
   // Create assistant message
   const assistantMessage: CompletionAssistantMessage = {
     role: 'assistant',
     content: text ?? (toolCalls.length > 0 ? null : ''),
-    timestamp,
   };
 
   // Add tool calls if present

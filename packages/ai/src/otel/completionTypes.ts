@@ -3,14 +3,12 @@
  * Based on the completion array structure from TODO.md
  */
 
-import type { OpenAIMessage } from './vercelTypes';
+import type { OpenAIMessage, OpenAIUserContentPart } from './vercelTypes';
 
 /**
- * Base message with timestamp for completion array
+ * Base message for completion array
  */
 export interface CompletionMessage {
-  /** ISO 8601 timestamp when message was created */
-  timestamp?: string;
 }
 
 /**
@@ -18,7 +16,7 @@ export interface CompletionMessage {
  */
 export interface CompletionUserMessage extends CompletionMessage {
   role: 'user';
-  content: string;
+  content: string | OpenAIUserContentPart[];
 }
 
 /**
@@ -114,8 +112,6 @@ export interface FormatToolCallsOptions {
     result: unknown;
     metadata?: ToolCallMetadata;
   }[];
-  /** Whether to include timestamps */
-  includeTimestamps?: boolean;
 }
 
 /**
