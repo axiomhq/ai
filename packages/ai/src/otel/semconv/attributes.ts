@@ -152,7 +152,6 @@ export const Attr = {
      * The provider that is hosting the model, eg AWS Bedrock
      * There doesn't seem to be a semconv for this
      */
-    Provider: 'gen_ai.provider.name', // proprietary to axiom-ai, not yet used by axiom-ai
     Prompt: ATTR_GEN_AI_PROMPT, // OTel suggests to use the events api for this
     Request: {
       ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT, // not yet used by axiom-ai
@@ -197,7 +196,6 @@ export const Attr = {
       Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
       Gemini: GEN_AI_SYSTEM_VALUE_GEMINI,
       OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
-      Vercel: 'vercel',
     },
     Tool: {
       CallID: ATTR_GEN_AI_TOOL_CALL_ID,
