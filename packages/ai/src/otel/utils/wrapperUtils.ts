@@ -1,9 +1,49 @@
-import { trace, propagation, type Span } from '@opentelemetry/api';
+import {
+  trace,
+  propagation,
+  type Span,
+  SpanStatusCode,
+  type AttributeValue,
+} from '@opentelemetry/api';
 import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from '../semconv/attributes';
 import { createStartActiveSpan } from '../startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
 // Removed import of createGenAISpanName since it's no longer exported
 import packageJson from '../../../package.json';
+
+/**
+ * Classifies errors into low-cardinality types for OpenTelemetry error.type attribute
+ * Reference: OTel spec § 7.22.5 for error.type guidelines
+ *
+ * Uses explicit mapping for useful error types, avoiding generic built-in errors
+ * that are not actionable for observability dashboards.
+ *
+ * @returns string for actionable error types, undefined for unclassifiable errors
+ */
+function classifyError(err: unknown): string | undefined {
+  if (err == null) return undefined;
+
+  if (err instanceof Error) {
+    const name = err.name.toLowerCase();
+
+    // Explicit mapping for actionable error types
+    if (name.includes('timeout')) return 'timeout';
+    if (name.includes('abort')) return 'timeout'; // AbortError often means timeout
+    if (name.includes('network') || name.includes('fetch')) return 'network';
+    if (name.includes('validation')) return 'validation';
+    if (name.includes('auth')) return 'authentication';
+    if (name.includes('parse') || name.includes('json')) return 'parsing';
+    if (name.includes('permission') || name.includes('forbidden')) return 'authorization';
+    if (name.includes('rate') && name.includes('limit')) return 'rate_limit';
+    if (name.includes('quota') || name.includes('limit')) return 'quota_exceeded';
+
+    // Skip generic built-in errors (TypeError, ReferenceError, etc.)
+    // They're not useful for observability dashboards
+    return undefined;
+  }
+
+  return undefined; // Handles primitives thrown as errors
+}
 
 /**
  * Creates a standardized span name for GenAI operations
@@ -142,14 +182,66 @@ export async function withSpanHandling<T>(
       throw new Error('Expected active span when within withSpan');
     }
     activeSpan.updateName(createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId));
-    return operation(activeSpan, context);
+
+    try {
+      return await operation(activeSpan, context);
+    } catch (err) {
+      // Enhanced error handling for OpenTelemetry compliance
+      if (err instanceof Error) {
+        activeSpan.recordException(err); // Error objects are compatible with Exception interface
+      } else {
+        // Convert primitives to compatible format
+        activeSpan.recordException({
+          message: String(err),
+          name: 'UnknownError',
+        });
+      }
+
+      activeSpan.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: err instanceof Error ? err.message : String(err),
+      });
+
+      // MANDATORY: Add OpenTelemetry error attributes for cross-vendor compatibility
+      const errorType = classifyError(err);
+      activeSpan.setAttribute(Attr.Error.Type, errorType ?? 'unknown');
+
+      // OPTIONAL: Add human-readable error message
+      if (err instanceof Error && err.message) {
+        activeSpan.setAttribute(Attr.Error.Message, err.message);
+      }
+
+      // For Vercel AI SDK specific errors, add HTTP status if available
+      if (err && typeof err === 'object' && 'status' in err) {
+        activeSpan.setAttribute(Attr.HTTP.Response.StatusCode, err.status as AttributeValue);
+      }
+
+      throw err;
+    }
   } else {
     // Create new span only if not within withSpan
     const tracer = trace.getTracer('@axiomhq/ai');
     const startActiveSpan = createStartActiveSpan(tracer);
     const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 
-    return startActiveSpan(name, null, (span) => operation(span, context));
+    return startActiveSpan(name, null, (span) => operation(span, context), {
+      onError: (err, span) => {
+        // Enhanced error handling for OpenTelemetry compliance
+        // MANDATORY: Add OpenTelemetry error attributes for cross-vendor compatibility
+        const errorType = classifyError(err);
+        span.setAttribute(Attr.Error.Type, errorType ?? 'unknown');
+
+        // OPTIONAL: Add human-readable error message
+        if (err instanceof Error && err.message) {
+          span.setAttribute(Attr.Error.Message, err.message);
+        }
+
+        // For Vercel AI SDK specific errors, add HTTP status if available
+        if (err && typeof err === 'object' && 'status' in err) {
+          span.setAttribute(Attr.HTTP.Response.StatusCode, err.status as AttributeValue);
+        }
+      },
+    });
   }
 }
 

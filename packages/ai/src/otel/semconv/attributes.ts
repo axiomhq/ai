@@ -1,4 +1,9 @@
 import {
+  ATTR_ERROR_TYPE,
+  ATTR_HTTP_RESPONSE_STATUS_CODE,
+} from '@opentelemetry/semantic-conventions';
+
+import {
   ATTR_EVAL_CASE_ID,
   ATTR_EVAL_CASE_INDEX,
   ATTR_EVAL_CASE_EXPECTED,
@@ -86,6 +91,7 @@ import {
   ATTR_GEN_AI_AGENT_ID,
   ATTR_GEN_AI_AGENT_NAME,
   ATTR_GEN_AI_REQUEST_ENCODING_FORMATS,
+  ATTR_ERROR_MESSAGE,
 } from './semconv_incubating';
 
 export const SCHEMA_VERSION = '0.0.1';
@@ -277,6 +283,15 @@ export const Attr = {
       Passed: ATTR_EVAL_SCORE_PASSED,
       Scorer: ATTR_EVAL_SCORE_SCORER,
       Metadata: ATTR_EVAL_SCORE_METADATA,
+    },
+  },
+  Error: {
+    Type: ATTR_ERROR_TYPE,
+    Message: ATTR_ERROR_MESSAGE,
+  },
+  HTTP: {
+    Response: {
+      StatusCode: ATTR_HTTP_RESPONSE_STATUS_CODE,
     },
   },
 } as const;
