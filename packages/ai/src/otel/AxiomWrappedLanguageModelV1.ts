@@ -5,7 +5,6 @@ import {
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
   type LanguageModelV1StreamPart,
-  type LanguageModelV1ProviderMetadata,
 } from '@ai-sdk/providerv1';
 
 import { type Span } from '@opentelemetry/api';
@@ -50,7 +49,6 @@ interface BuildSpanAttributesInput {
     usage?: { promptTokens: number; completionTokens: number };
     text?: string;
     toolCalls?: LanguageModelV1FunctionToolCall[];
-    providerMetadata?: LanguageModelV1ProviderMetadata;
   };
 }
 

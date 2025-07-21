@@ -2,7 +2,6 @@ import {
   type LanguageModelV1StreamPart,
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
-  type LanguageModelV1ProviderMetadata,
 } from '@ai-sdk/providerv1';
 
 import {
@@ -69,7 +68,6 @@ export class StreamStats {
   private _finishReason?: LanguageModelV1FinishReason;
   private _responseId?: string;
   private _responseModelId?: string;
-  private _providerMetadata?: LanguageModelV1ProviderMetadata;
 
   constructor() {
     this.startTime = currentUnixTime();
@@ -89,11 +87,7 @@ export class StreamStats {
         if (chunk.modelId) {
           this._responseModelId = chunk.modelId;
         }
-        // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
-        if (chunk.providerMetadata) {
-          // @ts-expect-error - not included on vercel types but have seen references to this elsewhere. need to check out
-          this._providerMetadata = chunk.providerMetadata;
-        }
+
         break;
       case 'finish':
         this._usage = chunk.usage;
@@ -113,7 +107,6 @@ export class StreamStats {
           : undefined,
       finishReason: this._finishReason,
       usage: this._usage,
-      providerMetadata: this._providerMetadata,
     };
   }
 

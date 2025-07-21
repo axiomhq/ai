@@ -124,7 +124,6 @@ export class MockProvider implements ProviderV1 {
           reasoning: response.reasoning,
           rawCall: { rawPrompt: options.prompt, rawSettings: {} },
           rawResponse: { headers: {} },
-          providerMetadata: {},
           request: { body: '' },
           response: { id: 'mock-response-id', modelId },
         };
@@ -278,7 +277,6 @@ export class MockProvider implements ProviderV1 {
       warnings: [],
       rawCall: { rawPrompt: [], rawSettings: {} },
       rawResponse: { headers: {} },
-      providerMetadata: {},
       request: { body: '' },
       response: { id: 'mock-response-id', modelId: 'mock-model' },
     };
@@ -352,7 +350,6 @@ export class MockProvider implements ProviderV1 {
             promptTokens: 10,
             completionTokens: response.chunks.length,
           },
-          providerMetadata: {},
         });
 
         controller.close();
