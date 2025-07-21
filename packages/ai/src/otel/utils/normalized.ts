@@ -11,7 +11,7 @@ import type {
   LanguageModelV2ToolCallPart,
   LanguageModelV2ToolResultOutput,
 } from '@ai-sdk/providerv2';
-import type { OpenAIMessage, OpenAIUserContentPart } from '../vercelTypes';
+import type { OpenAIMessage, OpenAIContentPart } from '../vercelTypes';
 
 /**
  * Normalized tool call interface that can represent both V1 and V2 tool calls
@@ -37,7 +37,6 @@ export interface NormalizedResult {
     outputTokens?: number;
   };
   finishReason?: string;
-  providerMetadata?: any;
 }
 
 /**
@@ -127,20 +126,18 @@ export function promptV1ToOpenAI(prompt: LanguageModelV1Prompt): OpenAIMessage[]
       case 'user':
         results.push({
           role: 'user',
-          content: message.content.map((part): OpenAIUserContentPart => {
+          content: message.content.map((part): OpenAIContentPart => {
             switch (part.type) {
               case 'text':
                 return {
                   type: 'text',
                   text: part.text,
-                  ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
                 };
               case 'image':
                 return {
                   type: 'image_url',
                   image_url: {
                     url: part.image.toString(),
-                    ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
                   },
                 };
               default:
@@ -224,14 +221,12 @@ export function promptV2ToOpenAI(prompt: LanguageModelV2Prompt): OpenAIMessage[]
                 return {
                   type: 'text',
                   text: part.text,
-                  ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
                 };
               case 'image':
                 return {
                   type: 'image_url',
                   image_url: {
                     url: part.image.toString(),
-                    ...(part.providerMetadata ? { providerMetadata: part.providerMetadata } : {}),
                   },
                 };
               default:

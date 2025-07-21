@@ -19,23 +19,10 @@ import {
 export type OpenAISystemMessage = CoreSystemMessage;
 
 /**
- * User content part for multimodal messages
+ * Content part for multimodal messages (used by both user and assistant)
  * Based on OpenAI's content part structure
  */
-export interface OpenAIUserContentPart {
-  type: 'text' | 'image_url'; // Strict OpenAI spec types only
-  text?: string;
-  image_url?: {
-    url: string;
-    detail?: 'low' | 'high' | 'auto'; // Fixed: removed 'raw' to match OpenAI spec
-  };
-}
-
-/**
- * Assistant content part for multimodal responses
- * Based on OpenAI's assistant content part structure
- */
-export interface OpenAIAssistantContentPart {
+export interface OpenAIContentPart {
   type: 'text' | 'image_url';
   text?: string;
   image_url?: {
@@ -49,7 +36,7 @@ export interface OpenAIAssistantContentPart {
  * Differences: image_url type and additional properties for extensibility
  */
 export type OpenAIUserMessage = Omit<CoreUserMessage, 'content'> & {
-  content: OpenAIUserContentPart[] | string; // Allow string content or array of parts
+  content: OpenAIContentPart[] | string; // Allow string content or array of parts
 };
 
 /**
@@ -57,7 +44,7 @@ export type OpenAIUserMessage = Omit<CoreUserMessage, 'content'> & {
  * Content can be string, null (for tool-only responses), or array of parts (multimodal)
  */
 export type OpenAIAssistantMessage = Omit<CoreAssistantMessage, 'content'> & {
-  content: string | null | OpenAIAssistantContentPart[]; // OpenAI supports multimodal assistant responses
+  content: string | null | OpenAIContentPart[]; // OpenAI supports multimodal assistant responses
   tool_calls?: OpenAIToolCall[]; // Array of tool calls made by the assistant
 };
 
