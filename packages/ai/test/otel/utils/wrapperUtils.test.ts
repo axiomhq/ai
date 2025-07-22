@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { type Span } from '@opentelemetry/api';
-import { withSpanHandling } from '../../../src/otel/utils/wrapperUtils';
+import { 
+  withSpanHandling, 
+  createStreamChildSpan, 
+  handleStreamError 
+} from '../../../src/otel/utils/wrapperUtils';
 import { Attr } from '../../../src/otel/semconv/attributes';
 
 // Mock the opentelemetry tracer
@@ -17,7 +21,19 @@ const mockTracer = {
   startActiveSpan: vi.fn((_name, _options, fn) => {
     return fn(mockSpan);
   }),
+  startSpan: vi.fn(() => mockChildSpan),
 };
+
+const mockChildSpan = {
+  setAttribute: vi.fn(),
+  setAttributes: vi.fn(),
+  updateName: vi.fn(),
+  recordException: vi.fn(),
+  setStatus: vi.fn(),
+  end: vi.fn(),
+} as unknown as Span;
+
+const mockContext = {};
 
 // Mock propagation and trace
 vi.mock('@opentelemetry/api', async () => {
@@ -27,6 +43,10 @@ vi.mock('@opentelemetry/api', async () => {
     trace: {
       getTracer: vi.fn(() => mockTracer),
       getActiveSpan: vi.fn(() => null),
+      setSpan: vi.fn(() => mockContext),
+    },
+    context: {
+      active: vi.fn(() => mockContext),
     },
     propagation: {
       getActiveBaggage: vi.fn(() => null),
@@ -270,7 +290,7 @@ describe('wrapperUtils error handling', () => {
       }
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.HTTP.StatusCode, 429);
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.HTTP.Response.StatusCode, 429);
     });
 
     it('should not set HTTP status for errors without status property', async () => {
@@ -284,7 +304,7 @@ describe('wrapperUtils error handling', () => {
         expect(err).toBe(regularError);
       }
 
-      expect(mockSpan.setAttribute).not.toHaveBeenCalledWith(Attr.HTTP.StatusCode, expect.anything());
+      expect(mockSpan.setAttribute).not.toHaveBeenCalledWith(Attr.HTTP.Response.StatusCode, expect.anything());
     });
   });
 
@@ -399,6 +419,133 @@ describe('wrapperUtils error handling', () => {
 
       // classifyError returns undefined for null, caller should use 'unknown'
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
+    });
+  });
+
+  describe('stream error handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    describe('createStreamChildSpan', () => {
+      it('should create a child span with correct attributes', () => {
+        createStreamChildSpan(mockSpan, 'chat test-model stream');
+
+        expect(mockTracer.startSpan).toHaveBeenCalledWith(
+          'chat test-model stream',
+          undefined,
+          mockContext
+        );
+        expect(mockChildSpan.setAttributes).toHaveBeenCalledWith({
+          [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
+        });
+      });
+    });
+
+    describe('handleStreamError', () => {
+      beforeEach(() => {
+        vi.clearAllMocks();
+      });
+
+      it('should handle Error objects with full error information', () => {
+        const testError = new Error('Stream processing failed');
+        testError.name = 'NetworkError';
+
+        handleStreamError(mockChildSpan, testError);
+
+        expect(mockChildSpan.recordException).toHaveBeenCalledWith(testError);
+        expect(mockChildSpan.setStatus).toHaveBeenCalledWith({
+          code: 2, // SpanStatusCode.ERROR
+          message: 'Stream processing failed',
+        });
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'network');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Stream processing failed');
+      });
+
+      it('should handle primitive errors', () => {
+        const stringError = 'Stream failed with string error';
+
+        handleStreamError(mockChildSpan, stringError);
+
+        expect(mockChildSpan.recordException).toHaveBeenCalledWith({
+          message: 'Stream failed with string error',
+          name: 'UnknownError',
+        });
+        expect(mockChildSpan.setStatus).toHaveBeenCalledWith({
+          code: 2, // SpanStatusCode.ERROR
+          message: 'Stream failed with string error',
+        });
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
+        expect(mockChildSpan.setAttribute).not.toHaveBeenCalledWith(Attr.Error.Message, expect.anything());
+      });
+
+      it('should classify stream timeout errors correctly', () => {
+        const timeoutError = new Error('Stream timeout');
+        timeoutError.name = 'TimeoutError';
+
+        handleStreamError(mockChildSpan, timeoutError);
+
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'timeout');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Stream timeout');
+      });
+
+      it('should handle stream errors with HTTP status codes', () => {
+        const apiError = {
+          message: 'Stream API error',
+          name: 'APIError',
+          status: 503,
+        };
+
+        handleStreamError(mockChildSpan, apiError);
+
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.HTTP.Response.StatusCode, 503);
+      });
+
+      it('should handle parsing errors in stream chunks', () => {
+        const parseError = new Error('Invalid JSON in stream chunk');
+        parseError.name = 'ParseError';
+
+        handleStreamError(mockChildSpan, parseError);
+
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'parsing');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Invalid JSON in stream chunk');
+      });
+
+      it('should handle validation errors during stream processing', () => {
+        const validationError = new Error('Invalid stream chunk format');
+        validationError.name = 'ValidationError';
+
+        handleStreamError(mockChildSpan, validationError);
+
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'validation');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Invalid stream chunk format');
+      });
+
+      it('should not set error.message for empty messages', () => {
+        const errorWithoutMessage = new Error('');
+        errorWithoutMessage.name = 'TestError';
+
+        handleStreamError(mockChildSpan, errorWithoutMessage);
+
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
+        expect(mockChildSpan.setAttribute).not.toHaveBeenCalledWith(Attr.Error.Message, '');
+      });
+    });
+
+    describe('stream error lifecycle', () => {
+      it('should properly end child span on error', () => {
+        // This is more of an integration test pattern
+        // The actual stream transform tests would be in the wrapper-specific test files
+        const childSpan = createStreamChildSpan(mockSpan, 'chat test-model stream');
+        const streamError = new Error('Stream interrupted');
+
+        handleStreamError(childSpan, streamError);
+        childSpan.end();
+
+        expect(mockChildSpan.end).toHaveBeenCalled();
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
+      });
     });
   });
 });

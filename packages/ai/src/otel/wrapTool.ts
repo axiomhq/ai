@@ -1,11 +1,10 @@
-import { type Span, trace } from '@opentelemetry/api';
+import { type Span } from '@opentelemetry/api';
 import { type Tool as ToolV4 } from 'aiv4';
 import { type Tool as ToolV5 } from 'aiv5';
 import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
 import { typedEntries } from '../util/typedEntries';
-import { AxiomAIResources } from './shared';
-import { setAxiomBaseAttributes } from './utils/wrapperUtils';
+import { setAxiomBaseAttributes, getTracer, classifyToolError } from './utils/wrapperUtils';
 
 type Tool = ToolV4 | ToolV5;
 
@@ -38,7 +37,7 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
       args: Parameters<NonNullable<T['execute']>>[0],
       opts: Parameters<NonNullable<T['execute']>>[1],
     ) => {
-      const tracer = AxiomAIResources.getInstance().getTracer() ?? trace.getTracer('@axiomhq/ai');
+      const tracer = getTracer();
       const startActiveSpan = createStartActiveSpan(tracer);
       const spanName = `${Attr.GenAI.Operation.Name_Values.ExecuteTool} ${toolName}`;
 
@@ -64,18 +63,36 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
           span.setAttribute(Attr.GenAI.Tool.Arguments, '[Unable to serialize arguments]');
         }
 
-        // Execute the original tool function
-        const result = await tool.execute!(args, opts as any);
-
-        // Set the tool result message
         try {
-          span.setAttribute(Attr.GenAI.Tool.Message, JSON.stringify(result));
-        } catch (error) {
-          // Handle circular references or other JSON serialization errors
-          span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
-        }
+          // Execute the original tool function
+          const result = await tool.execute!(args, opts as any);
 
-        return result;
+          // Set the tool result message
+          try {
+            span.setAttribute(Attr.GenAI.Tool.Message, JSON.stringify(result));
+          } catch (error) {
+            // Handle circular references or other JSON serialization errors
+            span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
+          }
+
+          return result;
+        } catch (err) {
+          // Use comprehensive error classification for tool errors
+          classifyToolError(err, span);
+          
+          // TOOL ERROR PROPAGATION POLICY:
+          // Always re-throw tool errors to allow the calling code/AI SDK to decide
+          // whether to handle gracefully or fail the parent span.
+          // 
+          // Error scenarios:
+          // - Tool validation errors → Tool span ERROR, parent span decision depends on AI SDK
+          // - Tool execution timeout → Tool span ERROR, parent span decision depends on AI SDK  
+          // - External API failures → Tool span ERROR, parent span decision depends on AI SDK
+          // - Tool throws unhandled exception → Tool span ERROR, parent span ERROR (propagated)
+          //
+          // This preserves the original behavior while ensuring proper error telemetry
+          throw err;
+        }
       });
     },
   } as WrappedTool<T>;
