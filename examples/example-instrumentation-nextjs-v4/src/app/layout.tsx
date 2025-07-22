@@ -8,7 +8,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <h1>Next.js with Vercel AI SDK v4 and @axiomhq/ai</h1>
+        {children}
+      </body>
     </html>
   );
 }

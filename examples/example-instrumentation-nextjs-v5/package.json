@@ -7,6 +7,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.0-beta.11",
+    "@ai-sdk/react": "2.0.0-beta.25",
+    "@ai-sdk/rsc": "1.0.0-beta.25",
     "@axiomhq/ai": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-jaeger": "^2.0.1",
@@ -24,6 +26,6 @@
   "devDependencies": {
     "@types/node": "18.7.11",
     "@types/react": "18.2.8",
-    "typescript": "4.7.4"
+    "typescript": "^5.7.2"
   }
 }

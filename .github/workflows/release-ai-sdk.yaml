@@ -21,5 +21,5 @@ jobs:
           token: ${{ secrets.AXIOM_AUTOMATION_TOKEN }}
           # this is a built-in strategy in release-please, see "Action Inputs"
           # for more options
-          release-type: node
           path: packages/ai
+          # 🚨 all other config is in `release-please-config.json`

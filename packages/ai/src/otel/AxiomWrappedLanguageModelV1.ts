@@ -288,9 +288,26 @@ function buildSpanAttributes(
     attributes[Attr.GenAI.Response.Model] = result.response.modelId;
   }
 
-  if (result.usage) {
-    attributes[Attr.GenAI.Usage.InputTokens] = result.usage.promptTokens;
-    attributes[Attr.GenAI.Usage.OutputTokens] = result.usage.completionTokens;
+  if (result.usage?.promptTokens) {
+    if (Number.isNaN(result.usage.promptTokens)) {
+      console.warn(
+        'usage.promptTokens is NaN. You might need to enable `compatibility: strict`. See: https://github.com/vercel/ai/discussions/1882',
+        result.usage.promptTokens,
+      );
+    } else {
+      attributes[Attr.GenAI.Usage.InputTokens] = result.usage.promptTokens;
+    }
+  }
+
+  if (result.usage?.completionTokens) {
+    if (Number.isNaN(result.usage.completionTokens)) {
+      console.warn(
+        'usage.completionTokens is NaN. You might need to enable `compatibility: strict`. See: https://github.com/vercel/ai/discussions/1882',
+        result.usage.completionTokens,
+      );
+    } else {
+      attributes[Attr.GenAI.Usage.OutputTokens] = result.usage.completionTokens;
+    }
   }
 
   if (result.finishReason) {
