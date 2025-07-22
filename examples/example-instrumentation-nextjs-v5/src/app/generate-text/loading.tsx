@@ -1,4 +1,4 @@
-export default async function Loading() {
+export default function Loading() {
   return (
     <div>
       <p>Loading...</p>
