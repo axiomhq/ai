@@ -79,14 +79,14 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
         } catch (err) {
           // Use comprehensive error classification for tool errors
           classifyToolError(err, span);
-          
+
           // TOOL ERROR PROPAGATION POLICY:
           // Always re-throw tool errors to allow the calling code/AI SDK to decide
           // whether to handle gracefully or fail the parent span.
-          // 
+          //
           // Error scenarios:
           // - Tool validation errors → Tool span ERROR, parent span decision depends on AI SDK
-          // - Tool execution timeout → Tool span ERROR, parent span decision depends on AI SDK  
+          // - Tool execution timeout → Tool span ERROR, parent span decision depends on AI SDK
           // - External API failures → Tool span ERROR, parent span decision depends on AI SDK
           // - Tool throws unhandled exception → Tool span ERROR, parent span ERROR (propagated)
           //

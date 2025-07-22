@@ -82,21 +82,50 @@ export function classifyToolError(err: unknown, span: Span): void {
 
     if (name.includes('timeout') || name.includes('abort') || message.includes('timeout')) {
       errorType = 'timeout';
-    } else if (name.includes('validation') || errObj.code === 'VALIDATION_ERROR' || message.includes('validation')) {
+    } else if (
+      name.includes('validation') ||
+      errObj.code === 'VALIDATION_ERROR' ||
+      message.includes('validation')
+    ) {
       errorType = 'validation';
-    } else if (name.includes('fetch') || name.includes('network') || message.includes('network') || message.includes('fetch failed')) {
+    } else if (
+      name.includes('fetch') ||
+      name.includes('network') ||
+      message.includes('network') ||
+      message.includes('fetch failed')
+    ) {
       errorType = 'network';
       // Handle both node-fetch v2 (.code) and v3 (.status) patterns
       statusCode = errObj.status || errObj.code;
-    } else if (name.includes('auth') || message.includes('auth') || message.includes('unauthorized')) {
+    } else if (
+      name.includes('auth') ||
+      message.includes('auth') ||
+      message.includes('unauthorized')
+    ) {
       errorType = 'authentication';
-    } else if (name.includes('permission') || name.includes('forbidden') || message.includes('forbidden')) {
+    } else if (
+      name.includes('permission') ||
+      name.includes('forbidden') ||
+      message.includes('forbidden')
+    ) {
       errorType = 'authorization';
-    } else if (name.includes('rate') && (name.includes('limit') || message.includes('rate limit'))) {
+    } else if (
+      name.includes('rate') &&
+      (name.includes('limit') || message.includes('rate limit'))
+    ) {
       errorType = 'rate_limit';
-    } else if (name.includes('quota') || message.includes('quota') || message.includes('limit exceeded')) {
+    } else if (
+      name.includes('quota') ||
+      message.includes('quota') ||
+      message.includes('limit exceeded')
+    ) {
       errorType = 'quota_exceeded';
-    } else if (name.includes('parse') || name.includes('json') || message.includes('json') || message.includes('parse')) {
+    } else if (
+      name.includes('parse') ||
+      name.includes('json') ||
+      message.includes('json') ||
+      message.includes('parse')
+    ) {
       errorType = 'parsing';
     }
   }
@@ -243,17 +272,17 @@ export function setRequestParameterAttributes(
  */
 export function createStreamChildSpan(parentSpan: Span, operationName: string): Span {
   const tracer = getTracer();
-  
+
   // Create child span by setting parent context
   const spanContext = trace.setSpan(context.active(), parentSpan);
   const childSpan = tracer.startSpan(operationName, undefined, spanContext);
-  
+
   // Set basic attributes for the child span - use same operation as parent (chat)
   // The span name indicates this is the streaming phase
   childSpan.setAttributes({
     [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
   });
-  
+
   return childSpan;
 }
 

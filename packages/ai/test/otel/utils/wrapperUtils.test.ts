@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { type Span } from '@opentelemetry/api';
-import { 
-  withSpanHandling, 
-  createStreamChildSpan, 
-  handleStreamError 
+import {
+  withSpanHandling,
+  createStreamChildSpan,
+  handleStreamError,
 } from '../../../src/otel/utils/wrapperUtils';
 import { Attr } from '../../../src/otel/semconv/attributes';
 
@@ -90,7 +90,10 @@ describe('wrapperUtils error handling', () => {
       }
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'network');
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Network request failed');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        Attr.Error.Message,
+        'Network request failed',
+      );
     });
 
     it('should classify validation errors correctly', async () => {
@@ -106,7 +109,10 @@ describe('wrapperUtils error handling', () => {
       }
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'validation');
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Invalid input provided');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        Attr.Error.Message,
+        'Invalid input provided',
+      );
     });
 
     it('should classify authentication errors correctly', async () => {
@@ -122,7 +128,10 @@ describe('wrapperUtils error handling', () => {
       }
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'authentication');
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Authentication failed');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        Attr.Error.Message,
+        'Authentication failed',
+      );
     });
 
     it('should handle AbortError as timeout', async () => {
@@ -260,7 +269,7 @@ describe('wrapperUtils error handling', () => {
 
     it('should skip generic built-in errors like TypeError', async () => {
       const typeError = new TypeError('Cannot read property');
-      
+
       const operation = vi.fn().mockRejectedValue(typeError);
 
       try {
@@ -278,7 +287,7 @@ describe('wrapperUtils error handling', () => {
       const apiError = {
         message: 'API request failed',
         status: 429,
-        statusText: 'Too Many Requests'
+        statusText: 'Too Many Requests',
       };
 
       const operation = vi.fn().mockRejectedValue(apiError);
@@ -304,7 +313,10 @@ describe('wrapperUtils error handling', () => {
         expect(err).toBe(regularError);
       }
 
-      expect(mockSpan.setAttribute).not.toHaveBeenCalledWith(Attr.HTTP.Response.StatusCode, expect.anything());
+      expect(mockSpan.setAttribute).not.toHaveBeenCalledWith(
+        Attr.HTTP.Response.StatusCode,
+        expect.anything(),
+      );
     });
   });
 
@@ -335,7 +347,10 @@ describe('wrapperUtils error handling', () => {
         expect(err).toBe(errorWithMessage);
       }
 
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Detailed error message');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        Attr.Error.Message,
+        'Detailed error message',
+      );
     });
   });
 
@@ -359,7 +374,7 @@ describe('wrapperUtils error handling', () => {
 
     it('should handle recordException for Error objects with proper typing', async () => {
       const testError = new Error('Type-safe error');
-      
+
       const operation = vi.fn().mockRejectedValue(testError);
 
       try {
@@ -373,7 +388,7 @@ describe('wrapperUtils error handling', () => {
 
     it('should handle recordException for non-Error primitives', async () => {
       const stringError = 'primitive error';
-      
+
       const operation = vi.fn().mockRejectedValue(stringError);
 
       try {
@@ -395,7 +410,7 @@ describe('wrapperUtils error handling', () => {
       // Test that classifyError returns undefined but the caller uses 'unknown' as fallback
       const unclassifiableError = new Error('Some random error');
       unclassifiableError.name = 'RandomError'; // Not in our classification list
-      
+
       const operation = vi.fn().mockRejectedValue(unclassifiableError);
 
       try {
@@ -434,7 +449,7 @@ describe('wrapperUtils error handling', () => {
         expect(mockTracer.startSpan).toHaveBeenCalledWith(
           'chat test-model stream',
           undefined,
-          mockContext
+          mockContext,
         );
         expect(mockChildSpan.setAttributes).toHaveBeenCalledWith({
           [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
@@ -459,7 +474,10 @@ describe('wrapperUtils error handling', () => {
           message: 'Stream processing failed',
         });
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'network');
-        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Stream processing failed');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
+          Attr.Error.Message,
+          'Stream processing failed',
+        );
       });
 
       it('should handle primitive errors', () => {
@@ -476,7 +494,10 @@ describe('wrapperUtils error handling', () => {
           message: 'Stream failed with string error',
         });
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
-        expect(mockChildSpan.setAttribute).not.toHaveBeenCalledWith(Attr.Error.Message, expect.anything());
+        expect(mockChildSpan.setAttribute).not.toHaveBeenCalledWith(
+          Attr.Error.Message,
+          expect.anything(),
+        );
       });
 
       it('should classify stream timeout errors correctly', () => {
@@ -486,7 +507,10 @@ describe('wrapperUtils error handling', () => {
         handleStreamError(mockChildSpan, timeoutError);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'timeout');
-        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Stream timeout');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
+          Attr.Error.Message,
+          'Stream timeout',
+        );
       });
 
       it('should handle stream errors with HTTP status codes', () => {
@@ -509,7 +533,10 @@ describe('wrapperUtils error handling', () => {
         handleStreamError(mockChildSpan, parseError);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'parsing');
-        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Invalid JSON in stream chunk');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
+          Attr.Error.Message,
+          'Invalid JSON in stream chunk',
+        );
       });
 
       it('should handle validation errors during stream processing', () => {
@@ -519,7 +546,10 @@ describe('wrapperUtils error handling', () => {
         handleStreamError(mockChildSpan, validationError);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'validation');
-        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Message, 'Invalid stream chunk format');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
+          Attr.Error.Message,
+          'Invalid stream chunk format',
+        );
       });
 
       it('should not set error.message for empty messages', () => {
