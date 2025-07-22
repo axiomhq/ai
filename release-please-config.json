@@ -3,8 +3,7 @@
     "packages/ai": {
       "release-type": "node",
       "versioning-strategy": "always-bump-patch",
-      "include-v-in-tag": true,
-      "initial-version": "0.0.0"
+      "include-v-in-tag": true
     }
   }
 }
