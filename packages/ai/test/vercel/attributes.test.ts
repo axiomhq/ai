@@ -5,6 +5,7 @@ import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { generateText } from 'aiv4';
 import { createMockProvider, mockResponses } from './mock-provider-v1/mock-provider';
+import packageJson from '../../package.json';
 
 let memoryExporter: InMemorySpanExporter;
 let tracerProvider: NodeTracerProvider;
@@ -43,13 +44,11 @@ describe('span names', () => {
     const spans = memoryExporter.getFinishedSpans();
     expect(spans.length).toBe(1);
     expect(spans[0].attributes).toEqual({
-      /**
-       * 🚨 This is not yet the final shape we want the sdk to have
-       * So update this as we get closer to the attributes we like
-       */
+      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
+      'axiom.gen_ai.sdk.name': '@axiomhq/ai',
+      'axiom.gen_ai.sdk.version': packageJson.version,
       'gen_ai.prompt': '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
       'gen_ai.completion': '[{"role":"assistant","content":"Mock response"}]',
-      // '{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Mock response\"},\"finish_reason\":\"stop\"}]}',
       'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.operation.name': 'chat',
       'gen_ai.capability.name': 'test-capability',

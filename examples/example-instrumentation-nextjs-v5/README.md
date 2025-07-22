@@ -1,10 +1,10 @@
 # Next.js with Opentelemetry example
 
-This is a reference example for using Axiom's AI SDK with Next.js to collect and send traces. The example shows steps for:
+This is a reference example for using Axiom with the Vercel AI SDK v5 with Next.js. The example shows steps for:
 
 - Setting up a NodeSDK tracer under `src/instrumentation.ts` that points to Axiom
-- Wrapping AI SDK model under `src/shared/gemini.ts`
-- Utilizing `withSpan()` to generate text using Vercel's AI SDK under `app/page.tsx`
+- Wrapping AI SDK model under `src/shared/openai.ts`
+- Utilizing `withSpan()` and wrapping a tool with `wrapTool()` to generate text using Vercel's AI SDK under `app/page.tsx`
 
 ## How to use
 
@@ -13,7 +13,7 @@ You will need an Axiom dataset and API key, so gead ahead and create those on [A
 Then prepare your environment variables
 
 - Copy the environment file: `cp .env-example .env`
-- In the new .env file, set gemini, Axiom API key and dataset name
+- In the new `.env` file, set OpenAI API key, and Axiom API key and dataset name
 - Install deps: `pnpm install`
 - Run development server `pnpm dev`
 - Visit `http://localhost:3000`
