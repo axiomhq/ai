@@ -19,4 +19,6 @@ jobs:
           # (PAT) and configured it as a GitHub action secret named
           # `RELEASE_PLEASE_TOKEN` (this secret name is not important).
           token: ${{ secrets.AXIOM_AUTOMATION_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
           # 🚨 all other config is in `release-please-config.json`
