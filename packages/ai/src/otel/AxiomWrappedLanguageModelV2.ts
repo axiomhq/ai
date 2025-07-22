@@ -22,6 +22,8 @@ import {
   setRequestParameterAttributes,
   withSpanHandling,
   determineOutputTypeV2,
+  createStreamChildSpan,
+  handleStreamError,
   type CommonSpanContext,
 } from './utils/wrapperUtils';
 import { promptV2ToOpenAI, normalizeV2ToolCalls } from './utils/normalized';
@@ -102,6 +104,9 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
       const modelId = this.modelId;
       const spanContext = context;
 
+      // Create child span for stream processing
+      const childSpan = createStreamChildSpan(span, `chat ${modelId} stream`);
+
       const stats = new StreamStatsV2();
       const toolAggregator = new ToolCallAggregatorV2();
       const textAggregator = new TextAggregatorV2();
@@ -111,32 +116,48 @@ export class AxiomWrappedLanguageModelV2 implements LanguageModelV2 {
         stream: ret.stream.pipeThrough(
           new TransformStream({
             transform(chunk: LanguageModelV2StreamPart, controller) {
-              stats.feed(chunk);
-              toolAggregator.handleChunk(chunk);
-              textAggregator.feed(chunk);
+              try {
+                stats.feed(chunk);
+                toolAggregator.handleChunk(chunk);
+                textAggregator.feed(chunk);
 
-              controller.enqueue(chunk);
+                controller.enqueue(chunk);
+              } catch (err) {
+                // Handle errors in stream processing
+                handleStreamError(childSpan, err);
+                childSpan.end();
+                controller.error(err);
+              }
             },
             async flush(controller) {
-              const streamResult = {
-                ...stats.result,
-                content: [
-                  ...(textAggregator.text
-                    ? [{ type: 'text' as const, text: textAggregator.text }]
-                    : []),
-                  ...toolAggregator.result,
-                ],
-              };
+              try {
+                const streamResult = {
+                  ...stats.result,
+                  content: [
+                    ...(textAggregator.text
+                      ? [{ type: 'text' as const, text: textAggregator.text }]
+                      : []),
+                    ...toolAggregator.result,
+                  ],
+                };
 
-              await AxiomWrappedLanguageModelV2.setPostCallAttributesStatic(
-                span,
-                modelId,
-                streamResult,
-                promptMessages,
-                spanContext,
-              );
+                await AxiomWrappedLanguageModelV2.setPostCallAttributesStatic(
+                  span,
+                  modelId,
+                  streamResult,
+                  promptMessages,
+                  spanContext,
+                );
 
-              controller.terminate();
+                // End child span successfully
+                childSpan.end();
+                controller.terminate();
+              } catch (err) {
+                // Handle errors in stream finalization
+                handleStreamError(childSpan, err);
+                childSpan.end();
+                controller.error(err);
+              }
             },
           }),
         ),

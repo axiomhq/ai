@@ -1,5 +1,6 @@
 import {
   trace,
+  context,
   propagation,
   type Span,
   SpanStatusCode,
@@ -8,6 +9,7 @@ import {
 import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from '../semconv/attributes';
 import { createStartActiveSpan } from '../startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
+import { AxiomAIResources } from '../shared';
 // Removed import of createGenAISpanName since it's no longer exported
 import packageJson from '../../../package.json';
 
@@ -43,6 +45,80 @@ function classifyError(err: unknown): string | undefined {
   }
 
   return undefined; // Handles primitives thrown as errors
+}
+
+/**
+ * Classifies tool-specific errors using duck-typing for cross-vendor compatibility
+ * Handles node-fetch version differences and external API error patterns
+ *
+ * @param err The error to classify
+ * @param span The span to set error attributes on
+ */
+export function classifyToolError(err: unknown, span: Span): void {
+  // Enhanced error handling for OpenTelemetry compliance
+  if (err instanceof Error) {
+    span.recordException(err); // Error objects are compatible with Exception interface
+  } else {
+    // Convert primitives to compatible format
+    span.recordException({
+      message: String(err),
+      name: 'UnknownError',
+    });
+  }
+
+  span.setStatus({
+    code: SpanStatusCode.ERROR,
+    message: err instanceof Error ? err.message : String(err),
+  });
+
+  let errorType = 'unknown';
+  let statusCode: string | number | undefined;
+
+  // Duck-type check for common error patterns (don't rely on inheritance)
+  if (err && typeof err === 'object') {
+    const errObj = err as any;
+    const name = errObj.name?.toLowerCase() || '';
+    const message = errObj.message?.toLowerCase() || '';
+
+    if (name.includes('timeout') || name.includes('abort') || message.includes('timeout')) {
+      errorType = 'timeout';
+    } else if (name.includes('validation') || errObj.code === 'VALIDATION_ERROR' || message.includes('validation')) {
+      errorType = 'validation';
+    } else if (name.includes('fetch') || name.includes('network') || message.includes('network') || message.includes('fetch failed')) {
+      errorType = 'network';
+      // Handle both node-fetch v2 (.code) and v3 (.status) patterns
+      statusCode = errObj.status || errObj.code;
+    } else if (name.includes('auth') || message.includes('auth') || message.includes('unauthorized')) {
+      errorType = 'authentication';
+    } else if (name.includes('permission') || name.includes('forbidden') || message.includes('forbidden')) {
+      errorType = 'authorization';
+    } else if (name.includes('rate') && (name.includes('limit') || message.includes('rate limit'))) {
+      errorType = 'rate_limit';
+    } else if (name.includes('quota') || message.includes('quota') || message.includes('limit exceeded')) {
+      errorType = 'quota_exceeded';
+    } else if (name.includes('parse') || name.includes('json') || message.includes('json') || message.includes('parse')) {
+      errorType = 'parsing';
+    }
+  }
+
+  // MANDATORY: Standard OpenTelemetry error attributes
+  span.setAttribute(Attr.Error.Type, errorType);
+  if (err instanceof Error && err.message) {
+    span.setAttribute(Attr.Error.Message, err.message);
+  }
+
+  // Standard HTTP attributes for network errors
+  if (statusCode !== undefined) {
+    span.setAttribute(Attr.HTTP.Response.StatusCode, statusCode as AttributeValue);
+  }
+}
+
+/**
+ * Gets the appropriate tracer instance using the singleton pattern with fallback
+ * Centralizes tracer retrieval logic and uses package name from package.json
+ */
+export function getTracer() {
+  return AxiomAIResources.getInstance().getTracer() ?? trace.getTracer(packageJson.name);
 }
 
 /**
@@ -161,6 +237,62 @@ export function setRequestParameterAttributes(
 }
 
 /**
+ * Creates a child span for stream processing
+ * This is used to capture errors that occur during stream processing,
+ * after the parent span has ended
+ */
+export function createStreamChildSpan(parentSpan: Span, operationName: string): Span {
+  const tracer = getTracer();
+  
+  // Create child span by setting parent context
+  const spanContext = trace.setSpan(context.active(), parentSpan);
+  const childSpan = tracer.startSpan(operationName, undefined, spanContext);
+  
+  // Set basic attributes for the child span - use same operation as parent (chat)
+  // The span name indicates this is the streaming phase
+  childSpan.setAttributes({
+    [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
+  });
+  
+  return childSpan;
+}
+
+/**
+ * Enhanced error handling for child spans with OpenTelemetry compliance
+ */
+export function handleStreamError(span: Span, err: unknown): void {
+  // Enhanced error handling for OpenTelemetry compliance
+  if (err instanceof Error) {
+    span.recordException(err); // Error objects are compatible with Exception interface
+  } else {
+    // Convert primitives to compatible format
+    span.recordException({
+      message: String(err),
+      name: 'UnknownError',
+    });
+  }
+
+  span.setStatus({
+    code: SpanStatusCode.ERROR,
+    message: err instanceof Error ? err.message : String(err),
+  });
+
+  // MANDATORY: Add OpenTelemetry error attributes for cross-vendor compatibility
+  const errorType = classifyError(err);
+  span.setAttribute(Attr.Error.Type, errorType ?? 'unknown');
+
+  // OPTIONAL: Add human-readable error message
+  if (err instanceof Error && err.message) {
+    span.setAttribute(Attr.Error.Message, err.message);
+  }
+
+  // For Vercel AI SDK specific errors, add HTTP status if available
+  if (err && typeof err === 'object' && 'status' in err) {
+    span.setAttribute(Attr.HTTP.Response.StatusCode, err.status as AttributeValue);
+  }
+}
+
+/**
  * Common span handling logic for both V1 and V2
  */
 export async function withSpanHandling<T>(
@@ -220,7 +352,7 @@ export async function withSpanHandling<T>(
     }
   } else {
     // Create new span only if not within withSpan
-    const tracer = trace.getTracer('@axiomhq/ai');
+    const tracer = getTracer();
     const startActiveSpan = createStartActiveSpan(tracer);
     const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 

@@ -21,6 +21,8 @@ import {
   setRequestParameterAttributes,
   withSpanHandling,
   determineOutputTypeV1,
+  createStreamChildSpan,
+  handleStreamError,
   type CommonSpanContext,
 } from './utils/wrapperUtils';
 import { promptV1ToOpenAI, normalizeV1ToolCalls } from './utils/normalized';
@@ -137,6 +139,9 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
       const modelId = this.modelId;
       const spanContext = context;
 
+      // Create child span for stream processing
+      const childSpan = createStreamChildSpan(span, `chat ${modelId} stream`);
+
       const stats = new StreamStats();
       const toolAggregator = new ToolCallAggregator();
       const textAggregator = new TextAggregator();
@@ -146,26 +151,42 @@ export class AxiomWrappedLanguageModelV1 implements LanguageModelV1 {
         stream: stream.pipeThrough(
           new TransformStream({
             transform(chunk: LanguageModelV1StreamPart, controller) {
-              stats.feed(chunk);
-              toolAggregator.handleChunk(chunk);
-              textAggregator.feed(chunk);
+              try {
+                stats.feed(chunk);
+                toolAggregator.handleChunk(chunk);
+                textAggregator.feed(chunk);
 
-              controller.enqueue(chunk);
+                controller.enqueue(chunk);
+              } catch (err) {
+                // Handle errors in stream processing
+                handleStreamError(childSpan, err);
+                childSpan.end();
+                controller.error(err);
+              }
             },
             async flush(controller) {
-              const attrs = buildSpanAttributes({
-                modelId,
-                context: spanContext,
-                result: {
-                  ...head,
-                  ...stats.result,
-                  toolCalls: toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
-                  text: textAggregator.text,
-                },
-              });
-              span.setAttributes(attrs);
+              try {
+                const attrs = buildSpanAttributes({
+                  modelId,
+                  context: spanContext,
+                  result: {
+                    ...head,
+                    ...stats.result,
+                    toolCalls: toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
+                    text: textAggregator.text,
+                  },
+                });
+                span.setAttributes(attrs);
 
-              controller.terminate();
+                // End child span successfully
+                childSpan.end();
+                controller.terminate();
+              } catch (err) {
+                // Handle errors in stream finalization
+                handleStreamError(childSpan, err);
+                childSpan.end();
+                controller.error(err);
+              }
             },
           }),
         ),
