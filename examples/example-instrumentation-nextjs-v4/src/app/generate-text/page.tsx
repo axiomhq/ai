@@ -38,7 +38,7 @@ export default async function Page() {
               // Simulate API call delay
               await new Promise((resolve) => setTimeout(resolve, 500));
 
-              // Return mock weather data
+              // Return mock directions data
               return {
                 from,
                 to,
