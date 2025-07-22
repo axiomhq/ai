@@ -19,7 +19,4 @@ jobs:
           # (PAT) and configured it as a GitHub action secret named
           # `RELEASE_PLEASE_TOKEN` (this secret name is not important).
           token: ${{ secrets.AXIOM_AUTOMATION_TOKEN }}
-          # this is a built-in strategy in release-please, see "Action Inputs"
-          # for more options
-          path: packages/ai
           # 🚨 all other config is in `release-please-config.json`
