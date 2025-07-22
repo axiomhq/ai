@@ -1,10 +1,10 @@
-# Express with Opentelemetry example
+# Next.js with Opentelemetry example
 
-This is a reference example for using Axiom with the Vercel AI SDK v4 with Express. The example shows steps for:
+This is a reference example for using Axiom with the Vercel AI SDK v4 with Next.js. The example shows steps for:
 
 - Setting up a NodeSDK tracer under `src/instrumentation.ts` that points to Axiom
-- Wrapping AI SDK model under `src/model.ts`
-- Utilizing `withSpan()` to generate text using Vercel's AI SDK under `src/index.ts`
+- Wrapping AI SDK model under `src/shared/openai.ts`
+- Utilizing `withSpan()` and wrapping a tool with `wrapTool()` to generate text using Vercel's AI SDK under `app/page.tsx`
 
 ## How to use
 
@@ -16,6 +16,6 @@ Then prepare your environment variables
 - In the new `.env` file, set OpenAI API key, and Axiom API key and dataset name
 - Install deps: `pnpm install`
 - Run development server `pnpm dev`
-- Visit `http://localhost:3000/hello/world`
-- Once you hit the endpoint a trace should be sent automatically to Axiom
+- Visit `http://localhost:3000`
+- Once the app loads a trace should be sent automatically to Axiom
 - Visit Axiom console and navigate to your dataset stream, a list of spans will be visible.
