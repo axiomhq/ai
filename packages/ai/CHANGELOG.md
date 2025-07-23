@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/axiomhq/ai/compare/ai-v0.2.0...ai-v0.3.0) (2025-07-23)
+
+
+### Features
+
+* publint ([#27](https://github.com/axiomhq/ai/issues/27)) ([6da8067](https://github.com/axiomhq/ai/commit/6da8067a2e442c5fdca7d10f734a0a0d14765912))
+
 ## [0.2.0](https://github.com/axiomhq/ai/compare/ai-v0.1.0...ai-v0.2.0) (2025-07-23)
 
 
