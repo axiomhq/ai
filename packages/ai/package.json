@@ -15,14 +15,14 @@
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "publint": "npx publint"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
@@ -34,7 +34,11 @@
     "otel",
     "opentelemetry"
   ],
-  "repository": "https://github.com/axiomhq/ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/axiomhq/ai.git",
+    "directory": "packages/ai"
+  },
   "license": "MIT",
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.60.1",
