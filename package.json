@@ -8,7 +8,8 @@
     "format": "turbo run format",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "publint": "turbo run publint"
   },
   "devDependencies": {
     "prettier": "catalog:",
