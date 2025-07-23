@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/axiomhq/ai/compare/ai-v0.1.0...ai-v0.2.0) (2025-07-23)
+
+
+### Features
+
+* add cjs output ([#25](https://github.com/axiomhq/ai/issues/25)) ([7780d1a](https://github.com/axiomhq/ai/commit/7780d1a9631054969522a20a16f8f327d2954ebc))
+
 ## [0.1.0](https://github.com/axiomhq/ai/compare/ai-v0.0.2...ai-v0.1.0) (2025-07-22)
 
 
