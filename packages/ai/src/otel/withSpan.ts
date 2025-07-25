@@ -16,8 +16,7 @@ type WithSpanMeta = {
 };
 
 /**
- * Wrap this around LLM functions (ie `generateText` from Vercel SDK, `openai.responses.create`
- * from OpenAI SDK) to wrap them in a span.
+ * Wrap this around Vercel AI SDK functions such as `generateText` to wrap them in a span.
  */
 export function withSpan<Return>(
   meta: WithSpanMeta,
@@ -26,10 +25,18 @@ export function withSpan<Return>(
     tracer?: Tracer;
   },
 ): Promise<Return> {
-  const tracer =
-    opts?.tracer ?? AxiomAIResources.getInstance().getTracer() ?? trace.getTracer('@axiomhq/ai');
+  let tracerMaybe = opts?.tracer ?? AxiomAIResources.getInstance().getTracer();
+
+  if (!tracerMaybe) {
+    console.warn(
+      'No tracer found. Make sure you have run `initAxiomAI`. Falling back to default tracer.',
+    );
+  }
+
+  const tracer = tracerMaybe ?? trace.getTracer('@axiomhq/ai');
 
   const startActiveSpan = createStartActiveSpan(tracer);
+
   return startActiveSpan('gen_ai.call_llm', null, async (span) => {
     const bag: Baggage = propagation.createBaggage({
       capability: { value: meta.capability },
@@ -39,6 +46,7 @@ export function withSpan<Return>(
     });
 
     const ctx = propagation.setBaggage(context.active(), bag);
+
     return await context.with(ctx, () => fn(span));
   });
 }
