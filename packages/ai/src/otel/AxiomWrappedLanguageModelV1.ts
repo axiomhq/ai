@@ -1,5 +1,5 @@
 import { type LanguageModelV1, type LanguageModelV1CallOptions } from '@ai-sdk/providerv1';
-import { createAxiomTelemetryV1 } from './middleware';
+import { axiomAIMiddlewareV1 } from './middleware';
 
 export function isLanguageModelV1(model: unknown): model is LanguageModelV1 {
   return (
@@ -40,7 +40,7 @@ export function isLanguageModelV1(model: unknown): model is LanguageModelV1 {
  */
 export class AxiomWrappedLanguageModelV1 {
   constructor(model: LanguageModelV1) {
-    const middleware = createAxiomTelemetryV1();
+    const middleware = axiomAIMiddlewareV1();
 
     // Return the wrapped model directly from constructor
     return {

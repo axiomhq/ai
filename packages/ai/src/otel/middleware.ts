@@ -72,7 +72,7 @@ interface GenAiSpanContextV2 extends CommonSpanContext {
 /**
  * Creates Axiom telemetry middleware for LanguageModelV1
  */
-export function createAxiomTelemetryV1(/* _config?: AxiomTelemetryConfig */): LanguageModelV1Middleware {
+export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): LanguageModelV1Middleware {
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
       return withSpanHandling(model.modelId, async (span, commonContext) => {
@@ -170,7 +170,7 @@ export function createAxiomTelemetryV1(/* _config?: AxiomTelemetryConfig */): La
 /**
  * Creates Axiom telemetry middleware for LanguageModelV2
  */
-export function createAxiomTelemetryV2(/* _config?: AxiomTelemetryConfig */): LanguageModelV2Middleware {
+export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): LanguageModelV2Middleware {
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
       return withSpanHandling(model.modelId, async (span, commonContext) => {
