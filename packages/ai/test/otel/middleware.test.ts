@@ -6,7 +6,7 @@ import { wrapLanguageModel, streamText } from 'aiv4';
 import { wrapLanguageModel as wrapLanguageModelV5, streamText as streamTextV5 } from 'aiv5';
 import { generateText } from 'aiv4';
 import { generateText as generateTextV5 } from 'aiv5';
-import { createAxiomTelemetryV1, createAxiomTelemetryV2 } from '../../src/otel/middleware';
+import { axiomAIMiddlewareV1, axiomAIMiddlewareV2 } from '../../src/otel/middleware';
 import { createMockProvider } from '../vercel/mock-provider-v1/mock-provider';
 import { createMockProvider as createMockProviderV2 } from '../vercel/mock-provider-v2/mock-provider-v2';
 import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
@@ -40,7 +40,7 @@ afterAll(async () => {
 describe('Axiom Telemetry Middleware', () => {
   describe('V1 Middleware', () => {
     it('should create V1 middleware with proper interface', () => {
-      const middleware = createAxiomTelemetryV1();
+      const middleware = axiomAIMiddlewareV1();
       expect(middleware).toBeDefined();
       expect(middleware.wrapGenerate).toBeDefined();
       expect(middleware.wrapStream).toBeDefined();
@@ -59,7 +59,7 @@ describe('Axiom Telemetry Middleware', () => {
       const baseModel = mockProvider.languageModel('gpt-4');
       const instrumentedModel = wrapLanguageModel({
         model: baseModel,
-        middleware: createAxiomTelemetryV1(),
+        middleware: axiomAIMiddlewareV1(),
       });
 
       const result = await generateText({
@@ -91,7 +91,7 @@ describe('Axiom Telemetry Middleware', () => {
       const baseModel = mockProvider.languageModel('gpt-4-stream');
       const instrumentedModel = wrapLanguageModel({
         model: baseModel,
-        middleware: createAxiomTelemetryV1(),
+        middleware: axiomAIMiddlewareV1(),
       });
 
       const result = streamText({
@@ -121,7 +121,7 @@ describe('Axiom Telemetry Middleware', () => {
 
   describe('V2 Middleware', () => {
     it('should create V2 middleware with proper interface', () => {
-      const middleware = createAxiomTelemetryV2();
+      const middleware = axiomAIMiddlewareV2();
       expect(middleware).toBeDefined();
       expect(middleware.wrapGenerate).toBeDefined();
       expect(middleware.wrapStream).toBeDefined();
@@ -140,7 +140,7 @@ describe('Axiom Telemetry Middleware', () => {
       const baseModel = mockProvider.languageModel('claude-3');
       const instrumentedModel = wrapLanguageModelV5({
         model: baseModel,
-        middleware: createAxiomTelemetryV2(),
+        middleware: axiomAIMiddlewareV2(),
       });
 
       const result = await generateTextV5({
@@ -173,7 +173,7 @@ describe('Axiom Telemetry Middleware', () => {
       const baseModel = mockProvider.languageModel('claude-3-stream');
       const instrumentedModel = wrapLanguageModelV5({
         model: baseModel,
-        middleware: createAxiomTelemetryV2(),
+        middleware: axiomAIMiddlewareV2(),
       });
 
       const result = streamTextV5({
@@ -213,7 +213,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       const instrumentedModel = wrapLanguageModel({
         model: baseModel,
-        middleware: createAxiomTelemetryV1(),
+        middleware: axiomAIMiddlewareV1(),
       });
 
       await expect(
@@ -250,7 +250,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       const instrumentedModel = wrapLanguageModelV5({
         model: baseModel,
-        middleware: createAxiomTelemetryV2(),
+        middleware: axiomAIMiddlewareV2(),
       });
 
       await expect(
