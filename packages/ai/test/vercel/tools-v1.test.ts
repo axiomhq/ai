@@ -35,7 +35,7 @@ beforeEach(() => {
 afterAll(async () => {
   // Reset AxiomAI configuration before shutting down
   resetAxiomAI();
-  
+
   await tracerProvider.shutdown();
   await memoryExporter.shutdown();
 });
