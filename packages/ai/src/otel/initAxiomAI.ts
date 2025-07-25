@@ -12,3 +12,10 @@ import { AxiomAIResources } from './shared';
 export function initAxiomAI(config: { tracer: Tracer }) {
   AxiomAIResources.getInstance().init(config);
 }
+
+/**
+ * Reset AxiomAI configuration (useful for testing)
+ */
+export function resetAxiomAI() {
+  AxiomAIResources.getInstance().reset();
+}

@@ -21,4 +21,11 @@ export class AxiomAIResources {
   getTracer(): Tracer | undefined {
     return this.tracer;
   }
+
+  /**
+   * Reset the tracer (useful for testing)
+   */
+  reset(): void {
+    this.tracer = undefined;
+  }
 }
