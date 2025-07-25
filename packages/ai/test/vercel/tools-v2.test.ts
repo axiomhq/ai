@@ -1,11 +1,13 @@
 import { describe, expect, it, beforeAll, beforeEach, afterAll } from 'vitest';
 import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { trace } from '@opentelemetry/api';
 import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { wrapTool } from '../../src/otel/wrapTool';
 import { generateText, tool, stepCountIs } from 'aiv5';
 import { createMockProvider, mockResponses } from './mock-provider-v2/mock-provider-v2';
+import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
 import packageJson from '../../package.json';
 
 import { z } from 'zod';
@@ -20,6 +22,10 @@ beforeAll(() => {
     spanProcessors: [spanProcessor],
   });
   tracerProvider.register();
+
+  // Initialize AxiomAI with the tracer to prevent "No tracer found" warnings
+  const tracer = trace.getTracer('axiom-ai-test');
+  initAxiomAI({ tracer });
 });
 
 beforeEach(() => {
@@ -27,6 +33,9 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  // Reset AxiomAI configuration before shutting down
+  resetAxiomAI();
+  
   await tracerProvider.shutdown();
   await memoryExporter.shutdown();
 });
