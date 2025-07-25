@@ -16,22 +16,22 @@ export function isLanguageModelV1(model: unknown): model is LanguageModelV1 {
 
 /**
  * Wraps a LanguageModelV1 to provide OpenTelemetry instrumentation.
- * 
+ *
  * Internally uses Axiom's telemetry middleware while maintaining a simple class-based API.
- * 
+ *
  * @example
  * ```typescript
  * import { AxiomWrappedLanguageModelV1 } from '@axiom/ai';
  * import { openai } from '@ai-sdk/openai';
- * 
+ *
  * const model = new AxiomWrappedLanguageModelV1(openai('gpt-3.5-turbo'));
  * ```
- * 
+ *
  * For advanced use cases, you can also use the middleware directly:
  * ```typescript
  * import { wrapLanguageModel } from 'ai';
  * import { createAxiomTelemetryV1 } from '@axiom/ai';
- * 
+ *
  * const model = wrapLanguageModel({
  *   model: yourV1Model,
  *   middleware: createAxiomTelemetryV1(),
@@ -41,7 +41,7 @@ export function isLanguageModelV1(model: unknown): model is LanguageModelV1 {
 export class AxiomWrappedLanguageModelV1 {
   constructor(model: LanguageModelV1) {
     const middleware = createAxiomTelemetryV1();
-    
+
     // Return the wrapped model directly from constructor
     return {
       specificationVersion: model.specificationVersion,
@@ -51,7 +51,7 @@ export class AxiomWrappedLanguageModelV1 {
       supportsImageUrls: model.supportsImageUrls,
       supportsStructuredOutputs: model.supportsStructuredOutputs,
       supportsUrl: model.supportsUrl?.bind(model),
-      
+
       doGenerate: async (params: LanguageModelV1CallOptions) => {
         return middleware.wrapGenerate!({
           doGenerate: () => model.doGenerate(params),
@@ -60,7 +60,7 @@ export class AxiomWrappedLanguageModelV1 {
           model,
         });
       },
-      
+
       doStream: async (params: LanguageModelV1CallOptions) => {
         return middleware.wrapStream!({
           doGenerate: () => model.doGenerate(params),
