@@ -1,8 +1,7 @@
 import { generateText, wrapLanguageModel } from 'aiv4';
 import { createOpenAI } from '@ai-sdk/openaiv1';
-import { withSpan, axiomAIMiddleware, wrapAISDKModel } from '@axiomhq/ai';
+import { withSpan, axiomAIMiddleware, wrapAISDKModel, axiomAIMiddlewareV1 } from '@axiomhq/ai';
 import { initializeTelemetry } from 'intrumentation';
-import { axiomAIMiddlewareV1 } from 'node_modules/@axiomhq/ai/dist/index.cjs';
 
 initializeTelemetry();
 
