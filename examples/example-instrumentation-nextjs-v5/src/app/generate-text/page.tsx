@@ -46,8 +46,7 @@ export default async function Page() {
                 directions: `To get from ${from} to ${to}, use a teleporter.`,
               };
             },
-            // TODO: BEFORE MERGE - fix
-          }) as any,
+          }),
         ),
       },
     });

@@ -7,11 +7,13 @@ import { typedEntries } from '../util/typedEntries';
 import { setAxiomBaseAttributes, getTracer, classifyToolError } from './utils/wrapperUtils';
 
 type Tool = ToolV4 | ToolV5;
+type WrappedTool<T> = T extends Tool ? T : never;
 
-/**
- * Type representing a wrapped tool with preserved TypeScript signatures
- */
-type WrappedTool<T extends Tool> = T;
+interface ToolLike {
+  execute?: (...args: any[]) => any;
+  description?: string;
+  [key: string]: any;
+}
 
 /**
  * Wraps a tool to create child spans when the tool's execute method is called.
@@ -20,23 +22,26 @@ type WrappedTool<T extends Tool> = T;
  * @param tool The tool to wrap
  * @returns The same tool but with a wrapped execute method that creates spans
  */
-export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
+export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
   if (!tool || typeof tool !== 'object') {
-    console.error('Invalid tool provided to wrapTool');
-    return tool;
+    console.error('Invalid tool provided to wrapTool, returning unwrapped tool');
+    return tool as T;
   }
 
   if (!('execute' in tool) || typeof tool.execute !== 'function') {
-    console.error('Cannot wrap a tool that does not have an execute method');
-    return tool;
+    console.error(
+      'Cannot wrap a tool that does not have an execute method, returning unwrapped tool',
+    );
+    return tool as T;
   }
+
+  // After the type guard, we know execute exists and is a function
+  const originalExecute = tool.execute as (...args: any[]) => any;
 
   return {
     ...tool,
-    execute: async (
-      args: Parameters<NonNullable<T['execute']>>[0],
-      opts: Parameters<NonNullable<T['execute']>>[1],
-    ) => {
+    execute: async (...executeArgs: Parameters<typeof originalExecute>) => {
+      const [args, opts] = executeArgs;
       const tracer = getTracer();
       const startActiveSpan = createStartActiveSpan(tracer);
       const spanName = `${Attr.GenAI.Operation.Name_Values.ExecuteTool} ${toolName}`;
@@ -45,11 +50,20 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
         // Set Axiom base attributes
         setAxiomBaseAttributes(span);
 
-        span.setAttribute(Attr.GenAI.Tool.CallID, opts.toolCallId);
+        // Handle different opts structures between AI SDK versions
+        const toolCallId =
+          opts && typeof opts === 'object'
+            ? opts.toolCallId || opts.toolCall?.toolCallId
+            : undefined;
+
+        if (toolCallId) {
+          span.setAttribute(Attr.GenAI.Tool.CallID, toolCallId);
+        }
+
         span.setAttribute(Attr.GenAI.Operation.Name, Attr.GenAI.Operation.Name_Values.ExecuteTool);
         span.setAttribute(Attr.GenAI.Tool.Name, toolName);
 
-        const type = 'type' in args ? args.type : 'function';
+        const type = args && typeof args === 'object' && 'type' in args ? args.type : 'function';
         span.setAttribute(Attr.GenAI.Tool.Type, type);
 
         if (tool.description) {
@@ -65,7 +79,7 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
 
         try {
           // Execute the original tool function
-          const result = await tool.execute!(args, opts as any);
+          const result = await originalExecute(args, opts);
 
           // Set the tool result message
           try {
@@ -104,13 +118,13 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
  * @param tools An object containing tools to wrap
  * @returns The same object with all tools wrapped
  */
-export function wrapTools<T extends Record<string, Tool>>(tools: T): T {
+export function wrapTools<T extends Record<string, ToolLike>>(tools: T): T {
   if (!tools || typeof tools !== 'object') {
     console.error('Invalid tools object provided to wrapTools');
-    return tools as { [K in keyof T]: WrappedTool<T[K]> };
+    return tools;
   }
 
-  const wrappedTools = {} as { [K in keyof T]: WrappedTool<T[K]> };
+  const wrappedTools = {} as T;
 
   for (const [toolName, tool] of typedEntries(tools)) {
     wrappedTools[toolName] = wrapTool(toolName as string, tool);
