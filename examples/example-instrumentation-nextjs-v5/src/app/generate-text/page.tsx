@@ -34,7 +34,7 @@ export default async function Page() {
               from: z.string().describe('The location to start from'),
               to: z.string().describe('The location to find directions to'),
             }),
-            execute: async (params, opts) => {
+            execute: async (params, _opts) => {
               const { from, to } = params;
               // Simulate API call delay
               await new Promise((resolve) => setTimeout(resolve, 500));
@@ -46,7 +46,8 @@ export default async function Page() {
                 directions: `To get from ${from} to ${to}, use a teleporter.`,
               };
             },
-          }),
+            // TODO: BEFORE MERGE - fix
+          }) as any,
         ),
       },
     });
