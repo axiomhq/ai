@@ -6,7 +6,11 @@ import { wrapLanguageModel, streamText } from 'aiv4';
 import { wrapLanguageModel as wrapLanguageModelV5, streamText as streamTextV5 } from 'aiv5';
 import { generateText } from 'aiv4';
 import { generateText as generateTextV5 } from 'aiv5';
-import { axiomAIMiddlewareV1, axiomAIMiddlewareV2 } from '../../src/otel/middleware';
+import {
+  axiomAIMiddlewareV1,
+  axiomAIMiddlewareV2,
+  axiomAIMiddleware,
+} from '../../src/otel/middleware';
 import { createMockProvider } from '../vercel/mock-provider-v1/mock-provider';
 import { createMockProvider as createMockProviderV2 } from '../vercel/mock-provider-v2/mock-provider-v2';
 import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
@@ -274,6 +278,161 @@ describe('Axiom Telemetry Middleware', () => {
       expect(errorEvents).toHaveLength(1);
       expect(errorEvents[0].attributes?.['exception.message']).toBe('Test V2 error');
       expect(errorEvents[0].attributes?.['exception.type']).toBe('Error');
+    });
+  });
+
+  describe('Unified Middleware', () => {
+    it('should automatically choose V1 middleware for V1 model', async () => {
+      const mockProvider = createMockProvider();
+      mockProvider.addLanguageModelResponse('gpt-4', {
+        text: 'Hello from unified middleware test!',
+        finishReason: 'stop',
+        usage: { promptTokens: 15, completionTokens: 25 },
+      });
+
+      const baseModel = mockProvider.languageModel('gpt-4');
+      const instrumentedModel = wrapLanguageModel({
+        model: baseModel,
+        middleware: [axiomAIMiddleware({ model: baseModel })],
+      });
+
+      const result = await generateText({
+        model: instrumentedModel,
+        prompt: 'Test prompt',
+      });
+
+      expect(result.text).toBe('Hello from unified middleware test!');
+
+      const spans = memoryExporter.getFinishedSpans();
+      expect(spans).toHaveLength(1);
+      expect(spans[0].name).toBe('chat gpt-4');
+    });
+
+    it('should automatically choose V2 middleware for V2 model', async () => {
+      const mockProvider = createMockProviderV2();
+      mockProvider.addLanguageModelResponse('gpt-4', {
+        content: [{ type: 'text', text: 'Hello from unified V2 test!' }],
+        finishReason: 'stop',
+        usage: { inputTokens: 15, outputTokens: 25, totalTokens: 40 },
+      });
+
+      const baseModel = mockProvider.languageModel('gpt-4');
+      const instrumentedModel = wrapLanguageModelV5({
+        model: baseModel,
+        middleware: [axiomAIMiddleware({ model: baseModel })],
+      });
+
+      const result = await generateTextV5({
+        model: instrumentedModel,
+        prompt: 'Test prompt',
+      });
+
+      expect(result.text).toBe('Hello from unified V2 test!');
+
+      const spans = memoryExporter.getFinishedSpans();
+      expect(spans).toHaveLength(1);
+      expect(spans[0].name).toBe('chat gpt-4');
+    });
+
+    it('should return noop middleware for unsupported model versions', () => {
+      const mockModel = {
+        specificationVersion: 'v3' as any, // Hypothetical future version
+        provider: 'mock',
+        modelId: 'test-v3',
+      };
+
+      // Capture console output
+      const originalWarn = console.warn;
+      let warningMessage = '';
+      console.warn = (message: string) => {
+        warningMessage = message;
+      };
+
+      const middleware = axiomAIMiddleware({ model: mockModel as any });
+
+      // Restore console.warn
+      console.warn = originalWarn;
+
+      // Should return empty object (noop middleware)
+      expect(middleware).toEqual({});
+      expect('wrapGenerate' in middleware).toBe(false);
+      expect('wrapStream' in middleware).toBe(false);
+      expect(warningMessage).toContain('Unsupported model specification version: "v3"');
+    });
+
+    it('should allow normal model operation with noop middleware for unsupported versions', async () => {
+      // Create a mock model with unsupported version but complete interface
+      const mockUnsupportedModel = {
+        specificationVersion: 'v3' as any,
+        provider: 'mock-future',
+        modelId: 'future-model',
+        defaultObjectGenerationMode: 'json' as const,
+        supportsImageUrls: false,
+        supportsStructuredOutputs: false,
+        async doGenerate() {
+          return {
+            text: 'Response from unsupported model',
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 10, completionTokens: 15 },
+          };
+        },
+        async doStream() {
+          const chunks = [
+            { type: 'text-delta' as const, textDelta: 'Hello' },
+            { type: 'text-delta' as const, textDelta: ' world' },
+            {
+              type: 'finish' as const,
+              finishReason: 'stop' as const,
+              usage: { promptTokens: 10, completionTokens: 15 },
+            },
+          ];
+
+          return {
+            stream: new ReadableStream({
+              start(controller) {
+                chunks.forEach((chunk) => controller.enqueue(chunk));
+                controller.close();
+              },
+            }),
+          };
+        },
+      };
+
+      // Suppress warning for this test
+      const originalWarn = console.warn;
+      console.warn = () => {};
+
+      // Apply noop middleware
+      const wrappedModel = wrapLanguageModel({
+        model: mockUnsupportedModel as any,
+        middleware: [axiomAIMiddleware({ model: mockUnsupportedModel as any })],
+      });
+
+      // Restore console.warn
+      console.warn = originalWarn;
+
+      // Test generateText still works
+      const generateResult = await generateText({
+        model: wrappedModel,
+        prompt: 'Test prompt',
+      });
+
+      expect(generateResult.text).toBe('Response from unsupported model');
+      expect(generateResult.finishReason).toBe('stop');
+
+      // Test streamText still works
+      const streamResult = await streamText({
+        model: wrappedModel,
+        prompt: 'Test prompt',
+      });
+
+      const chunks: string[] = [];
+      for await (const chunk of streamResult.textStream) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks.join('')).toBe('Hello world');
+      await expect(streamResult.finishReason).resolves.toBe('stop');
     });
   });
 });
