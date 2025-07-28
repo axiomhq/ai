@@ -58,7 +58,7 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
 
         try {
           span.setAttribute(Attr.GenAI.Tool.Arguments, JSON.stringify(args));
-        } catch (error) {
+        } catch (_error) {
           // Handle circular references or other JSON serialization errors
           span.setAttribute(Attr.GenAI.Tool.Arguments, '[Unable to serialize arguments]');
         }
@@ -70,7 +70,7 @@ export function wrapTool<T extends Tool>(toolName: string, tool: T): T {
           // Set the tool result message
           try {
             span.setAttribute(Attr.GenAI.Tool.Message, JSON.stringify(result));
-          } catch (error) {
+          } catch (_error) {
             // Handle circular references or other JSON serialization errors
             span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
           }

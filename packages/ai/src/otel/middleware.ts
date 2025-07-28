@@ -168,6 +168,25 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
 }
 
 /**
+ * Creates unified Axiom telemetry middleware that works with both V1 and V2 models
+ */
+export function axiomAIMiddleware(config: { model: LanguageModelV1 }): LanguageModelV1Middleware;
+export function axiomAIMiddleware(config: { model: LanguageModelV2 }): LanguageModelV2Middleware;
+export function axiomAIMiddleware(config: { model: LanguageModelV1 | LanguageModelV2 }) {
+  if (config.model.specificationVersion === 'v1') {
+    return axiomAIMiddlewareV1();
+  } else if (config.model.specificationVersion === 'v2') {
+    return axiomAIMiddlewareV2();
+  } else {
+    console.warn(
+      // @ts-expect-error - not allowed at type level, but users can still do it...
+      `Unsupported model specification version: ${JSON.stringify(config.model.specificationVersion)}. Creating no-op middleware instead.`,
+    );
+    return {};
+  }
+}
+
+/**
  * Creates Axiom telemetry middleware for LanguageModelV2
  */
 export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): LanguageModelV2Middleware {
