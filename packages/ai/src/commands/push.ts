@@ -39,7 +39,6 @@ export const loadPushCommand = (program: Command) => {
       }
 
       try {
-        // Use transpiler to load and extract prompt data
         const moduleContent = await loadPromptModule(filePath);
         const promptData = extractPromptFromModule(moduleContent, filePath);
 
@@ -56,7 +55,6 @@ export const loadPushCommand = (program: Command) => {
         process.exit(1);
       }
 
-      // Ask for confirmation BEFORE pushing to server
       let shouldProceed = options.yes;
       if (!shouldProceed) {
         shouldProceed = await askConfirmation(
@@ -104,10 +102,8 @@ export const loadPushCommand = (program: Command) => {
         );
         console.log(`Version: ${apiResponse.version.version}`);
 
-        // Generate updated TypeScript content from server response
         const updatedTsContent = generatePromptFileFromApiResponse(apiResponse);
 
-        // Write updated file (user already confirmed)
         await fs.writeFile(filePath, updatedTsContent, 'utf-8');
 
         console.log(`Successfully updated ${filePath}`);

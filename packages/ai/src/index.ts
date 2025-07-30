@@ -4,39 +4,37 @@ export * from './otel/withSpan';
 export * from './otel/wrapTool';
 export * from './otel/middleware';
 
-
 // Prompt and template functionality - marked as UNSAFE as these APIs are experimental
 export type {
-  Environment as Environment_experimental,
-  ValidationSchema as ValidationSchema_experimental,
-  PromptInput as PromptInput_experimental,
-  Prompt as Prompt_experimental,
+  Environment as experimental_Environment,
+  ValidationSchema as experimental_ValidationSchema,
+  PromptInput as experimental_PromptInput,
+  Prompt as experimental_Prompt,
 } from './types';
 
-export { Type as Type_experimental } from './template';
+export { Type as experimental_Type } from './template';
 export type {
-  TSchema as TSchema_experimental,
-  InferSchema as InferSchema_experimental,
-  InferContext as InferContext_experimental,
+  TSchema as experimental_TSchema,
+  InferSchema as experimental_InferSchema,
+  InferContext as experimental_InferContext,
 } from './template';
 
-export { parse as parse_experimental, Template as Template_experimental } from './prompt';
+export { parse as experimental_parse, Template as experimental_Template } from './prompt';
 
 export type {
-  AxiomPromptMetadata as AxiomPromptMetadata_experimental,
-  ParsedMessage as ParsedMessage_experimental,
-  ParsedMessagesArray as ParsedMessagesArray_experimental,
-  ParsedPrompt as ParsedPrompt_experimental,
+  AxiomPromptMetadata as experimental_AxiomPromptMetadata,
+  ParsedMessage as experimental_ParsedMessage,
+  ParsedMessagesArray as experimental_ParsedMessagesArray,
+  ParsedPrompt as experimental_ParsedPrompt,
 } from './types/metadata';
 
-
 // Eval functionality - marked as EXPERIMENTAL as these APIs might change
-export { Eval as Eval_experimental } from './evals/eval';
+export { Eval as experimental_Eval } from './evals/eval';
 export type {
-  EvalTask as EvalTask_experimental,
-  EvalParams as EvalParams_experimental,
-  Score as Score_experimental,
-  EvalReport as EvalReport_experimental,
+  EvalTask as experimental_EvalTask,
+  EvalParams as experimental_EvalParams,
+  Score as experimental_Score,
+  EvalReport as experimental_EvalReport,
 } from './evals/eval';
 
-export { AxiomReporter as AxiomReporter_experimental } from './evals/reporter';
+export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
