@@ -1,7 +1,7 @@
 import { Type as TypeBox, type TSchema as TypeBoxSchema, type Static } from '@sinclair/typebox';
 
 /**
- * Template-friendly TypeBox types for use with Nunjucks and Handlebars.
+ * Template-friendly TypeBox types for use with Handlebars.
  *
  * These types are designed to be easily serializable and work well in template contexts
  * where data needs to be rendered as strings or used in conditionals and loops.

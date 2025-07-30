@@ -19,7 +19,7 @@ type Options = {
 export type PromptInput = {
   name: string;
   slug: string; // e.g: 'my-prompt'
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  messages: { role: 'system' | 'user' | 'assistant' | 'tool'; content: string }[];
   model: string;
   options?: Options;
   arguments: Record<string, TSchema>; // TypeBox schemas as written in .prompt.ts files
@@ -28,7 +28,7 @@ export type PromptInput = {
 export type Prompt = {
   name: string;
   slug: string;
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  messages: { role: 'system' | 'user' | 'assistant' | 'tool'; content: string }[];
   model: string;
   options: Options;
   arguments: any; // JSON Schema format for API communication
@@ -39,10 +39,3 @@ export type Prompt = {
   description?: string;
 };
 
-export type LibraryInput = {
-  name: string;
-  description: string | null;
-  messages: { role: string; content: string }[];
-  model: string;
-  temperature: number;
-};

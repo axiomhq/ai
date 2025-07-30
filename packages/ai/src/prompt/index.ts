@@ -2,16 +2,9 @@ import type { Prompt } from '../types';
 import type { InferContext, TSchema } from '../template';
 import type { AxiomPromptMetadata, ParsedMessage, ParsedMessagesArray } from '../types/metadata';
 
-const getParser = async (parser: 'nunjucks' | 'handlebars') => {
-  if (parser === 'nunjucks') {
-    const nunjucks = await import('./parsers/nunjucks').then((m) => m.nunjucksParse);
-    return nunjucks;
-  }
-  if (parser === 'handlebars') {
-    const handlebars = await import('./parsers/hadlebars').then((m) => m.handlebarsParse);
-    return handlebars;
-  }
-  throw new Error(`Invalid parser: ${parser}`);
+const getParser = async () => {
+  const handlebars = await import('./parsers/handlebars').then((m) => m.handlebarsParse);
+  return handlebars;
 };
 
 // Generic parse function that infers context type from prompt arguments
@@ -19,14 +12,12 @@ export const parse = async <T extends Record<string, TSchema>>(
   prompt: Prompt & { arguments: T },
   {
     context,
-    parser: parserName = 'nunjucks',
   }: {
     context: InferContext<T>;
-    parser?: 'nunjucks' | 'handlebars';
   },
 ) => {
   const messagesPromises = prompt.messages.map(async (message) => {
-    const parser = await getParser(parserName);
+    const parser = await getParser();
     return {
       ...message,
       content: await parser(message.content, { context }),
@@ -72,4 +63,4 @@ export const parse = async <T extends Record<string, TSchema>>(
 };
 
 // Re-export template types for convenience
-export { Type as Template } from '../template';
+export { Type as Template, type InferContext } from '../template';
