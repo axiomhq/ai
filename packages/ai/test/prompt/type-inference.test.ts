@@ -54,7 +54,6 @@ describe('Type Inference', () => {
 
     const result = await parse(prompt, {
       context,
-      parser: 'nunjucks',
     });
 
     expect(result.messages[0].content).toContain('Hello John Doe!');
@@ -72,7 +71,7 @@ describe('Type Inference', () => {
       options: {},
       messages: [
         {
-          role: 'system' as const,
+          role: 'system',
           content: 'Status: {{ status }}, Priority: {{ priority }}',
         },
       ],
@@ -108,7 +107,6 @@ describe('Type Inference', () => {
 
     const result = await parse(prompt, {
       context,
-      parser: 'handlebars',
     });
 
     expect(result.messages[0].content).toBe('Status: active, Priority: high');
@@ -124,7 +122,7 @@ describe('Type Inference', () => {
       options: {},
       messages: [
         {
-          role: 'system' as const,
+          role: 'system',
           content: 'Name: {{ name }}{% if description %}, Desc: {{ description }}{% endif %}',
         },
       ],
@@ -159,7 +157,6 @@ describe('Type Inference', () => {
 
     const result = await parse(prompt, {
       context,
-      parser: 'nunjucks',
     });
 
     expect(result.messages[0].content).toBe('Name: Test Item');
@@ -173,7 +170,7 @@ describe('Type Inference', () => {
       version: '1.0',
       model: 'gpt-4',
       options: {},
-      messages: [{ role: 'system' as const, content: 'Test' }],
+      messages: [{ role: 'system', content: 'Test' }],
       arguments: {
         stringField: Template.String(),
         numberField: Template.Number(),

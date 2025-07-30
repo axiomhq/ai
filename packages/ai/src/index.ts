@@ -11,7 +11,6 @@ export type {
   ValidationSchema as ValidationSchema_experimental,
   PromptInput as PromptInput_experimental,
   Prompt as Prompt_experimental,
-  LibraryInput as LibraryInput_experimental,
 } from './types';
 
 export { Type as Type_experimental } from './template';

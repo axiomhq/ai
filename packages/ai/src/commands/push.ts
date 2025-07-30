@@ -8,7 +8,6 @@ import type { Prompt } from '../types';
 import fs from 'node:fs/promises';
 import readline from 'node:readline';
 
-// Helper function to ask for user confirmation
 async function askConfirmation(message: string): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,

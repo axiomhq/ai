@@ -9,7 +9,7 @@ export interface AxiomPromptMetadata {
 // rather than CoreMessage because our parse() function processes templates into strings
 // TODO: @cje - i dont know if this is right
 export interface ParsedMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   // May have providerOptions attached for metadata propagation
   providerOptions?: {
