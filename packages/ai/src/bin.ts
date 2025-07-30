@@ -17,7 +17,7 @@ const program = new Command();
 program
   .name('axiom')
   .description("Axiom's CLI to manage your objects and run evals")
-  .version('1.0.0');
+  .version(__SDK_VERSION__);
 
 loadPushCommand(program);
 loadPullCommand(program);
