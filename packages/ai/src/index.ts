@@ -2,6 +2,8 @@ export * from './otel/initAxiomAI';
 export * from './otel/vercel';
 export * from './otel/withSpan';
 export * from './otel/wrapTool';
+export * from './otel/middleware';
+
 
 // Prompt and template functionality - marked as UNSAFE as these APIs are experimental
 export type {
