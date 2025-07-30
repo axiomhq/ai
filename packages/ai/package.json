@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup",
+    "build": "tsup && chmod +x dist/bin.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
@@ -21,10 +21,29 @@
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
+  "bin": {
+    "axiom-ai": "./dist/bin.js"
+  },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./evals": {
+      "import": {
+        "types": "./dist/evals.d.ts",
+        "default": "./dist/evals.js"
+      },
+      "require": {
+        "types": "./dist/evals.d.cts",
+        "default": "./dist/evals.cjs"
+      }
     }
   },
   "keywords": [
@@ -41,6 +60,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@next/env": "^15.4.2",
     "@opentelemetry/auto-instrumentations-node": "^0.60.1",
     "@opentelemetry/context-async-hooks": "^2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.202.0",
@@ -48,10 +68,16 @@
     "@opentelemetry/sdk-node": "^0.202.0",
     "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@opentelemetry/semantic-conventions": "^1.36.0",
+    "@sinclair/typebox": "^0.34.37",
+    "commander": "^14.0.0",
+    "esbuild": "^0.25.8",
+    "handlebars": "^4.7.8",
+    "nunjucks": "^3.2.4",
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.9.0"
+    "@opentelemetry/api": "^1.9.0",
+    "vitest": "catalog:"
   },
   "devDependencies": {
     "@ai-sdk/anthropicv1": "npm:@ai-sdk/anthropic@^1.2.12",
