@@ -1,8 +1,14 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { wrapAISDKModel } from '@axiomhq/ai';
+import { axiomAIMiddleware } from '@axiomhq/ai';
+import { wrapLanguageModel } from 'ai';
 
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
-export const gpt4oMini = wrapAISDKModel(openai('gpt-4o-mini'));
+const model = openai('gpt-4o-mini');
+
+export const gpt4oMini = wrapLanguageModel({
+  model,
+  middleware: [axiomAIMiddleware({ model })],
+});

@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import { trace, Tracer } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
