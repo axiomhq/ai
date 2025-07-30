@@ -16,7 +16,6 @@ export const loadPullCommand = (program: Command) => {
       try {
         console.log(`Pulling prompt: ${slug} (version: ${options.version})`);
 
-        // Fetch prompt from API
         const url = `${process.env.AXIOM_URL}/v1/prompts/${slug}`;
         const response = await fetch(url, {
           method: 'GET',
@@ -44,14 +43,11 @@ export const loadPullCommand = (program: Command) => {
 
         const apiResponse = await response.json();
 
-        // Generate TypeScript content
         const tsContent = generatePromptFileFromApiResponse(apiResponse);
 
-        // Determine output file path
         const outputPath = options.output || `${slug}.prompt.ts`;
         const fullPath = path.resolve(outputPath);
 
-        // Write file
         await fs.writeFile(fullPath, tsContent, 'utf-8');
 
         console.log(`Successfully generated prompt file: ${fullPath}`);
