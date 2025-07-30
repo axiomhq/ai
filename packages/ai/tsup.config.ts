@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsup';
+import pkg from './package.json';
 
 export default defineConfig({
   entry: ['src/index.ts', 'src/bin.ts', 'src/evals.ts'],
@@ -10,4 +11,7 @@ export default defineConfig({
   target: 'es2020',
   outDir: 'dist',
   tsconfig: './tsconfig.build.json',
+  define: {
+    __SDK_VERSION__: JSON.stringify(pkg.version),
+  },
 });
