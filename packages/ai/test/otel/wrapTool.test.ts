@@ -51,7 +51,9 @@ describe('wrapTool', () => {
 
     const result = wrapTool('invalid', null as any);
 
-    expect(consoleSpy).toHaveBeenCalledWith('Invalid tool provided to wrapTool');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Invalid tool provided to wrapTool, returning unwrapped tool',
+    );
     expect(result).toBe(null);
 
     consoleSpy.mockRestore();
@@ -64,7 +66,7 @@ describe('wrapTool', () => {
     const result = wrapTool('invalid', invalidTool as any);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'Cannot wrap a tool that does not have an execute method',
+      'Cannot wrap a tool that does not have an execute method, returning unwrapped tool',
     );
     expect(result).toBe(invalidTool);
 
