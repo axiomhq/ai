@@ -1,10 +1,10 @@
 // Eval functionality - marked as UNSAFE as these APIs are experimental
-export { Eval as UNSAFE_Eval } from './evals/eval';
+export { Eval as Eval_experimental } from './evals/eval';
 export type {
-  EvalTask as UNSAFE_EvalTask,
-  EvalParams as UNSAFE_EvalParams,
-  Score as UNSAFE_Score,
-  EvalReport as UNSAFE_EvalReport,
+  EvalTask as EvalTask_experimental,
+  EvalParams as EvalParams_experimental,
+  Score as Score_experimental,
+  EvalReport as EvalReport_experimental,
 } from './evals/eval';
 
-export { AxiomReporter as UNSAFE_AxiomReporter } from './evals/reporter';
+export { AxiomReporter as AxiomReporter_experimental } from './evals/reporter';
