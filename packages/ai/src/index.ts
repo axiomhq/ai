@@ -25,7 +25,6 @@ export type {
   AxiomPromptMetadata as experimental_AxiomPromptMetadata,
   ParsedMessage as experimental_ParsedMessage,
   ParsedMessagesArray as experimental_ParsedMessagesArray,
-  ParsedPrompt as experimental_ParsedPrompt,
 } from './types/metadata';
 
 // Eval functionality - marked as EXPERIMENTAL as these APIs might change
