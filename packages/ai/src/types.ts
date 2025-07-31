@@ -32,10 +32,7 @@ export type Prompt = {
   model: string;
   options: Options;
   arguments: any; // JSON Schema format for API communication
-  id: string;
-  version: string;
-  // Additional fields from API response
-  promptId?: string;
   description?: string;
+  version: string;
+  promptId?: string;
 };
-

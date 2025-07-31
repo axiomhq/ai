@@ -28,7 +28,6 @@ export const parse = async <T extends Record<string, TSchema>>(
 
   // Create metadata object from prompt
   const promptMetadata: AxiomPromptMetadata = {
-    id: prompt.id,
     name: prompt.name,
     slug: prompt.slug,
     version: prompt.version,
