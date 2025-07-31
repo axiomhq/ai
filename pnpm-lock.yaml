@@ -363,6 +363,9 @@ importers:
       handlebars:
         specifier: ^4.7.8
         version: 4.7.8
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/node@22.16.2)(tsx@4.20.3)
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -421,9 +424,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.4(@types/node@22.16.2)(tsx@4.20.3)
 
 packages:
 
