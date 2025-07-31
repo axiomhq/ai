@@ -22,13 +22,3 @@ export type ParsedMessagesArray = ParsedMessage[] & {
   // Proxy provides access to metadata
   _axiomMeta?: AxiomPromptMetadata;
 };
-
-// Type for the complete result returned by parse()
-export interface ParsedPrompt {
-  id: string;
-  name: string;
-  slug: string;
-  version: string;
-  arguments: Record<string, any>; // zod schemas get processed
-  messages: ParsedMessagesArray;
-}
