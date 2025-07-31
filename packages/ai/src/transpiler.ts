@@ -260,7 +260,6 @@ ${
 }
   },
   arguments: ${argumentsCode},
-  id: '${prompt.slug}',
   version: '${version.version}',
   promptId: '${prompt.promptId}',
 };

@@ -5,7 +5,6 @@ import type { ParsedMessage } from '../../src/types/metadata';
 
 describe('Prompt Metadata', () => {
   const mockPrompt: Prompt = {
-    id: 'prompt-123',
     name: 'Test Prompt',
     slug: 'test-prompt',
     version: '1.0.0',
@@ -73,7 +72,6 @@ describe('Prompt Metadata', () => {
         context: { name: 'Test' },
       });
 
-      expect(result.id).toBe('prompt-123');
       expect(result.name).toBe('Test Prompt');
       expect(result.slug).toBe('test-prompt');
 
@@ -83,7 +81,6 @@ describe('Prompt Metadata', () => {
 
     it('should work with minimal prompt metadata', async () => {
       const minimalPrompt: Prompt = {
-        id: 'min-123',
         name: 'Minimal',
         slug: 'minimal',
         version: '1.0',
@@ -96,7 +93,6 @@ describe('Prompt Metadata', () => {
       const result = await parse(minimalPrompt, { context: {} });
 
       expect((result.messages as any)._axiomMeta).toEqual({
-        id: 'min-123',
         name: 'Minimal',
         slug: 'minimal',
         version: '1.0',
@@ -158,7 +154,6 @@ describe('Prompt Metadata', () => {
 
     it('should attach metadata to the last message even with single message', async () => {
       const singleMessagePrompt: Prompt = {
-        id: 'single-123',
         name: 'Single Message',
         slug: 'single-message',
         version: '2.0.0',
