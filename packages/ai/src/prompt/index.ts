@@ -44,6 +44,10 @@ export const parse = async <
       ...lastMessage.providerOptions,
       _axiomMeta: promptMetadata,
     };
+    lastMessage.providerMetadata = {
+      ...lastMessage.providerMetadata,
+      _axiomMeta: promptMetadata,
+    };
   }
 
   // Also create a Proxy for direct access in tests

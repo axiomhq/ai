@@ -17,6 +17,10 @@ export interface ParsedMessage extends PromptMessage {
     _axiomMeta?: AxiomPromptMetadata;
     [key: string]: any;
   };
+  providerMetadata?: {
+    _axiomMeta?: AxiomPromptMetadata;
+    [key: string]: any;
+  };
 }
 
 type ExtendMessage<T> = T extends object ? T & ParsedMessage : T;
@@ -25,6 +29,7 @@ type ExtendedMessages<T extends readonly unknown[]> = {
   [K in keyof T]: ExtendMessage<T[K]>;
 };
 
-export type ParsedMessagesArray<T extends readonly any[]> = ExtendedMessages<T> & {
-  _axiomMeta: AxiomPromptMetadata;
-};
+export type ParsedMessagesArray<T extends readonly PromptMessage[] = readonly PromptMessage[]> =
+  ExtendedMessages<T> & {
+    _axiomMeta: AxiomPromptMetadata;
+  };

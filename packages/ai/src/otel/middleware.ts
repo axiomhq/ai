@@ -1,6 +1,7 @@
 import {
   type LanguageModelV1,
   type LanguageModelV1CallOptions,
+  type LanguageModelV1Prompt,
   type LanguageModelV1StreamPart,
 } from '@ai-sdk/providerv1';
 import {
@@ -13,6 +14,7 @@ import {
   type LanguageModelV2Usage,
   type LanguageModelV2ResponseMetadata,
   type LanguageModelV2FinishReason,
+  type LanguageModelV2Prompt,
 } from '@ai-sdk/providerv2';
 import { type LanguageModelV1Middleware } from 'aiv4';
 
@@ -51,6 +53,7 @@ import {
   TextAggregatorV2,
   StreamStatsV2,
 } from './streaming/aggregators';
+import type { AxiomPromptMetadata, ParsedMessagesArray } from '../types/metadata';
 
 export interface AxiomTelemetryConfig {
   // Future configuration options can be added here
@@ -69,6 +72,28 @@ interface GenAiSpanContextV2 extends CommonSpanContext {
   originalV2Prompt: any[];
 }
 
+const appendPromptMetadataToSpan = (
+  span: Span,
+  messages: LanguageModelV1Prompt | LanguageModelV2Prompt,
+) => {
+  const lastMessage = messages?.[messages.length - 1];
+
+  let axiomMeta: AxiomPromptMetadata | undefined;
+
+  if ('providerMetadata' in lastMessage) {
+    axiomMeta = lastMessage?.providerMetadata?._axiomMeta as AxiomPromptMetadata | undefined;
+  } else if ('providerOptions' in lastMessage) {
+    axiomMeta = lastMessage?.providerOptions?._axiomMeta as AxiomPromptMetadata | undefined;
+  }
+
+  if (axiomMeta) {
+    if (axiomMeta.id) span.setAttribute(Attr.GenAI.PromptMetadata.ID, axiomMeta.id);
+    if (axiomMeta.name) span.setAttribute(Attr.GenAI.PromptMetadata.Name, axiomMeta.name);
+    if (axiomMeta.slug) span.setAttribute(Attr.GenAI.PromptMetadata.Slug, axiomMeta.slug);
+    if (axiomMeta.version) span.setAttribute(Attr.GenAI.PromptMetadata.Version, axiomMeta.version);
+  }
+};
+
 /**
  * Creates Axiom telemetry middleware for LanguageModelV1
  */
@@ -81,6 +106,8 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
           originalPrompt: [],
           rawCall: undefined,
         };
+
+        appendPromptMetadataToSpan(span, params.prompt);
 
         // Pre-call setup
         setScopeAttributes(span);
@@ -105,6 +132,8 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
           originalPrompt: [],
           rawCall: undefined,
         };
+
+        appendPromptMetadataToSpan(span, params.prompt);
 
         // Pre-call setup
         setScopeAttributes(span);
@@ -199,6 +228,8 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
           originalV2Prompt: [],
         };
 
+        appendPromptMetadataToSpan(span, params.prompt);
+
         // Pre-call setup
         setScopeAttributes(span);
         setPreCallAttributesV2(span, params, context, model);
@@ -219,6 +250,8 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
           originalPrompt: [],
           originalV2Prompt: [],
         };
+
+        appendPromptMetadataToSpan(span, params.prompt);
 
         // Pre-call setup
         setScopeAttributes(span);
