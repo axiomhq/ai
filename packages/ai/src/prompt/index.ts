@@ -1,5 +1,5 @@
 import type { Prompt } from '../types';
-import type { InferContext, TSchema } from '../template';
+import type { InferContext } from '../template';
 import type { AxiomPromptMetadata, ParsedMessage, ParsedMessagesArray } from '../types/metadata';
 
 const getParser = async () => {
@@ -8,14 +8,17 @@ const getParser = async () => {
 };
 
 // Generic parse function that infers context type from prompt arguments
-export const parse = async <T extends Record<string, TSchema>>(
-  prompt: Prompt & { arguments: T },
+export const parse = async <
+  TPrompt extends Prompt,
+  TMessages extends TPrompt['messages'] = TPrompt['messages'],
+>(
+  prompt: TPrompt & { messages: TMessages },
   {
     context,
   }: {
-    context: InferContext<T>;
+    context: InferContext<TPrompt['arguments']>;
   },
-) => {
+): Promise<Omit<TPrompt, 'messages'> & { messages: ParsedMessagesArray<TMessages> }> => {
   const messagesPromises = prompt.messages.map(async (message) => {
     const parser = await getParser();
     return {
@@ -53,7 +56,7 @@ export const parse = async <T extends Record<string, TSchema>>(
       // All other properties (array methods, indices, etc.)
       return Reflect.get(target, prop, receiver) as ParsedMessage | undefined;
     },
-  }) as ParsedMessagesArray;
+  }) as ParsedMessagesArray<TMessages>;
 
   return {
     ...prompt,
