@@ -1,5 +1,4 @@
-import type { Tracer } from '@opentelemetry/api';
-import { AxiomAIResources } from './shared';
+import { AxiomAIResources, type AxiomAIConfig } from './shared';
 
 /**
  * Register this in your `instrumentation.ts` to set up @axiomhq/ai.
@@ -8,8 +7,9 @@ import { AxiomAIResources } from './shared';
  *
  * @param config
  * @param config.tracer - The tracer that you are using in your application.
+ * @param config.redact - Defaults for which inputs/outputs to redact
  */
-export function initAxiomAI(config: { tracer: Tracer }) {
+export function initAxiomAI(config: AxiomAIConfig) {
   AxiomAIResources.getInstance().init(config);
 }
 

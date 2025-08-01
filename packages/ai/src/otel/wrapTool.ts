@@ -5,6 +5,7 @@ import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
 import { typedEntries } from '../util/typedEntries';
 import { setAxiomBaseAttributes, getTracer, classifyToolError } from './utils/wrapperUtils';
+import { setAttributeIfNotRedacted, shouldSetAttribute, RedactionKind } from './utils/redaction';
 
 type Tool = ToolV4 | ToolV5;
 type WrappedTool<T> = T extends Tool ? T : never;
@@ -71,10 +72,12 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
         }
 
         try {
-          span.setAttribute(Attr.GenAI.Tool.Arguments, JSON.stringify(args));
+          setAttributeIfNotRedacted(span, Attr.GenAI.Tool.Arguments, JSON.stringify(args), RedactionKind.ToolArgs);
         } catch (_error) {
           // Handle circular references or other JSON serialization errors
-          span.setAttribute(Attr.GenAI.Tool.Arguments, '[Unable to serialize arguments]');
+          if (shouldSetAttribute(RedactionKind.ToolArgs)) {
+            span.setAttribute(Attr.GenAI.Tool.Arguments, '[Unable to serialize arguments]');
+          }
         }
 
         try {
@@ -83,10 +86,12 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
 
           // Set the tool result message
           try {
-            span.setAttribute(Attr.GenAI.Tool.Message, JSON.stringify(result));
+            setAttributeIfNotRedacted(span, Attr.GenAI.Tool.Message, JSON.stringify(result), RedactionKind.ToolMsgs);
           } catch (_error) {
             // Handle circular references or other JSON serialization errors
-            span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
+            if (shouldSetAttribute(RedactionKind.ToolMsgs)) {
+              span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
+            }
           }
 
           return result;

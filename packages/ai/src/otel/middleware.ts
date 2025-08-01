@@ -26,6 +26,7 @@ import {
   extractToolResultsFromRawPrompt,
 } from '../util/promptUtils';
 import { sanitizeMultimodalContent } from './utils/contentSanitizer';
+import { setAttributeIfNotRedacted, RedactionKind } from './utils/redaction';
 import {
   setScopeAttributes,
   setBaseAttributes,
@@ -305,7 +306,7 @@ function setPreCallAttributesV1(
   const processedPrompt = promptV1ToOpenAI(prompt);
   context.originalPrompt = processedPrompt;
 
-  span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)));
+  setAttributeIfNotRedacted(span, Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)), RedactionKind.Prompts);
 
   setBaseAttributes(span, model.provider, model.modelId);
 
@@ -351,7 +352,7 @@ async function setPostCallAttributesV1(
       result.text,
     );
 
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)));
+    setAttributeIfNotRedacted(span, Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)), RedactionKind.Prompts);
   }
 
   // Create simple completion array with just assistant text
@@ -359,7 +360,7 @@ async function setPostCallAttributesV1(
     const completion = createSimpleCompletion({
       text: result.text,
     });
-    span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    setAttributeIfNotRedacted(span, Attr.GenAI.Completion, JSON.stringify(completion), RedactionKind.Completions);
   }
 
   if (result.response?.id) {
@@ -427,7 +428,7 @@ function setPreCallAttributesV2(
   context.originalV2Prompt = options.prompt;
   context.originalPrompt = processedPrompt;
 
-  span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)));
+  setAttributeIfNotRedacted(span, Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)), RedactionKind.Prompts);
 }
 
 async function setPostCallAttributesV2(
@@ -487,7 +488,7 @@ async function setPostCallAttributesV2(
     );
 
     // Update the prompt attribute with the complete conversation history
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)));
+    setAttributeIfNotRedacted(span, Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)), RedactionKind.Prompts);
   }
 
   // Process tool calls and create child spans
@@ -498,7 +499,7 @@ async function setPostCallAttributesV2(
     const completion = createSimpleCompletion({
       text: '',
     });
-    span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    setAttributeIfNotRedacted(span, Attr.GenAI.Completion, JSON.stringify(completion), RedactionKind.Completions);
   }
 
   // Store finish reason separately as per semantic conventions (only on first call to prevent overwriting)
@@ -529,6 +530,6 @@ async function processToolCallsAndCreateSpansV2(
     ];
 
     // Set completion array as span attribute
-    parentSpan.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    setAttributeIfNotRedacted(parentSpan, Attr.GenAI.Completion, JSON.stringify(completion), RedactionKind.Completions);
   }
 }
