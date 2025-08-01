@@ -53,7 +53,7 @@ import {
   TextAggregatorV2,
   StreamStatsV2,
 } from './streaming/aggregators';
-import type { AxiomPromptMetadata, ParsedMessagesArray } from '../types/metadata';
+import type { AxiomPromptMetadata } from '../types/metadata';
 
 export interface AxiomTelemetryConfig {
   // Future configuration options can be added here
