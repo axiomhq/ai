@@ -53,7 +53,7 @@ async function main() {
       span.setAttributes({ example_type: 'middleware_demo' });
 
       return generateText({
-        model: _gpt4oMini3,
+        model: gpt4oMini1,
         messages: prompt.messages,
       });
     },
