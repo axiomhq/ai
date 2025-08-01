@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "example-middleware",
+  "name": "example-middleware-prompt",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
