@@ -435,4 +435,413 @@ describe('Axiom Telemetry Middleware', () => {
       await expect(streamResult.finishReason).resolves.toBe('stop');
     });
   });
+
+  describe('Redaction Configuration', () => {
+    describe('V1 Middleware Redaction', () => {
+      it('should respect redact: "all" setting and omit all sensitive attributes', async () => {
+        // Set up global redaction
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer, redact: 'all' });
+
+        const mockProvider = createMockProvider();
+        mockProvider.addLanguageModelResponse('gpt-4', {
+          text: 'Hello from redacted test!',
+          finishReason: 'stop',
+          usage: { promptTokens: 15, completionTokens: 25 },
+        });
+
+        const baseModel = mockProvider.languageModel('gpt-4');
+        const instrumentedModel = wrapLanguageModel({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV1(),
+        });
+
+        await generateText({
+          model: instrumentedModel,
+          prompt: 'Sensitive prompt that should be redacted',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+        // Should still have model and usage attributes
+        expect(span.attributes['gen_ai.request.model']).toBe('gpt-4');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(15);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(25);
+
+        // Should NOT have prompt or completion attributes
+        expect(span.attributes['gen_ai.prompt']).toBeUndefined();
+        expect(span.attributes['gen_ai.completion']).toBeUndefined();
+        expect(span.attributes['gen_ai.prompt.0.content']).toBeUndefined();
+        expect(span.attributes['gen_ai.completion.0.content']).toBeUndefined();
+      });
+
+      it('should respect redact: "none" setting and include all attributes', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer, redact: 'none' });
+
+        const mockProvider = createMockProvider();
+        mockProvider.addLanguageModelResponse('gpt-4', {
+          text: 'Hello from non-redacted test!',
+          finishReason: 'stop',
+          usage: { promptTokens: 15, completionTokens: 25 },
+        });
+
+        const baseModel = mockProvider.languageModel('gpt-4');
+        const instrumentedModel = wrapLanguageModel({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV1(),
+        });
+
+        await generateText({
+          model: instrumentedModel,
+          prompt: 'Non-sensitive prompt',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+        // Should have all attributes including prompts and completions
+        expect(span.attributes['gen_ai.request.model']).toBe('gpt-4');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(15);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(25);
+
+        expect(span.attributes['gen_ai.prompt']).toEqual(
+          JSON.stringify([
+            { role: 'user', content: [{ type: 'text', text: 'Non-sensitive prompt' }] },
+          ]),
+        );
+        expect(span.attributes['gen_ai.completion']).toEqual(
+          JSON.stringify([{ role: 'assistant', content: 'Hello from non-redacted test!' }]),
+        );
+      });
+
+      it('should respect selective redaction settings', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({
+          tracer,
+          redact: {
+            prompts: true,
+            completions: false,
+            toolArguments: false,
+            toolMessages: false,
+          },
+        });
+
+        const mockProvider = createMockProvider();
+        mockProvider.addLanguageModelResponse('gpt-4', {
+          text: 'Hello from selective redaction test!',
+          finishReason: 'stop',
+          usage: { promptTokens: 15, completionTokens: 25 },
+        });
+
+        const baseModel = mockProvider.languageModel('gpt-4');
+        const instrumentedModel = wrapLanguageModel({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV1(),
+        });
+
+        await generateText({
+          model: instrumentedModel,
+          prompt: 'Prompt that should be redacted',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+
+        // Should have model and usage attributes
+        expect(span.attributes['gen_ai.request.model']).toBe('gpt-4');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(15);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(25);
+
+        // redacting this
+        expect(span.attributes['gen_ai.prompt']).toBeUndefined();
+
+        // not redacting this
+        expect(span.attributes['gen_ai.completion']).toBeDefined();
+      });
+    });
+
+    describe('V2 Middleware Redaction', () => {
+      it('should respect redact: "all" setting for V2 models', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer, redact: 'all' });
+
+        const mockProvider = createMockProviderV2();
+        mockProvider.addLanguageModelResponse('claude-3', {
+          content: [{ type: 'text', text: 'Hello from V2 redacted test!' }],
+          finishReason: 'stop',
+          usage: { inputTokens: 20, outputTokens: 30, totalTokens: 50 },
+        });
+
+        const baseModel = mockProvider.languageModel('claude-3');
+        const instrumentedModel = wrapLanguageModelV5({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV2(),
+        });
+
+        await generateTextV5({
+          model: instrumentedModel,
+          prompt: 'Sensitive V2 prompt',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+        // Should have model and usage attributes
+        expect(span.attributes['gen_ai.request.model']).toBe('claude-3');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(20);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(30);
+
+        // Should NOT have prompt or completion attributes
+        expect(span.attributes['gen_ai.prompt']).toBeUndefined();
+        expect(span.attributes['gen_ai.completion']).toBeUndefined();
+        expect(span.attributes['gen_ai.prompt.0.content']).toBeUndefined();
+        expect(span.attributes['gen_ai.completion.0.content']).toBeUndefined();
+      });
+
+      it('should respect redact: "none" setting for V2 models', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer, redact: 'none' });
+
+        const mockProvider = createMockProviderV2();
+        mockProvider.addLanguageModelResponse('claude-3', {
+          content: [{ type: 'text', text: 'Hello from V2 non-redacted test!' }],
+          finishReason: 'stop',
+          usage: { inputTokens: 20, outputTokens: 30, totalTokens: 50 },
+        });
+
+        const baseModel = mockProvider.languageModel('claude-3');
+        const instrumentedModel = wrapLanguageModelV5({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV2(),
+        });
+
+        await generateTextV5({
+          model: instrumentedModel,
+          prompt: 'Non-sensitive V2 prompt',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+        // Should have all attributes including prompts and completions
+        expect(span.attributes['gen_ai.request.model']).toBe('claude-3');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(20);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(30);
+
+        expect(span.attributes['gen_ai.prompt']).toEqual(
+          JSON.stringify([
+            { role: 'user', content: [{ type: 'text', text: 'Non-sensitive V2 prompt' }] },
+          ]),
+        );
+        expect(span.attributes['gen_ai.completion']).toEqual(
+          JSON.stringify([
+            {
+              role: 'assistant',
+              content: 'Hello from V2 non-redacted test!',
+            },
+          ]),
+        );
+      });
+
+      it('should respect selective redaction settings for V2 models', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({
+          tracer,
+          redact: {
+            prompts: true,
+            completions: false,
+            toolArguments: false,
+            toolMessages: false,
+          },
+        });
+
+        const mockProvider = createMockProviderV2();
+        mockProvider.addLanguageModelResponse('claude-3', {
+          content: [{ type: 'text', text: 'Hello from selective V2 redaction test!' }],
+          finishReason: 'stop',
+          usage: { inputTokens: 20, outputTokens: 30, totalTokens: 50 },
+        });
+
+        const baseModel = mockProvider.languageModel('claude-3');
+        const instrumentedModel = wrapLanguageModelV5({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV2(),
+        });
+
+        await generateTextV5({
+          model: instrumentedModel,
+          prompt: 'V2 prompt that should be redacted',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+
+        // Should have model and usage attributes
+        expect(span.attributes['gen_ai.request.model']).toBe('claude-3');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(20);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(30);
+
+        // redacting this
+        expect(span.attributes['gen_ai.prompt']).toBeUndefined();
+
+        // not redacting this
+        expect(span.attributes['gen_ai.completion']).toBeDefined();
+      });
+    });
+
+    describe('Streaming with Redaction', () => {
+      it('should respect redaction settings in V1 streaming', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer, redact: 'all' });
+
+        const mockProvider = createMockProvider();
+        mockProvider.addStreamResponse('gpt-4-stream', {
+          chunks: ['Hello', ' streaming redacted!'],
+          finishReason: 'stop',
+          usage: { promptTokens: 10, completionTokens: 20 },
+        });
+
+        const baseModel = mockProvider.languageModel('gpt-4-stream');
+        const instrumentedModel = wrapLanguageModel({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV1(),
+        });
+
+        const result = streamText({
+          model: instrumentedModel,
+          prompt: 'Streaming prompt to redact',
+        });
+
+        let fullText = '';
+        for await (const chunk of result.textStream) {
+          fullText += chunk;
+        }
+
+        expect(fullText).toBe('Hello streaming redacted!');
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(2); // Parent span + child stream span
+
+        spans.forEach((span) => {
+          // Should have model and usage but not prompt/completion content
+          if (span.attributes['gen_ai.request.model']) {
+            expect(span.attributes['gen_ai.request.model']).toBe('gpt-4-stream');
+          }
+
+          // Should NOT have prompt content attributes
+          const promptAttrs = Object.keys(span.attributes).filter(
+            (key) => key.includes('prompt') && key.includes('content'),
+          );
+          expect(promptAttrs.length).toBe(0);
+        });
+      });
+
+      it('should respect redaction settings in V2 streaming', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer, redact: 'all' });
+
+        const mockProvider = createMockProviderV2();
+        mockProvider.addStreamResponse('claude-3-stream', {
+          chunks: ['V2 streaming', ' redacted!'],
+          finishReason: 'stop',
+          usage: { inputTokens: 15, outputTokens: 25, totalTokens: 40 },
+        });
+
+        const baseModel = mockProvider.languageModel('claude-3-stream');
+        const instrumentedModel = wrapLanguageModelV5({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV2(),
+        });
+
+        const result = streamTextV5({
+          model: instrumentedModel,
+          prompt: 'V2 streaming prompt to redact',
+        });
+
+        let fullText = '';
+        for await (const chunk of result.textStream) {
+          fullText += chunk;
+        }
+
+        expect(fullText).toBe('V2 streaming redacted!');
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(2); // Parent span + child stream span
+
+        spans.forEach((span) => {
+          // Should have model but not prompt content
+          if (span.attributes['gen_ai.request.model']) {
+            expect(span.attributes['gen_ai.request.model']).toBe('claude-3-stream');
+          }
+
+          // Should NOT have prompt content attributes
+          const promptAttrs = Object.keys(span.attributes).filter(
+            (key) => key.includes('prompt') && key.includes('content'),
+          );
+          expect(promptAttrs.length).toBe(0);
+        });
+      });
+    });
+
+    describe('Default Behavior', () => {
+      it('should not redact by default when no configuration is provided', async () => {
+        resetAxiomAI();
+        const tracer = trace.getTracer('axiom-ai-middleware-test');
+        initAxiomAI({ tracer }); // No redact configuration
+
+        const mockProvider = createMockProvider();
+        mockProvider.addLanguageModelResponse('gpt-4', {
+          text: 'Hello from default test!',
+          finishReason: 'stop',
+          usage: { promptTokens: 15, completionTokens: 25 },
+        });
+
+        const baseModel = mockProvider.languageModel('gpt-4');
+        const instrumentedModel = wrapLanguageModel({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV1(),
+        });
+
+        await generateText({
+          model: instrumentedModel,
+          prompt: 'Default prompt',
+        });
+
+        const spans = memoryExporter.getFinishedSpans();
+        expect(spans).toHaveLength(1);
+
+        const span = spans[0];
+        // Should have all attributes since nothing is redacted by default
+        expect(span.attributes['gen_ai.request.model']).toBe('gpt-4');
+        expect(span.attributes['gen_ai.usage.input_tokens']).toBe(15);
+        expect(span.attributes['gen_ai.usage.output_tokens']).toBe(25);
+
+        // Should have prompt and completion attributes
+        const allAttributes = Object.keys(span.attributes);
+        const promptAttrs = allAttributes.filter((key) => key.includes('prompt'));
+        const completionAttrs = allAttributes.filter((key) => key.includes('completion'));
+
+        expect(promptAttrs.length).toBeGreaterThan(0);
+        expect(completionAttrs.length).toBeGreaterThan(0);
+      });
+    });
+  });
 });
