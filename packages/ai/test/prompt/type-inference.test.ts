@@ -120,7 +120,7 @@ describe('Type Inference', () => {
       messages: [
         {
           role: 'system',
-          content: 'Name: {{ name }}{% if description %}, Desc: {{ description }}{% endif %}',
+          content: 'Name: {{ name }}{{#if description}}, Desc: {{ description }}{{/if}}',
         },
       ],
       arguments: {

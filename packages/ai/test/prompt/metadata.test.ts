@@ -33,7 +33,6 @@ describe('Prompt Metadata', () => {
 
       // But should also have metadata accessible
       expect((result.messages as any)._axiomMeta).toEqual({
-        id: 'prompt-123',
         name: 'Test Prompt',
         slug: 'test-prompt',
         version: '1.0.0',
@@ -145,7 +144,6 @@ describe('Prompt Metadata', () => {
       // Check that metadata IS on the last message
       const lastMessage = result.messages[result.messages.length - 1];
       expect(lastMessage.providerOptions?._axiomMeta).toEqual({
-        id: 'prompt-123',
         name: 'Test Prompt',
         slug: 'test-prompt',
         version: '1.0.0',
@@ -166,7 +164,6 @@ describe('Prompt Metadata', () => {
       const result = await parse(singleMessagePrompt, { context: {} });
 
       expect(result.messages[0].providerOptions?._axiomMeta).toEqual({
-        id: 'single-123',
         name: 'Single Message',
         slug: 'single-message',
         version: '2.0.0',
@@ -194,7 +191,6 @@ describe('Prompt Metadata', () => {
       expect(lastMessage.providerOptions).toEqual({
         customOption: 'value',
         _axiomMeta: {
-          id: 'prompt-123',
           name: 'Test Prompt',
           slug: 'test-prompt',
           version: '1.0.0',
