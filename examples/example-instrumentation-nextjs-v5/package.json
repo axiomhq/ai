@@ -1,9 +1,15 @@
 {
+  "name": "example-instrumentations-nextjs-v5",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint './**/*.{js,ts}'",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.0-beta.11",
@@ -24,8 +30,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "18.7.11",
-    "@types/react": "18.2.8",
-    "typescript": "^5.7.2"
+    "@repo/eslint-config": "workspace:*",
+    "@types/node": "^22.15.29",
+    "@types/react": "^18.2.8",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
   }
 }
