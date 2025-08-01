@@ -33,7 +33,7 @@ export const loadPullCommand = (program: Command) => {
             console.error(`Failed to fetch prompt: ${response.status} ${response.statusText}`);
             console.error(JSON.stringify(errorText, null, 2));
             process.exit(1);
-          } catch (error) {
+          } catch (_error) {
             const errorText = await response.clone().text();
             console.error(`Failed to fetch prompt: ${response.status} ${response.statusText}`);
             console.error(errorText);
