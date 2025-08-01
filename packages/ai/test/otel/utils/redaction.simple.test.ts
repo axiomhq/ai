@@ -120,7 +120,7 @@ describe('Redaction Utilities - Core Functions', () => {
           toolArguments: false,
           toolMessages: false,
         },
-        'all'
+        'all',
       );
       expect(result).toEqual({
         prompts: true,
@@ -143,7 +143,7 @@ describe('Redaction Utilities - Core Functions', () => {
           completions: true,
           // toolArguments undefined
           toolMessages: false,
-        }
+        },
       );
       expect(result).toEqual({
         prompts: true, // from global
@@ -244,7 +244,7 @@ describe('Redaction Utilities - Core Functions', () => {
 
       // Extract the baggage entries created
       const createBaggageCall = (propagation.createBaggage as any).mock.calls[0][0];
-      
+
       // Verify encoding
       expect(createBaggageCall[BAGGAGE_KEYS.prompts].value).toBe('1');
       expect(createBaggageCall[BAGGAGE_KEYS.completions].value).toBe('0');
@@ -264,7 +264,7 @@ describe('Redaction Utilities - Core Functions', () => {
       applyRedactToBaggage(mockBaggage, originalSettings);
 
       const createBaggageCall = (propagation.createBaggage as any).mock.calls[0][0];
-      
+
       expect(createBaggageCall[BAGGAGE_KEYS.prompts].value).toBe('1');
       expect(createBaggageCall[BAGGAGE_KEYS.completions].value).toBe('1');
       expect(createBaggageCall[BAGGAGE_KEYS.toolArgs].value).toBe('1');
@@ -283,7 +283,7 @@ describe('Redaction Utilities - Core Functions', () => {
       applyRedactToBaggage(mockBaggage, originalSettings);
 
       const createBaggageCall = (propagation.createBaggage as any).mock.calls[0][0];
-      
+
       expect(createBaggageCall[BAGGAGE_KEYS.prompts].value).toBe('0');
       expect(createBaggageCall[BAGGAGE_KEYS.completions].value).toBe('0');
       expect(createBaggageCall[BAGGAGE_KEYS.toolArgs].value).toBe('0');
