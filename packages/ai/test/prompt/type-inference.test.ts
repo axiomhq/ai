@@ -6,7 +6,6 @@ describe('Type Inference', () => {
   it('should infer context types from prompt arguments', async () => {
     // Define a prompt with specific argument types
     const prompt = {
-      id: '1',
       name: 'user-greeting',
       slug: 'user-greeting',
       version: '1.0',
@@ -63,7 +62,6 @@ describe('Type Inference', () => {
 
   it('should work with union types and literals', async () => {
     const prompt = {
-      id: '2',
       name: 'status-check',
       slug: 'status-check',
       version: '1.0',
@@ -114,7 +112,6 @@ describe('Type Inference', () => {
 
   it('should work with optional fields', async () => {
     const prompt = {
-      id: '3',
       name: 'optional-fields',
       slug: 'optional-fields',
       version: '1.0',
@@ -163,8 +160,7 @@ describe('Type Inference', () => {
   });
 
   it('should enforce type constraints at compile time', () => {
-    const prompt = {
-      id: '4',
+    const _prompt = {
       name: 'type-constraints',
       slug: 'type-constraints',
       version: '1.0',
@@ -178,7 +174,7 @@ describe('Type Inference', () => {
       },
     } satisfies Prompt;
 
-    type ExpectedContext = InferContext<typeof prompt.arguments>;
+    type ExpectedContext = InferContext<typeof _prompt.arguments>;
 
     // Type assertions: verify field types are correct
     expectTypeOf<ExpectedContext['stringField']>().toEqualTypeOf<string>();
