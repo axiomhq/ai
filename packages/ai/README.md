@@ -5,14 +5,21 @@ Axiom AI SDK provides an API to wrap your AI calls with observability instrument
 ## Model Wrapping
 
 ```ts
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { wrapAISDKModel } from '@axiomhq/ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { axiomAIMiddleware } from '@axiomhq/ai';
+import { wrapLanguageModel } from 'ai';
 
-const geminiProvider = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY,
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+  compatibility: 'strict',
 });
 
-export const geminiFlash = wrapAISDKModel(geminiProvider('gemini-2.5-flash-preview-04-17'));
+const model = openai('gpt-4o-mini');
+
+export const gpt4oMini = wrapLanguageModel({
+  model,
+  middleware: [axiomAIMiddleware({ model })],
+});
 ```
 
 ## Tool Wrapping
@@ -41,15 +48,22 @@ const getWeather = tool({
 
 // Wrap the tool for observability
 const wrappedWeatherTool = wrapTool('weatherTool', weatherTool);
+```
 
-// Use in your AI SDK call
-const result = await generateText({
-  model: wrappedModel,
-  messages: [{ role: 'user', content: 'What is the weather in London?' }],
-  tools: {
-    getWeather: wrappedWeatherTool,
-  },
-});
+## Making AI Calls
+```ts
+const result = await withSpan(
+  { capability: 'weather_bot', step: 'get_weather' },
+  (span) => {
+    return generateText({
+      model: gpt4oMini,
+      messages: [{ role: 'user', content: 'What is the weather in London?' }],
+      tools: {
+        getWeather: wrappedWeatherTool,
+      },
+    })
+  }
+)
 ```
 
 ## Install

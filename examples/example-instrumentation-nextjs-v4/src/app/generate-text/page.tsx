@@ -34,7 +34,7 @@ export default async function Page() {
               from: z.string().describe('The location to start from'),
               to: z.string().describe('The location to find directions to'),
             }),
-            execute: async ({ from, to }, opts) => {
+            execute: async ({ from, to }, _opts) => {
               // Simulate API call delay
               await new Promise((resolve) => setTimeout(resolve, 500));
 
