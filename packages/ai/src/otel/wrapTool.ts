@@ -72,7 +72,12 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
         }
 
         try {
-          setAttributeIfNotRedacted(span, Attr.GenAI.Tool.Arguments, JSON.stringify(args), RedactionKind.ToolArgs);
+          setAttributeIfNotRedacted(
+            span,
+            Attr.GenAI.Tool.Arguments,
+            JSON.stringify(args),
+            RedactionKind.ToolArgs,
+          );
         } catch (_error) {
           // Handle circular references or other JSON serialization errors
           if (shouldSetAttribute(RedactionKind.ToolArgs)) {
@@ -86,7 +91,12 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
 
           // Set the tool result message
           try {
-            setAttributeIfNotRedacted(span, Attr.GenAI.Tool.Message, JSON.stringify(result), RedactionKind.ToolMsgs);
+            setAttributeIfNotRedacted(
+              span,
+              Attr.GenAI.Tool.Message,
+              JSON.stringify(result),
+              RedactionKind.ToolMsgs,
+            );
           } catch (_error) {
             // Handle circular references or other JSON serialization errors
             if (shouldSetAttribute(RedactionKind.ToolMsgs)) {
