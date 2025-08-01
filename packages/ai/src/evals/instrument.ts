@@ -4,7 +4,9 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, type Context, type SpanOptions } from '@opentelemetry/api';
 
 const collectorOptions = {
-  url: process.env.AXIOM_URL ? `${process.env.AXIOM_URL}/v1/traces` : 'https://api.axiom.co/v1/traces', // Axiom API endpoint for trace data
+  url: process.env.AXIOM_URL
+    ? `${process.env.AXIOM_URL}/v1/traces`
+    : 'https://api.axiom.co/v1/traces', // Axiom API endpoint for trace data
   headers: {
     Authorization: `Bearer ${process.env.AXIOM_TOKEN}`, // Replace API_TOKEN with your actual API token
     'X-Axiom-Dataset': process.env.AXIOM_DATASET || '', // Replace DATASET_NAME with your dataset
@@ -27,9 +29,7 @@ const provider = new NodeTracerProvider({
     ['service.name']: 'axiom-ai',
     ['service.version']: __SDK_VERSION__,
   }),
-  spanProcessors: [
-    processor,
-  ],
+  spanProcessors: [processor],
 });
 
 provider.register();
