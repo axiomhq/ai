@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { trace } from '@opentelemetry/api';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { ConsoleSpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
@@ -17,13 +17,11 @@ export function initializeTelemetry() {
     },
   });
 
-  const consoleExporter = new ConsoleSpanExporter();
-
   const provider = new NodeTracerProvider({
     resource: new Resource({
       [ATTR_SERVICE_NAME]: 'middleware-example',
     }),
-    spanProcessors: [new SimpleSpanProcessor(exporter), new SimpleSpanProcessor(consoleExporter)],
+    spanProcessors: [new SimpleSpanProcessor(exporter)],
   });
 
   provider.register();
