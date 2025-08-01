@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/axiomhq/ai/compare/ai-v0.4.0...ai-v0.5.0) (2025-07-30)
+
+
+### Features
+
+* move to middleware ([#31](https://github.com/axiomhq/ai/issues/31)) ([c30c764](https://github.com/axiomhq/ai/commit/c30c764661e347f90fb70ad6a3babd14fbe70040))
+
+## [0.4.0](https://github.com/axiomhq/ai/compare/ai-v0.3.0...ai-v0.4.0) (2025-07-25)
+
+
+### Features
+
+* warn if no tracer found, add jsdoc ([#29](https://github.com/axiomhq/ai/issues/29)) ([cc9f1dc](https://github.com/axiomhq/ai/commit/cc9f1dcd1ea1298de70c332f4908c4e1dbe5686a))
+
 ## [0.3.0](https://github.com/axiomhq/ai/compare/ai-v0.2.0...ai-v0.3.0) (2025-07-23)
 
 
