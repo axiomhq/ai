@@ -7,7 +7,19 @@ const getParser = async () => {
   return handlebars;
 };
 
-// Generic parse function that infers context type from prompt arguments
+/**
+ * Parses a prompt template by replacing variables with provided context values.
+ *
+ * This function processes Handlebars templates in prompt messages and attaches metadata
+ * for instrumentation and tracking.
+ *
+ * @experimental This API is experimental and may change in future versions.
+ *
+ * @param prompt - The {@link Prompt} template to parse
+ * @param options - Parsing options
+ * @param options.context - Context values to substitute into the template
+ * @returns Promise that resolves to the parsed prompt with processed messages;
+ */
 export const parse = async <
   TPrompt extends Prompt,
   TMessages extends TPrompt['messages'] = TPrompt['messages'],

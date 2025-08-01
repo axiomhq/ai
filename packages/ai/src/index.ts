@@ -5,12 +5,7 @@ export * from './otel/wrapTool';
 export * from './otel/middleware';
 
 // Prompt and template functionality - marked as UNSAFE as these APIs are experimental
-export type {
-  Environment as experimental_Environment,
-  ValidationSchema as experimental_ValidationSchema,
-  PromptInput as experimental_PromptInput,
-  Prompt as experimental_Prompt,
-} from './types';
+export type { Prompt as experimental_Prompt } from './types';
 
 export { Type as experimental_Type } from './template';
 export type {

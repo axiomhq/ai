@@ -13,10 +13,16 @@ import { Type as TypeBox, type TSchema as TypeBoxSchema, type Static } from '@si
 declare const SchemaBrand: unique symbol;
 type TSchema<T extends TypeBoxSchema = TypeBoxSchema> = T & { [SchemaBrand]: true };
 
-// Utility type to infer TypeScript types from TSchema
+/**
+ * Utility type to infer TypeScript types from {@link TSchema}.
+ */
 export type InferSchema<T extends TSchema> = Static<T>;
 
-// Utility type to infer context types from prompt arguments
+/**
+ * Utility type to infer context types from {@link Prompt} arguments.
+ *
+ * Used with {@link parse} function to ensure type safety when providing context values.
+ */
 export type InferContext<T extends Record<string, TSchema>> = Static<
   ReturnType<typeof createObject<T>>
 >;

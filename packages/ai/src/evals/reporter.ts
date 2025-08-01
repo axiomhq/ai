@@ -3,6 +3,14 @@ import type { Reporter, TestModule, TestRunEndReason, TestSuite } from 'vitest/n
 import type { TaskMeta } from 'vitest/index.cjs';
 import type { EvalReport } from './eval';
 
+/**
+ * Custom Vitest reporter for Axiom AI evaluations.
+ *
+ * This reporter collects evaluation results and scores from tests
+ * and processes them for further analysis and reporting.
+ *
+ * @experimental This API is experimental and may change in future versions.
+ */
 export class AxiomReporter implements Reporter {
   onTestSuiteReady(_testSuite: TestSuite) {}
 
