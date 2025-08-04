@@ -43,6 +43,7 @@ export const parse = async <
 
   // Create metadata object from prompt
   const promptMetadata: AxiomPromptMetadata = {
+    id: prompt.promptId,
     name: prompt.name,
     slug: prompt.slug,
     version: prompt.version,
