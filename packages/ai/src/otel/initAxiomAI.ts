@@ -88,12 +88,8 @@ export function getGlobalTracer(): Tracer {
   let { name, version } = scope || { name: packageJson.name, version: packageJson.version };
 
   if (!name || !version) {
-    let packageJsonName = packageJson.name;
-    let packageJsonVersion = packageJson.version;
-
-    name = packageJsonName;
-    version = packageJsonVersion;
-
+    name = packageJson.name;
+    version = packageJson.version;
     if (!name || !version) {
       name = '@axiomhq/ai';
       version = 'unknown';
