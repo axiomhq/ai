@@ -119,6 +119,12 @@ export const Attr = {
     },
   },
   GenAI: {
+    PromptMetadata: {
+      ID: 'axiom.gen_ai.prompt.id',
+      Name: 'axiom.gen_ai.prompt.name',
+      Slug: 'axiom.gen_ai.prompt.slug',
+      Version: 'axiom.gen_ai.prompt.version',
+    },
     /**
      * These two are used to identify the span
      */

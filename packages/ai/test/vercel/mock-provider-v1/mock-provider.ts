@@ -81,6 +81,7 @@ export class MockProvider implements ProviderV1 {
   private imageCallCounts = new Map<string, number>();
 
   private config: MockProviderConfig;
+  private providerMetadata: Record<string, Record<string, any>> = {};
 
   constructor(config: MockProviderConfig = {}) {
     this.config = {
@@ -91,6 +92,10 @@ export class MockProvider implements ProviderV1 {
     };
   }
 
+  private setProviderMetadata(options: LanguageModelV1CallOptions) {
+    this.providerMetadata = options.providerMetadata || {};
+  }
+
   // Language Model Methods
   languageModel(modelId: string): LanguageModelV1 {
     return new MockLanguageModelV1({
@@ -98,6 +103,7 @@ export class MockProvider implements ProviderV1 {
       modelId,
       defaultObjectGenerationMode: 'json',
       doGenerate: async (options: LanguageModelV1CallOptions) => {
+        this.setProviderMetadata(options);
         const callCount = this.languageModelCallCounts.get(modelId) || 0;
         this.languageModelCallCounts.set(modelId, callCount + 1);
 
@@ -258,6 +264,10 @@ export class MockProvider implements ProviderV1 {
     }
   }
 
+  getProviderMetadata(): Record<string, Record<string, any>> {
+    return this.providerMetadata;
+  }
+
   reset(): void {
     this.languageModelResponses.clear();
     this.streamResponses.clear();
@@ -266,6 +276,7 @@ export class MockProvider implements ProviderV1 {
     this.languageModelCallCounts.clear();
     this.embeddingCallCounts.clear();
     this.imageCallCounts.clear();
+    this.providerMetadata = {};
   }
 
   // Private helper methods
