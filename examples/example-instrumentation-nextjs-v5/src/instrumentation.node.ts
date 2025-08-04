@@ -22,6 +22,6 @@ const sdk = new NodeSDK({
   ),
 });
 
-initAxiomAI({ tracer });
-
 sdk.start();
+
+initAxiomAI({ tracer });
