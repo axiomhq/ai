@@ -4,7 +4,9 @@ import type { Prompt } from '../../src/types';
 import type { ParsedMessage } from '../../src/types/metadata';
 
 describe('Prompt Metadata', () => {
+  const PROMPT_ID = 'bb8f400c-2fac-4b54-b215-2cacbe21bee7';
   const mockPrompt = {
+    promptId: PROMPT_ID,
     name: 'Test Prompt',
     slug: 'test-prompt',
     version: '1.0.0',
@@ -33,6 +35,7 @@ describe('Prompt Metadata', () => {
 
       // But should also have metadata accessible
       expect(result.messages._axiomMeta).toEqual({
+        id: PROMPT_ID,
         name: 'Test Prompt',
         slug: 'test-prompt',
         version: '1.0.0',
@@ -80,6 +83,7 @@ describe('Prompt Metadata', () => {
 
     it('should work with minimal prompt metadata', async () => {
       const minimalPrompt: Prompt = {
+        promptId: PROMPT_ID,
         name: 'Minimal',
         slug: 'minimal',
         version: '1.0',
@@ -95,6 +99,7 @@ describe('Prompt Metadata', () => {
         name: 'Minimal',
         slug: 'minimal',
         version: '1.0',
+        id: PROMPT_ID,
       });
     });
   });
@@ -139,11 +144,13 @@ describe('Prompt Metadata', () => {
         name: 'Test Prompt',
         slug: 'test-prompt',
         version: '1.0.0',
+        id: PROMPT_ID,
       });
     });
 
     it('should attach metadata to the last message even with single message', async () => {
       const singleMessagePrompt: Prompt = {
+        promptId: PROMPT_ID,
         name: 'Single Message',
         slug: 'single-message',
         version: '2.0.0',
@@ -159,6 +166,7 @@ describe('Prompt Metadata', () => {
         name: 'Single Message',
         slug: 'single-message',
         version: '2.0.0',
+        id: PROMPT_ID,
       });
     });
 
@@ -186,6 +194,7 @@ describe('Prompt Metadata', () => {
           name: 'Test Prompt',
           slug: 'test-prompt',
           version: '1.0.0',
+          id: PROMPT_ID,
         },
       });
     });
