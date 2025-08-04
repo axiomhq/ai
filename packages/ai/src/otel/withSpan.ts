@@ -1,14 +1,8 @@
-import {
-  context,
-  trace,
-  propagation,
-  type Span,
-  type Baggage,
-  type Tracer,
-} from '@opentelemetry/api';
+import { context, trace, propagation, type Span, type Baggage } from '@opentelemetry/api';
 import { createStartActiveSpan } from './startActiveSpan';
-import { AxiomAIResources } from './shared';
+import { AxiomAIResources, type AxiomAIConfig } from './shared';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
+import { mergeRedactionSettings, applyRedactToBaggage } from './utils/redaction';
 
 type WithSpanMeta = {
   capability: string;
@@ -21,9 +15,7 @@ type WithSpanMeta = {
 export function withSpan<Return>(
   meta: WithSpanMeta,
   fn: (span: Span) => Promise<Return>,
-  opts?: {
-    tracer?: Tracer;
-  },
+  opts?: Partial<AxiomAIConfig>,
 ): Promise<Return> {
   let tracerMaybe = opts?.tracer ?? AxiomAIResources.getInstance().getTracer();
 
@@ -38,12 +30,17 @@ export function withSpan<Return>(
   const startActiveSpan = createStartActiveSpan(tracer);
 
   return startActiveSpan('gen_ai.call_llm', null, async (span) => {
-    const bag: Baggage = propagation.createBaggage({
+    const globalRedact = AxiomAIResources.getInstance().getRedact();
+    const mergedRedaction = mergeRedactionSettings(globalRedact, opts?.redact);
+
+    let bag: Baggage = propagation.createBaggage({
       capability: { value: meta.capability },
       step: { value: meta.step },
       // TODO: maybe we can just check the active span name instead?
       [WITHSPAN_BAGGAGE_KEY]: { value: 'true' }, // Mark that we're inside withSpan
     });
+
+    bag = applyRedactToBaggage(bag, mergedRedaction);
 
     const ctx = propagation.setBaggage(context.active(), bag);
 
