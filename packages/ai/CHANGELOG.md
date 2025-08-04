@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/axiomhq/ai/compare/ai-v0.8.0...ai-v0.9.0) (2025-08-04)
+
+
+### Features
+
+* **evals:** register evals at Axiom ([#41](https://github.com/axiomhq/ai/issues/41)) ([5e7c8a4](https://github.com/axiomhq/ai/commit/5e7c8a4f3f94a897cd2ee7d3e7f91b80c3cb5855))
+
 ## [0.8.0](https://github.com/axiomhq/ai/compare/ai-v0.7.0...ai-v0.8.0) (2025-08-04)
 
 
