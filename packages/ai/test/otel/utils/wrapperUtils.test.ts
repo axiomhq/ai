@@ -7,8 +7,17 @@ import {
 } from '../../../src/otel/utils/wrapperUtils';
 import { Attr } from '../../../src/otel/semconv/attributes';
 
-// Mock the opentelemetry tracer
+// Create mock objects first
 const mockSpan = {
+  setAttribute: vi.fn(),
+  setAttributes: vi.fn(),
+  updateName: vi.fn(),
+  recordException: vi.fn(),
+  setStatus: vi.fn(),
+  end: vi.fn(),
+} as unknown as Span;
+
+const mockChildSpan = {
   setAttribute: vi.fn(),
   setAttributes: vi.fn(),
   updateName: vi.fn(),
@@ -24,23 +33,15 @@ const mockTracer = {
   startSpan: vi.fn(() => mockChildSpan),
 };
 
-const mockChildSpan = {
-  setAttribute: vi.fn(),
-  setAttributes: vi.fn(),
-  updateName: vi.fn(),
-  recordException: vi.fn(),
-  setStatus: vi.fn(),
-  end: vi.fn(),
-} as unknown as Span;
-
-const mockContext = {};
-
-// Mock propagation and trace
 vi.mock('@opentelemetry/api', async () => {
   const actual = await vi.importActual('@opentelemetry/api');
   return {
     ...actual,
     trace: {
+      ...(actual as any).trace,
+      getTracerProvider: vi.fn(() => ({
+        constructor: { name: 'MockTracerProvider' },
+      })),
       getTracer: vi.fn(() => mockTracer),
       getActiveSpan: vi.fn(() => null),
       setSpan: vi.fn(() => mockContext),
@@ -53,6 +54,12 @@ vi.mock('@opentelemetry/api', async () => {
     },
   };
 });
+
+vi.mock('../../../src/otel/initAxiomAI', () => ({
+  getGlobalTracer: vi.fn(() => mockTracer),
+}));
+
+const mockContext = {};
 
 describe('wrapperUtils error handling', () => {
   beforeEach(() => {

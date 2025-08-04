@@ -1,14 +1,14 @@
 import {
   context,
-  trace,
   propagation,
+  trace,
   type Span,
   type Baggage,
   type Tracer,
 } from '@opentelemetry/api';
 import { createStartActiveSpan } from './startActiveSpan';
-import { AxiomAIResources } from './shared';
 import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
+import { getTracer } from './utils/wrapperUtils';
 
 type WithSpanMeta = {
   capability: string;
@@ -25,19 +25,23 @@ export function withSpan<Return>(
     tracer?: Tracer;
   },
 ): Promise<Return> {
-  let tracerMaybe = opts?.tracer ?? AxiomAIResources.getInstance().getTracer();
-
-  if (!tracerMaybe) {
-    console.warn(
-      'No tracer found. Make sure you have run `initAxiomAI`. Falling back to default tracer.',
-    );
-  }
-
-  const tracer = tracerMaybe ?? trace.getTracer('@axiomhq/ai');
+  const tracer = opts?.tracer ?? getTracer();
 
   const startActiveSpan = createStartActiveSpan(tracer);
 
   return startActiveSpan('gen_ai.call_llm', null, async (span) => {
+    if (!span.isRecording()) {
+      const provider = trace.getTracerProvider();
+      const providerIsNoOp = provider.constructor.name === 'NoopTracerProvider';
+
+      // We don't warn for other non-recording cases (sampling=DROP, etc.) as those may be intentional
+      if (providerIsNoOp) {
+        console.warn(
+          '[AxiomAI] No TracerProvider registered - spans are no-op. Make sure to call initAxiomAI() after your OpenTelemetry SDK has started.',
+        );
+      }
+    }
+
     const bag: Baggage = propagation.createBaggage({
       capability: { value: meta.capability },
       step: { value: meta.step },
