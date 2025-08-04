@@ -12,6 +12,9 @@ export default function Page() {
         <li>
           <Link href="/stream-text">Stream Text Example</Link>
         </li>
+        <li>
+          <Link href="/reasoning">Reasoning Example (O3)</Link>
+        </li>
       </ul>
     </div>
   );
