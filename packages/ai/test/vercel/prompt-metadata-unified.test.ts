@@ -54,7 +54,7 @@ afterAll(async () => {
 
 describe('prompt metadata attributes unified tests', async () => {
   const mockPrompt = {
-    promptId: 'test-prompt-id',
+    promptId: '4dd6cd3e-bde8-464a-808f-554634512456',
     name: 'Test Prompt',
     slug: 'test-prompt',
     version: '1.0.0',
@@ -90,6 +90,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
@@ -114,6 +115,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
@@ -137,6 +139,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
@@ -161,6 +164,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
@@ -189,6 +193,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
@@ -218,6 +223,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
@@ -275,6 +281,7 @@ describe('prompt metadata attributes unified tests', async () => {
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
+      expect(attributes['axiom.gen_ai.prompt.id']).toBe('4dd6cd3e-bde8-464a-808f-554634512456');
       expect(attributes['axiom.gen_ai.prompt.name']).toBe('Test Prompt');
       expect(attributes['axiom.gen_ai.prompt.slug']).toBe('test-prompt');
       expect(attributes['axiom.gen_ai.prompt.version']).toBe('1.0.0');
