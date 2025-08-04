@@ -5,11 +5,13 @@ import {
   type Span,
   SpanStatusCode,
   type AttributeValue,
+  type Tracer,
 } from '@opentelemetry/api';
 import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from '../semconv/attributes';
 import { createStartActiveSpan } from '../startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
-import { AxiomAIResources } from '../shared';
+
+import { getGlobalTracer } from '../initAxiomAI';
 // Removed import of createGenAISpanName since it's no longer exported
 import packageJson from '../../../package.json';
 
@@ -143,11 +145,39 @@ export function classifyToolError(err: unknown, span: Span): void {
 }
 
 /**
- * Gets the appropriate tracer instance using the singleton pattern with fallback
- * Centralizes tracer retrieval logic and uses package name from package.json
+ * Check if the current tracer provider is a no-op
+ * Uses safer detection that works with bundling/minification
  */
-export function getTracer() {
-  return AxiomAIResources.getInstance().getTracer() ?? trace.getTracer(packageJson.name);
+function isNoOpTracerProvider(): boolean {
+  const provider = trace.getTracerProvider();
+
+  // Check constructor name (may fail with bundling/minification)
+  if (provider.constructor.name === 'NoopTracerProvider') {
+    return true;
+  }
+
+  // Check if getTracer method exists before calling it (for test mocks)
+  if (typeof (provider as any).getTracer !== 'function') {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Gets the appropriate tracer instance using global scope or fallbacks
+ */
+export function getTracer(): Tracer {
+  const tracer = getGlobalTracer();
+
+  if (isNoOpTracerProvider()) {
+    console.warn(
+      '[AxiomAI] No TracerProvider registered - spans will be no-op. ' +
+        'Make sure to call initAxiomAI() after your OpenTelemetry SDK has started (sdk.start()).',
+    );
+  }
+
+  return tracer;
 }
 
 /**
