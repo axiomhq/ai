@@ -53,7 +53,8 @@ afterAll(async () => {
 });
 
 describe('prompt metadata attributes unified tests', async () => {
-  const mockPrompt: Prompt = {
+  const mockPrompt = {
+    promptId: 'test-prompt-id',
     name: 'Test Prompt',
     slug: 'test-prompt',
     version: '1.0.0',
@@ -66,7 +67,8 @@ describe('prompt metadata attributes unified tests', async () => {
     arguments: {
       name: Template.String(),
     },
-  };
+  } satisfies Prompt;
+
   const prompt = await parse(mockPrompt, {
     context: { name: 'Test' },
   });
@@ -80,7 +82,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateText({
           model,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
         });
       });
 
@@ -100,7 +102,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateText({
           model,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
           providerOptions: { test: { test: 'test' } },
         });
       });
@@ -127,7 +129,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateTextV5({
           model,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
         });
       });
 
@@ -147,7 +149,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateTextV5({
           model,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
           providerOptions: { test: { test: 'test' } },
         });
       });
@@ -179,7 +181,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateText({
           model: instrumentedModel,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
         });
       });
 
@@ -204,7 +206,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateText({
           model: instrumentedModel,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
           providerOptions: { test: { test: 'test' } },
         });
       });
@@ -236,7 +238,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateTextV5({
           model: instrumentedModel,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
         });
       });
 
@@ -261,7 +263,7 @@ describe('prompt metadata attributes unified tests', async () => {
       await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
         return await generateTextV5({
           model: instrumentedModel,
-          messages: prompt.messages as any,
+          messages: prompt.messages,
           providerOptions: { test: { test: 'test' } },
         });
       });
