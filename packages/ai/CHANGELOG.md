@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/axiomhq/ai/compare/ai-v0.7.0...ai-v0.8.0) (2025-08-04)
+
+
+### Features
+
+* add prompts and evals as experimental_ features to ai package ([#32](https://github.com/axiomhq/ai/issues/32)) ([e385507](https://github.com/axiomhq/ai/commit/e385507e98472ac62ad98c7545164184ab592868))
+
 ## [0.7.0](https://github.com/axiomhq/ai/compare/ai-v0.6.0...ai-v0.7.0) (2025-08-04)
 
 
