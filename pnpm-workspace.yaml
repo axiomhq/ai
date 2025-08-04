@@ -3,7 +3,7 @@ packages:
   - internal/*
   - examples/*
 catalog:
-  eslint: ^9.28.0
+  eslint: ^9.32.0
   typescript: ^5.8.3
   prettier: ^3.5.3
   zod: ^3.25.49
