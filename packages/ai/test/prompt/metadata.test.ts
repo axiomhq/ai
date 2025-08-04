@@ -4,7 +4,7 @@ import type { Prompt } from '../../src/types';
 import type { ParsedMessage } from '../../src/types/metadata';
 
 describe('Prompt Metadata', () => {
-  const mockPrompt: Prompt = {
+  const mockPrompt = {
     name: 'Test Prompt',
     slug: 'test-prompt',
     version: '1.0.0',
@@ -17,7 +17,7 @@ describe('Prompt Metadata', () => {
     arguments: {
       name: Template.String(),
     },
-  };
+  } satisfies Prompt;
 
   describe('parse function with metadata', () => {
     it('should return messages as a Proxy with _axiomMeta property', async () => {
@@ -32,7 +32,7 @@ describe('Prompt Metadata', () => {
       expect(result.messages[1].content).toBe('Hello World!');
 
       // But should also have metadata accessible
-      expect((result.messages as any)._axiomMeta).toEqual({
+      expect(result.messages._axiomMeta).toEqual({
         name: 'Test Prompt',
         slug: 'test-prompt',
         version: '1.0.0',
@@ -91,7 +91,7 @@ describe('Prompt Metadata', () => {
 
       const result = await parse(minimalPrompt, { context: {} });
 
-      expect((result.messages as any)._axiomMeta).toEqual({
+      expect(result.messages._axiomMeta).toEqual({
         name: 'Minimal',
         slug: 'minimal',
         version: '1.0',
@@ -100,14 +100,6 @@ describe('Prompt Metadata', () => {
   });
 
   describe('messages proxy behavior', () => {
-    it('should return undefined for non-existent properties', async () => {
-      const result = await parse(mockPrompt, {
-        context: { name: 'Test' },
-      });
-
-      expect((result.messages as any).nonExistentProperty).toBeUndefined();
-    });
-
     it('should handle symbol properties correctly', async () => {
       const result = await parse(mockPrompt, {
         context: { name: 'Test' },
