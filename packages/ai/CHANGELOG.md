@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.0](https://github.com/axiomhq/ai/compare/ai-v0.6.0...ai-v0.7.0) (2025-08-04)
+
+
+### Features
+
+* setup global TracerProvider to make `initAxiomAI` pass the corr… ([#37](https://github.com/axiomhq/ai/issues/37)) ([cecb816](https://github.com/axiomhq/ai/commit/cecb8163dbf390f65030f0181109aef46e7377f1))
+
+## [0.6.0](https://github.com/axiomhq/ai/compare/ai-v0.5.0...ai-v0.6.0) (2025-08-01)
+
+
+### Features
+
+* support vercel ai sdk v5 final ([#35](https://github.com/axiomhq/ai/issues/35)) ([45316ec](https://github.com/axiomhq/ai/commit/45316ec0f88228f5ececdba4a9c99922e65296e1))
+
 ## [0.5.0](https://github.com/axiomhq/ai/compare/ai-v0.4.0...ai-v0.5.0) (2025-07-30)
 
 
