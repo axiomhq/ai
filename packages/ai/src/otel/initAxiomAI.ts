@@ -33,7 +33,7 @@ function extractTracerScope(tracer: Tracer): TracerScope {
 }
 
 /**
- * Register this in your `instrumentation.ts` to set up @axiomhq/ai.
+ * Register this in your `instrumentation.ts` to set up axiom.
  * This function stores the tracer's scope information globally to enable Context Propagation
  * and Instrumentation Scope. The tracer will be available across all execution contexts including Next.js.
  *
@@ -91,7 +91,7 @@ export function getGlobalTracer(): Tracer {
     name = packageJson.name;
     version = packageJson.version;
     if (!name || !version) {
-      name = '@axiomhq/ai';
+      name = 'axiom';
       version = 'unknown';
     }
   }

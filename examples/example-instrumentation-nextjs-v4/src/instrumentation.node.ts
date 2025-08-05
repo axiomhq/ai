@@ -4,7 +4,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { initAxiomAI } from '@axiomhq/ai';
+import { initAxiomAI } from 'axiom';
 import { tracer } from './tracer';
 
 const sdk = new NodeSDK({

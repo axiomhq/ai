@@ -9,7 +9,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { initAxiomAI } from '@axiomhq/ai';
+import { initAxiomAI } from 'axiom';
 
 // Register instrumentations immediately when module loads
 registerInstrumentations({

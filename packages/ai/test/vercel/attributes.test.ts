@@ -54,7 +54,7 @@ describe('span names', () => {
     expect(spans.length).toBe(1);
     expect(spans[0].attributes).toEqual({
       'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
-      'axiom.gen_ai.sdk.name': '@axiomhq/ai',
+      'axiom.gen_ai.sdk.name': 'axiom',
       'axiom.gen_ai.sdk.version': packageJson.version,
       'gen_ai.prompt': '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
       'gen_ai.completion': '[{"role":"assistant","content":"Mock response"}]',
