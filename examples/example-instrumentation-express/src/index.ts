@@ -7,7 +7,7 @@ import { generateText } from 'ai';
 import type { Request, Response } from 'express';
 import express from 'express';
 import { gpt4oMini } from './model';
-import { withSpan } from '@axiomhq/ai';
+import { withSpan } from 'axiom';
 
 const app = express();
 const port = 3000;

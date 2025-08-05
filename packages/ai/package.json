@@ -1,5 +1,5 @@
 {
-  "name": "@axiomhq/ai",
+  "name": "axiom",
   "version": "0.8.0",
   "type": "module",
   "author": "Axiom, Inc.",
@@ -23,7 +23,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "bin": {
-    "axiom-ai": "./dist/bin.js"
+    "axiom": "./dist/bin.js"
   },
   "exports": {
     ".": {
