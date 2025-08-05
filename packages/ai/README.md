@@ -6,7 +6,7 @@ Axiom AI SDK provides an API to wrap your AI calls with observability instrument
 
 ```ts
 import { createOpenAI } from '@ai-sdk/openai';
-import { axiomAIMiddleware } from '@axiomhq/ai';
+import { axiomAIMiddleware } from 'axiom';
 import { wrapLanguageModel } from 'ai';
 
 const openai = createOpenAI({
@@ -26,7 +26,7 @@ export const gpt4oMini = wrapLanguageModel({
 
 ```ts
 import { tool } from 'ai';
-import { wrapTool } from '@axiomhq/ai';
+import { wrapTool } from 'axiom';
 import { z } from 'zod';
 
 const getWeather = tool({
@@ -69,7 +69,7 @@ const result = await withSpan(
 ## Install
 
 ```bash
-npm install @axiomhq/ai
+npm install axiom
 ```
 
 ## Documentation

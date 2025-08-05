@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <h1>Next.js with Vercel AI SDK v5 and @axiomhq/ai</h1>
+        <h1>Next.js with Vercel AI SDK v5 and axiom</h1>
         {children}
       </body>
     </html>

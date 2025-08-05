@@ -128,7 +128,7 @@ export type EvalReport = {
  *
  * @example
  * ```typescript
- * import { experimental_Eval as Eval } from '@axiomhq/ai';
+ * import { experimental_Eval as Eval } from 'axiom';
  *
  * Eval('Text Generation Quality', {
  *   data: async () => [

@@ -1,5 +1,5 @@
-import type { experimental_Prompt as Prompt } from '@axiomhq/ai';
-import { experimental_Type as Type } from '@axiomhq/ai';
+import type { experimental_Prompt as Prompt } from 'axiom';
+import { experimental_Type as Type } from 'axiom';
 
 const spaceFactPrompt = {
   name: 'Space Fact',

@@ -2,7 +2,7 @@
 
 import { streamText } from 'ai';
 import { createStreamableValue } from 'ai/rsc';
-import { withSpan } from '@axiomhq/ai';
+import { withSpan } from 'axiom';
 import { gpt4oMini } from '@/shared/openai';
 
 export async function generateStreamingText(input: string) {

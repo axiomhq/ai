@@ -6,7 +6,7 @@ import {
   wrapAISDKModel,
   axiomAIMiddlewareV2,
   experimental_parse as parse,
-} from '@axiomhq/ai';
+} from 'axiom';
 import { initializeTelemetry } from 'intrumentation';
 import spaceFactPrompt from './space-fact.prompt';
 import spaceFactFewShots from './space-fact-fewshots';
