@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.10.0](https://github.com/axiomhq/ai/compare/axiom-v0.8.0...axiom-v0.10.0) (2025-08-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* update package name ([#43](https://github.com/axiomhq/ai/issues/43))
+
+### Features
+
+* add cjs output ([#25](https://github.com/axiomhq/ai/issues/25)) ([7780d1a](https://github.com/axiomhq/ai/commit/7780d1a9631054969522a20a16f8f327d2954ebc))
+* add prompts and evals as experimental_ features to ai package ([#32](https://github.com/axiomhq/ai/issues/32)) ([e385507](https://github.com/axiomhq/ai/commit/e385507e98472ac62ad98c7545164184ab592868))
+* create withSpan and ai wrapper ([fd261d9](https://github.com/axiomhq/ai/commit/fd261d97571e281b59dcab6d52b19162d0c757cd))
+* **evals:** register evals at Axiom ([#41](https://github.com/axiomhq/ai/issues/41)) ([5e7c8a4](https://github.com/axiomhq/ai/commit/5e7c8a4f3f94a897cd2ee7d3e7f91b80c3cb5855))
+* instrument tool calls, simplify schema, increase test coverage, add examples, a lot of refactoring ([#10](https://github.com/axiomhq/ai/issues/10)) ([db0b533](https://github.com/axiomhq/ai/commit/db0b533b989c2c9b84b78f4b3df00474aaae0473))
+* move to middleware ([#31](https://github.com/axiomhq/ai/issues/31)) ([c30c764](https://github.com/axiomhq/ai/commit/c30c764661e347f90fb70ad6a3babd14fbe70040))
+* publint ([#27](https://github.com/axiomhq/ai/issues/27)) ([6da8067](https://github.com/axiomhq/ai/commit/6da8067a2e442c5fdca7d10f734a0a0d14765912))
+* setup global TracerProvider to make `initAxiomAI` pass the corr… ([#37](https://github.com/axiomhq/ai/issues/37)) ([cecb816](https://github.com/axiomhq/ai/commit/cecb8163dbf390f65030f0181109aef46e7377f1))
+* support LanguageModelV2 / ai sdk v5 ([#8](https://github.com/axiomhq/ai/issues/8)) ([1dae459](https://github.com/axiomhq/ai/commit/1dae4591cdc08763bebe01fd8b55ce8bfeb99b3f))
+* support vercel ai sdk v5 final ([#35](https://github.com/axiomhq/ai/issues/35)) ([45316ec](https://github.com/axiomhq/ai/commit/45316ec0f88228f5ececdba4a9c99922e65296e1))
+* update package name ([#43](https://github.com/axiomhq/ai/issues/43)) ([6917ba7](https://github.com/axiomhq/ai/commit/6917ba7eb5c7c5187149360b3f1dfad923bde322))
+* update span shape / semantic conventions ([#7](https://github.com/axiomhq/ai/issues/7)) ([376e5d5](https://github.com/axiomhq/ai/commit/376e5d50b6be48a44d9052b8e99e5e6547d52501))
+* warn if no tracer found, add jsdoc ([#29](https://github.com/axiomhq/ai/issues/29)) ([cc9f1dc](https://github.com/axiomhq/ai/commit/cc9f1dcd1ea1298de70c332f4908c4e1dbe5686a))
+
+
+### Bug Fixes
+
+* revert 1.0.0 and release as 0.10.0 ([c1b9c4f](https://github.com/axiomhq/ai/commit/c1b9c4fadadf06349659476afd62284eb79a9a0f))
+* streamText fails to send `chat` span silently with AI SDK v4 ([#20](https://github.com/axiomhq/ai/issues/20)) ([9232860](https://github.com/axiomhq/ai/commit/9232860664580a87e1e55f9b372dca31f18a8f0e))
+* **test:** coverage and missing deps ([#4](https://github.com/axiomhq/ai/issues/4)) ([0b8952f](https://github.com/axiomhq/ai/commit/0b8952f095712f2b88abfd7556bff566c6716dd9))
+
 ## [0.8.0](https://github.com/axiomhq/ai/compare/ai-v0.7.0...ai-v0.8.0) (2025-08-04)
 
 
