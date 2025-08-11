@@ -3,7 +3,7 @@
 import { streamText } from 'ai';
 import { createStreamableValue } from '@ai-sdk/rsc';
 import { gpt4oMini } from '@/shared/openai';
-import { withSpan } from 'axiom';
+import { withSpan } from 'axiom/ai';
 
 export async function generateStreamingText(input: string) {
   const stream = createStreamableValue('');

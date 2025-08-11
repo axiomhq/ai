@@ -1,4 +1,4 @@
-import { experimental_Eval as Eval } from 'axiom/evals';
+import { experimental_Eval as Eval } from 'axiom/ai/evals';
 import { AnswerSimilarity } from 'autoevals';
 
 Eval('feature-example', {
