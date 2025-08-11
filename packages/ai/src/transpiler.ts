@@ -233,7 +233,7 @@ export function generatePromptFileFromApiResponse(apiResponse: any): string {
   }
 
   // Generate the TypeScript file content
-  return `import { Type } from 'axiom';
+  return `import { Type } from 'axiom/ai';
 
 export default {
   name: '${prompt.name}',

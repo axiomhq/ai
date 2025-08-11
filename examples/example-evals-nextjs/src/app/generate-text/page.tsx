@@ -1,7 +1,7 @@
 import { generateText, stepCountIs, tool } from 'ai';
 import { z } from 'zod';
 import { gpt4oMini } from '@/shared/openai';
-import { withSpan, wrapTool } from 'axiom';
+import { withSpan, wrapTool } from 'axiom/ai';
 
 export const dynamic = 'force-dynamic';
 
