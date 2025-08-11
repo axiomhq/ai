@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { axiomAIMiddleware } from 'axiom';
+import { axiomAIMiddleware } from 'axiom/ai';
 import { wrapLanguageModel } from 'ai';
 
 const openai = createOpenAI({
