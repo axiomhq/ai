@@ -128,7 +128,7 @@ export type EvalReport = {
  *
  * @example
  * ```typescript
- * import { experimental_Eval as Eval } from 'axiom';
+ * import { experimental_Eval as Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
  *   data: async () => [
@@ -165,33 +165,8 @@ async function registerEval(
       const dataset = await datasetPromise;
 
       // ID must be returned after evaluation is registered at Axiom
-      let id = '';
-      // register eval at Axiom
-      try {
-        const resp = await fetch(`${process.env.AXIOM_URL}/api/v1/evaluations`, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
-            'x-axiom-check': 'good',
-          },
-          body: JSON.stringify({
-            name: evalName,
-            type: 'regression',
-            version: '1.0.0',
-          }),
-        });
-
-        const body = await resp.json();
-        if (resp.status >= 400) {
-          console.error(body);
-          return;
-        }
-
-        id = body.data.id;
-      } catch (err) {
-        console.error({ error: err });
-      }
+      // TODO: send api request to register evaluation in Axiom
+      let id = crypto.randomUUID();
 
       const suiteSpan = startSpan(`eval ${evalName}`, {
         attributes: {
@@ -213,23 +188,6 @@ async function registerEval(
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
 
       afterAll(async () => {
-        // mark experiment as completed
-        try {
-          await fetch(`${process.env.AXIOM_URL}/api/v1/evaluations/${id}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
-              'x-axiom-check': 'good',
-            },
-            body: JSON.stringify({
-              status: 'completed',
-              statusMessage: '-',
-            }),
-          });
-        } catch (err) {
-          console.error(err);
-        }
         suiteSpan.setStatus({ code: SpanStatusCode.OK });
         suiteSpan.end();
         await flush();

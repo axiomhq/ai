@@ -26,7 +26,7 @@
     "axiom": "./dist/bin.js"
   },
   "exports": {
-    ".": {
+    "./ai": {
       "import": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
@@ -36,7 +36,7 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./evals": {
+    "./ai/evals": {
       "import": {
         "types": "./dist/evals.d.ts",
         "default": "./dist/evals.js"
