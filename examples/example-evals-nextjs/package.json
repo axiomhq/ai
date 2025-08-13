@@ -10,7 +10,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
-    "test:evals": "axiom-ai run test/**/*.eval.ts"
+    "test:evals": "axiom-ai eval test/**/*.eval.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.0-beta.11",
