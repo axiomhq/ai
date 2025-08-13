@@ -1,5 +1,7 @@
 import { Command } from 'commander';
 import { runVitest } from '../evals/run-vitest';
+import { loadConfigAsync, printConfigWarning } from '../config';
+import { CONFIG_FILE_NOT_FOUND } from 'src/config/errors';
 
 export const loadRunCommand = (program: Command) => {
   return program.addCommand(
@@ -7,10 +9,19 @@ export const loadRunCommand = (program: Command) => {
       .description('run evals locally')
       .argument('<path>', 'Path to an eval test file, should be in the form of name.eval.ts')
       .action(async (file: string) => {
-        if (!process.env.AXIOM_URL || !process.env.AXIOM_TOKEN || !process.env.AXIOM_DATASET) {
-          throw new Error('AXIOM_URL, AXIOM_TOKEN, and AXIOM_DATASET must be set');
+        const { config, error } = await loadConfigAsync();
+
+        if (!config || error) {
+          if (error === CONFIG_FILE_NOT_FOUND) {
+            printConfigWarning();
+          } else {
+            console.error(error);
+          }
+          // abort run
+          return;
         }
-        await runVitest(file);
+
+        await runVitest(config, file);
       }),
   );
 };

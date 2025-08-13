@@ -26,6 +26,16 @@
     "axiom": "./dist/bin.js"
   },
   "exports": {
+    "./config": {
+      "import": {
+        "types": "./dist/config/index.d.ts",
+        "default": "./dist/config/index.js"
+      },
+      "require": {
+        "types": "./dist/config/index.d.cts",
+        "default": "./dist/config/index.cjs"
+      }
+    },
     "./ai": {
       "import": {
         "types": "./dist/index.d.ts",
@@ -74,7 +84,7 @@
     "esbuild": "^0.25.8",
     "handlebars": "^4.7.8",
     "vitest": "catalog:",
-    "zod": "catalog:"
+    "zod": "^4.0.17"
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0"

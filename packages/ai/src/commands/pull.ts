@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { generatePromptFileFromApiResponse } from '../transpiler';
+import { loadConfigAsync, printConfigWarning } from '../config';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -13,14 +14,26 @@ export const loadPullCommand = (program: Command) => {
     .option('--version <version>', 'The version to pull, default: latest', 'latest')
     .option('--output <path>', 'Output file path (optional, defaults to <slug>.prompt.ts)')
     .action(async (slug: string, options: { version: string; output?: string }) => {
+      const { config, error } = await loadConfigAsync();
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      if (!config) {
+        printConfigWarning();
+        return;
+      }
+
       try {
         console.log(`Pulling prompt: ${slug} (version: ${options.version})`);
 
-        const url = `${process.env.AXIOM_URL}/v1/prompts/${slug}`;
+        const url = `${config.url}/v1/prompts/${slug}`;
         const response = await fetch(url, {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
+            Authorization: `Bearer ${config.ai.evals.token}`,
             'Content-Type': 'application/json',
             'x-axiom-client': 'axiom-ai-cli',
             'x-axiom-check': 'good',
