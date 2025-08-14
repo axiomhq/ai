@@ -272,6 +272,7 @@ async function registerEval(
             // set case output
             caseSpan.setAttributes({
               [Attr.Eval.Case.Output]: output as string, // TODO: what if output is other than a string?,
+              [Attr.Eval.Case.Scores]: JSON.stringify(scores),
             });
             caseSpan.setStatus({ code: SpanStatusCode.OK });
 
