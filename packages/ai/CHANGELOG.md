@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/axiomhq/ai/compare/axiom-v0.10.0...axiom-v0.11.0) (2025-08-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* change cli run command to eval [#49]
+* print summary table after eval runs [#49]
+
 ## [0.10.0](https://github.com/axiomhq/ai/compare/axiom-v0.8.0...axiom-v0.10.0) (2025-08-11)
 
 
