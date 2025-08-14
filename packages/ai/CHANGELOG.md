@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/axiomhq/ai/compare/axiom-v0.10.0...axiom-v0.11.0) (2025-08-14)
+
+
+### Miscellaneous Chores
+
+* release as v0.11.0 ([977b95e](https://github.com/axiomhq/ai/commit/977b95e1327c5d407337a407b2a30c9062ef41f8))
+
 ## [0.10.0](https://github.com/axiomhq/ai/compare/axiom-v0.8.0...axiom-v0.10.0) (2025-08-11)
 
 
