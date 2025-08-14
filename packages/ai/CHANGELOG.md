@@ -3,9 +3,10 @@
 ## [0.11.0](https://github.com/axiomhq/ai/compare/axiom-v0.10.0...axiom-v0.11.0) (2025-08-14)
 
 
-### Miscellaneous Chores
+### ⚠ BREAKING CHANGES
 
-* release as v0.11.0 ([977b95e](https://github.com/axiomhq/ai/commit/977b95e1327c5d407337a407b2a30c9062ef41f8))
+* change cli run command to eval [#49]
+* print summary table after eval runs [#49]
 
 ## [0.10.0](https://github.com/axiomhq/ai/compare/axiom-v0.8.0...axiom-v0.10.0) (2025-08-11)
 
