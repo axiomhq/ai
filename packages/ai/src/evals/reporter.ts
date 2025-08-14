@@ -1,6 +1,7 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 import type { TaskMeta } from 'vitest/index.cjs';
+import { Table } from 'console-table-printer';
 import type { EvalReport } from './eval';
 
 /**
@@ -15,6 +16,9 @@ export class AxiomReporter implements Reporter {
   onTestSuiteReady(_testSuite: TestSuite) {}
 
   onTestSuiteResult(testSuite: TestSuite) {
+    const scoreboard = new Table({
+      title: testSuite.name,
+    });
     for (const test of testSuite.children.array()) {
       if (test.type !== 'test') continue;
       const testMeta = test.meta() as TaskMeta & { eval: EvalReport };
@@ -25,10 +29,18 @@ export class AxiomReporter implements Reporter {
 
       // build scores array
       const scores: { name: string; score: number }[] = [];
-      for (const s of Object.entries(testMeta.eval.scores)) {
-        scores.push({ name: s[1].name, score: s[1].score });
+      for (const [_, s] of Object.entries(testMeta.eval.scores)) {
+        const roundedScore = Math.round(s.score * 100) / 100; // Number(s.score).toFixed(2)
+        scores.push({ name: s.name, score: roundedScore });
       }
+
+      scoreboard.addRow({
+        case: testMeta.eval.order,
+        ...Object.fromEntries(scores.map((s) => [s.name, s.score])),
+      });
     }
+
+    scoreboard.printTable();
   }
 
   async onTestRunEnd(
