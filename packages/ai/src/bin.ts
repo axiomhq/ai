@@ -8,9 +8,9 @@ const { loadEnvConfig } = pkg;
 loadEnvConfig(process.cwd());
 
 import { Command } from 'commander';
-import { loadPushCommand } from './commands/push';
-import { loadPullCommand } from './commands/pull';
-import { loadRunCommand } from './commands/run';
+import { loadPushCommand } from './commands/push.command';
+import { loadPullCommand } from './commands/pull.command';
+import { loadRunCommand } from './commands/eval.command';
 
 const program = new Command();
 
