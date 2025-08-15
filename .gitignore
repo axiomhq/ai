@@ -4,5 +4,5 @@ node_modules/
 **/*/dist
 .env
 .DS_Store
-axiomhq-ai-*.tgz
+axiom-*.tgz
 coverage
