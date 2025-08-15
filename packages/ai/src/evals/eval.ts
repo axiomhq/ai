@@ -1,9 +1,11 @@
-import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { afterAll, describe, it } from 'vitest';
-import type { TestError } from 'vitest';
+import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
+
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
+import type { EvalParams, EvalReport, EvalTask } from './eval.types';
+import type { Score } from '../scorers/scorer.types';
 
 declare module 'vitest' {
   interface TaskMeta {
@@ -12,109 +14,6 @@ declare module 'vitest' {
 }
 
 const DEFAULT_TIMEOUT = 10000;
-
-/**
- * Function type for evaluation tasks that process input data and produce output.
- *
- * Used with {@link EvalParams} to define the task that will be evaluated against a dataset.
- * The task output will be scored by functions defined in {@link EvalParams.scorers}.
- *
- * @experimental This API is experimental and may change in future versions.
- *
- * @param input - The input data to process
- * @param expected - The expected output for comparison/validation
- * @returns Promise that resolves to the task output, or the output directly
- *
- * @example
- * ```typescript
- * const textGenerationTask: EvalTask<string, string> = async (input, expected) => {
- *   const result = await generateText({
- *     model: myModel,
- *     prompt: input
- *   });
- *   return result.text;
- * };
- * ```
- */
-export type EvalTask<TInput, TExpected> = (
-  input: TInput,
-  expected: TExpected,
-) => Promise<any> | any;
-
-/**
- * Configuration parameters for running an evaluation.
- *
- * Used with {@link Eval} to define how an evaluation should be executed.
- * Results are captured in {@link EvalReport} format.
- *
- * @experimental This API is experimental and may change in future versions.
- */
-export type EvalParams = {
-  /** Function that returns the dataset with input/expected pairs for evaluation */
-  data: () => Promise<{ input: any; expected: any }[]>;
-  /** The {@link EvalTask} function to execute for each data item */
-  task: EvalTask<any, any>;
-  /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
-  scorers: any[];
-  /** Minimum score threshold for passing (0.0 to 1.0) */
-  threshold: number;
-  /** Optional timeout in milliseconds for task execution */
-  timeout?: number;
-  /** Optional function to conditionally skip the evaluation */
-  skipIf?: () => boolean;
-};
-
-/**
- * Represents a score result from an evaluation scorer.
- *
- * Produced by scorer functions defined in {@link EvalParams.scorers} and
- * included in the {@link EvalReport} for each evaluation case.
- *
- * @experimental This API is experimental and may change in future versions.
- */
-export type Score = {
-  /** Name of the scorer that produced this score */
-  name: string;
-  /** Numerical score value (typically 0.0 to 1.0) */
-  score: number;
-  /** Duration in milliseconds that the scoring took */
-  duration: number;
-  /** Timestamp when scoring started */
-  startedAt: number;
-};
-
-/**
- * Complete report for a single evaluation case including results and metadata.
- *
- * Generated for each test case when running {@link Eval} with {@link EvalParams}.
- * Contains all {@link Score} results and execution metadata.
- *
- * @experimental This API is experimental and may change in future versions.
- */
-export type EvalReport = {
-  /** Order/index of this case in the evaluation suite */
-  order: number;
-  /** Name of the evaluation */
-  name: string;
-  /** Input data that was provided to the {@link EvalTask} */
-  input: string;
-  /** Output produced by the {@link EvalTask} */
-  output: string;
-  /** Expected output for comparison */
-  expected: string;
-  /** Array of {@link Score} results from all scorers that were run */
-  scores: Score[];
-  /** Any errors that occurred during evaluation */
-  errors: TestError[] | null;
-  /** Status of the evaluation case */
-  status: 'success' | 'fail' | 'pending';
-  /** Duration in milliseconds for the entire case */
-  duration: number | undefined;
-  /** Timestamp when the case started */
-  startedAt: number | undefined;
-  /** Score threshold from {@link EvalParams.threshold} that was used for pass/fail determination */
-  threshold: number | undefined;
-};
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -209,8 +108,10 @@ async function registerEval(
                 [Attr.GenAI.Operation.Name]: 'eval.case',
                 [Attr.Eval.Case.ID]: `${evalName}_${data.index}`,
                 [Attr.Eval.Case.Index]: data.index,
-                [Attr.Eval.Case.Input]: data.input,
-                [Attr.Eval.Case.Expected]: data.expected,
+                [Attr.Eval.Case.Input]:
+                  typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
+                [Attr.Eval.Case.Expected]:
+                  typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
                 // user info
                 ['eval.user.name']: user?.name,
                 ['eval.user.email']: user?.email,
@@ -231,7 +132,7 @@ async function registerEval(
             });
 
             // run scorers
-            const scores = await Promise.all(
+            const scoreList: Score[] = await Promise.all(
               opts.scorers.map(async (scorer) => {
                 const scorerSpan = startSpan(
                   `score ${scorer.name}`,
@@ -243,49 +144,54 @@ async function registerEval(
                   caseContext,
                 );
 
-                if (typeof scorer === 'function') {
-                  const start = performance.now();
-                  const result = await scorer({
-                    input: data.input,
-                    output,
-                    expected: data.expected,
+                const start = performance.now();
+                const result = await scorer({
+                  input: data.input,
+                  output,
+                  expected: data.expected,
+                });
+
+                const duration = Math.round(performance.now() - start);
+                const scoreValue = result.score as number;
+                const passed = scoreValue >= opts.threshold;
+                let hasError: string | false = false;
+
+                scorerSpan.setAttributes({
+                  [Attr.Eval.Score.Name]: scorer.name,
+                  [Attr.Eval.Score.Value]: scoreValue,
+                  [Attr.Eval.Score.Threshold]: opts.threshold,
+                  [Attr.Eval.Score.Passed]: passed,
+                });
+
+                if (!passed) {
+                  hasError = `Score didn't pass`;
+                  scorerSpan.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: hasError,
                   });
-
-                  const duration = Math.round(performance.now() - start);
-                  const scoreValue = result.score as number;
-                  const passed = scoreValue >= opts.threshold;
-
-                  scorerSpan.setAttributes({
-                    [Attr.Eval.Score.Name]: scorer.name,
-                    [Attr.Eval.Score.Value]: scoreValue,
-                    [Attr.Eval.Score.Threshold]: opts.threshold,
-                    [Attr.Eval.Score.Passed]: passed,
-                  });
-
-                  if (!passed) {
-                    scorerSpan.recordException(new Error(`Score did not pass`));
-                    scorerSpan.setStatus({ code: SpanStatusCode.ERROR });
-                  } else {
-                    scorerSpan.setStatus({ code: SpanStatusCode.OK });
-                  }
-                  scorerSpan.end();
-
-                  return { ...result, duration, startedAt: start };
                 } else {
-                  // TODO: create custom scorer
+                  scorerSpan.setStatus({ code: SpanStatusCode.OK });
                 }
+                scorerSpan.end();
+
+                return {
+                  ...result,
+                  metadata: { duration, startedAt: start, error: hasError || null },
+                };
               }),
             );
 
+            const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
+
             // set case output
             caseSpan.setAttributes({
-              [Attr.Eval.Case.Output]: output as string, // TODO: what if output is other than a string?,
+              [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
               [Attr.Eval.Case.Scores]: JSON.stringify(scores),
             });
             caseSpan.setStatus({ code: SpanStatusCode.OK });
 
             task.meta.eval = {
-              order: data.index,
+              index: data.index,
               name: evalName,
               expected: data.expected,
               input: data.input,
@@ -303,11 +209,11 @@ async function registerEval(
 
             task.meta.eval = {
               name: evalName,
-              order: data.index,
+              index: data.index,
               expected: data.expected,
               input: data.input,
               output: e as string,
-              scores: [],
+              scores: {},
               status: 'fail',
               errors: [e as any],
               startedAt: start,
@@ -394,7 +300,7 @@ const runTask = async <TInput, TExpected>(
       const duration = Math.round(performance.now() - start);
       // set task output
       taskSpan.setAttributes({
-        [Attr.Eval.Task.Output]: output as string, // TODO: what if output is other than a string?,
+        [Attr.Eval.Task.Output]: JSON.stringify(output),
       });
 
       taskSpan.setStatus({ code: SpanStatusCode.OK });

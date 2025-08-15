@@ -2,7 +2,9 @@ import type { SerializedError } from 'vitest';
 import type { Reporter, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 import type { TaskMeta } from 'vitest/index.cjs';
 import { Table } from 'console-table-printer';
-import type { EvalReport } from './eval';
+import type { EvalReport } from './eval.types';
+
+const prRed = (s: string): string => `\x1b[91m ${s}\x1b[00m`;
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -27,16 +29,23 @@ export class AxiomReporter implements Reporter {
         return;
       }
 
-      // build scores array
-      const scores: { name: string; score: number }[] = [];
-      for (const [_, s] of Object.entries(testMeta.eval.scores)) {
-        const roundedScore = Math.round(s.score * 100) / 100; // Number(s.score).toFixed(2)
-        scores.push({ name: s.name, score: roundedScore });
-      }
+      // round scores
+      const scores = Object.keys(testMeta.eval.scores).map((k) => {
+        const v = testMeta.eval.scores[k].score ? testMeta.eval.scores[k].score : 0;
+        const scoreValue = Number(v * 100).toFixed(2);
+
+        // if score is lower then threshold then print it in red
+        const score =
+          testMeta.eval.threshold && v < testMeta.eval.threshold
+            ? prRed(scoreValue + '%')
+            : scoreValue + '%';
+
+        return [k, score];
+      });
 
       scoreboard.addRow({
-        case: testMeta.eval.order,
-        ...Object.fromEntries(scores.map((s) => [s.name, s.score])),
+        case: testMeta.eval.index.toString(),
+        ...Object.fromEntries(scores),
       });
     }
 

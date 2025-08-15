@@ -22,4 +22,4 @@ export type {
   ParsedMessagesArray as experimental_ParsedMessagesArray,
 } from './types/metadata';
 
-export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
+export type { Score, Scorer } from './scorers/scorer.types';
