@@ -3,6 +3,7 @@ import { afterAll, describe, it } from 'vitest';
 import type { TestError } from 'vitest';
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
+import { getGitUserInfo } from './git-info';
 
 declare module 'vitest' {
   interface TaskMeta {
@@ -158,6 +159,7 @@ async function registerEval(
 ) {
   const describeFn = vitestOpts.modifier === 'skip' ? describe.skip : describe;
   const datasetPromise = vitestOpts.modifier === 'skip' ? Promise.resolve([]) : opts.data();
+  const user = getGitUserInfo();
 
   const result = await describeFn(
     evalName,
@@ -183,6 +185,9 @@ async function registerEval(
           [Attr.Eval.Dataset.Name]: 'test', // TODO: where to get dataset name from?
           [Attr.Eval.Dataset.Split]: 'test', // TODO: where to get dataset split value from?
           [Attr.Eval.Dataset.Size]: dataset.length,
+          // user info
+          ['eval.user.name']: user?.name,
+          ['eval.user.email']: user?.email,
         },
       });
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
@@ -206,6 +211,9 @@ async function registerEval(
                 [Attr.Eval.Case.Index]: data.index,
                 [Attr.Eval.Case.Input]: data.input,
                 [Attr.Eval.Case.Expected]: data.expected,
+                // user info
+                ['eval.user.name']: user?.name,
+                ['eval.user.email']: user?.email,
               },
             },
             suiteContext,
