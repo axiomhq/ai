@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/axiomhq/ai/compare/axiom-v0.11.1...axiom-v0.11.2) (2025-08-15)
+
+
+### Features
+
+* **evals:** send score errors and tighten the scorer type ([#55](https://github.com/axiomhq/ai/issues/55)) ([85044f5](https://github.com/axiomhq/ai/commit/85044f529eefe4a767cbb82780dcc3ed869e4723))
+
 ## [0.11.1](https://github.com/axiomhq/ai/compare/axiom-v0.11.0...axiom-v0.11.1) (2025-08-15)
 
 
