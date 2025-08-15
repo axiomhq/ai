@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/axiomhq/ai/compare/axiom-v0.11.0...axiom-v0.11.1) (2025-08-15)
+
+
+### Features
+
+* **evals:** attach user info to eval span ([#53](https://github.com/axiomhq/ai/issues/53)) ([449674e](https://github.com/axiomhq/ai/commit/449674e3a89ca8f0672b0cdbf0e40ab1f1cd1c2a))
+
 ## [0.11.0](https://github.com/axiomhq/ai/compare/axiom-v0.10.0...axiom-v0.11.0) (2025-08-14)
 
 
