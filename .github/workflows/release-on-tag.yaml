@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - ai-v*
+      - axiom-v*
 
 env:
   PNPM_VERSION: 10.11.1
