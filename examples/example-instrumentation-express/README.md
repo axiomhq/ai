@@ -16,6 +16,6 @@ Then prepare your environment variables
 - In the new `.env` file, set OpenAI API key, and Axiom API key and dataset name
 - Install deps: `pnpm install`
 - Run development server `pnpm dev`
-- Visit `http://localhost:3000/hello/world`
+- Visit `http://localhost:3000/hello/world` or `http://localhost:3000/stream/world`
 - Once you hit the endpoint a trace should be sent automatically to Axiom
 - Visit Axiom console and navigate to your dataset stream, a list of spans will be visible.

@@ -12,4 +12,4 @@ const model = openai('gpt-4o-mini');
 export const gpt4oMini = wrapLanguageModel({
   model,
   middleware: [axiomAIMiddleware({ model })],
-});
+}) as ReturnType<typeof wrapLanguageModel>;
