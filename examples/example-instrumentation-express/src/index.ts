@@ -10,7 +10,7 @@ import { gpt4oMini } from './model';
 import { withSpan } from 'axiom/ai';
 
 const app = express();
-const port = 3002;
+const port = 3000;
 
 app.get('/hello/:name', async (req: Request, res: Response): Promise<void> => {
   const { name } = req.params;
