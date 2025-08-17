@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/axiomhq/ai/compare/axiom-v0.11.2...axiom-v0.12.0) (2025-08-17)
+
+
+### Features
+
+* better stream handling ([#57](https://github.com/axiomhq/ai/issues/57)) ([68c5a4d](https://github.com/axiomhq/ai/commit/68c5a4df3cbc1c30ad858817e8592d8a275c4014))
+
 ## [0.11.2](https://github.com/axiomhq/ai/compare/axiom-v0.11.1...axiom-v0.11.2) (2025-08-15)
 
 
