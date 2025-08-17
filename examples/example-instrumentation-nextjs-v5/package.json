@@ -12,10 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai": "2.0.0-beta.11",
-    "@ai-sdk/react": "2.0.0-beta.25",
-    "@ai-sdk/rsc": "1.0.0-beta.25",
-    "axiom": "workspace:*",
+    "@ai-sdk/openai": "^2.0.15",
+    "@ai-sdk/react": "^2.0.15",
+    "@ai-sdk/rsc": "^1.0.15",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-jaeger": "^2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.202.0",
@@ -23,7 +22,8 @@
     "@opentelemetry/sdk-node": "^0.202.0",
     "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@opentelemetry/semantic-conventions": "^1.34.0",
-    "ai": "5.0.0-beta.24",
+    "ai": "^5.0.15",
+    "axiom": "workspace:*",
     "next": "latest",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

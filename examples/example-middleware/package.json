@@ -29,7 +29,8 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "catalog:",
-    "@repo/eslint-config": "workspace:*"
+    "@repo/eslint-config": "workspace:*",
+    "eslint": "catalog:"
   },
   "keywords": [],
   "author": "",
