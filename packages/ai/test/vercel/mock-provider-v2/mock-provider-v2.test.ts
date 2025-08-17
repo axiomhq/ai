@@ -78,7 +78,7 @@ describe('MockProvider V5 Example Usage', () => {
         prompt: 'What is 2+2?',
         tools: {
           calculator: {
-            parameters: z.object({
+            inputSchema: z.object({
               expression: z.string(),
             }),
             execute: async ({ expression }) => eval(expression).toString(),
