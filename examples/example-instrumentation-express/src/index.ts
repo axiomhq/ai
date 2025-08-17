@@ -43,6 +43,9 @@ app.get('/hello/:name', async (req: Request, res: Response): Promise<void> => {
 app.get('/stream/:name', async (req: Request, res: Response): Promise<void> => {
   const { name } = req.params;
 
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
   await withSpan(
     { capability: 'greeting', step: 'stream_greeting' },
     async (span) => {
@@ -63,12 +66,10 @@ app.get('/stream/:name', async (req: Request, res: Response): Promise<void> => {
         ],
       });
 
+      // Keep span open during entire stream consumption
       for await (const chunk of stream.textStream) {
         res.write(chunk);
       }
-
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Transfer-Encoding', 'chunked');
     }
   );
 
