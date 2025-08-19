@@ -11,13 +11,33 @@ import { Command } from 'commander';
 import { loadPushCommand } from './commands/push';
 import { loadPullCommand } from './commands/pull';
 import { loadRunCommand } from './commands/run';
+import { loadConfigAsync } from './config';
+import { ConfigNotFoundError } from './config/errors';
 
 const program = new Command();
 
 program
   .name('axiom')
   .description("Axiom's CLI to manage your objects and run evals")
-  .version(__SDK_VERSION__);
+  .version(__SDK_VERSION__)
+  .option('-c, --config <path>', 'Path to config directory or file');
+
+program.hook('preAction', async (thisCommand) => {
+  const opts = thisCommand.opts<{ config?: string }>();
+  try {
+    const result = await loadConfigAsync(opts.config);
+    if (result.error) throw new ConfigNotFoundError();
+    // @ts-ignore attach for subcommands
+    thisCommand._axiomConfig = result.config;
+  } catch (e) {
+    if (e instanceof ConfigNotFoundError) {
+      program.error(
+        'Config file not found. Create axiom.config.{ts,mts,cts,js,mjs,cjs,json} or add "axiom" to package.json.',
+      );
+    }
+    throw e;
+  }
+});
 
 loadPushCommand(program);
 loadPullCommand(program);

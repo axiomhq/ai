@@ -4,7 +4,7 @@ import {
   extractPromptFromModule,
   generatePromptFileFromApiResponse,
 } from '../transpiler';
-import { loadConfigAsync, printConfigWarning } from '../config';
+import { printConfigWarning } from '../config';
 import type { Prompt } from '../types';
 import fs from 'node:fs/promises';
 import readline from 'node:readline';
@@ -32,14 +32,13 @@ export const loadPushCommand = (program: Command) => {
     )
     .option('--prod', 'Adds the production tag to the prompt')
     .option('--yes', 'Automatically confirm overwriting the file with server response')
-    .action(async (filePath: string, options: { yes?: boolean; prod?: boolean }) => {
-      const { config, error } = await loadConfigAsync();
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
+    .action(async function (
+      this: Command,
+      filePath: string,
+      options: { yes?: boolean; prod?: boolean },
+    ) {
+      // @ts-ignore injected by preAction hook
+      const config = this.parent?._axiomConfig || this._axiomConfig;
       if (!config) {
         printConfigWarning();
         return;

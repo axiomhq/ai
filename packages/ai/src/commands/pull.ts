@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { generatePromptFileFromApiResponse } from '../transpiler';
-import { loadConfigAsync, printConfigWarning } from '../config';
+import { printConfigWarning } from '../config';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -13,14 +13,13 @@ export const loadPullCommand = (program: Command) => {
     )
     .option('--version <version>', 'The version to pull, default: latest', 'latest')
     .option('--output <path>', 'Output file path (optional, defaults to <slug>.prompt.ts)')
-    .action(async (slug: string, options: { version: string; output?: string }) => {
-      const { config, error } = await loadConfigAsync();
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
+    .action(async function (
+      this: Command,
+      slug: string,
+      options: { version: string; output?: string },
+    ) {
+      // @ts-ignore injected by preAction hook
+      const config = this.parent?._axiomConfig || this._axiomConfig;
       if (!config) {
         printConfigWarning();
         return;

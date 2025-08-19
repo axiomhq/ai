@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 // intentionally import `unconfig` dynamically in loader to work in CJS
-import { CONFIG_FILE_NOT_FOUND } from './errors';
+import { CONFIG_FILE_NOT_FOUND, ConfigNotFoundError } from './errors';
 import { AxiomConfigSchema } from './schema';
 
 export type AxiomConfig = z.infer<typeof AxiomConfigSchema>;
@@ -64,7 +64,7 @@ export async function loadConfigAsync(path?: string): Promise<
     });
 
     if (!sources.length) {
-      return { error: CONFIG_FILE_NOT_FOUND, config: null };
+      throw new ConfigNotFoundError();
     }
 
     const { data, error: validationError } = AxiomConfigSchema.safeParse(loadedConfig);
@@ -74,29 +74,16 @@ export async function loadConfigAsync(path?: string): Promise<
 
     return { error: z.prettifyError(validationError), config: null };
   } catch (error) {
+    if (error instanceof ConfigNotFoundError) {
+      return { error: CONFIG_FILE_NOT_FOUND, config: null };
+    }
     console.error(error);
-    return { error: CONFIG_FILE_NOT_FOUND, config: null };
+    return { error: 'UNKNOWN_ERROR', config: null };
   }
 }
 
 export const printConfigWarning = () => {
-  console.error(`
-⚠️  Config file not found!
-
-Create an axiom.config.{ts,mts,cts,js,mjs,cjs,json} file in your project root, or add an "axiom" field to your package.json.
-
-For JavaScript:
-
-import { defineConfig } from 'axiom/config';
-
-export default defineConfig({
-  url: "https://api.axiom.co",
-  ai: {
-    evals: {
-      dataset: "my-dataset",
-      token: "xaat-..."
-    }
-  }
-});
-`);
+  console.error(
+    'Config file not found. Create axiom.config.{ts,mts,cts,js,mjs,cjs,json} or add "axiom" to package.json.',
+  );
 };
