@@ -4,7 +4,7 @@ import pkg from './package.json';
 export default defineConfig({
   entry: ['src/index.ts', 'src/config/index.ts', 'src/bin.ts', 'src/evals.ts'],
   format: ['esm', 'cjs'],
-  external: ['@opentelemetry/api', 'vitest', 'vitest/node.js', 'vitest/index.cjs'], // don't bundle these
+  external: ['@opentelemetry/api', 'vitest', 'vitest/node.js', 'vitest/index.cjs', 'unconfig'], // don't bundle these
   noExternal: ['handlebars'],
   dts: true, // generate .d.ts files
   clean: true, // clean dist before build

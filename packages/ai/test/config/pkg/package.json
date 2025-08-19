@@ -1,0 +1,18 @@
+{
+  "name": "axiom-config-pkg-test",
+  "version": "0.0.0",
+  "type": "module",
+  "axiom": {
+    "url": "https://api.axiom.co",
+    "credentials": {
+      "dataset": "pkg-dataset",
+      "token": "pkg-token"
+    },
+    "ai": {
+      "evals": {
+        "dataset": "pkg-dataset",
+        "token": "pkg-token"
+      }
+    }
+  }
+}

@@ -1,6 +1,5 @@
-import { join } from 'path';
 import { z } from 'zod/v4';
-import { existsSync } from 'fs';
+// intentionally import `unconfig` dynamically in loader to work in CJS
 import { CONFIG_FILE_NOT_FOUND } from './errors';
 import { AxiomConfigSchema } from './schema';
 
@@ -32,10 +31,9 @@ export function defineConfig(config: AxiomConfig): AxiomConfig {
   return AxiomConfigSchema.parse(config);
 }
 
-// TODO: support TS files
-const CONFIG_FILE_NAMES = ['axiom.config.mjs', 'axiom.config.js'];
+// Using `unconfig` supports multiple file extensions out of the box
 
-export async function loadConfigAsync(): Promise<
+export async function loadConfigAsync(path?: string): Promise<
   | {
       config: AxiomConfig;
       error: null;
@@ -45,44 +43,47 @@ export async function loadConfigAsync(): Promise<
       error: string;
     }
 > {
-  const cwd = process.cwd();
+  try {
+    const { loadConfig } = await import('unconfig');
+    const { config: loadedConfig, sources } = await loadConfig<AxiomConfig>({
+      sources: [
+        {
+          files: 'axiom.config',
+          extensions: ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json', ''],
+        },
+        {
+          files: 'package.json',
+          extensions: [],
+          rewrite(pkg: any) {
+            return pkg?.axiom;
+          },
+        },
+      ],
+      merge: false,
+      cwd: path || process.cwd(),
+    });
 
-  for (const configFileName of CONFIG_FILE_NAMES) {
-    const configPath = join(cwd, configFileName);
-
-    try {
-      if (!existsSync(configPath)) {
-        continue;
-      }
-
-      let config: AxiomConfig;
-
-      // Use dynamic import for JavaScript files
-      const configModule = await import(configPath);
-      config = configModule.default || (configModule as AxiomConfig);
-      console.debug({ config });
-
-      const { data, error } = AxiomConfigSchema.safeParse(config);
-      if (data && !error) {
-        return { config: data, error: null };
-      }
-
-      return { error: z.prettifyError(error), config: null };
-    } catch (error) {
-      console.error(error);
-      // File doesn't exist or can't be loaded, try next filename
-      continue;
+    if (!sources.length) {
+      return { error: CONFIG_FILE_NOT_FOUND, config: null };
     }
-  }
 
-  return { error: CONFIG_FILE_NOT_FOUND, config: null };
+    const { data, error: validationError } = AxiomConfigSchema.safeParse(loadedConfig);
+    if (data && !validationError) {
+      return { config: data, error: null };
+    }
+
+    return { error: z.prettifyError(validationError), config: null };
+  } catch (error) {
+    console.error(error);
+    return { error: CONFIG_FILE_NOT_FOUND, config: null };
+  }
 }
 
-export function printConfigWarning(): void {
+export const printConfigWarning = () => {
   console.error(`
 ⚠️  Config file not found!
 
-Create an axiom.config.js or axiom.config.mjs file in your project root.
+Create an axiom.config.{ts,mts,cts,js,mjs,cjs,json} file in your project root, or add an "axiom" field to your package.json.
 
 For JavaScript:
 
@@ -92,10 +93,10 @@ export default defineConfig({
   url: "https://api.axiom.co",
   ai: {
     evals: {
-      dataset: "your-dataset-name",
-      token: "your-axiom-token"
+      dataset: "my-dataset",
+      token: "xaat-..."
     }
   }
 });
 `);
-}
+};
