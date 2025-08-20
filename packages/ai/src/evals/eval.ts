@@ -1,10 +1,11 @@
 import { afterAll, describe, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
+import { customAlphabet } from 'nanoid';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type { EvalParams, EvalReport, EvalTask } from './eval.types';
+import type { CollectionRecord, EvalParams, EvalReport, EvalTask } from './eval.types';
 import type { Score } from '../scorers/scorer.types';
 
 declare module 'vitest' {
@@ -14,6 +15,8 @@ declare module 'vitest' {
 }
 
 const DEFAULT_TIMEOUT = 10000;
+
+const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -67,31 +70,31 @@ async function registerEval(
 
       // ID must be returned after evaluation is registered at Axiom
       // TODO: send api request to register evaluation in Axiom
-      let id = crypto.randomUUID();
+      const id = nanoid();
 
-      const suiteSpan = startSpan(`eval ${evalName}`, {
+      const suiteSpan = startSpan(`eval ${evalName}-${id}`, {
         attributes: {
           [Attr.GenAI.Operation.Name]: 'eval',
-          [Attr.Eval.Experiment.ID]: id,
-          [Attr.Eval.Experiment.Name]: evalName,
-          [Attr.Eval.Experiment.Type]: 'regression', // TODO: where to get experiment type value from?
-          [Attr.Eval.Experiment.Tags]: [], // TODO: where to get experiment tags from?
-          [Attr.Eval.Experiment.Version]: '1.0.0', // TODO: where to get experiment version from?
-          // [Attr.Eval.Experiment.Group]: "default", // TODO: where to get experiment group from?
-          // [Attr.Eval.Experiment.BaseID]: "default", // TODO: where to get experiment base id from?
-          // [Attr.Eval.Experiment.BaseName]: "default", // TODO: where to get experiment base name from?
-          [Attr.Eval.Experiment.Trials]: 1, // TODO: implement trials
-          [Attr.Eval.Dataset.Name]: 'test', // TODO: where to get dataset name from?
-          [Attr.Eval.Dataset.Split]: 'test', // TODO: where to get dataset split value from?
-          [Attr.Eval.Dataset.Size]: dataset.length,
+          [Attr.Eval.ID]: id,
+          [Attr.Eval.Name]: evalName,
+          [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
+          [Attr.Eval.Tags]: [], // TODO: where to get experiment tags from?
+          [Attr.Eval.Trials]: 1, // TODO: implement trials
+          [Attr.Eval.Collection.Name]: 'unknown', // TODO: where to get dataset name from?
+          [Attr.Eval.Collection.Split]: 'unknown', // TODO: where to get dataset split value from?
+          [Attr.Eval.Collection.Size]: dataset.length,
           // user info
-          ['eval.user.name']: user?.name,
-          ['eval.user.email']: user?.email,
+          [Attr.Eval.User.Name]: user?.name,
+          [Attr.Eval.User.Email]: user?.email,
         },
       });
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
 
       afterAll(async () => {
+        const tags: string[] = ['offline'];
+        suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
+
+        // end root span
         suiteSpan.setStatus({ code: SpanStatusCode.OK });
         suiteSpan.end();
         await flush();
@@ -99,14 +102,15 @@ async function registerEval(
 
       await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
         evalName,
-        async (data, { task }) => {
+        async (data: { index: number } & CollectionRecord, { task }) => {
+          const caseName = data.name ?? `${evalName}_${data.index}`;
           const start = performance.now();
           const caseSpan = startSpan(
-            `case ${evalName}_${data.index}`,
+            `case ${caseName}`,
             {
               attributes: {
                 [Attr.GenAI.Operation.Name]: 'eval.case',
-                [Attr.Eval.Case.ID]: `${evalName}_${data.index}`,
+                [Attr.Eval.Case.ID]: caseName,
                 [Attr.Eval.Case.Index]: data.index,
                 [Attr.Eval.Case.Input]:
                   typeof data.input === 'string' ? data.input : JSON.stringify(data.input),

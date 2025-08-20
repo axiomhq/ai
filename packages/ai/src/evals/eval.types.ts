@@ -30,6 +30,16 @@ export type EvalTask<TInput, TExpected> = (
 ) => Promise<any> | any;
 
 /**
+ * Record type of a matric of collection data
+ */
+export type CollectionRecord = {
+  /** Optional name for the record, if not set, it will default to eval name + index of the record */
+  name?: string;
+  input: string | Record<string, any>;
+  expected: string | Record<string, any>;
+};
+
+/**
  * Configuration parameters for running an evaluation.
  *
  * Used with {@link Eval} to define how an evaluation should be executed.
@@ -39,7 +49,7 @@ export type EvalTask<TInput, TExpected> = (
  */
 export type EvalParams = {
   /** Function that returns the dataset with input/expected pairs for evaluation */
-  data: () => Promise<{ input: any; expected: any }[]> | { input: any; expected: any }[];
+  data: () => Promise<CollectionRecord[]> | CollectionRecord[];
   /** The {@link EvalTask} function to execute for each data item */
   task: EvalTask<any, any>;
   /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
@@ -64,11 +74,11 @@ export type EvalReport = {
   /** Name of the evaluation */
   name: string;
   /** Input data that was provided to the {@link EvalTask} */
-  input: string;
+  input: string | Record<string, any>;
   /** Output produced by the {@link EvalTask} */
-  output: string;
+  output: string | Record<string, any>;
   /** Expected output for comparison */
-  expected: string;
+  expected: string | Record<string, any>;
   /** Array of {@link Score} results from all scorers that were run */
   scores: Record<string, Score>;
   /** Any errors that occurred during evaluation */
