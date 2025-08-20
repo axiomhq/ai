@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/axiomhq/ai/compare/axiom-v0.12.0...axiom-v0.13.0) (2025-08-20)
+
+
+### Features
+
+* **evals:** user custom names for cases ([#60](https://github.com/axiomhq/ai/issues/60)) ([e868ad6](https://github.com/axiomhq/ai/commit/e868ad6156f36ebca1e9ffd1aa69f58e47772ec8))
+
 ## [0.12.0](https://github.com/axiomhq/ai/compare/axiom-v0.11.2...axiom-v0.12.0) (2025-08-17)
 
 
