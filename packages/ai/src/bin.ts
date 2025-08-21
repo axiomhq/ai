@@ -2,17 +2,19 @@
 
 // Load environment variables using @next/env
 import pkg from '@next/env';
+
+import { Command } from 'commander';
+
+import { loadConfigAsync } from './config';
+import { ConfigNotFoundError } from './config/errors';
+import { loadPushCommand } from './commands/push.command';
+import { loadPullCommand } from './commands/pull.command';
+import { loadRunCommand } from './commands/eval.command';
+
 const { loadEnvConfig } = pkg;
 
 // Load .env files from the current working directory
 loadEnvConfig(process.cwd());
-
-import { Command } from 'commander';
-import { loadPushCommand } from './commands/push';
-import { loadPullCommand } from './commands/pull';
-import { loadRunCommand } from './commands/run';
-import { loadConfigAsync } from './config';
-import { ConfigNotFoundError } from './config/errors';
 
 const program = new Command();
 

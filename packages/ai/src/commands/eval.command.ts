@@ -5,9 +5,9 @@ import { CONFIG_FILE_NOT_FOUND } from 'src/config/errors';
 
 export const loadRunCommand = (program: Command) => {
   return program.addCommand(
-    new Command('run')
+    new Command('eval')
       .description('run evals locally')
-      .argument('<path>', 'Path to an eval test file, should be in the form of name.eval.ts')
+      .argument('<path>', 'Path to an eval test file, should be in the form of *.eval.ts')
       .action(async (file: string) => {
         const { config, error } = await loadConfigAsync();
 

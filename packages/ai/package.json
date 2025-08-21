@@ -1,6 +1,6 @@
 {
   "name": "axiom",
-  "version": "0.10.0",
+  "version": "0.13.0",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -81,8 +81,10 @@
     "@opentelemetry/semantic-conventions": "^1.36.0",
     "@sinclair/typebox": "^0.34.37",
     "commander": "^14.0.0",
+    "console-table-printer": "^2.14.6",
     "esbuild": "^0.25.8",
     "handlebars": "^4.7.8",
+    "nanoid": "^5.1.5",
     "vitest": "catalog:",
     "zod": "^4.0.17"
   },

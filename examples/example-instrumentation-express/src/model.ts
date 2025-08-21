@@ -4,7 +4,6 @@ import { wrapLanguageModel } from 'ai';
 
 const openai = createOpenAI({
   apiKey: process.env['OPENAI_API_KEY']!,
-  compatibility: 'strict',
 });
 
 const model = openai('gpt-4o-mini');
