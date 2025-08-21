@@ -1,0 +1,13 @@
+{
+  "url": "https://api.axiom.co",
+  "credentials": {
+    "dataset": "json-dataset",
+    "token": "json-token"
+  },
+  "ai": {
+    "evals": {
+      "dataset": "json-dataset",
+      "token": "json-token"
+    }
+  }
+}

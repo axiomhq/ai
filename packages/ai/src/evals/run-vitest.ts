@@ -1,8 +1,10 @@
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
-import { flush } from './instrument';
+import { flush, instrument } from './instrument';
+import type { AxiomConfig } from 'src/config';
 
-export const runVitest = async (file: string) => {
+export const runVitest = async (config: AxiomConfig, file: string) => {
+  instrument(config)
   const vi = await createVitest('test', {
     // root: process.cwd(),
     mode: 'test',

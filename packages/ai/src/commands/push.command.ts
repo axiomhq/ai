@@ -4,6 +4,7 @@ import {
   extractPromptFromModule,
   generatePromptFileFromApiResponse,
 } from '../transpiler';
+import { printConfigWarning } from '../config';
 import type { Prompt } from '../types';
 import fs from 'node:fs/promises';
 import readline from 'node:readline';
@@ -31,7 +32,18 @@ export const loadPushCommand = (program: Command) => {
     )
     .option('--prod', 'Adds the production tag to the prompt')
     .option('--yes', 'Automatically confirm overwriting the file with server response')
-    .action(async (filePath: string, options: { yes?: boolean; prod?: boolean }) => {
+    .action(async function (
+      this: Command,
+      filePath: string,
+      options: { yes?: boolean; prod?: boolean },
+    ) {
+      // @ts-ignore injected by preAction hook
+      const config = this.parent?._axiomConfig || this._axiomConfig;
+      if (!config) {
+        printConfigWarning();
+        return;
+      }
+
       let content: Prompt | null = null;
       if (!filePath.endsWith('.prompt.ts')) {
         console.error('Prompt files must end with .prompt.ts');
@@ -68,10 +80,10 @@ export const loadPushCommand = (program: Command) => {
       }
 
       try {
-        const response = await fetch(`${process.env.AXIOM_URL}/v1/prompts`, {
+        const response = await fetch(`${config.url}/v1/prompts`, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
+            Authorization: `Bearer ${config.ai.evals.token}`,
             'Content-Type': 'application/json',
             'x-axiom-client': 'axiom-ai-cli',
             'x-axiom-check': 'good',
