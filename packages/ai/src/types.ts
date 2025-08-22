@@ -5,7 +5,7 @@ import type { TSchema } from './template';
  *
  * @experimental This API is experimental and may change in future versions.
  */
-type Options = {
+export type ModelParams = {
   /** Maximum number of tokens to generate */
   maxOutputTokens?: number;
   /** Controls randomness in generation (0.0 to 2.0) */
@@ -44,7 +44,7 @@ export type Prompt = {
   /** The language model to use for this prompt */
   model: string;
   /** Optional generation parameters */
-  options?: Options;
+  options?: ModelParams;
   /** {@link TSchema} format arguments for API communication */
   arguments: Record<string, TSchema>;
   /** Optional description of the prompt's purpose */

@@ -7,6 +7,7 @@ import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
 import type { CollectionRecord, EvalParams, EvalReport, EvalTask } from './eval.types';
 import type { Score } from '../scorers/scorer.types';
+import type { ModelParams } from 'src/types';
 
 declare module 'vitest' {
   interface TaskMeta {
@@ -64,7 +65,7 @@ async function registerEval(
   const user = getGitUserInfo();
 
   const result = await describeFn(
-    evalName,
+    `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
 
@@ -78,10 +79,9 @@ async function registerEval(
           [Attr.Eval.ID]: id,
           [Attr.Eval.Name]: evalName,
           [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
-          [Attr.Eval.Tags]: [], // TODO: where to get experiment tags from?
-          [Attr.Eval.Trials]: 1, // TODO: implement trials
-          [Attr.Eval.Collection.Name]: 'unknown', // TODO: where to get dataset name from?
-          [Attr.Eval.Collection.Split]: 'unknown', // TODO: where to get dataset split value from?
+          [Attr.Eval.Tags]: [],
+          [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
+          [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
           [Attr.Eval.Collection.Size]: dataset.length,
           // user info
           [Attr.Eval.User.Name]: user?.name,
@@ -101,24 +101,22 @@ async function registerEval(
       });
 
       await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
-        evalName,
+        'case',
         async (data: { index: number } & CollectionRecord, { task }) => {
-          const caseName = data.name ?? `${evalName}_${data.index}`;
           const start = performance.now();
           const caseSpan = startSpan(
-            `case ${caseName}`,
+            `case ${data.index}`,
             {
               attributes: {
                 [Attr.GenAI.Operation.Name]: 'eval.case',
-                [Attr.Eval.Case.ID]: caseName,
                 [Attr.Eval.Case.Index]: data.index,
                 [Attr.Eval.Case.Input]:
                   typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
                 [Attr.Eval.Case.Expected]:
                   typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
                 // user info
-                ['eval.user.name']: user?.name,
-                ['eval.user.email']: user?.email,
+                [Attr.Eval.User.Name]: user?.name,
+                [Attr.Eval.User.Email]: user?.email,
               },
             },
             suiteContext,
@@ -133,6 +131,8 @@ async function registerEval(
               scorers: opts.scorers,
               task: opts.task,
               threshold: opts.threshold,
+              model: opts.model,
+              params: opts.params,
             });
 
             // run scorers
@@ -250,10 +250,12 @@ const joinArrayOfUnknownResults = (results: unknown[]): unknown => {
 
 const executeTask = async <TInput, TExpected, TOutput>(
   task: EvalTask<TInput, TExpected>,
+  model: string,
+  params: ModelParams,
   input: TInput,
   expected: TExpected,
 ): Promise<TOutput> => {
-  const taskResultOrStream = await task(input, expected);
+  const taskResultOrStream = await task(model, params, input, expected);
 
   if (
     typeof taskResultOrStream === 'object' &&
@@ -290,7 +292,6 @@ const runTask = async <TInput, TExpected>(
         [Attr.GenAI.Operation.Name]: 'eval.task',
         [Attr.Eval.Task.Name]: taskName,
         [Attr.Eval.Task.Type]: 'llm_completion', // TODO: How to determine task type?
-        [Attr.Eval.Task.Trial]: 1,
       },
     },
     caseContext,
@@ -300,7 +301,7 @@ const runTask = async <TInput, TExpected>(
     trace.setSpan(context.active(), taskSpan),
     async () => {
       const start = performance.now();
-      const output = await executeTask(opts.task, opts.input, opts.expected);
+      const output = await executeTask(opts.task, opts.model, opts.params, opts.input, opts.expected);
       const duration = Math.round(performance.now() - start);
       // set task output
       taskSpan.setAttributes({
