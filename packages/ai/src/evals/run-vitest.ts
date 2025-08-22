@@ -2,14 +2,21 @@ import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush } from './instrument';
 
-export const runVitest = async (file: string) => {
+export const runVitest = async (
+  file: string,
+  opts: {
+    watch: boolean;
+  },
+) => {
   const vi = await createVitest('test', {
-    // root: process.cwd(),
+    root: process.cwd(),
     mode: 'test',
     include: [file ? file : '**/*.eval.ts'],
     reporters: ['verbose', new AxiomReporter()],
     environment: 'node',
     browser: undefined,
+    watch: opts.watch,
+    name: 'axiom:eval',
   });
 
   await vi.start();

@@ -1,4 +1,5 @@
 import type { Score, Scorer } from 'src/scorers/scorer.types';
+import type { ModelParams } from 'src/types';
 import type { TestError } from 'vitest';
 
 /**
@@ -25,6 +26,8 @@ import type { TestError } from 'vitest';
  * ```
  */
 export type EvalTask<TInput, TExpected> = (
+  model: string,
+  params: ModelParams,
   input: TInput,
   expected: TExpected,
 ) => Promise<any> | any;
@@ -34,9 +37,9 @@ export type EvalTask<TInput, TExpected> = (
  */
 export type CollectionRecord = {
   /** Optional name for the record, if not set, it will default to eval name + index of the record */
-  name?: string;
   input: string | Record<string, any>;
   expected: string | Record<string, any>;
+  metadata?: Record<string, any>;
 };
 
 /**
@@ -50,6 +53,10 @@ export type CollectionRecord = {
 export type EvalParams = {
   /** Function that returns the dataset with input/expected pairs for evaluation */
   data: () => Promise<CollectionRecord[]> | CollectionRecord[];
+    /** The name of the model */
+  model: string;
+  /** The {@Link Options} object to configure models */
+  params: ModelParams,
   /** The {@link EvalTask} function to execute for each data item */
   task: EvalTask<any, any>;
   /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
