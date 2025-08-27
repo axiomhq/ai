@@ -338,7 +338,10 @@ function setPreCallAttributesV1(
   const processedPrompt = promptV1ToOpenAI(prompt);
   context.originalPrompt = processedPrompt;
 
-  span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)));
+  span.setAttribute(
+    Attr.GenAI.Input.Messages,
+    JSON.stringify(sanitizeMultimodalContent(processedPrompt)),
+  );
 
   setBaseAttributes(span, model.provider, model.modelId);
 
@@ -384,7 +387,10 @@ async function setPostCallAttributesV1(
       result.text,
     );
 
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)));
+    span.setAttribute(
+      Attr.GenAI.Input.Messages,
+      JSON.stringify(sanitizeMultimodalContent(updatedPrompt)),
+    );
   }
 
   // Create simple completion array with just assistant text
@@ -392,7 +398,7 @@ async function setPostCallAttributesV1(
     const completion = createSimpleCompletion({
       text: result.text,
     });
-    span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    span.setAttribute(Attr.GenAI.Output.Messages, JSON.stringify(completion));
   }
 
   if (result.response?.id) {
@@ -460,7 +466,10 @@ function setPreCallAttributesV2(
   context.originalV2Prompt = options.prompt;
   context.originalPrompt = processedPrompt;
 
-  span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)));
+  span.setAttribute(
+    Attr.GenAI.Input.Messages,
+    JSON.stringify(sanitizeMultimodalContent(processedPrompt)),
+  );
 }
 
 async function setPostCallAttributesV2(
@@ -520,7 +529,10 @@ async function setPostCallAttributesV2(
     );
 
     // Update the prompt attribute with the complete conversation history
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)));
+    span.setAttribute(
+      Attr.GenAI.Input.Messages,
+      JSON.stringify(sanitizeMultimodalContent(updatedPrompt)),
+    );
   }
 
   // Process tool calls and create child spans
@@ -531,7 +543,7 @@ async function setPostCallAttributesV2(
     const completion = createSimpleCompletion({
       text: '',
     });
-    span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    span.setAttribute(Attr.GenAI.Output.Messages, JSON.stringify(completion));
   }
 
   // Store finish reason separately as per semantic conventions (only on first call to prevent overwriting)
@@ -562,6 +574,6 @@ async function processToolCallsAndCreateSpansV2(
     ];
 
     // Set completion array as span attribute
-    parentSpan.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    parentSpan.setAttribute(Attr.GenAI.Output.Messages, JSON.stringify(completion));
   }
 }
