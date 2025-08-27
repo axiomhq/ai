@@ -53,9 +53,13 @@ function getEffectiveRedactionPolicy(
   // Per-call policy overrides global policy, with defaults
   return {
     captureMessageContent:
-      localPolicy?.captureMessageContent ?? globalPolicy?.captureMessageContent ?? 'full',
+      localPolicy?.captureMessageContent ??
+      globalPolicy?.captureMessageContent ??
+      RedactionPolicy.AxiomDefault.captureMessageContent,
     mirrorToolPayloadOnToolSpan:
-      localPolicy?.mirrorToolPayloadOnToolSpan ?? globalPolicy?.mirrorToolPayloadOnToolSpan ?? true,
+      localPolicy?.mirrorToolPayloadOnToolSpan ??
+      globalPolicy?.mirrorToolPayloadOnToolSpan ??
+      RedactionPolicy.AxiomDefault.mirrorToolPayloadOnToolSpan,
   };
 }
 
