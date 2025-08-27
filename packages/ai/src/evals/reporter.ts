@@ -70,11 +70,31 @@ export class AxiomReporter implements Reporter {
       // load baseline data
       this.baseline = await findEvaluationCases(baseline.id);
     }
+    const cwd = process.cwd();
 
     console.log(
-      c.bgWhite(c.black(` ${_testSuite.project.name} `)),
+      ' ',
+      c.bgCyan(c.black(` ${_testSuite.project.name} `)),
+      c.bgBlue(c.black(` ${meta.evaluation.name}-${meta.evaluation.version} `)),
       c.dim(`(${_testSuite.children.size} tests)`),
     );
+
+    console.log(' ', c.dim(_testSuite.module.moduleId.replace(cwd, '')));
+
+    // print baseline name and version if found
+    if (meta.evaluation.baseline) {
+      console.log(
+        ' ',
+        ' baseline ',
+        c.bgMagenta(
+          c.black(` ${meta.evaluation.baseline.name}-${meta.evaluation.baseline.version} `),
+        ),
+      );
+    } else {
+      console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
+    }
+
+    console.log('');
   }
 
   onTestCaseResult(test: TestCase) {
@@ -128,18 +148,22 @@ export class AxiomReporter implements Reporter {
     const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
 
     console.log(' ');
-    console.log(c.dim(' Tests'), testSuite.children.size);
-    console.log(c.dim(' Start at'), new Date(this.startTime).toTimeString());
-    console.log(c.dim(' Duration'), `${duration}s`);
+    console.log(' ', c.dim('Tests'), testSuite.children.size);
+    console.log(' ', c.dim('Start at'), new Date(this.startTime).toTimeString());
+    console.log(' ', c.dim('Duration'), `${duration}s`);
 
     const meta = testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
-    const url = c.bgBlack(
-      c.whiteBright(
-        `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`,
-      ),
-    );
+    const url = `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`;
+
     console.log('');
-    console.log(` see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`);
+    console.log(
+      ' ',
+      `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
+    );
+    console.log(
+      ' ',
+      c.cyanBright('=== === === === === === === === === === === === === === === ==='),
+    );
     console.log('');
   }
 

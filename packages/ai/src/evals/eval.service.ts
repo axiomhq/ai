@@ -6,7 +6,7 @@ export type Evaluation = {
   id: string;
   name: string;
   type: string;
-  // version: string;
+  version: string;
   baseline: {
     id: string | undefined;
     name: string | undefined;
@@ -143,6 +143,7 @@ export const mapSpanToEval = (span: any): Evaluation => {
     id: span.data.attributes.custom['eval.id'],
     name: span.data.attributes.custom['eval.name'],
     type: span.data.attributes.custom['eval.type'],
+    version: span.data.attributes.custom['eval.version'],
     collection: {
       name: span.data.attributes.custom['eval.collection.name'],
       size: span.data.attributes.custom['eval.collection.size'],
