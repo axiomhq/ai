@@ -50,7 +50,6 @@ import {
   GEN_AI_OUTPUT_TYPE_VALUE_SPEECH,
   GEN_AI_OUTPUT_TYPE_VALUE_TEXT,
   GEN_AI_OUTPUT_TYPE_VALUE_IMAGE,
-  ATTR_GEN_AI_SYSTEM,
   GEN_AI_SYSTEM_VALUE_OPENAI,
   GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
   GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
@@ -135,6 +134,27 @@ export const Attr = {
     Step: {
       Name: 'gen_ai.step.name', // proprietary to axiom-ai
     },
+    Provider: {
+      Name: 'gen_ai.provider.name', // TODO: replace with value imported from semconv once they ship
+      Name_Values: {
+        // TODO: these will be replaced with GEN_AI_PROVIDER_NAME_VALUE_<provider> or similar once the new version of the semconv package ships
+        Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
+        AWSBedrock: GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
+        AzureAIInference: GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
+        AzureAIOpenAI: GEN_AI_SYSTEM_VALUE_AZURE_AI_OPENAI,
+        Cohere: GEN_AI_SYSTEM_VALUE_COHERE,
+        Deepseek: GEN_AI_SYSTEM_VALUE_DEEPSEEK,
+        GCPGemini: GEN_AI_SYSTEM_VALUE_GCP_GEMINI,
+        GCPGenAI: GEN_AI_SYSTEM_VALUE_GCP_GEN_AI,
+        GCPVertexAI: GEN_AI_SYSTEM_VALUE_GCP_VERTEX_AI,
+        Groq: GEN_AI_SYSTEM_VALUE_GROQ,
+        IBMWatsonxAI: GEN_AI_SYSTEM_VALUE_IBM_WATSONX_AI,
+        MistralAI: GEN_AI_SYSTEM_VALUE_MISTRAL_AI,
+        OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
+        Perplexity: GEN_AI_SYSTEM_VALUE_PERPLEXITY,
+        XAI: GEN_AI_SYSTEM_VALUE_XAI,
+      },
+    },
     /**
      * Regular attributes
      */
@@ -201,33 +221,6 @@ export const Attr = {
        * The model that was actually used (might be different bc routing) - only ever get this from the response, otherwise omit
        */
       Model: ATTR_GEN_AI_RESPONSE_MODEL, // somehow not landing on the span for google models? check up on this...
-    },
-    /**
-     * From OTel docs:
-     * ```
-     * Multiple systems, including Azure OpenAI and Gemini, are accessible
-     * by OpenAI client libraries. In such cases, the gen_ai.system is set
-     * to openai based on the instrumentation's best knowledge, instead of
-     * the actual system.
-     * ```
-     */
-    System: ATTR_GEN_AI_SYSTEM, // not yet used by axiom-ai
-    System_Values: {
-      Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
-      AWSBedrock: GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
-      AzureAIInference: GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
-      AzureAIOpenAI: GEN_AI_SYSTEM_VALUE_AZURE_AI_OPENAI,
-      Cohere: GEN_AI_SYSTEM_VALUE_COHERE,
-      Deepseek: GEN_AI_SYSTEM_VALUE_DEEPSEEK,
-      GCPGemini: GEN_AI_SYSTEM_VALUE_GCP_GEMINI,
-      GCPGenAI: GEN_AI_SYSTEM_VALUE_GCP_GEN_AI,
-      GCPVertexAI: GEN_AI_SYSTEM_VALUE_GCP_VERTEX_AI,
-      Groq: GEN_AI_SYSTEM_VALUE_GROQ,
-      IBMWatsonxAI: GEN_AI_SYSTEM_VALUE_IBM_WATSONX_AI,
-      MistralAI: GEN_AI_SYSTEM_VALUE_MISTRAL_AI,
-      OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
-      Perplexity: GEN_AI_SYSTEM_VALUE_PERPLEXITY,
-      XAI: GEN_AI_SYSTEM_VALUE_XAI,
     },
     Tool: {
       CallID: ATTR_GEN_AI_TOOL_CALL_ID,
