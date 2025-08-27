@@ -1,21 +1,29 @@
-import { afterAll, describe, it } from 'vitest';
+import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type { CollectionRecord, EvalParams, EvalReport, EvalTask } from './eval.types';
+import type { CollectionRecord, EvalParams, EvalTask } from './eval.types';
 import type { Score } from '../scorers/scorer.types';
 import type { ModelParams } from 'src/types';
+import { findBaseline, findEvaluationCases } from './eval.service';
+import type { EvalCaseReport, EvaluationReport } from './reporter';
+import { DEFAULT_TIMEOUT } from './run-vitest';
 
 declare module 'vitest' {
+  interface TestSuiteMeta {
+    evaluation: EvaluationReport;
+  }
   interface TaskMeta {
-    eval?: EvalReport;
+    case: EvalCaseReport;
+    evaluation: EvaluationReport;
+  }
+  export interface ProvidedContext {
+    baseline?: string;
   }
 }
-
-const DEFAULT_TIMEOUT = 10000;
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 
@@ -23,7 +31,7 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  * Creates and registers an evaluation suite with the given name and parameters.
  *
  * This function sets up a complete evaluation pipeline that will run your {@link EvalTask}
- * against a dataset, score the results, and provide detailed {@link EvalReport} reporting.
+ * against a dataset, score the results, and provide detailed {@link EvalCaseReport} reporting.
  *
  * @experimental This API is experimental and may change in future versions.
  *
@@ -55,40 +63,59 @@ export const Eval = (name: string, params: EvalParams): void => {
   registerEval(name, params).catch(console.error);
 };
 
-async function registerEval(
-  evalName: string,
-  opts: EvalParams,
-  vitestOpts: { modifier?: 'only' | 'skip' } = {},
-) {
-  const describeFn = vitestOpts.modifier === 'skip' ? describe.skip : describe;
-  const datasetPromise = vitestOpts.modifier === 'skip' ? Promise.resolve([]) : opts.data();
+async function registerEval(evalName: string, opts: EvalParams) {
+  const datasetPromise = opts.data();
   const user = getGitUserInfo();
 
-  const result = await describeFn(
+  // check if user passed a specific baseline id to the CLI
+  const baselineId = inject('baseline');
+
+  const result = await describe(
     `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
+      // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
+      const baseline = baselineId
+        ? await findEvaluationCases(baselineId)
+        : await findBaseline(evalName);
+      // create a version code
+      const evalVersion = nanoid();
+      let evalId = ''; // get traceId
 
-      // ID must be returned after evaluation is registered at Axiom
-      // TODO: send api request to register evaluation in Axiom
-      const id = nanoid();
-
-      const suiteSpan = startSpan(`eval ${evalName}-${id}`, {
+      const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
         attributes: {
           [Attr.GenAI.Operation.Name]: 'eval',
-          [Attr.Eval.ID]: id,
           [Attr.Eval.Name]: evalName,
+          [Attr.Eval.Version]: evalVersion,
           [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
           [Attr.Eval.Tags]: [],
           [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
           [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
           [Attr.Eval.Collection.Size]: dataset.length,
+          // baseline
+          [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
+          [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
           // user info
           [Attr.Eval.User.Name]: user?.name,
           [Attr.Eval.User.Email]: user?.email,
+          // prompt
+          ['eval.prompt.model']: opts.model,
+          ['eval.prompt.params']: JSON.stringify(opts.params),
         },
       });
+      evalId = suiteSpan.spanContext().traceId;
+      suiteSpan.setAttribute(Attr.Eval.ID, evalId);
+
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
+
+      beforeAll((suite) => {
+        suite.meta.evaluation = {
+          id: evalId,
+          name: evalName,
+          version: evalVersion,
+          baseline: baseline ?? undefined,
+        };
+      });
 
       afterAll(async () => {
         const tags: string[] = ['offline'];
@@ -109,6 +136,9 @@ async function registerEval(
             {
               attributes: {
                 [Attr.GenAI.Operation.Name]: 'eval.case',
+                [Attr.Eval.ID]: evalId,
+                [Attr.Eval.Name]: evalName,
+                [Attr.Eval.Version]: evalName,
                 [Attr.Eval.Case.Index]: data.index,
                 [Attr.Eval.Case.Input]:
                   typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
@@ -124,16 +154,24 @@ async function registerEval(
           const caseContext = trace.setSpan(context.active(), caseSpan);
 
           try {
-            const { output, duration } = await runTask(caseContext, {
-              index: data.index,
-              expected: data.expected,
-              input: data.input,
-              scorers: opts.scorers,
-              task: opts.task,
-              threshold: opts.threshold,
-              model: opts.model,
-              params: opts.params,
-            });
+            const { output, duration } = await runTask(
+              caseContext,
+              {
+                id: evalId,
+                version: evalVersion,
+                name: evalName,
+              },
+              {
+                index: data.index,
+                expected: data.expected,
+                input: data.input,
+                scorers: opts.scorers,
+                task: opts.task,
+                threshold: opts.threshold,
+                model: opts.model,
+                params: opts.params,
+              },
+            );
 
             // run scorers
             const scoreList: Score[] = await Promise.all(
@@ -143,6 +181,9 @@ async function registerEval(
                   {
                     attributes: {
                       [Attr.GenAI.Operation.Name]: 'eval.score',
+                      [Attr.Eval.ID]: evalId,
+                      [Attr.Eval.Name]: evalName,
+                      [Attr.Eval.Version]: evalName,
                     },
                   },
                   caseContext,
@@ -194,7 +235,8 @@ async function registerEval(
             });
             caseSpan.setStatus({ code: SpanStatusCode.OK });
 
-            task.meta.eval = {
+            // set task meta for showing result in vitest report
+            task.meta.case = {
               index: data.index,
               name: evalName,
               expected: data.expected,
@@ -208,10 +250,11 @@ async function registerEval(
               threshold: opts.threshold,
             };
           } catch (e) {
-            caseSpan.recordException(e as Error);
-            caseSpan.setStatus({ code: SpanStatusCode.ERROR });
+            const error = e as Error;
+            caseSpan.recordException(error);
+            caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
 
-            task.meta.eval = {
+            task.meta.case = {
               name: evalName,
               index: data.index,
               expected: data.expected,
@@ -276,6 +319,11 @@ const executeTask = async <TInput, TExpected, TOutput>(
 
 const runTask = async <TInput, TExpected>(
   caseContext: Context,
+  evaluation: {
+    id: string;
+    name: string;
+    version: string;
+  },
   opts: {
     index: number;
     input: TInput;
@@ -292,6 +340,9 @@ const runTask = async <TInput, TExpected>(
         [Attr.GenAI.Operation.Name]: 'eval.task',
         [Attr.Eval.Task.Name]: taskName,
         [Attr.Eval.Task.Type]: 'llm_completion', // TODO: How to determine task type?
+        [Attr.Eval.ID]: evaluation.id,
+        [Attr.Eval.Name]: evaluation.name,
+        [Attr.Eval.Version]: evaluation.version,
       },
     },
     caseContext,
@@ -301,7 +352,13 @@ const runTask = async <TInput, TExpected>(
     trace.setSpan(context.active(), taskSpan),
     async () => {
       const start = performance.now();
-      const output = await executeTask(opts.task, opts.model, opts.params, opts.input, opts.expected);
+      const output = await executeTask(
+        opts.task,
+        opts.model,
+        opts.params,
+        opts.input,
+        opts.expected,
+      );
       const duration = Math.round(performance.now() - start);
       // set task output
       taskSpan.setAttributes({

@@ -1,10 +1,50 @@
-import type { SerializedError } from 'vitest';
-import type { Reporter, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
+import type { SerializedError, TestError } from 'vitest';
+import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 import type { TaskMeta } from 'vitest/index.cjs';
-import { Table } from 'console-table-printer';
-import type { EvalReport } from './eval.types';
+import c from 'tinyrainbow';
 
-const prRed = (s: string): string => `\x1b[91m ${s}\x1b[00m`;
+import type { Score } from '../scorers/scorer.types';
+import { findEvaluationCases, type Evaluation } from './eval.service';
+
+/**
+ * Complete report for a single evaluation case including results and metadata.
+ *
+ * Generated for each test case when running {@link Eval} with {@link EvalParams}.
+ * Contains all {@link Score} results and execution metadata.
+ *
+ * @experimental This API is experimental and may change in future versions.
+ */
+export type EvalCaseReport = {
+  /** Order/index of this case in the evaluation suite */
+  index: number;
+  /** Name of the evaluation */
+  name: string;
+  /** Input data that was provided to the {@link EvalTask} */
+  input: string | Record<string, any>;
+  /** Output produced by the {@link EvalTask} */
+  output: string | Record<string, any>;
+  /** Expected output for comparison */
+  expected: string | Record<string, any>;
+  /** Array of {@link Score} results from all scorers that were run */
+  scores: Record<string, Score>;
+  /** Any errors that occurred during evaluation */
+  errors: TestError[] | null;
+  /** Status of the evaluation case */
+  status: 'success' | 'fail' | 'pending';
+  /** Duration in milliseconds for the entire case */
+  duration: number | undefined;
+  /** Timestamp when the case started */
+  startedAt: number | undefined;
+  /** Score threshold from {@link EvalParams.threshold} that was used for pass/fail determination */
+  threshold: number | undefined;
+};
+
+export type EvaluationReport = {
+  id: string;
+  name: string;
+  version: string;
+  baseline: Evaluation | undefined;
+};
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -12,44 +52,95 @@ const prRed = (s: string): string => `\x1b[91m ${s}\x1b[00m`;
  * This reporter collects evaluation results and scores from tests
  * and processes them for further analysis and reporting.
  *
- * @experimental This API is experimental and may change in future versions.
  */
 export class AxiomReporter implements Reporter {
-  onTestSuiteReady(_testSuite: TestSuite) {}
+  baseline: Evaluation | undefined | null;
+  startTime: number = 0;
+  start: number = 0;
 
-  onTestSuiteResult(testSuite: TestSuite) {
-    const scoreboard = new Table({
-      title: testSuite.name,
-    });
-    for (const test of testSuite.children.array()) {
-      if (test.type !== 'test') continue;
-      const testMeta = test.meta() as TaskMeta & { eval: EvalReport };
+  onTestRunStart() {
+    this.start = performance.now();
+    this.startTime = new Date().getTime();
+  }
 
-      if (!testMeta.eval) {
-        return;
-      }
-
-      // round scores
-      const scores = Object.keys(testMeta.eval.scores).map((k) => {
-        const v = testMeta.eval.scores[k].score ? testMeta.eval.scores[k].score : 0;
-        const scoreValue = Number(v * 100).toFixed(2);
-
-        // if score is lower then threshold then print it in red
-        const score =
-          testMeta.eval.threshold && v < testMeta.eval.threshold
-            ? prRed(scoreValue + '%')
-            : scoreValue + '%';
-
-        return [k, score];
-      });
-
-      scoreboard.addRow({
-        case: testMeta.eval.index.toString(),
-        ...Object.fromEntries(scores),
-      });
+  async onTestSuiteReady(_testSuite: TestSuite) {
+    const meta = _testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
+    const baseline = meta.evaluation.baseline;
+    if (baseline) {
+      // load baseline data
+      this.baseline = await findEvaluationCases(baseline.id);
     }
 
-    scoreboard.printTable();
+    console.log(
+      c.bgWhite(c.black(` ${_testSuite.project.name} `)),
+      c.dim(`(${_testSuite.children.size} tests)`),
+    );
+  }
+
+  onTestCaseResult(test: TestCase) {
+    if (test.type !== 'test') return;
+    const ok = test.ok();
+    const testMeta = test.meta() as TaskMeta & { case: EvalCaseReport };
+
+    if (!testMeta || !testMeta.case) {
+      return;
+    }
+    const index = testMeta.case.index;
+
+    if (ok) {
+      console.log(c.yellow(` \u2713 case ${index}:`));
+    } else {
+      console.log(c.red(` \u2713 case ${index}:`));
+    }
+
+    // print scores
+    Object.keys(testMeta.case.scores).forEach((k) => {
+      const v = testMeta.case.scores[k].score ? testMeta.case.scores[k].score : 0;
+      const scoreValue = Number(v * 100).toFixed(2) + '%';
+
+      // if score is lower than threshold then print it in red
+      const score =
+        testMeta.case.threshold && v < testMeta.case.threshold ? c.red(scoreValue) : scoreValue;
+
+      if (this.baseline && this.baseline.cases[index] && this.baseline.cases[index].scores[k]) {
+        const baselineScoreValue = this.baseline.cases[index].scores[k].value;
+        const diff = v - baselineScoreValue;
+        const diffText = Number(diff * 100).toFixed(2) + '%';
+        const blScoreText = Number(baselineScoreValue * 100).toFixed(2) + '%';
+        console.log(
+          '   ',
+          k,
+          c.magentaBright(blScoreText),
+          '->',
+          c.blueBright(scoreValue),
+          diff > 0 ? c.green('+' + diffText) : c.red(diffText),
+        );
+      } else {
+        console.log('   ', k, c.blueBright(score));
+      }
+
+      return [k, score];
+    });
+  }
+
+  onTestSuiteResult(testSuite: TestSuite) {
+    // calculate test duration in seconds
+    const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
+
+    console.log(' ');
+    console.log(c.dim(' Tests'), testSuite.children.size);
+    console.log(c.dim(' Start at'), new Date(this.startTime).toTimeString());
+    console.log(c.dim(' Duration'), `${duration}s`);
+
+    const meta = testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
+    const url = c.bgBlack(
+      c.whiteBright(
+        `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`,
+      ),
+    );
+    console.log('');
+    console.log(` see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`);
+    console.log('');
   }
 
   async onTestRunEnd(

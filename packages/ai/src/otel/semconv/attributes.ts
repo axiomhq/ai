@@ -29,6 +29,7 @@ import {
   ATTR_EVAL_COLLECTION_ID,
   ATTR_EVAL_USER_NAME,
   ATTR_EVAL_USER_EMAIL,
+  ATTR_EVAL_VERSION,
 } from './eval_proposal';
 
 import {
@@ -247,9 +248,10 @@ export const Attr = {
   Eval: {
     ID: ATTR_EVAL_ID,
     Name: ATTR_EVAL_NAME,
+    Version: ATTR_EVAL_VERSION,
     Type: ATTR_EVAL_TYPE,
-    BaseID: ATTR_EVAL_BASELINE_ID,
-    BaseName: ATTR_EVAL_BASELINE_NAME,
+    BaselineID: ATTR_EVAL_BASELINE_ID,
+    BaselineName: ATTR_EVAL_BASELINE_NAME,
     Tags: ATTR_EVAL_TAGS,
     Collection: {
       ID: ATTR_EVAL_COLLECTION_ID,
