@@ -73,8 +73,6 @@ import {
   ATTR_GEN_AI_REQUEST_SEED,
   ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
-  ATTR_GEN_AI_COMPLETION,
-  ATTR_GEN_AI_PROMPT,
   ATTR_GEN_AI_TOOL_CALL_ID,
   ATTR_GEN_AI_TOOL_NAME,
   ATTR_GEN_AI_TOOL_TYPE,
@@ -163,12 +161,14 @@ export const Attr = {
       ID: ATTR_GEN_AI_AGENT_ID, // not yet used by axiom-ai
       Name: ATTR_GEN_AI_AGENT_NAME, // not yet used by axiom-ai
     },
-    Completion: ATTR_GEN_AI_COMPLETION, // OTel suggests to use events API for this now
     Conversation: {
       ID: ATTR_GEN_AI_CONVERSATION_ID, // not yet used by axiom-ai, anyway probably needs to be provided by user
     },
     DataSource: {
       ID: ATTR_GEN_AI_DATA_SOURCE_ID, // not used in axiom-ai yet
+    },
+    Input: {
+      Messages: 'gen_ai.input.messages', // TODO: use the version from 1.37 semconv
     },
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
@@ -185,6 +185,7 @@ export const Attr = {
       },
     },
     Output: {
+      Messages: 'gen_ai.output.messages', // TODO: use the one from 1.37 semantic conventions
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
       Type_Values: {
         Text: GEN_AI_OUTPUT_TYPE_VALUE_TEXT,
@@ -197,7 +198,6 @@ export const Attr = {
      * The provider that is hosting the model, eg AWS Bedrock
      * There doesn't seem to be a semconv for this
      */
-    Prompt: ATTR_GEN_AI_PROMPT, // OTel suggests to use the events api for this
     Request: {
       ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT, // not yet used by axiom-ai
       EncodingFormats: ATTR_GEN_AI_REQUEST_ENCODING_FORMATS, // not yet used by axiom-ai
