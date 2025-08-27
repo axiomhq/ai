@@ -55,7 +55,6 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  *     return result.text;
  *   },
  *   scorers: [similarityScorer, factualAccuracyScorer],
- *   threshold: 0.7
  * });
  * ```
  */
@@ -167,7 +166,6 @@ async function registerEval(evalName: string, opts: EvalParams) {
                 input: data.input,
                 scorers: opts.scorers,
                 task: opts.task,
-                threshold: opts.threshold,
                 model: opts.model,
                 params: opts.params,
               },
@@ -198,30 +196,18 @@ async function registerEval(evalName: string, opts: EvalParams) {
 
                 const duration = Math.round(performance.now() - start);
                 const scoreValue = result.score as number;
-                const passed = scoreValue >= opts.threshold;
-                let hasError: string | false = false;
 
                 scorerSpan.setAttributes({
                   [Attr.Eval.Score.Name]: scorer.name,
                   [Attr.Eval.Score.Value]: scoreValue,
-                  [Attr.Eval.Score.Threshold]: opts.threshold,
-                  [Attr.Eval.Score.Passed]: passed,
                 });
 
-                if (!passed) {
-                  hasError = `Score didn't pass`;
-                  scorerSpan.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: hasError,
-                  });
-                } else {
-                  scorerSpan.setStatus({ code: SpanStatusCode.OK });
-                }
+                scorerSpan.setStatus({ code: SpanStatusCode.OK });
                 scorerSpan.end();
 
                 return {
                   ...result,
-                  metadata: { duration, startedAt: start, error: hasError || null },
+                  metadata: { duration, startedAt: start, error: null },
                 };
               }),
             );
@@ -247,7 +233,6 @@ async function registerEval(evalName: string, opts: EvalParams) {
               errors: [],
               duration,
               startedAt: start,
-              threshold: opts.threshold,
             };
           } catch (e) {
             const error = e as Error;
@@ -262,10 +247,9 @@ async function registerEval(evalName: string, opts: EvalParams) {
               output: e as string,
               scores: {},
               status: 'fail',
-              errors: [e as any],
+              errors: [error],
               startedAt: start,
               duration: Math.round(performance.now() - start),
-              threshold: opts.threshold,
             };
             throw e;
           } finally {
@@ -298,7 +282,7 @@ const executeTask = async <TInput, TExpected, TOutput>(
   input: TInput,
   expected: TExpected,
 ): Promise<TOutput> => {
-  const taskResultOrStream = await task(model, params, input, expected);
+  const taskResultOrStream = await task({ model, params, input, expected });
 
   if (
     typeof taskResultOrStream === 'object' &&
@@ -328,7 +312,6 @@ const runTask = async <TInput, TExpected>(
     index: number;
     input: TInput;
     expected: TExpected | undefined;
-    threshold: number;
   } & Omit<EvalParams, 'data'>,
 ) => {
   const taskName = opts.task.name ?? 'anonymous';

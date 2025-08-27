@@ -5,14 +5,14 @@ import { flush } from './instrument';
 export const DEFAULT_TIMEOUT = 10000;
 
 export const runVitest = async (
-  path: string,
+  dir: string,
   opts: {
     watch: boolean;
     baseline?: string;
   },
 ) => {
   const vi = await createVitest('test', {
-    root: path ? path : process.cwd(),
+    root: dir ? dir : process.cwd(),
     mode: 'test',
     include: ['**/*.eval.ts'],
     reporters: [new AxiomReporter()],

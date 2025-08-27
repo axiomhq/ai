@@ -189,7 +189,9 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     expected: data.attributes.custom['eval.case.expected'],
     duration: duration,
     status: data.status.code,
-    scores: JSON.parse(data.attributes.custom['eval.case.scores']),
+    scores: data.attributes.custom['eval.case.scores']
+      ? JSON.parse(data.attributes.custom['eval.case.scores'])
+      : {},
     runAt: item._time,
     spanId: data.span_id,
     traceId: data.trace_id,
@@ -217,10 +219,7 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
 
   for (const caseSpan of caseSpans) {
     // Convert case data
-    const caseData = mapSpanToCase({
-      _time: caseSpan._time,
-      data: caseSpan.data,
-    });
+    const caseData = mapSpanToCase(caseSpan);
 
     // Find task spans that belong to this case
     const taskSpans = spans.filter(

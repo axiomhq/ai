@@ -1,4 +1,4 @@
-import type { SerializedError, TestError } from 'vitest';
+import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
@@ -28,15 +28,13 @@ export type EvalCaseReport = {
   /** Array of {@link Score} results from all scorers that were run */
   scores: Record<string, Score>;
   /** Any errors that occurred during evaluation */
-  errors: TestError[] | null;
+  errors: Error[] | null;
   /** Status of the evaluation case */
   status: 'success' | 'fail' | 'pending';
   /** Duration in milliseconds for the entire case */
   duration: number | undefined;
   /** Timestamp when the case started */
   startedAt: number | undefined;
-  /** Score threshold from {@link EvalParams.threshold} that was used for pass/fail determination */
-  threshold: number | undefined;
 };
 
 export type EvaluationReport = {
@@ -111,16 +109,15 @@ export class AxiomReporter implements Reporter {
       console.log(c.yellow(` \u2713 case ${index}:`));
     } else {
       console.log(c.red(` \u2713 case ${index}:`));
+      for (const e of testMeta.case.errors ?? []) {
+        console.log('', e);
+      }
     }
 
     // print scores
     Object.keys(testMeta.case.scores).forEach((k) => {
       const v = testMeta.case.scores[k].score ? testMeta.case.scores[k].score : 0;
       const scoreValue = Number(v * 100).toFixed(2) + '%';
-
-      // if score is lower than threshold then print it in red
-      const score =
-        testMeta.case.threshold && v < testMeta.case.threshold ? c.red(scoreValue) : scoreValue;
 
       if (this.baseline && this.baseline.cases[index] && this.baseline.cases[index].scores[k]) {
         const baselineScoreValue = this.baseline.cases[index].scores[k].value;
@@ -136,10 +133,10 @@ export class AxiomReporter implements Reporter {
           diff > 0 ? c.green('+' + diffText) : c.red(diffText),
         );
       } else {
-        console.log('   ', k, c.blueBright(score));
+        console.log('   ', k, c.blueBright(scoreValue));
       }
 
-      return [k, score];
+      return [k, scoreValue];
     });
   }
 

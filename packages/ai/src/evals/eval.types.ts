@@ -24,12 +24,12 @@ import type { ModelParams } from 'src/types';
  * };
  * ```
  */
-export type EvalTask<TInput, TExpected> = (
-  model: string,
-  params: ModelParams,
-  input: TInput,
-  expected: TExpected,
-) => Promise<any> | any;
+export type EvalTask<TInput, TExpected> = (args: {
+  model: string;
+  params: ModelParams;
+  input: TInput;
+  expected: TExpected;
+}) => Promise<any> | any;
 
 /**
  * Record type of a matric of collection data
@@ -60,8 +60,6 @@ export type EvalParams = {
   task: EvalTask<any, any>;
   /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
   scorers: Array<Scorer>;
-  /** Minimum score threshold for passing (0.0 to 1.0) */
-  threshold: number;
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
 };
