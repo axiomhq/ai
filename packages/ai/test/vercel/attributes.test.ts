@@ -53,11 +53,12 @@ describe('span names', () => {
     const spans = memoryExporter.getFinishedSpans();
     expect(spans.length).toBe(1);
     expect(spans[0].attributes).toEqual({
-      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
+      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.2',
       'axiom.gen_ai.sdk.name': 'axiom',
       'axiom.gen_ai.sdk.version': packageJson.version,
-      'gen_ai.prompt': '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
-      'gen_ai.completion': '[{"role":"assistant","content":"Mock response"}]',
+      'gen_ai.input.messages':
+        '[{"role":"user","content":[{"type":"text","text":"Hello, world!"}]}]',
+      'gen_ai.output.messages': '[{"role":"assistant","content":"Mock response"}]',
       'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.operation.name': 'chat',
       'gen_ai.capability.name': 'test-capability',

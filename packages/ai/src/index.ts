@@ -1,8 +1,17 @@
+/**
+ * Instrumentation
+ */
+
 export * from './otel/initAxiomAI';
 export * from './otel/vercel';
 export * from './otel/withSpan';
 export * from './otel/wrapTool';
 export * from './otel/middleware';
+export { type AxiomAIRedactionPolicy, RedactionPolicy } from './otel/utils/redaction';
+
+/**
+ * Prompts
+ */
 
 // Prompt and template functionality - marked as UNSAFE as these APIs are experimental
 export type { Prompt as experimental_Prompt } from './types';
@@ -21,5 +30,9 @@ export type {
   ParsedMessage as experimental_ParsedMessage,
   ParsedMessagesArray as experimental_ParsedMessagesArray,
 } from './types/metadata';
+
+/**
+ * Evals
+ */
 
 export type { Score, Scorer } from './scorers/scorer.types';

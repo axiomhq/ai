@@ -92,8 +92,20 @@ import {
   ATTR_ERROR_MESSAGE,
 } from './semconv_incubating';
 
-export const SCHEMA_VERSION = '0.0.1';
+export const SCHEMA_VERSION = '0.0.2';
 export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
+
+/**
+ * PROPRIETARY ATTRIBUTES (o11y)
+ */
+
+const ATTR_AXIOM_GEN_AI_SCHEMA_URL = 'axiom.gen_ai.schema_url';
+const ATTR_AXIOM_GEN_AI_SDK_NAME = 'axiom.gen_ai.sdk.name';
+const ATTR_AXIOM_GEN_AI_SDK_VERSION = 'axiom.gen_ai.sdk.version';
+const ATTR_GEN_AI_CAPABILITY_NAME = 'gen_ai.capability.name';
+const ATTR_GEN_AI_STEP_NAME = 'gen_ai.step.name';
+const ATTR_GEN_AI_TOOL_ARGUMENTS = 'gen_ai.tool.arguments'; // deprecated by OTel
+const ATTR_GEN_AI_TOOL_MESSAGE = 'gen_ai.tool.message'; // deprecated by OTel
 
 /**
  * When adding something new here, please:
@@ -109,10 +121,10 @@ export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
 export const Attr = {
   Axiom: {
     GenAI: {
-      SchemaURL: 'axiom.gen_ai.schema_url',
+      SchemaURL: ATTR_AXIOM_GEN_AI_SCHEMA_URL,
       SDK: {
-        Name: 'axiom.gen_ai.sdk.name',
-        Version: 'axiom.gen_ai.sdk.version',
+        Name: ATTR_AXIOM_GEN_AI_SDK_NAME,
+        Version: ATTR_AXIOM_GEN_AI_SDK_VERSION,
       },
     },
   },
@@ -127,13 +139,13 @@ export const Attr = {
      * These two are used to identify the span
      */
     Capability: {
-      Name: 'gen_ai.capability.name', // proprietary to axiom-ai
+      Name: ATTR_GEN_AI_CAPABILITY_NAME,
     },
     Step: {
-      Name: 'gen_ai.step.name', // proprietary to axiom-ai
+      Name: ATTR_GEN_AI_STEP_NAME,
     },
     Provider: {
-      Name: 'gen_ai.provider.name', // TODO: replace with value imported from semconv once they ship
+      Name: 'gen_ai.provider.name', // TODO: replace with value imported from 1.37 semconv once they ship
       Name_Values: {
         // TODO: these will be replaced with GEN_AI_PROVIDER_NAME_VALUE_<provider> or similar once the new version of the semconv package ships
         Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
@@ -168,7 +180,7 @@ export const Attr = {
       ID: ATTR_GEN_AI_DATA_SOURCE_ID, // not used in axiom-ai yet
     },
     Input: {
-      Messages: 'gen_ai.input.messages', // TODO: use the version from 1.37 semconv
+      Messages: 'gen_ai.input.messages', // TODO: replace with value imported from 1.37 semconv once they ship
     },
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
@@ -185,7 +197,7 @@ export const Attr = {
       },
     },
     Output: {
-      Messages: 'gen_ai.output.messages', // TODO: use the one from 1.37 semantic conventions
+      Messages: 'gen_ai.output.messages', // TODO: replace with value imported from 1.37 semconv once they ship
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
       Type_Values: {
         Text: GEN_AI_OUTPUT_TYPE_VALUE_TEXT,
@@ -228,14 +240,19 @@ export const Attr = {
       Name: ATTR_GEN_AI_TOOL_NAME,
       Type: ATTR_GEN_AI_TOOL_TYPE,
       /**
-       * Note, OTel Semantic Convention puts these on `gen_ai.choice` events
-       * @see https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/#event-gen_aichoice
+       * Note, OTel Semantic Convention suggest only putting tool inputs/outputs on the parent chat span
+       * But we at least want to give users THE OPTION to put them on the tool spans themselves as well
+       * Because it enables a lot of things with querying
+       * @see https://github.com/open-telemetry/semantic-conventions/releases/tag/v1.37.0
        */
-      Arguments: 'gen_ai.tool.arguments',
+      Arguments: ATTR_GEN_AI_TOOL_ARGUMENTS,
       /**
-       * Note, OTel Semantic Convention puts these on `gen_ai.tool.message` events
+       * Note, OTel Semantic Convention suggest only putting tool inputs/outputs on the parent chat span
+       * But we at least want to give users THE OPTION to put them on the tool spans themselves as well
+       * Because it enables a lot of things with querying
+       * @see https://github.com/open-telemetry/semantic-conventions/releases/tag/v1.37.0
        */
-      Message: 'gen_ai.tool.message',
+      Message: ATTR_GEN_AI_TOOL_MESSAGE,
     },
     Usage: {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
