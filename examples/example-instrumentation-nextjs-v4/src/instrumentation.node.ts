@@ -4,7 +4,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { initAxiomAI } from 'axiom/ai';
+import { initAxiomAI, RedactionPolicy } from 'axiom/ai';
 import { tracer } from './tracer';
 
 const sdk = new NodeSDK({
@@ -24,4 +24,4 @@ const sdk = new NodeSDK({
 
 sdk.start();
 
-initAxiomAI({ tracer });
+initAxiomAI({ tracer, redactionPolicy: RedactionPolicy.AxiomDefault });
