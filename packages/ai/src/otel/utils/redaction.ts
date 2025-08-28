@@ -8,7 +8,7 @@ export type AxiomAIRedactionPolicy = {
   mirrorToolPayloadOnToolSpan?: boolean;
 };
 
-export const RedactionPolicy: Record<string, AxiomAIRedactionPolicy> = {
+export const RedactionPolicy = {
   /**
    * Includes message content on chat spans, and mirrors tool
    * payload on tool spans for more convenient querying.
@@ -25,7 +25,7 @@ export const RedactionPolicy: Record<string, AxiomAIRedactionPolicy> = {
     captureMessageContent: 'off',
     mirrorToolPayloadOnToolSpan: false,
   },
-};
+} as const satisfies Record<string, AxiomAIRedactionPolicy>;
 
 // Global key to store redaction policy across all execution contexts
 export const AXIOM_AI_REDACTION_KEY = Symbol.for('__axiom_ai_redaction__');
