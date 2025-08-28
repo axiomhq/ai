@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { generatePromptFileFromApiResponse } from '../transpiler';
+import { generatePromptFileFromApiResponse } from '../../transpiler';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 

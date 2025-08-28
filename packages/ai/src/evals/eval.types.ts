@@ -1,5 +1,5 @@
-import type { Score, Scorer } from 'src/scorers/scorer.types';
-import type { TestError } from 'vitest';
+import type { Scorer } from 'src/scorers/scorer.types';
+import type { ModelParams, PromptMessage } from 'src/types';
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
@@ -24,19 +24,21 @@ import type { TestError } from 'vitest';
  * };
  * ```
  */
-export type EvalTask<TInput, TExpected> = (
-  input: TInput,
-  expected: TExpected,
-) => Promise<any> | any;
+export type EvalTask<TInput, TExpected> = (args: {
+  model: string;
+  params: ModelParams;
+  input: TInput;
+  expected: TExpected;
+}) => Promise<any> | any;
 
 /**
  * Record type of a matric of collection data
  */
 export type CollectionRecord = {
   /** Optional name for the record, if not set, it will default to eval name + index of the record */
-  name?: string;
   input: string | Record<string, any>;
   expected: string | Record<string, any>;
+  metadata?: Record<string, any>;
 };
 
 /**
@@ -50,45 +52,18 @@ export type CollectionRecord = {
 export type EvalParams = {
   /** Function that returns the dataset with input/expected pairs for evaluation */
   data: () => Promise<CollectionRecord[]> | CollectionRecord[];
+  /** The name of the model */
+  model: string;
+  /** The {@Link Options} object to configure models */
+  params: ModelParams;
+  /** The {@Link PromptMessage[]} template */
+  prompt: PromptMessage[];
   /** The {@link EvalTask} function to execute for each data item */
   task: EvalTask<any, any>;
   /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
   scorers: Array<Scorer>;
-  /** Minimum score threshold for passing (0.0 to 1.0) */
-  threshold: number;
+  /** KeyValue map for extra metadata */
+  metadata?: Record<string, any>;
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
-};
-
-/**
- * Complete report for a single evaluation case including results and metadata.
- *
- * Generated for each test case when running {@link Eval} with {@link EvalParams}.
- * Contains all {@link Score} results and execution metadata.
- *
- * @experimental This API is experimental and may change in future versions.
- */
-export type EvalReport = {
-  /** Order/index of this case in the evaluation suite */
-  index: number;
-  /** Name of the evaluation */
-  name: string;
-  /** Input data that was provided to the {@link EvalTask} */
-  input: string | Record<string, any>;
-  /** Output produced by the {@link EvalTask} */
-  output: string | Record<string, any>;
-  /** Expected output for comparison */
-  expected: string | Record<string, any>;
-  /** Array of {@link Score} results from all scorers that were run */
-  scores: Record<string, Score>;
-  /** Any errors that occurred during evaluation */
-  errors: TestError[] | null;
-  /** Status of the evaluation case */
-  status: 'success' | 'fail' | 'pending';
-  /** Duration in milliseconds for the entire case */
-  duration: number | undefined;
-  /** Timestamp when the case started */
-  startedAt: number | undefined;
-  /** Score threshold from {@link EvalParams.threshold} that was used for pass/fail determination */
-  threshold: number | undefined;
 };

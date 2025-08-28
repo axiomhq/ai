@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { Command } from 'commander';
+import { loadPushCommand } from './cli/commands/push.command';
+import { loadPullCommand } from './cli/commands/pull.command';
+import { loadEvalCommand } from './cli/commands/eval.command';
 
 // Load environment variables using @next/env
 import pkg from '@next/env';
@@ -7,12 +11,7 @@ const { loadEnvConfig } = pkg;
 // Load .env files from the current working directory
 loadEnvConfig(process.cwd());
 
-import { Command } from 'commander';
-import { loadPushCommand } from './commands/push.command';
-import { loadPullCommand } from './commands/pull.command';
-import { loadRunCommand } from './commands/eval.command';
-
-const program = new Command();
+export const program = new Command();
 
 program
   .name('axiom')
@@ -21,6 +20,6 @@ program
 
 loadPushCommand(program);
 loadPullCommand(program);
-loadRunCommand(program);
+export const evalcmd = loadEvalCommand(program);
 
 program.parse();
