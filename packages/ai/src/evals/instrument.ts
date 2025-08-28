@@ -2,6 +2,7 @@ import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, type Context, type SpanOptions } from '@opentelemetry/api';
+import { initAxiomAI } from 'src/otel/initAxiomAI';
 
 const collectorOptions = {
   url: process.env.AXIOM_URL
@@ -26,7 +27,7 @@ const processor = new BatchSpanProcessor(exporter, {
 
 const provider = new NodeTracerProvider({
   resource: resourceFromAttributes({
-    ['service.name']: 'axiom-ai',
+    ['service.name']: 'axiom',
     ['service.version']: __SDK_VERSION__,
   }),
   spanProcessors: [processor],
@@ -35,7 +36,7 @@ const provider = new NodeTracerProvider({
 provider.register();
 
 // Create a shared tracer instance
-const tracer = trace.getTracer('axiom-ai', __SDK_VERSION__);
+export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
 export const flush = async () => {
   await provider.forceFlush();
@@ -44,3 +45,5 @@ export const flush = async () => {
 export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
   return tracer.startSpan(name, opts, context);
 };
+
+initAxiomAI({ tracer: tracer });
