@@ -26,6 +26,8 @@ export type ModelParams = {
   maxRetries?: number;
 };
 
+export type PromptMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string };
+
 /**
  * Complete prompt definition with all metadata and versioning information.
  *
@@ -40,7 +42,7 @@ export type Prompt = {
   /** Immutable user-defined identifier for the prompt */
   slug: string;
   /** Array of messages that make up the conversation */
-  messages: { role: 'system' | 'user' | 'assistant' | 'tool'; content: string }[];
+  messages: PromptMessage[];
   /** The language model to use for this prompt */
   model: string;
   /** Optional generation parameters */

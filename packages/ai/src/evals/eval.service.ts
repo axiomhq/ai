@@ -43,8 +43,6 @@ export type Case = {
     {
       name: string;
       value: number;
-      passed: boolean;
-      threshold: number;
       metadata: Record<string, any>;
     }
   >;
@@ -284,11 +282,9 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
     caseData.scores = {};
 
     scoreSpans.forEach((score) => {
-      const name = score.data.attributes.custom['eval.score.name'] as string;
+      const name = score.data.attributes.custom['eval.score.name'];
       caseData.scores[name] = {
         name,
-        passed: score.data.attributes.custom['eval.score.passed'],
-        threshold: score.data.attributes.custom['eval.score.threshold'],
         value: score.data.attributes.custom['eval.score.value'],
         metadata: {
           error: score.data.attributes.error,

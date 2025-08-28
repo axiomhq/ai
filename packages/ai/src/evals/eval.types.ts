@@ -1,5 +1,5 @@
-import type { Score, Scorer } from 'src/scorers/scorer.types';
-import type { ModelParams } from 'src/types';
+import type { Scorer } from 'src/scorers/scorer.types';
+import type { ModelParams, PromptMessage } from 'src/types';
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
@@ -56,10 +56,14 @@ export type EvalParams = {
   model: string;
   /** The {@Link Options} object to configure models */
   params: ModelParams;
+  /** The {@Link PromptMessage[]} template */
+  prompt: PromptMessage[];
   /** The {@link EvalTask} function to execute for each data item */
   task: EvalTask<any, any>;
   /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
   scorers: Array<Scorer>;
+  /** KeyValue map for extra metadata */
+  metadata?: Record<string, any>;
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
 };

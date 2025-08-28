@@ -4,5 +4,6 @@ export type {
   EvalTask as experimental_EvalTask,
   EvalParams as experimental_EvalParams,
 } from './evals/eval.types';
+export * from './evals/eval.service';
 
 export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';

@@ -74,7 +74,7 @@ export class AxiomReporter implements Reporter {
       ' ',
       c.bgCyan(c.black(` ${_testSuite.project.name} `)),
       c.bgBlue(c.black(` ${meta.evaluation.name}-${meta.evaluation.version} `)),
-      c.dim(`(${_testSuite.children.size} tests)`),
+      c.dim(`(${_testSuite.children.size} cases)`),
     );
 
     console.log(' ', c.dim(_testSuite.module.moduleId.replace(cwd, '')));
@@ -95,8 +95,47 @@ export class AxiomReporter implements Reporter {
     console.log('');
   }
 
-  onTestCaseResult(test: TestCase) {
-    if (test.type !== 'test') return;
+  onTestCaseReady(test: TestCase) {
+    const meta = test.meta() as TaskMeta & { case: EvalCaseReport };
+    console.log(c.blue(` \u2713 evaluating case ${meta.case.index}`));
+  }
+
+  onTestSuiteResult(testSuite: TestSuite) {
+    // calculate test duration in seconds
+    const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
+
+    console.log(' ');
+    console.log(' ', c.dim('Cases'), testSuite.children.size);
+    console.log(' ', c.dim('Start at'), new Date(this.startTime).toTimeString());
+    console.log(' ', c.dim('Duration'), `${duration}s`);
+
+    const meta = testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
+    const url = `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`;
+
+    for (const test of testSuite.children) {
+      if (test.type !== 'test') return;
+      this.printCaseResult(test);
+    }
+
+    console.log('');
+    console.log(
+      ' ',
+      `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
+    );
+    console.log(
+      ' ',
+      c.cyanBright('=== === === === === === === === === === === === === === === ==='),
+    );
+    console.log('');
+  }
+
+  async onTestRunEnd(
+    _testModules: ReadonlyArray<TestModule>,
+    _errors: ReadonlyArray<SerializedError>,
+    _reason: TestRunEndReason,
+  ) {}
+
+  private printCaseResult(test: TestCase) {
     const ok = test.ok();
     const testMeta = test.meta() as TaskMeta & { case: EvalCaseReport };
 
@@ -106,11 +145,11 @@ export class AxiomReporter implements Reporter {
     const index = testMeta.case.index;
 
     if (ok) {
-      console.log(c.yellow(` \u2713 case ${index}:`));
+      console.log(' ', c.yellow(` \u2714 case ${index}:`));
     } else {
-      console.log(c.red(` \u2713 case ${index}:`));
+      console.log(' ', c.red(` \u2716 case ${index}: failed`));
       for (const e of testMeta.case.errors ?? []) {
-        console.log('', e);
+        console.log('', e.message);
       }
     }
 
@@ -139,34 +178,4 @@ export class AxiomReporter implements Reporter {
       return [k, scoreValue];
     });
   }
-
-  onTestSuiteResult(testSuite: TestSuite) {
-    // calculate test duration in seconds
-    const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
-
-    console.log(' ');
-    console.log(' ', c.dim('Tests'), testSuite.children.size);
-    console.log(' ', c.dim('Start at'), new Date(this.startTime).toTimeString());
-    console.log(' ', c.dim('Duration'), `${duration}s`);
-
-    const meta = testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
-    const url = `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`;
-
-    console.log('');
-    console.log(
-      ' ',
-      `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
-    );
-    console.log(
-      ' ',
-      c.cyanBright('=== === === === === === === === === === === === === === === ==='),
-    );
-    console.log('');
-  }
-
-  async onTestRunEnd(
-    _testModules: ReadonlyArray<TestModule>,
-    _errors: ReadonlyArray<SerializedError>,
-    _reason: TestRunEndReason,
-  ) {}
 }

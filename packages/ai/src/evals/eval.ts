@@ -91,6 +91,8 @@ async function registerEval(evalName: string, opts: EvalParams) {
           [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
           [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
           [Attr.Eval.Collection.Size]: dataset.length,
+          // metadata
+          'eval.metadata': JSON.stringify(opts.metadata),
           // baseline
           [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
           [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
@@ -98,6 +100,7 @@ async function registerEval(evalName: string, opts: EvalParams) {
           [Attr.Eval.User.Name]: user?.name,
           [Attr.Eval.User.Email]: user?.email,
           // prompt
+          ['eval.prompt.messages']: JSON.stringify(opts.prompt),
           ['eval.prompt.model']: opts.model,
           ['eval.prompt.params']: JSON.stringify(opts.params),
         },
@@ -168,6 +171,8 @@ async function registerEval(evalName: string, opts: EvalParams) {
                 task: opts.task,
                 model: opts.model,
                 params: opts.params,
+                prompt: opts.prompt,
+                metadata: opts.metadata,
               },
             );
 
@@ -197,8 +202,9 @@ async function registerEval(evalName: string, opts: EvalParams) {
                 const duration = Math.round(performance.now() - start);
                 const scoreValue = result.score as number;
 
+                // set score value to the score span
                 scorerSpan.setAttributes({
-                  [Attr.Eval.Score.Name]: scorer.name,
+                  [Attr.Eval.Score.Name]: result.name, // make sure to use name returned by result not the name of scorer function
                   [Attr.Eval.Score.Value]: scoreValue,
                 });
 
@@ -217,7 +223,7 @@ async function registerEval(evalName: string, opts: EvalParams) {
             // set case output
             caseSpan.setAttributes({
               [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
-              [Attr.Eval.Case.Scores]: JSON.stringify(scores),
+              [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
             });
             caseSpan.setStatus({ code: SpanStatusCode.OK });
 
@@ -235,6 +241,7 @@ async function registerEval(evalName: string, opts: EvalParams) {
               startedAt: start,
             };
           } catch (e) {
+            console.log(e);
             const error = e as Error;
             caseSpan.recordException(error);
             caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
