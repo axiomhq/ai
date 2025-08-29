@@ -103,7 +103,7 @@ describe('tool call attributes', () => {
     expect(toolSpan).toBeDefined();
     expect(toolSpan?.name).toBe('execute_tool searchDatabase');
     expect(toolSpan?.attributes).toEqual({
-      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
+      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.2',
       'axiom.gen_ai.sdk.name': 'axiom',
       'axiom.gen_ai.sdk.version': packageJson.version,
       'gen_ai.operation.name': 'execute_tool',
@@ -119,11 +119,11 @@ describe('tool call attributes', () => {
     expect(chatSpan).toBeDefined();
     expect(chatSpan?.name).toBe('chat tool-model');
     expect(chatSpan?.attributes).toEqual({
-      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.1',
+      'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.2',
       'axiom.gen_ai.sdk.name': 'axiom',
       'axiom.gen_ai.sdk.version': packageJson.version,
       'gen_ai.capability.name': 'test-capability',
-      'gen_ai.prompt': JSON.stringify([
+      'gen_ai.input.messages': JSON.stringify([
         {
           role: 'user',
           content: [
@@ -153,7 +153,7 @@ describe('tool call attributes', () => {
           content: '"Found results for: test query"',
         },
       ]),
-      'gen_ai.completion': JSON.stringify([
+      'gen_ai.output.messages': JSON.stringify([
         {
           role: 'assistant',
           content: 'I found a result...',

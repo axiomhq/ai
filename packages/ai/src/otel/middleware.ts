@@ -54,6 +54,7 @@ import {
   StreamStatsV2,
 } from './streaming/aggregators';
 import type { AxiomPromptMetadata } from '../types/metadata';
+import { getRedactionPolicy, handleMaybeRedactedAttribute } from './utils/redaction';
 
 export interface AxiomTelemetryConfig {
   // Future configuration options can be added here
@@ -320,6 +321,8 @@ function setPreCallAttributesV1(
   context: GenAiSpanContextV1,
   model: LanguageModelV1,
 ) {
+  const redactionPolicy = getRedactionPolicy();
+
   const {
     prompt,
     maxTokens,
@@ -338,7 +341,12 @@ function setPreCallAttributesV1(
   const processedPrompt = promptV1ToOpenAI(prompt);
   context.originalPrompt = processedPrompt;
 
-  span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)));
+  handleMaybeRedactedAttribute(
+    span,
+    Attr.GenAI.Input.Messages,
+    JSON.stringify(sanitizeMultimodalContent(processedPrompt)),
+    redactionPolicy.captureMessageContent,
+  );
 
   setBaseAttributes(span, model.provider, model.modelId);
 
@@ -365,6 +373,8 @@ async function setPostCallAttributesV1(
   context: GenAiSpanContextV1,
   _model: LanguageModelV1,
 ) {
+  const redactionPolicy = getRedactionPolicy();
+
   // Update prompt to include tool calls and tool results if they exist
   if (result.toolCalls && result.toolCalls.length > 0) {
     const originalPrompt = context.originalPrompt || [];
@@ -384,7 +394,12 @@ async function setPostCallAttributesV1(
       result.text,
     );
 
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)));
+    handleMaybeRedactedAttribute(
+      span,
+      Attr.GenAI.Input.Messages,
+      JSON.stringify(sanitizeMultimodalContent(updatedPrompt)),
+      redactionPolicy.captureMessageContent,
+    );
   }
 
   // Create simple completion array with just assistant text
@@ -392,7 +407,12 @@ async function setPostCallAttributesV1(
     const completion = createSimpleCompletion({
       text: result.text,
     });
-    span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    handleMaybeRedactedAttribute(
+      span,
+      Attr.GenAI.Output.Messages,
+      JSON.stringify(completion),
+      redactionPolicy.captureMessageContent,
+    );
   }
 
   if (result.response?.id) {
@@ -436,6 +456,8 @@ function setPreCallAttributesV2(
   context: GenAiSpanContextV2,
   model: LanguageModelV2,
 ) {
+  const redactionPolicy = getRedactionPolicy();
+
   setBaseAttributes(span, model.provider, model.modelId);
 
   const outputType = determineOutputTypeV2(options);
@@ -460,7 +482,12 @@ function setPreCallAttributesV2(
   context.originalV2Prompt = options.prompt;
   context.originalPrompt = processedPrompt;
 
-  span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(processedPrompt)));
+  handleMaybeRedactedAttribute(
+    span,
+    Attr.GenAI.Input.Messages,
+    JSON.stringify(sanitizeMultimodalContent(processedPrompt)),
+    redactionPolicy.captureMessageContent,
+  );
 }
 
 async function setPostCallAttributesV2(
@@ -474,6 +501,8 @@ async function setPostCallAttributesV2(
   context: GenAiSpanContextV2,
   _model: LanguageModelV2,
 ) {
+  const redactionPolicy = getRedactionPolicy();
+
   // Check if we have tool calls in this response
   const toolCalls = result.content?.filter(
     (c) => c.type === 'tool-call',
@@ -520,7 +549,12 @@ async function setPostCallAttributesV2(
     );
 
     // Update the prompt attribute with the complete conversation history
-    span.setAttribute(Attr.GenAI.Prompt, JSON.stringify(sanitizeMultimodalContent(updatedPrompt)));
+    handleMaybeRedactedAttribute(
+      span,
+      Attr.GenAI.Input.Messages,
+      JSON.stringify(sanitizeMultimodalContent(updatedPrompt)),
+      redactionPolicy.captureMessageContent,
+    );
   }
 
   // Process tool calls and create child spans
@@ -531,7 +565,12 @@ async function setPostCallAttributesV2(
     const completion = createSimpleCompletion({
       text: '',
     });
-    span.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    handleMaybeRedactedAttribute(
+      span,
+      Attr.GenAI.Output.Messages,
+      JSON.stringify(completion),
+      redactionPolicy.captureMessageContent,
+    );
   }
 
   // Store finish reason separately as per semantic conventions (only on first call to prevent overwriting)
@@ -544,6 +583,8 @@ async function processToolCallsAndCreateSpansV2(
   parentSpan: Span,
   content: Array<LanguageModelV2Content>,
 ): Promise<void> {
+  const redactionPolicy = getRedactionPolicy();
+
   // Extract text and tool calls from content
   const textContent = content.find((c) => c.type === 'text');
   const assistantText = textContent?.type === 'text' ? textContent.text : undefined;
@@ -562,6 +603,11 @@ async function processToolCallsAndCreateSpansV2(
     ];
 
     // Set completion array as span attribute
-    parentSpan.setAttribute(Attr.GenAI.Completion, JSON.stringify(completion));
+    handleMaybeRedactedAttribute(
+      parentSpan,
+      Attr.GenAI.Output.Messages,
+      JSON.stringify(completion),
+      redactionPolicy.captureMessageContent,
+    );
   }
 }

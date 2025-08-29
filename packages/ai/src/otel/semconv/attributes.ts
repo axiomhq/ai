@@ -46,7 +46,6 @@ import {
   GEN_AI_OUTPUT_TYPE_VALUE_SPEECH,
   GEN_AI_OUTPUT_TYPE_VALUE_TEXT,
   GEN_AI_OUTPUT_TYPE_VALUE_IMAGE,
-  ATTR_GEN_AI_SYSTEM,
   GEN_AI_SYSTEM_VALUE_OPENAI,
   GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
   GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
@@ -70,8 +69,6 @@ import {
   ATTR_GEN_AI_REQUEST_SEED,
   ATTR_GEN_AI_REQUEST_STOP_SEQUENCES,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
-  ATTR_GEN_AI_COMPLETION,
-  ATTR_GEN_AI_PROMPT,
   ATTR_GEN_AI_TOOL_CALL_ID,
   ATTR_GEN_AI_TOOL_NAME,
   ATTR_GEN_AI_TOOL_TYPE,
@@ -91,8 +88,22 @@ import {
   ATTR_ERROR_MESSAGE,
 } from './semconv_incubating';
 
-export const SCHEMA_VERSION = '0.0.1';
+export const SCHEMA_VERSION = '0.0.2';
 export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
+
+/**
+ * PROPRIETARY ATTRIBUTES (o11y)
+ *
+ * @see: https://axiom.co/docs/ai-engineering/semantic-conventions
+ */
+
+const ATTR_AXIOM_GEN_AI_SCHEMA_URL = 'axiom.gen_ai.schema_url';
+const ATTR_AXIOM_GEN_AI_SDK_NAME = 'axiom.gen_ai.sdk.name';
+const ATTR_AXIOM_GEN_AI_SDK_VERSION = 'axiom.gen_ai.sdk.version';
+const ATTR_GEN_AI_CAPABILITY_NAME = 'gen_ai.capability.name';
+const ATTR_GEN_AI_STEP_NAME = 'gen_ai.step.name';
+const ATTR_GEN_AI_TOOL_ARGUMENTS = 'gen_ai.tool.arguments'; // deprecated by OTel
+const ATTR_GEN_AI_TOOL_MESSAGE = 'gen_ai.tool.message'; // deprecated by OTel
 
 /**
  * When adding something new here, please:
@@ -108,10 +119,10 @@ export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
 export const Attr = {
   Axiom: {
     GenAI: {
-      SchemaURL: 'axiom.gen_ai.schema_url',
+      SchemaURL: ATTR_AXIOM_GEN_AI_SCHEMA_URL,
       SDK: {
-        Name: 'axiom.gen_ai.sdk.name',
-        Version: 'axiom.gen_ai.sdk.version',
+        Name: ATTR_AXIOM_GEN_AI_SDK_NAME,
+        Version: ATTR_AXIOM_GEN_AI_SDK_VERSION,
       },
     },
   },
@@ -126,10 +137,31 @@ export const Attr = {
      * These two are used to identify the span
      */
     Capability: {
-      Name: 'gen_ai.capability.name', // proprietary to axiom-ai
+      Name: ATTR_GEN_AI_CAPABILITY_NAME,
     },
     Step: {
-      Name: 'gen_ai.step.name', // proprietary to axiom-ai
+      Name: ATTR_GEN_AI_STEP_NAME,
+    },
+    Provider: {
+      Name: 'gen_ai.provider.name', // TODO: replace with value imported from 1.37 semconv once they ship
+      Name_Values: {
+        // TODO: these will be replaced with GEN_AI_PROVIDER_NAME_VALUE_<provider> or similar once the new version of the semconv package ships
+        Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
+        AWSBedrock: GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
+        AzureAIInference: GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
+        AzureAIOpenAI: GEN_AI_SYSTEM_VALUE_AZURE_AI_OPENAI,
+        Cohere: GEN_AI_SYSTEM_VALUE_COHERE,
+        Deepseek: GEN_AI_SYSTEM_VALUE_DEEPSEEK,
+        GCPGemini: GEN_AI_SYSTEM_VALUE_GCP_GEMINI,
+        GCPGenAI: GEN_AI_SYSTEM_VALUE_GCP_GEN_AI,
+        GCPVertexAI: GEN_AI_SYSTEM_VALUE_GCP_VERTEX_AI,
+        Groq: GEN_AI_SYSTEM_VALUE_GROQ,
+        IBMWatsonxAI: GEN_AI_SYSTEM_VALUE_IBM_WATSONX_AI,
+        MistralAI: GEN_AI_SYSTEM_VALUE_MISTRAL_AI,
+        OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
+        Perplexity: GEN_AI_SYSTEM_VALUE_PERPLEXITY,
+        XAI: GEN_AI_SYSTEM_VALUE_XAI,
+      },
     },
     /**
      * Regular attributes
@@ -139,12 +171,14 @@ export const Attr = {
       ID: ATTR_GEN_AI_AGENT_ID, // not yet used by axiom-ai
       Name: ATTR_GEN_AI_AGENT_NAME, // not yet used by axiom-ai
     },
-    Completion: ATTR_GEN_AI_COMPLETION, // OTel suggests to use events API for this now
     Conversation: {
       ID: ATTR_GEN_AI_CONVERSATION_ID, // not yet used by axiom-ai, anyway probably needs to be provided by user
     },
     DataSource: {
       ID: ATTR_GEN_AI_DATA_SOURCE_ID, // not used in axiom-ai yet
+    },
+    Input: {
+      Messages: 'gen_ai.input.messages', // TODO: replace with value imported from 1.37 semconv once they ship
     },
     Operation: {
       Name: ATTR_GEN_AI_OPERATION_NAME,
@@ -161,6 +195,7 @@ export const Attr = {
       },
     },
     Output: {
+      Messages: 'gen_ai.output.messages', // TODO: replace with value imported from 1.37 semconv once they ship
       Type: ATTR_GEN_AI_OUTPUT_TYPE,
       Type_Values: {
         Text: GEN_AI_OUTPUT_TYPE_VALUE_TEXT,
@@ -173,7 +208,6 @@ export const Attr = {
      * The provider that is hosting the model, eg AWS Bedrock
      * There doesn't seem to be a semconv for this
      */
-    Prompt: ATTR_GEN_AI_PROMPT, // OTel suggests to use the events api for this
     Request: {
       ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT, // not yet used by axiom-ai
       EncodingFormats: ATTR_GEN_AI_REQUEST_ENCODING_FORMATS, // not yet used by axiom-ai
@@ -198,47 +232,25 @@ export const Attr = {
        */
       Model: ATTR_GEN_AI_RESPONSE_MODEL, // somehow not landing on the span for google models? check up on this...
     },
-    /**
-     * From OTel docs:
-     * ```
-     * Multiple systems, including Azure OpenAI and Gemini, are accessible
-     * by OpenAI client libraries. In such cases, the gen_ai.system is set
-     * to openai based on the instrumentation's best knowledge, instead of
-     * the actual system.
-     * ```
-     */
-    System: ATTR_GEN_AI_SYSTEM, // not yet used by axiom-ai
-    System_Values: {
-      Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
-      AWSBedrock: GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
-      AzureAIInference: GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
-      AzureAIOpenAI: GEN_AI_SYSTEM_VALUE_AZURE_AI_OPENAI,
-      Cohere: GEN_AI_SYSTEM_VALUE_COHERE,
-      Deepseek: GEN_AI_SYSTEM_VALUE_DEEPSEEK,
-      GCPGemini: GEN_AI_SYSTEM_VALUE_GCP_GEMINI,
-      GCPGenAI: GEN_AI_SYSTEM_VALUE_GCP_GEN_AI,
-      GCPVertexAI: GEN_AI_SYSTEM_VALUE_GCP_VERTEX_AI,
-      Groq: GEN_AI_SYSTEM_VALUE_GROQ,
-      IBMWatsonxAI: GEN_AI_SYSTEM_VALUE_IBM_WATSONX_AI,
-      MistralAI: GEN_AI_SYSTEM_VALUE_MISTRAL_AI,
-      OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
-      Perplexity: GEN_AI_SYSTEM_VALUE_PERPLEXITY,
-      XAI: GEN_AI_SYSTEM_VALUE_XAI,
-    },
     Tool: {
       CallID: ATTR_GEN_AI_TOOL_CALL_ID,
       Description: ATTR_GEN_AI_TOOL_DESCRIPTION,
       Name: ATTR_GEN_AI_TOOL_NAME,
       Type: ATTR_GEN_AI_TOOL_TYPE,
       /**
-       * Note, OTel Semantic Convention puts these on `gen_ai.choice` events
-       * @see https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-events/#event-gen_aichoice
+       * Note, OTel Semantic Convention suggest only putting tool inputs/outputs on the parent chat span
+       * But we at least want to give users THE OPTION to put them on the tool spans themselves as well
+       * Because it enables a lot of things with querying
+       * @see https://github.com/open-telemetry/semantic-conventions/releases/tag/v1.37.0
        */
-      Arguments: 'gen_ai.tool.arguments',
+      Arguments: ATTR_GEN_AI_TOOL_ARGUMENTS,
       /**
-       * Note, OTel Semantic Convention puts these on `gen_ai.tool.message` events
+       * Note, OTel Semantic Convention suggest only putting tool inputs/outputs on the parent chat span
+       * But we at least want to give users THE OPTION to put them on the tool spans themselves as well
+       * Because it enables a lot of things with querying
+       * @see https://github.com/open-telemetry/semantic-conventions/releases/tag/v1.37.0
        */
-      Message: 'gen_ai.tool.message',
+      Message: ATTR_GEN_AI_TOOL_MESSAGE,
     },
     Usage: {
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,

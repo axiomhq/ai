@@ -1,6 +1,7 @@
 import type { Tracer } from '@opentelemetry/api';
 import { trace } from '@opentelemetry/api';
 import packageJson from '../../package.json';
+import { AXIOM_AI_REDACTION_KEY, type AxiomAIRedactionPolicy } from './utils/redaction';
 
 // Global key to store tracer scope information across all execution contexts
 const AXIOM_AI_SCOPE_KEY = Symbol.for('__axiom_ai_scope__');
@@ -41,8 +42,9 @@ function extractTracerScope(tracer: Tracer): TracerScope {
  *
  * @param config
  * @param config.tracer - The tracer that you are using in your application.
+ * @param config.redactionPolicy - Optional redaction policy to control what data is captured in spans.
  */
-export function initAxiomAI(config: { tracer: Tracer }) {
+export function initAxiomAI(config: { tracer: Tracer; redactionPolicy?: AxiomAIRedactionPolicy }) {
   const newScope = extractTracerScope(config.tracer);
   const existingScope = (globalThis as any)[AXIOM_AI_SCOPE_KEY] as TracerScope | undefined;
 
@@ -66,6 +68,11 @@ export function initAxiomAI(config: { tracer: Tracer }) {
 
   // Store scope information globally (works across Next.js contexts)
   (globalThis as any)[AXIOM_AI_SCOPE_KEY] = newScope;
+
+  // Store redaction policy globally if provided
+  if (config.redactionPolicy) {
+    (globalThis as any)[AXIOM_AI_REDACTION_KEY] = config.redactionPolicy;
+  }
 }
 
 /**
@@ -105,4 +112,5 @@ export function getGlobalTracer(): Tracer {
  */
 export function resetAxiomAI() {
   (globalThis as any)[AXIOM_AI_SCOPE_KEY] = undefined;
+  (globalThis as any)[AXIOM_AI_REDACTION_KEY] = undefined;
 }

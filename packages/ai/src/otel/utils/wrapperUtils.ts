@@ -236,7 +236,7 @@ export function setBaseAttributes(span: Span, provider: string, modelId: string)
 
   const systemValue = mapProviderToSystem(provider);
   if (systemValue) {
-    span.setAttribute(Attr.GenAI.System, systemValue);
+    span.setAttribute(Attr.GenAI.Provider.Name, systemValue);
   }
 
   setAxiomBaseAttributes(span);
@@ -535,29 +535,29 @@ export function mapProviderToSystem(provider: string): string | undefined {
   // exact matches
   switch (provider) {
     case 'amazon-bedrock':
-      return Attr.GenAI.System_Values.AWSBedrock;
+      return Attr.GenAI.Provider.Name_Values.AWSBedrock;
     case 'anthropic':
-      return Attr.GenAI.System_Values.Anthropic;
+      return Attr.GenAI.Provider.Name_Values.Anthropic;
     case 'gateway':
       return OTHER_VALUE;
     case 'google':
-      return Attr.GenAI.System_Values.GCPGemini;
+      return Attr.GenAI.Provider.Name_Values.GCPGemini;
     case 'groq':
-      return Attr.GenAI.System_Values.Groq;
+      return Attr.GenAI.Provider.Name_Values.Groq;
     case 'mistral':
-      return Attr.GenAI.System_Values.MistralAI;
+      return Attr.GenAI.Provider.Name_Values.MistralAI;
     case 'openai':
-      return Attr.GenAI.System_Values.OpenAI;
+      return Attr.GenAI.Provider.Name_Values.OpenAI;
     case 'openai-compatible':
       return OTHER_VALUE;
     case 'perplexity':
-      return Attr.GenAI.System_Values.Perplexity;
+      return Attr.GenAI.Provider.Name_Values.Perplexity;
     case 'replicate':
       return OTHER_VALUE;
     case 'togetherai':
       return OTHER_VALUE;
     case 'xai':
-      return Attr.GenAI.System_Values.XAI;
+      return Attr.GenAI.Provider.Name_Values.XAI;
 
     // Specialized providers that should not have system attribute
     case 'assemblyai':
@@ -569,19 +569,19 @@ export function mapProviderToSystem(provider: string): string | undefined {
     // startswith + fall through
     default: {
       if (provider.startsWith('azure.')) {
-        return Attr.GenAI.System_Values.AzureAIOpenAI;
+        return Attr.GenAI.Provider.Name_Values.AzureAIOpenAI;
       }
       if (provider.startsWith('cerebras.')) {
         return OTHER_VALUE;
       }
       if (provider.startsWith('cohere.')) {
-        return Attr.GenAI.System_Values.Cohere;
+        return Attr.GenAI.Provider.Name_Values.Cohere;
       }
       if (provider.startsWith('deepinfra.')) {
         return OTHER_VALUE;
       }
       if (provider.startsWith('deepseek.')) {
-        return Attr.GenAI.System_Values.Deepseek;
+        return Attr.GenAI.Provider.Name_Values.Deepseek;
       }
       if (provider.startsWith('elevenlabs.')) {
         return OTHER_VALUE;
@@ -593,7 +593,7 @@ export function mapProviderToSystem(provider: string): string | undefined {
         return OTHER_VALUE;
       }
       if (provider.startsWith('google.vertex.')) {
-        return Attr.GenAI.System_Values.GCPVertexAI;
+        return Attr.GenAI.Provider.Name_Values.GCPVertexAI;
       }
       if (provider.startsWith('hume.')) {
         return OTHER_VALUE;
