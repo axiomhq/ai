@@ -97,6 +97,8 @@ export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
 
 /**
  * PROPRIETARY ATTRIBUTES (o11y)
+ *
+ * @see: https://axiom.co/docs/ai-engineering/semantic-conventions
  */
 
 const ATTR_AXIOM_GEN_AI_SCHEMA_URL = 'axiom.gen_ai.schema_url';
