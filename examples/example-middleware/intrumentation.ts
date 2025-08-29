@@ -5,7 +5,7 @@ import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { initAxiomAI } from 'axiom/ai';
+import { initAxiomAI, RedactionPolicy } from 'axiom/ai';
 
 export function initializeTelemetry() {
   // Initialize telemetry
@@ -27,5 +27,5 @@ export function initializeTelemetry() {
   provider.register();
   const tracer = trace.getTracer('middleware-example');
 
-  initAxiomAI({ tracer });
+  initAxiomAI({ tracer, redactionPolicy: RedactionPolicy.AxiomDefault });
 }

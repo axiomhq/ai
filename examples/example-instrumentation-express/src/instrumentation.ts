@@ -9,7 +9,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { initAxiomAI } from 'axiom/ai';
+import { initAxiomAI, RedactionPolicy } from 'axiom/ai';
 
 // Register instrumentations immediately when module loads
 registerInstrumentations({
@@ -42,7 +42,8 @@ export const setupTracing = (serviceName: string): Tracer => {
   const tracer = trace.getTracer(serviceName);
 
   // Initialize Axiom AI with the tracer
-  initAxiomAI({ tracer });
+  RedactionPolicy;
+  initAxiomAI({ tracer, redactionPolicy: RedactionPolicy.AxiomDefault });
 
   return tracer;
 };

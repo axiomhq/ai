@@ -5,6 +5,7 @@ import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
 import { typedEntries } from '../util/typedEntries';
 import { setAxiomBaseAttributes, getTracer, classifyToolError } from './utils/wrapperUtils';
+import { getRedactionPolicy, handleMaybeRedactedAttribute } from './utils/redaction';
 
 type Tool = ToolV4 | ToolV5;
 type WrappedTool<T> = T extends Tool ? T : never;
@@ -47,6 +48,8 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
       const spanName = `${Attr.GenAI.Operation.Name_Values.ExecuteTool} ${toolName}`;
 
       return startActiveSpan(spanName, null, async (span: Span) => {
+        const redactionPolicy = getRedactionPolicy();
+
         // Set Axiom base attributes
         setAxiomBaseAttributes(span);
 
@@ -70,23 +73,37 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
           span.setAttribute(Attr.GenAI.Tool.Description, tool.description);
         }
 
-        try {
-          span.setAttribute(Attr.GenAI.Tool.Arguments, JSON.stringify(args));
-        } catch (_error) {
-          // Handle circular references or other JSON serialization errors
-          span.setAttribute(Attr.GenAI.Tool.Arguments, '[Unable to serialize arguments]');
+        if (redactionPolicy.mirrorToolPayloadOnToolSpan) {
+          try {
+            handleMaybeRedactedAttribute(
+              span,
+              Attr.GenAI.Tool.Arguments,
+              JSON.stringify(args),
+              redactionPolicy.captureMessageContent,
+            );
+          } catch (_error) {
+            // Handle circular references or other JSON serialization errors
+            span.setAttribute(Attr.GenAI.Tool.Arguments, '[Unable to serialize arguments]');
+          }
         }
 
         try {
           // Execute the original tool function
           const result = await originalExecute(args, opts);
 
-          // Set the tool result message
-          try {
-            span.setAttribute(Attr.GenAI.Tool.Message, JSON.stringify(result));
-          } catch (_error) {
-            // Handle circular references or other JSON serialization errors
-            span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
+          // Conditionally set tool result message if mirroring is enabled
+          if (redactionPolicy.mirrorToolPayloadOnToolSpan) {
+            try {
+              handleMaybeRedactedAttribute(
+                span,
+                Attr.GenAI.Tool.Message,
+                JSON.stringify(result),
+                redactionPolicy.captureMessageContent,
+              );
+            } catch (_error) {
+              // Handle circular references or other JSON serialization errors
+              span.setAttribute(Attr.GenAI.Tool.Message, '[Unable to serialize result]');
+            }
           }
 
           return result;

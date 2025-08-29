@@ -6,3 +6,4 @@
  * some kind of KV in workerd.
  */
 export const WITHSPAN_BAGGAGE_KEY = '__withspan_gen_ai_call';
+export const WITHSPAN_REDACTION_POLICY_KEY = '__withspan_redaction_policy';

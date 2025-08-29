@@ -8,8 +8,9 @@ import {
   type Tracer,
 } from '@opentelemetry/api';
 
-import { WITHSPAN_BAGGAGE_KEY } from './withSpanBaggageKey';
+import { WITHSPAN_BAGGAGE_KEY, WITHSPAN_REDACTION_POLICY_KEY } from './withSpanBaggageKey';
 import { getTracer } from './utils/wrapperUtils';
+import type { AxiomAIRedactionPolicy } from './utils/redaction';
 
 /**
  * Metadata for categorizing and tracking spans within the AI application.
@@ -39,6 +40,7 @@ type WithSpanMeta = {
  * @param opts - Optional configuration
  * @param opts.tracer - Custom OpenTelemetry tracer instance. Defaults to the tracer provided by `initAxiomAI`.
  * @param opts.timeoutMs - Timeout for abandoned streams. Defaults to 600,000 (10 minutes).
+ * @param opts.redactionPolicy - Optional redaction policy to override global policy for this span.
  *
  * @returns Promise that resolves to the same value as the wrapped function
  *
@@ -93,6 +95,7 @@ export function withSpan<Return>(
   opts?: {
     tracer?: Tracer;
     timeoutMs?: number;
+    redactionPolicy?: AxiomAIRedactionPolicy;
   },
 ): Promise<Return> {
   const tracer = opts?.tracer ?? getTracer();
@@ -119,6 +122,10 @@ export function withSpan<Return>(
       step: { value: meta.step },
       // TODO: maybe we can just check the active span name instead?
       [WITHSPAN_BAGGAGE_KEY]: { value: 'true' }, // Mark that we're inside withSpan
+      // Store serialized redaction policy if provided
+      ...(opts?.redactionPolicy && {
+        [WITHSPAN_REDACTION_POLICY_KEY]: { value: JSON.stringify(opts.redactionPolicy) },
+      }),
     });
 
     const ctx = propagation.setBaggage(context.active(), bag);
