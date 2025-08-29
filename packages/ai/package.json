@@ -1,6 +1,6 @@
 {
   "name": "axiom",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -99,6 +99,7 @@
     "aiv5": "npm:ai@^5.0.0",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "tinyrainbow": "^2.0.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

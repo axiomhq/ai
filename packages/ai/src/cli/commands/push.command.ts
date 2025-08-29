@@ -3,8 +3,8 @@ import {
   loadPromptModule,
   extractPromptFromModule,
   generatePromptFileFromApiResponse,
-} from '../transpiler';
-import type { Prompt } from '../types';
+} from '../../transpiler';
+import type { Prompt } from '../../types';
 import fs from 'node:fs/promises';
 import readline from 'node:readline';
 
