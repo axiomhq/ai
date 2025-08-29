@@ -1,4 +1,4 @@
-// TODO: BEFORE MERGE - UPDATE THIS WITH THE 1.37.0 VERSION ONCE IT SHIPS
+// TODO: UPDATE THIS WITH THE 1.37.0 VERSION ONCE IT SHIPS
 // see: https://github.com/open-telemetry/opentelemetry-js/blob/main/semantic-conventions/src/experimental_attributes.ts
 
 /**
