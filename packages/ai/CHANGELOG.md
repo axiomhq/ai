@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/axiomhq/ai/compare/axiom-v0.13.0...axiom-v0.14.0) (2025-08-28)
+
+
+### Features
+
+* **evals:** pass model name & params to eval task ([#62](https://github.com/axiomhq/ai/issues/62)) ([bc6f9bf](https://github.com/axiomhq/ai/commit/bc6f9bfb93c8311414e60ddd3dd822e726798257))
+
 ## [0.13.0](https://github.com/axiomhq/ai/compare/axiom-v0.12.0...axiom-v0.13.0) (2025-08-20)
 
 

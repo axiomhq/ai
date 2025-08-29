@@ -5,7 +5,7 @@ import type { TSchema } from './template';
  *
  * @experimental This API is experimental and may change in future versions.
  */
-type Options = {
+export type ModelParams = {
   /** Maximum number of tokens to generate */
   maxOutputTokens?: number;
   /** Controls randomness in generation (0.0 to 2.0) */
@@ -26,6 +26,8 @@ type Options = {
   maxRetries?: number;
 };
 
+export type PromptMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string };
+
 /**
  * Complete prompt definition with all metadata and versioning information.
  *
@@ -40,11 +42,11 @@ export type Prompt = {
   /** Immutable user-defined identifier for the prompt */
   slug: string;
   /** Array of messages that make up the conversation */
-  messages: { role: 'system' | 'user' | 'assistant' | 'tool'; content: string }[];
+  messages: PromptMessage[];
   /** The language model to use for this prompt */
   model: string;
   /** Optional generation parameters */
-  options?: Options;
+  options?: ModelParams;
   /** {@link TSchema} format arguments for API communication */
   arguments: Record<string, TSchema>;
   /** Optional description of the prompt's purpose */
