@@ -627,7 +627,7 @@ export function mapProviderToSystem(provider: string): string | undefined {
         return Attr.GenAI.Provider.Name_Values.Vercel;
       }
       if (provider.startsWith('vertex.anthropic.')) {
-        return Attr.GenAI.Provider.Name_Values.Anthropic;
+        return Attr.GenAI.Provider.Name_Values.GCPVertexAI;
       }
       if (provider.startsWith('xai.')) {
         return Attr.GenAI.Provider.Name_Values.XAI;
