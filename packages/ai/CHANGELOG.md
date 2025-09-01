@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/axiomhq/ai/compare/axiom-v0.14.0...axiom-v0.15.0) (2025-08-29)
+
+
+### Features
+
+* use semconv 1.37, add redaction options ([#63](https://github.com/axiomhq/ai/issues/63)) ([baec814](https://github.com/axiomhq/ai/commit/baec814311d2a3e97ad1edb4c8ba3b661208720e))
+
 ## [0.14.0](https://github.com/axiomhq/ai/compare/axiom-v0.13.0...axiom-v0.14.0) (2025-08-28)
 
 
