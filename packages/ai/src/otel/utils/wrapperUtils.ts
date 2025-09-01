@@ -532,6 +532,11 @@ export function determineOutputTypeV2(options: {
 export function mapProviderToSystem(provider: string): string | undefined {
   const OTHER_VALUE = '_OTHER';
 
+  if (provider === 'openai-compatible') {
+    // I don't think we want to return something specific here?
+    return OTHER_VALUE;
+  }
+
   // exact matches
   switch (provider) {
     case 'amazon-bedrock':
@@ -559,9 +564,6 @@ export function mapProviderToSystem(provider: string): string | undefined {
       return Attr.GenAI.Provider.Name_Values.MistralAI;
     case 'openai':
       return Attr.GenAI.Provider.Name_Values.OpenAI;
-    case 'openai-compatible':
-      // I don't think we want to return something specific here?
-      return OTHER_VALUE;
     case 'perplexity':
       return Attr.GenAI.Provider.Name_Values.Perplexity;
     case 'replicate':
