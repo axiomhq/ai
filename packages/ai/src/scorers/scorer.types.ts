@@ -1,6 +1,6 @@
 export type Score = {
   name: string;
-  score: number | null;
+  score: number;
   metadata?: Record<string, any>;
 };
 

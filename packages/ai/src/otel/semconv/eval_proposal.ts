@@ -1,6 +1,7 @@
 // experiment
 export const ATTR_EVAL_ID = 'eval.id' as const;
 export const ATTR_EVAL_NAME = 'eval.name' as const;
+export const ATTR_EVAL_RUNID = 'eval.runId' as const;
 export const ATTR_EVAL_VERSION = 'eval.version' as const;
 export const ATTR_EVAL_TYPE = 'eval.type' as const;
 export const ATTR_EVAL_TAGS = 'eval.tags' as const;

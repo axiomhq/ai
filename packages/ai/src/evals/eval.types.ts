@@ -1,11 +1,10 @@
 import type { Scorer } from 'src/scorers/scorer.types';
-import type { ModelParams, PromptMessage } from 'src/types';
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
  *
- * Used with {@link EvalParams} to define the task that will be evaluated against a dataset.
- * The task output will be scored by functions defined in {@link EvalParams.scorers}.
+ * Used with {@link EvalDefinition} to define the task that will be evaluated against a dataset.
+ * The task output will be scored by functions defined in {@link EvalDefinition.scorers}.
  *
  * @experimental This API is experimental and may change in future versions.
  *
@@ -25,8 +24,7 @@ import type { ModelParams, PromptMessage } from 'src/types';
  * ```
  */
 export type EvalTask<TInput, TExpected> = (args: {
-  model: string;
-  params: ModelParams;
+  metadata: Record<string, any>;
   input: TInput;
   expected: TExpected;
 }) => Promise<any> | any;
@@ -49,21 +47,24 @@ export type CollectionRecord = {
  *
  * @experimental This API is experimental and may change in future versions.
  */
-export type EvalParams = {
+export interface EvalDefinition {
+  capability: string;
+  step: string;
   /** Function that returns the dataset with input/expected pairs for evaluation */
   data: () => Promise<CollectionRecord[]> | CollectionRecord[];
-  /** The name of the model */
-  model: string;
-  /** The {@Link Options} object to configure models */
-  params: ModelParams;
-  /** The {@Link PromptMessage[]} template */
-  prompt: PromptMessage[];
   /** The {@link EvalTask} function to execute for each data item */
   task: EvalTask<any, any>;
   /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
   scorers: Array<Scorer>;
   /** KeyValue map for extra metadata */
   metadata?: Record<string, any>;
+  tags?: string[];
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
+}
+
+export type ExperimentDefinition = {
+  name: string;
+  description?: string;
+  metadata: Record<string, any>;
 };

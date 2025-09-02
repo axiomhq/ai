@@ -1,21 +1,21 @@
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
-import { AxiomReporter } from './reporter';
 import { flush } from './instrument';
+import { AxiomExperimentReporter } from './experiment.reporter';
 
 export const DEFAULT_TIMEOUT = 10000;
 
 export const runVitest = async (
   dir: string,
   opts: {
+    include: string[];
     watch: boolean;
-    baseline?: string;
   },
 ) => {
   const vi = await createVitest('test', {
     root: dir ? dir : process.cwd(),
     mode: 'test',
-    include: ['**/*.eval.ts'],
-    reporters: [new AxiomReporter()],
+    include: opts.include,
+    reporters: [new AxiomExperimentReporter()],
     environment: 'node',
     browser: undefined,
     watch: opts.watch,
@@ -25,8 +25,16 @@ export const runVitest = async (
     disableConsoleIntercept: true,
     testTimeout: DEFAULT_TIMEOUT,
     globals: true,
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
     provide: {
-      baseline: opts.baseline,
+      axiom_token: process.env.AXIOM_TOKEN,
+      axiom_url: process.env.AXIOM_URL,
+      axiom_dataset: process.env.AXIOM_DATASET,
     },
   });
 

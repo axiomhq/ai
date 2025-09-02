@@ -30,6 +30,7 @@ import {
   ATTR_EVAL_USER_NAME,
   ATTR_EVAL_USER_EMAIL,
   ATTR_EVAL_VERSION,
+  ATTR_EVAL_RUNID,
 } from './eval_proposal';
 
 import {
@@ -260,6 +261,7 @@ export const Attr = {
   Eval: {
     ID: ATTR_EVAL_ID,
     Name: ATTR_EVAL_NAME,
+    RunID: ATTR_EVAL_RUNID,
     Version: ATTR_EVAL_VERSION,
     Type: ATTR_EVAL_TYPE,
     BaselineID: ATTR_EVAL_BASELINE_ID,

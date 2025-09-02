@@ -31,8 +31,7 @@ export type {
   ParsedMessagesArray as experimental_ParsedMessagesArray,
 } from './types/metadata';
 
-/**
- * Evals
- */
-
 export type { Score, Scorer } from './scorers/scorer.types';
+
+/** Configs */
+export * from './config/config';

@@ -4,7 +4,7 @@ import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
 
 import type { Score } from '../scorers/scorer.types';
-import { findEvaluationCases, type Evaluation } from './eval.service';
+import { type Evaluation } from './eval.service';
 
 /**
  * Complete report for a single evaluation case including results and metadata.
@@ -41,7 +41,7 @@ export type EvaluationReport = {
   id: string;
   name: string;
   version: string;
-  baseline: Evaluation | undefined;
+  // baseline: Evaluation | undefined;
 };
 
 /**
@@ -63,11 +63,11 @@ export class AxiomReporter implements Reporter {
 
   async onTestSuiteReady(_testSuite: TestSuite) {
     const meta = _testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
-    const baseline = meta.evaluation.baseline;
-    if (baseline) {
-      // load baseline data
-      this.baseline = await findEvaluationCases(baseline.id);
-    }
+    // const baseline = meta.evaluation.baseline;
+    // if (baseline) {
+    //   // load baseline data
+    //   this.baseline = await findEvaluationCases(baseline.id);
+    // }
     const cwd = process.cwd();
 
     console.log(
@@ -80,17 +80,19 @@ export class AxiomReporter implements Reporter {
     console.log(' ', c.dim(_testSuite.module.moduleId.replace(cwd, '')));
 
     // print baseline name and version if found
-    if (meta.evaluation.baseline) {
-      console.log(
-        ' ',
-        ' baseline ',
-        c.bgMagenta(
-          c.black(` ${meta.evaluation.baseline.name}-${meta.evaluation.baseline.version} `),
-        ),
-      );
-    } else {
-      console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
-    }
+    // if (meta.evaluation.baseline) {
+    //   console.log(
+    //     ' ',
+    //     ' baseline ',
+    //     c.bgMagenta(
+    //       c.black(` ${meta.evaluation.baseline.name}-${meta.evaluation.baseline.version} `),
+    //     ),
+    //   );
+    // } else {
+    //   console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
+    // }
+
+    console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
 
     console.log('');
   }

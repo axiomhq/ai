@@ -1,27 +1,25 @@
-import { afterAll, beforeAll, describe, inject, it } from 'vitest';
+import { afterAll, beforeAll, describe, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type { CollectionRecord, EvalParams, EvalTask } from './eval.types';
+import type {
+  CollectionRecord,
+  EvalDefinition,
+  EvalTask,
+  ExperimentDefinition,
+} from './eval.types';
 import type { Score } from '../scorers/scorer.types';
-import type { ModelParams } from 'src/types';
-import { findBaseline, findEvaluationCases } from './eval.service';
-import type { EvalCaseReport, EvaluationReport } from './reporter';
+import type { EvalCaseMeta, EvalMeta } from './experiment.reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
+import { setValue } from 'src/config/config';
 
 declare module 'vitest' {
-  interface TestSuiteMeta {
-    evaluation: EvaluationReport;
-  }
   interface TaskMeta {
-    case: EvalCaseReport;
-    evaluation: EvaluationReport;
-  }
-  export interface ProvidedContext {
-    baseline?: string;
+    case: EvalCaseMeta;
+    evaluation: EvalMeta;
   }
 }
 
@@ -36,7 +34,7 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  * @experimental This API is experimental and may change in future versions.
  *
  * @param name - Human-readable name for the evaluation suite
- * @param params - {@link EvalParams} configuration parameters for the evaluation
+ * @param params - {@link EvalDefinition} configuration parameters for the evaluation
  *
  * @example
  * ```typescript
@@ -58,51 +56,70 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  * });
  * ```
  */
-export const Eval = (name: string, params: EvalParams): void => {
-  registerEval(name, params).catch(console.error);
+export const defineEval = (config: EvalDefinition): EvalConfig => {
+  return new EvalConfig(config);
 };
 
-async function registerEval(evalName: string, opts: EvalParams) {
-  const datasetPromise = opts.data();
+export class EvalConfig {
+  constructor(public config: EvalDefinition) {
+    return this;
+  }
+
+  async run() {
+    return await registerEvalTask(this.config).catch(console.error);
+  }
+
+  async experimentWith(experimentConfig: ExperimentDefinition) {
+    return await registerEvalTask(this.config, experimentConfig).catch(console.error);
+  }
+}
+
+export async function registerEvalTask(config: EvalDefinition, experiment?: ExperimentDefinition) {
+  const datasetPromise = config.data();
   const user = getGitUserInfo();
 
-  // check if user passed a specific baseline id to the CLI
-  const baselineId = inject('baseline');
+  // if experiment is provided, override config values
+  if (experiment && experiment.metadata) {
+    Object.keys(experiment.metadata).forEach((key) => {
+      setValue(key, experiment.metadata[key]);
+    });
+  }
+
+  const runId = nanoid();
+  const evalName = `${config.capability}:${config.step}`;
+  const suiteName = experiment
+    ? `experiment: ${evalName}-${runId}-${experiment.name}`
+    : `evaluate: ${evalName}-${runId}`;
 
   const result = await describe(
-    `evaluate: ${evalName}`,
+    suiteName,
     async () => {
       const dataset = await datasetPromise;
-      // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
-      const baseline = baselineId
-        ? await findEvaluationCases(baselineId)
-        : await findBaseline(evalName);
       // create a version code
-      const evalVersion = nanoid();
       let evalId = ''; // get traceId
 
-      const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
+      // if there is an experiment config provided, override metadata
+      const metadata = Object.assign({}, config.metadata, experiment?.metadata);
+
+      const suiteSpan = startSpan(`eval ${evalName}-${runId}`, {
         attributes: {
           [Attr.GenAI.Operation.Name]: 'eval',
           [Attr.Eval.Name]: evalName,
-          [Attr.Eval.Version]: evalVersion,
+          [Attr.Eval.RunID]: runId,
+          [Attr.Eval.Version]: runId,
           [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
           [Attr.Eval.Tags]: [],
           [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
           [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
           [Attr.Eval.Collection.Size]: dataset.length,
           // metadata
-          'eval.metadata': JSON.stringify(opts.metadata),
-          // baseline
-          [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
-          [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
+          'eval.metadata': JSON.stringify(metadata),
+          // // baseline
+          // [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
+          // [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
           // user info
           [Attr.Eval.User.Name]: user?.name,
           [Attr.Eval.User.Email]: user?.email,
-          // prompt
-          ['eval.prompt.messages']: JSON.stringify(opts.prompt),
-          ['eval.prompt.model']: opts.model,
-          ['eval.prompt.params']: JSON.stringify(opts.params),
         },
       });
       evalId = suiteSpan.spanContext().traceId;
@@ -114,13 +131,14 @@ async function registerEval(evalName: string, opts: EvalParams) {
         suite.meta.evaluation = {
           id: evalId,
           name: evalName,
-          version: evalVersion,
-          baseline: baseline ?? undefined,
+          version: runId,
+          metadata: metadata ?? {},
         };
       });
 
       afterAll(async () => {
-        const tags: string[] = ['offline'];
+        const tags: string[] = ['offline', ...(config.tags ? config.tags : [])];
+
         suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
 
         // end root span
@@ -160,25 +178,24 @@ async function registerEval(evalName: string, opts: EvalParams) {
               caseContext,
               {
                 id: evalId,
-                version: evalVersion,
+                version: runId,
                 name: evalName,
               },
               {
+                capability: config.capability,
+                step: config.step,
                 index: data.index,
                 expected: data.expected,
                 input: data.input,
-                scorers: opts.scorers,
-                task: opts.task,
-                model: opts.model,
-                params: opts.params,
-                prompt: opts.prompt,
-                metadata: opts.metadata,
+                scorers: config.scorers,
+                task: config.task,
+                metadata: metadata,
               },
             );
 
             // run scorers
             const scoreList: Score[] = await Promise.all(
-              opts.scorers.map(async (scorer) => {
+              config.scorers.map(async (scorer) => {
                 const scorerSpan = startSpan(
                   `score ${scorer.name}`,
                   {
@@ -284,12 +301,11 @@ const joinArrayOfUnknownResults = (results: unknown[]): unknown => {
 
 const executeTask = async <TInput, TExpected, TOutput>(
   task: EvalTask<TInput, TExpected>,
-  model: string,
-  params: ModelParams,
+  metadata: Record<string, any>,
   input: TInput,
   expected: TExpected,
 ): Promise<TOutput> => {
-  const taskResultOrStream = await task({ model, params, input, expected });
+  const taskResultOrStream = await task({ metadata, input, expected });
 
   if (
     typeof taskResultOrStream === 'object' &&
@@ -319,7 +335,7 @@ const runTask = async <TInput, TExpected>(
     index: number;
     input: TInput;
     expected: TExpected | undefined;
-  } & Omit<EvalParams, 'data'>,
+  } & Omit<EvalDefinition, 'data'>,
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
   // start task span
@@ -342,13 +358,7 @@ const runTask = async <TInput, TExpected>(
     trace.setSpan(context.active(), taskSpan),
     async () => {
       const start = performance.now();
-      const output = await executeTask(
-        opts.task,
-        opts.model,
-        opts.params,
-        opts.input,
-        opts.expected,
-      );
+      const output = await executeTask(opts.task, opts.metadata ?? {}, opts.input, opts.expected);
       const duration = Math.round(performance.now() - start);
       // set task output
       taskSpan.setAttributes({
