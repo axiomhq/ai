@@ -61,6 +61,7 @@ describe('span names', () => {
       'gen_ai.output.messages': '[{"role":"assistant","content":"Mock response"}]',
       'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.operation.name': 'chat',
+      'gen_ai.provider.name': 'mock',
       'gen_ai.capability.name': 'test-capability',
       'gen_ai.step.name': 'test-step',
       'gen_ai.output.type': 'text',
