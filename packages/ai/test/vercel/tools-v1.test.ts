@@ -106,6 +106,8 @@ describe('tool call attributes', () => {
       'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.2',
       'axiom.gen_ai.sdk.name': 'axiom',
       'axiom.gen_ai.sdk.version': packageJson.version,
+      'gen_ai.capability.name': 'test-capability',
+      'gen_ai.step.name': 'test-step',
       'gen_ai.operation.name': 'execute_tool',
       'gen_ai.tool.call.id': 'call-456',
       'gen_ai.tool.description': 'Search through a database',
