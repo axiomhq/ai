@@ -85,7 +85,7 @@ export class MockProvider implements ProviderV1 {
 
   constructor(config: MockProviderConfig = {}) {
     this.config = {
-      providerId: 'mock-provider',
+      providerId: 'mock.completion',
       defaultDelay: 0,
       throwOnMissingResponse: false,
       ...config,

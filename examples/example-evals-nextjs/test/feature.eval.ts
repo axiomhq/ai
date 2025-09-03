@@ -1,5 +1,13 @@
 import { experimental_Eval as Eval } from 'axiom/ai/evals';
-import { AnswerSimilarity } from 'autoevals';
+import type { Scorer } from 'axiom/ai';
+
+// an example of a custom scorer
+const exactMatchScorer: Scorer = ({ output, expected }) => {
+  return {
+    name: 'exact-match',
+    score: output == expected ? 1 : 0,
+  };
+};
 
 Eval('feature-example', {
   data: () => [
@@ -22,7 +30,7 @@ Eval('feature-example', {
     // TOOD: invoke a prompt using input
     return input;
   },
-  scorers: [AnswerSimilarity],
+  scorers: [exactMatchScorer],
   metadata: {
     description: 'eval example',
   },
