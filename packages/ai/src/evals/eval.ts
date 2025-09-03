@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
+import { withEvalContext } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
@@ -341,24 +342,27 @@ const runTask = async <TInput, TExpected>(
   const { output, duration } = await context.with(
     trace.setSpan(context.active(), taskSpan),
     async () => {
-      const start = performance.now();
-      const output = await executeTask(
-        opts.task,
-        opts.model,
-        opts.params,
-        opts.input,
-        opts.expected,
-      );
-      const duration = Math.round(performance.now() - start);
-      // set task output
-      taskSpan.setAttributes({
-        [Attr.Eval.Task.Output]: JSON.stringify(output),
+      // Initialize evaluation context for flag/fact access
+      return withEvalContext({}, {}, async () => {
+        const start = performance.now();
+        const output = await executeTask(
+          opts.task,
+          opts.model,
+          opts.params,
+          opts.input,
+          opts.expected,
+        );
+        const duration = Math.round(performance.now() - start);
+        // set task output
+        taskSpan.setAttributes({
+          [Attr.Eval.Task.Output]: JSON.stringify(output),
+        });
+
+        taskSpan.setStatus({ code: SpanStatusCode.OK });
+        taskSpan.end();
+
+        return { output, duration };
       });
-
-      taskSpan.setStatus({ code: SpanStatusCode.OK });
-      taskSpan.end();
-
-      return { output, duration };
     },
   );
 
