@@ -57,10 +57,6 @@ export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
   }
 }
 
-export function withEvalContext<T>(
-  initialFlags: Record<string, any> = {},
-  initialFacts: Record<string, any> = {},
-  fn: () => T,
-): T {
-  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: { ...initialFacts } }, fn);
+export function withEvalContext<T>(initialFlags: Record<string, any> = {}, fn: () => T): T {
+  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {} }, fn);
 }
