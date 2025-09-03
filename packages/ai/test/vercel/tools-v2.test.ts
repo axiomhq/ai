@@ -161,6 +161,7 @@ describe('tool call attributes', () => {
         },
       ]),
       'gen_ai.operation.name': 'chat',
+      'gen_ai.provider.name': 'mock',
       'gen_ai.response.finish_reasons': '["tool-calls"]',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.response.id': 'mock-response-id',

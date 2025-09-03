@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/axiomhq/ai/compare/axiom-v0.15.0...axiom-v0.16.0) (2025-09-03)
+
+
+### Features
+
+* match more providers ([#66](https://github.com/axiomhq/ai/issues/66)) ([4ea1498](https://github.com/axiomhq/ai/commit/4ea14989f80c8ec9b963e34c8be694d643228bfc))
+
+
+### Bug Fixes
+
+* **evals:** fix path resolution ([#68](https://github.com/axiomhq/ai/issues/68)) ([f7eedfe](https://github.com/axiomhq/ai/commit/f7eedfe226432275436d2f3d89ee2752fb6cc5ef))
+
 ## [0.15.0](https://github.com/axiomhq/ai/compare/axiom-v0.14.0...axiom-v0.15.0) (2025-08-29)
 
 

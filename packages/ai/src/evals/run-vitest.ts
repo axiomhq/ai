@@ -9,12 +9,13 @@ export const runVitest = async (
   opts: {
     watch: boolean;
     baseline?: string;
+    include: string[];
   },
 ) => {
   const vi = await createVitest('test', {
     root: dir ? dir : process.cwd(),
     mode: 'test',
-    include: ['**/*.eval.ts'],
+    include: opts.include,
     reporters: [new AxiomReporter()],
     environment: 'node',
     browser: undefined,

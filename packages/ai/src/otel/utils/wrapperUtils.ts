@@ -234,7 +234,7 @@ export function setBaseAttributes(span: Span, provider: string, modelId: string)
     [Attr.GenAI.Request.Model]: modelId,
   });
 
-  const systemValue = mapProviderToSystem(provider);
+  const systemValue = mapVercelSDKProviderToOTelProvider(provider);
   if (systemValue) {
     span.setAttribute(Attr.GenAI.Provider.Name, systemValue);
   }
@@ -524,23 +524,35 @@ export function determineOutputTypeV2(options: {
 }
 
 /**
- * Maps AI SDK provider IDs to OpenTelemetry gen_ai.system values
+ * Maps AI SDK provider IDs to OpenTelemetry gen_ai.provider.name values
  *
- * @param provider - The provider ID from the AI SDK
- * @returns The corresponding system value or '_OTHER' for unmapped providers, undefined for providers that shouldn't be mapped
+ * @param vercelSDKProvider - The provider ID from the AI SDK
+ * @returns The corresponding `gen_ai.provider.name` value, or `undefined` if no match is found
  */
-export function mapProviderToSystem(provider: string): string | undefined {
-  const OTHER_VALUE = '_OTHER';
+export function mapVercelSDKProviderToOTelProvider(vercelSDKProvider: string): string | undefined {
+  if (vercelSDKProvider === 'openai-compatible') {
+    // we don't know the real provider
+    return undefined;
+  }
 
   // exact matches
-  switch (provider) {
+  switch (vercelSDKProvider) {
     case 'amazon-bedrock':
       return Attr.GenAI.Provider.Name_Values.AWSBedrock;
     case 'anthropic':
+    case 'anthropic.messages':
       return Attr.GenAI.Provider.Name_Values.Anthropic;
-    case 'gateway':
-      return OTHER_VALUE;
+    case 'assemblyai':
+    case 'assemblyai.transcription':
+      return Attr.GenAI.Provider.Name_Values.AssemblyAI;
+    case 'deepgram':
+    case 'deepgram.transcription':
+      return Attr.GenAI.Provider.Name_Values.Deepgram;
+    case 'gladia':
+    case 'gladia.transcription':
+      return Attr.GenAI.Provider.Name_Values.Gladia;
     case 'google':
+    case 'google.generative-ai':
       return Attr.GenAI.Provider.Name_Values.GCPGemini;
     case 'groq':
       return Attr.GenAI.Provider.Name_Values.Groq;
@@ -548,64 +560,79 @@ export function mapProviderToSystem(provider: string): string | undefined {
       return Attr.GenAI.Provider.Name_Values.MistralAI;
     case 'openai':
       return Attr.GenAI.Provider.Name_Values.OpenAI;
-    case 'openai-compatible':
-      return OTHER_VALUE;
     case 'perplexity':
       return Attr.GenAI.Provider.Name_Values.Perplexity;
     case 'replicate':
-      return OTHER_VALUE;
+      return Attr.GenAI.Provider.Name_Values.Replicate;
+    case 'revai':
+    case 'revai.transcription':
+      return Attr.GenAI.Provider.Name_Values.RevAI;
     case 'togetherai':
-      return OTHER_VALUE;
+      return Attr.GenAI.Provider.Name_Values.TogetherAI;
     case 'xai':
       return Attr.GenAI.Provider.Name_Values.XAI;
 
-    // Specialized providers that should not have system attribute
-    case 'assemblyai':
-    case 'deepgram':
-    case 'gladia':
-    case 'revai':
-      return undefined;
-
     // startswith + fall through
     default: {
-      if (provider.startsWith('azure.')) {
+      if (vercelSDKProvider.startsWith('azure.')) {
         return Attr.GenAI.Provider.Name_Values.AzureAIOpenAI;
       }
-      if (provider.startsWith('cerebras.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('cerebras.')) {
+        return Attr.GenAI.Provider.Name_Values.Cerebras;
       }
-      if (provider.startsWith('cohere.')) {
+      if (vercelSDKProvider.startsWith('cohere.')) {
         return Attr.GenAI.Provider.Name_Values.Cohere;
       }
-      if (provider.startsWith('deepinfra.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('deepinfra.')) {
+        return Attr.GenAI.Provider.Name_Values.DeepInfra;
       }
-      if (provider.startsWith('deepseek.')) {
+      if (vercelSDKProvider.startsWith('deepseek.')) {
         return Attr.GenAI.Provider.Name_Values.Deepseek;
       }
-      if (provider.startsWith('elevenlabs.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('elevenlabs.')) {
+        return Attr.GenAI.Provider.Name_Values.ElevenLabs;
       }
-      if (provider.startsWith('fal.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('fal.')) {
+        return Attr.GenAI.Provider.Name_Values.Fal;
       }
-      if (provider.startsWith('fireworks.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('fireworks.')) {
+        return Attr.GenAI.Provider.Name_Values.Fireworks;
       }
-      if (provider.startsWith('google.vertex.')) {
+      if (vercelSDKProvider.startsWith('google.vertex.')) {
         return Attr.GenAI.Provider.Name_Values.GCPVertexAI;
       }
-      if (provider.startsWith('hume.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('groq.')) {
+        return Attr.GenAI.Provider.Name_Values.Groq;
       }
-      if (provider.startsWith('lmnt.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('hume.')) {
+        return Attr.GenAI.Provider.Name_Values.Hume;
       }
-      if (provider.startsWith('luma.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('lmnt.')) {
+        return Attr.GenAI.Provider.Name_Values.Lmnt;
       }
-      if (provider.startsWith('vercel.')) {
-        return OTHER_VALUE;
+      if (vercelSDKProvider.startsWith('luma.')) {
+        return Attr.GenAI.Provider.Name_Values.Luma;
+      }
+      if (vercelSDKProvider.startsWith('mistral.')) {
+        return Attr.GenAI.Provider.Name_Values.MistralAI;
+      }
+      if (vercelSDKProvider.startsWith('openai.')) {
+        return Attr.GenAI.Provider.Name_Values.OpenAI;
+      }
+      if (vercelSDKProvider.startsWith('vercel.')) {
+        return Attr.GenAI.Provider.Name_Values.Vercel;
+      }
+      if (vercelSDKProvider.startsWith('vertex.anthropic.')) {
+        return Attr.GenAI.Provider.Name_Values.GCPVertexAI;
+      }
+      if (vercelSDKProvider.startsWith('xai.')) {
+        return Attr.GenAI.Provider.Name_Values.XAI;
+      }
+
+      // most other openai-compatible providers use {providerName}.{chat|completion|embedding|image}
+      const s = vercelSDKProvider.split('.');
+      if (s.length === 2) {
+        return s[0];
       }
 
       // For unknown providers, don't set the attribute

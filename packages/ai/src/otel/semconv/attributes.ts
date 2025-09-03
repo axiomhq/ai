@@ -105,6 +105,22 @@ const ATTR_GEN_AI_STEP_NAME = 'gen_ai.step.name';
 const ATTR_GEN_AI_TOOL_ARGUMENTS = 'gen_ai.tool.arguments'; // deprecated by OTel
 const ATTR_GEN_AI_TOOL_MESSAGE = 'gen_ai.tool.message'; // deprecated by OTel
 
+const GEN_AI_PROVIDER_NAME_VALUE_ASSEMBLYAI = 'assemblyai';
+const GEN_AI_PROVIDER_NAME_VALUE_CEREBRAS = 'cerebras';
+const GEN_AI_PROVIDER_NAME_VALUE_DEEPGRAM = 'deepgram';
+const GEN_AI_PROVIDER_NAME_VALUE_DEEPINFRA = 'deepinfra';
+const GEN_AI_PROVIDER_NAME_VALUE_ELEVENLABS = 'elevenlabs';
+const GEN_AI_PROVIDER_NAME_VALUE_FAL = 'fal';
+const GEN_AI_PROVIDER_NAME_VALUE_FIREWORKS = 'fireworks';
+const GEN_AI_PROVIDER_NAME_VALUE_GLADIA = 'gladia';
+const GEN_AI_PROVIDER_NAME_VALUE_HUME = 'hume';
+const GEN_AI_PROVIDER_NAME_VALUE_LMNT = 'lmnt';
+const GEN_AI_PROVIDER_NAME_VALUE_LUMA = 'luma';
+const GEN_AI_PROVIDER_NAME_VALUE_REPLICATE = 'replicate';
+const GEN_AI_PROVIDER_NAME_VALUE_REVAI = 'revai';
+const GEN_AI_PROVIDER_NAME_VALUE_TOGETHERAI = 'togetherai';
+const GEN_AI_PROVIDER_NAME_VALUE_VERCEL = 'vercel';
+
 /**
  * When adding something new here, please:
  * 1. Make sure it doesn't already exist as part of OTel Semantic Conventions (use that instead)
@@ -147,19 +163,34 @@ export const Attr = {
       Name_Values: {
         // TODO: these will be replaced with GEN_AI_PROVIDER_NAME_VALUE_<provider> or similar once the new version of the semconv package ships
         Anthropic: GEN_AI_SYSTEM_VALUE_ANTHROPIC,
+        AssemblyAI: GEN_AI_PROVIDER_NAME_VALUE_ASSEMBLYAI,
         AWSBedrock: GEN_AI_SYSTEM_VALUE_AWS_BEDROCK,
         AzureAIInference: GEN_AI_SYSTEM_VALUE_AZURE_AI_INFERENCE,
         AzureAIOpenAI: GEN_AI_SYSTEM_VALUE_AZURE_AI_OPENAI,
+        Cerebras: GEN_AI_PROVIDER_NAME_VALUE_CEREBRAS,
         Cohere: GEN_AI_SYSTEM_VALUE_COHERE,
+        Deepgram: GEN_AI_PROVIDER_NAME_VALUE_DEEPGRAM,
+        DeepInfra: GEN_AI_PROVIDER_NAME_VALUE_DEEPINFRA,
         Deepseek: GEN_AI_SYSTEM_VALUE_DEEPSEEK,
+        ElevenLabs: GEN_AI_PROVIDER_NAME_VALUE_ELEVENLABS,
+        Fal: GEN_AI_PROVIDER_NAME_VALUE_FAL,
+        Fireworks: GEN_AI_PROVIDER_NAME_VALUE_FIREWORKS,
         GCPGemini: GEN_AI_SYSTEM_VALUE_GCP_GEMINI,
         GCPGenAI: GEN_AI_SYSTEM_VALUE_GCP_GEN_AI,
         GCPVertexAI: GEN_AI_SYSTEM_VALUE_GCP_VERTEX_AI,
+        Gladia: GEN_AI_PROVIDER_NAME_VALUE_GLADIA,
         Groq: GEN_AI_SYSTEM_VALUE_GROQ,
+        Hume: GEN_AI_PROVIDER_NAME_VALUE_HUME,
         IBMWatsonxAI: GEN_AI_SYSTEM_VALUE_IBM_WATSONX_AI,
+        Lmnt: GEN_AI_PROVIDER_NAME_VALUE_LMNT,
+        Luma: GEN_AI_PROVIDER_NAME_VALUE_LUMA,
         MistralAI: GEN_AI_SYSTEM_VALUE_MISTRAL_AI,
         OpenAI: GEN_AI_SYSTEM_VALUE_OPENAI,
         Perplexity: GEN_AI_SYSTEM_VALUE_PERPLEXITY,
+        Replicate: GEN_AI_PROVIDER_NAME_VALUE_REPLICATE,
+        RevAI: GEN_AI_PROVIDER_NAME_VALUE_REVAI,
+        TogetherAI: GEN_AI_PROVIDER_NAME_VALUE_TOGETHERAI,
+        Vercel: GEN_AI_PROVIDER_NAME_VALUE_VERCEL,
         XAI: GEN_AI_SYSTEM_VALUE_XAI,
       },
     },
