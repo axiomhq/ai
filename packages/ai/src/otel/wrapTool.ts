@@ -4,7 +4,12 @@ import { type Tool as ToolV5 } from 'aiv5';
 import { createStartActiveSpan } from './startActiveSpan';
 import { Attr } from './semconv/attributes';
 import { typedEntries } from '../util/typedEntries';
-import { setAxiomBaseAttributes, getTracer, classifyToolError, setScopeAttributes } from './utils/wrapperUtils';
+import {
+  setAxiomBaseAttributes,
+  getTracer,
+  classifyToolError,
+  setScopeAttributes,
+} from './utils/wrapperUtils';
 import { getRedactionPolicy, handleMaybeRedactedAttribute } from './utils/redaction';
 
 type Tool = ToolV4 | ToolV5;
@@ -50,10 +55,7 @@ export function wrapTool<T extends ToolLike>(toolName: string, tool: T): T {
       return startActiveSpan(spanName, null, async (span: Span) => {
         const redactionPolicy = getRedactionPolicy();
 
-        // Set Axiom base attributes
         setAxiomBaseAttributes(span);
-        
-        // Set capability/step attributes from baggage
         setScopeAttributes(span);
 
         // Handle different opts structures between AI SDK versions
