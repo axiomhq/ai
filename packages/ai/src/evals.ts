@@ -7,3 +7,8 @@ export type {
 export * from './evals/eval.service';
 
 export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
+
+// New Phase 2 builder system
+export { defineEval, createTypedDefineEval } from './evals/builder';
+export type { EvalBuilder } from './evals/builder';
+export { createAppScope } from './app-scope';
