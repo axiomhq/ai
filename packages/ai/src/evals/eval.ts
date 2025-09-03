@@ -343,7 +343,7 @@ const runTask = async <TInput, TExpected>(
     trace.setSpan(context.active(), taskSpan),
     async () => {
       // Initialize evaluation context for flag/fact access
-      return withEvalContext({}, {}, async () => {
+      return withEvalContext({}, async () => {
         const start = performance.now();
         const output = await executeTask(
           opts.task,
