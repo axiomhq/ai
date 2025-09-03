@@ -1,5 +1,6 @@
 import { trace } from '@opentelemetry/api';
 import { getEvalContext, updateEvalContext } from './evals/context/storage';
+import { getGlobalFlagOverrides } from './evals/context/global-flags';
 
 export function createAppScope<
   Flags extends Record<string, any>,
@@ -14,8 +15,25 @@ export function createAppScope<
    */
   function flag<N extends FlagName>(name: N, defaultValue: Flags[N]): Flags[N] {
     const ctx = getEvalContext();
+    const globalOverrides = getGlobalFlagOverrides();
 
-    // Check overrides first (from withFlags() or overrideFlags)
+    // Check global CLI overrides first (highest priority)
+    if (name as string in globalOverrides) {
+      const overrideValue = globalOverrides[name as string] as Flags[N];
+
+      // Store in context for tracking
+      updateEvalContext({ [name as string]: overrideValue });
+
+      // Write to current active span (use global override value)
+      const span = trace.getActiveSpan();
+      if (span?.isRecording()) {
+        span.setAttributes({ [`flag.${String(name)}`]: String(overrideValue) });
+      }
+
+      return overrideValue;
+    }
+
+    // Check context overrides (from withFlags() or overrideFlags)
     if (name in ctx.flags) {
       const overrideValue = ctx.flags[name] as Flags[N];
 
