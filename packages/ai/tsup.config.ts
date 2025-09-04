@@ -2,9 +2,17 @@ import { defineConfig } from 'tsup';
 import pkg from './package.json';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/bin.ts', 'src/evals.ts'],
+  entry: ['src/index.ts', 'src/cli/index.ts', 'src/evals/index.ts'],
   format: ['esm', 'cjs'],
-  external: ['@opentelemetry/api', 'vitest', 'vitest/node.js', 'vitest/index.cjs'], // don't bundle these
+  external: [
+    '@opentelemetry/api',
+    'vitest',
+    'vitest/node.js',
+    'vitest/index.cjs',
+    '@opentui/react',
+    'react-reconciler',
+    'react',
+  ], // don't bundle these
   noExternal: ['handlebars'],
   dts: true, // generate .d.ts files
   clean: true, // clean dist before build

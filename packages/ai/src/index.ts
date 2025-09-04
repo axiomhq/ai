@@ -34,5 +34,4 @@ export type {
 /**
  * Evals
  */
-
-export type { Score, Scorer } from './scorers/scorer.types';
+export * from './capabilities';

@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup && chmod +x dist/bin.js",
+    "build": "tsup && chmod +x dist/cli/index.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
@@ -23,7 +23,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "bin": {
-    "axiom": "./dist/bin.js"
+    "axiom": "./dist/cli/index.js"
   },
   "exports": {
     "./ai": {
@@ -38,12 +38,12 @@
     },
     "./ai/evals": {
       "import": {
-        "types": "./dist/evals.d.ts",
-        "default": "./dist/evals.js"
+        "types": "./dist/evals/index.d.ts",
+        "default": "./dist/evals/index.js"
       },
       "require": {
-        "types": "./dist/evals.d.cts",
-        "default": "./dist/evals.cjs"
+        "types": "./dist/evals/index.d.cts",
+        "default": "./dist/evals/index.cjs"
       }
     }
   },
@@ -72,9 +72,11 @@
     "@sinclair/typebox": "^0.34.37",
     "commander": "^14.0.0",
     "console-table-printer": "^2.14.6",
-    "esbuild": "^0.25.8",
+    "esbuild": "^0.25.9",
+    "fast-glob": "^3.3.3",
     "handlebars": "^4.7.8",
     "nanoid": "^5.1.5",
+    "ts-morph": "^26.0.0",
     "vitest": "catalog:",
     "zod": "catalog:"
   },

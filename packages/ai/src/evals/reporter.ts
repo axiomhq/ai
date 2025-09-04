@@ -3,7 +3,7 @@ import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from
 import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
 
-import type { Score } from '../scorers/scorer.types';
+import type { Score } from './scorer.types';
 import { findEvaluationCases, type Evaluation } from './eval.service';
 
 /**

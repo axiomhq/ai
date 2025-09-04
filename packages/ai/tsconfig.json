@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "module": "ESNext",

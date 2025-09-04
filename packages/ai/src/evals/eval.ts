@@ -1,16 +1,5 @@
-import { afterAll, beforeAll, describe, inject, it } from 'vitest';
-import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
-import { customAlphabet } from 'nanoid';
-
-import { Attr } from '../otel/semconv/attributes';
-import { startSpan, flush } from './instrument';
-import { getGitUserInfo } from './git-info';
-import type { CollectionRecord, EvalParams, EvalTask } from './eval.types';
-import type { Score } from '../scorers/scorer.types';
-import type { ModelParams } from 'src/types';
-import { findBaseline, findEvaluationCases } from './eval.service';
+import type { EvalDefinition } from './eval.types';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
-import { DEFAULT_TIMEOUT } from './run-vitest';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -25,7 +14,7 @@ declare module 'vitest' {
   }
 }
 
-const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
+// const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -58,312 +47,321 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  * });
  * ```
  */
-export const Eval = (name: string, params: EvalParams): void => {
-  registerEval(name, params).catch(console.error);
-};
 
-async function registerEval(evalName: string, opts: EvalParams) {
-  const datasetPromise = opts.data();
-  const user = getGitUserInfo();
-
-  // check if user passed a specific baseline id to the CLI
-  const baselineId = inject('baseline');
-
-  const result = await describe(
-    `evaluate: ${evalName}`,
-    async () => {
-      const dataset = await datasetPromise;
-      // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
-      const baseline = baselineId
-        ? await findEvaluationCases(baselineId)
-        : await findBaseline(evalName);
-      // create a version code
-      const evalVersion = nanoid();
-      let evalId = ''; // get traceId
-
-      const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
-        attributes: {
-          [Attr.GenAI.Operation.Name]: 'eval',
-          [Attr.Eval.Name]: evalName,
-          [Attr.Eval.Version]: evalVersion,
-          [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
-          [Attr.Eval.Tags]: [],
-          [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
-          [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
-          [Attr.Eval.Collection.Size]: dataset.length,
-          // metadata
-          'eval.metadata': JSON.stringify(opts.metadata),
-          // baseline
-          [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
-          [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
-          // user info
-          [Attr.Eval.User.Name]: user?.name,
-          [Attr.Eval.User.Email]: user?.email,
-          // prompt
-          ['eval.prompt.messages']: JSON.stringify(opts.prompt),
-          ['eval.prompt.model']: opts.model,
-          ['eval.prompt.params']: JSON.stringify(opts.params),
-        },
-      });
-      evalId = suiteSpan.spanContext().traceId;
-      suiteSpan.setAttribute(Attr.Eval.ID, evalId);
-
-      const suiteContext = trace.setSpan(context.active(), suiteSpan);
-
-      beforeAll((suite) => {
-        suite.meta.evaluation = {
-          id: evalId,
-          name: evalName,
-          version: evalVersion,
-          baseline: baseline ?? undefined,
-        };
-      });
-
-      afterAll(async () => {
-        const tags: string[] = ['offline'];
-        suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
-
-        // end root span
-        suiteSpan.setStatus({ code: SpanStatusCode.OK });
-        suiteSpan.end();
-        await flush();
-      });
-
-      await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
-        'case',
-        async (data: { index: number } & CollectionRecord, { task }) => {
-          const start = performance.now();
-          const caseSpan = startSpan(
-            `case ${data.index}`,
-            {
-              attributes: {
-                [Attr.GenAI.Operation.Name]: 'eval.case',
-                [Attr.Eval.ID]: evalId,
-                [Attr.Eval.Name]: evalName,
-                [Attr.Eval.Version]: evalName,
-                [Attr.Eval.Case.Index]: data.index,
-                [Attr.Eval.Case.Input]:
-                  typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
-                [Attr.Eval.Case.Expected]:
-                  typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
-                // user info
-                [Attr.Eval.User.Name]: user?.name,
-                [Attr.Eval.User.Email]: user?.email,
-              },
-            },
-            suiteContext,
-          );
-          const caseContext = trace.setSpan(context.active(), caseSpan);
-
-          try {
-            const { output, duration } = await runTask(
-              caseContext,
-              {
-                id: evalId,
-                version: evalVersion,
-                name: evalName,
-              },
-              {
-                index: data.index,
-                expected: data.expected,
-                input: data.input,
-                scorers: opts.scorers,
-                task: opts.task,
-                model: opts.model,
-                params: opts.params,
-                prompt: opts.prompt,
-                metadata: opts.metadata,
-              },
-            );
-
-            // run scorers
-            const scoreList: Score[] = await Promise.all(
-              opts.scorers.map(async (scorer) => {
-                const scorerSpan = startSpan(
-                  `score ${scorer.name}`,
-                  {
-                    attributes: {
-                      [Attr.GenAI.Operation.Name]: 'eval.score',
-                      [Attr.Eval.ID]: evalId,
-                      [Attr.Eval.Name]: evalName,
-                      [Attr.Eval.Version]: evalName,
-                    },
-                  },
-                  caseContext,
-                );
-
-                const start = performance.now();
-                const result = await scorer({
-                  input: data.input,
-                  output,
-                  expected: data.expected,
-                });
-
-                const duration = Math.round(performance.now() - start);
-                const scoreValue = result.score as number;
-
-                // set score value to the score span
-                scorerSpan.setAttributes({
-                  [Attr.Eval.Score.Name]: result.name, // make sure to use name returned by result not the name of scorer function
-                  [Attr.Eval.Score.Value]: scoreValue,
-                });
-
-                scorerSpan.setStatus({ code: SpanStatusCode.OK });
-                scorerSpan.end();
-
-                return {
-                  ...result,
-                  metadata: { duration, startedAt: start, error: null },
-                };
-              }),
-            );
-
-            const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
-
-            // set case output
-            caseSpan.setAttributes({
-              [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
-              [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
-            });
-            caseSpan.setStatus({ code: SpanStatusCode.OK });
-
-            // set task meta for showing result in vitest report
-            task.meta.case = {
-              index: data.index,
-              name: evalName,
-              expected: data.expected,
-              input: data.input,
-              output: output as string,
-              scores,
-              status: 'success',
-              errors: [],
-              duration,
-              startedAt: start,
-            };
-          } catch (e) {
-            console.log(e);
-            const error = e as Error;
-            caseSpan.recordException(error);
-            caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-
-            task.meta.case = {
-              name: evalName,
-              index: data.index,
-              expected: data.expected,
-              input: data.input,
-              output: e as string,
-              scores: {},
-              status: 'fail',
-              errors: [error],
-              startedAt: start,
-              duration: Math.round(performance.now() - start),
-            };
-            throw e;
-          } finally {
-            caseSpan.end();
-          }
-        },
-      );
-    },
-    DEFAULT_TIMEOUT,
-  );
-
-  return result;
-}
-
-const joinArrayOfUnknownResults = (results: unknown[]): unknown => {
-  return results.reduce((acc, result) => {
-    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
-      return `${acc}${result}`;
-    }
-    throw new Error(
-      `Cannot display results of stream: stream contains non-string, non-number, non-boolean chunks.`,
-    );
-  }, '');
-};
-
-const executeTask = async <TInput, TExpected, TOutput>(
-  task: EvalTask<TInput, TExpected>,
-  model: string,
-  params: ModelParams,
-  input: TInput,
-  expected: TExpected,
-): Promise<TOutput> => {
-  const taskResultOrStream = await task({ model, params, input, expected });
-
-  if (
-    typeof taskResultOrStream === 'object' &&
-    taskResultOrStream &&
-    Symbol.asyncIterator in taskResultOrStream
-  ) {
-    const chunks: TOutput[] = [];
-
-    for await (const chunk of taskResultOrStream) {
-      chunks.push(chunk);
-    }
-
-    return joinArrayOfUnknownResults(chunks) as TOutput;
+export const defineEval = (def: EvalDefinition) => {
+  // Register in global registry when executed
+  if (typeof globalThis !== 'undefined' && globalThis.__axiom_registry) {
+    globalThis.__axiom_registry.evals.push(def);
   }
-
-  return taskResultOrStream;
+  return def;
 };
 
-const runTask = async <TInput, TExpected>(
-  caseContext: Context,
-  evaluation: {
-    id: string;
-    name: string;
-    version: string;
-  },
-  opts: {
-    index: number;
-    input: TInput;
-    expected: TExpected | undefined;
-  } & Omit<EvalParams, 'data'>,
-) => {
-  const taskName = opts.task.name ?? 'anonymous';
-  // start task span
-  const taskSpan = startSpan(
-    `task`,
-    {
-      attributes: {
-        [Attr.GenAI.Operation.Name]: 'eval.task',
-        [Attr.Eval.Task.Name]: taskName,
-        [Attr.Eval.Task.Type]: 'llm_completion', // TODO: How to determine task type?
-        [Attr.Eval.ID]: evaluation.id,
-        [Attr.Eval.Name]: evaluation.name,
-        [Attr.Eval.Version]: evaluation.version,
-      },
-    },
-    caseContext,
-  );
+// export const Eval = (name: string, params: EvalParams): void => {
+//   registerEval(name, params).catch(console.error);
+// };
 
-  const { output, duration } = await context.with(
-    trace.setSpan(context.active(), taskSpan),
-    async () => {
-      const start = performance.now();
-      const output = await executeTask(
-        opts.task,
-        opts.model,
-        opts.params,
-        opts.input,
-        opts.expected,
-      );
-      const duration = Math.round(performance.now() - start);
-      // set task output
-      taskSpan.setAttributes({
-        [Attr.Eval.Task.Output]: JSON.stringify(output),
-      });
+// async function registerEval(evalName: string, opts: EvalParams) {
+//   const datasetPromise = opts.data();
+//   const user = getGitUserInfo();
 
-      taskSpan.setStatus({ code: SpanStatusCode.OK });
-      taskSpan.end();
+//   // check if user passed a specific baseline id to the CLI
+//   const baselineId = inject('baseline');
 
-      return { output, duration };
-    },
-  );
+//   const result = await describe(
+//     `evaluate: ${evalName}`,
+//     async () => {
+//       const dataset = await datasetPromise;
+//       // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
+//       const baseline = baselineId
+//         ? await findEvaluationCases(baselineId)
+//         : await findBaseline(evalName);
+//       // create a version code
+//       const evalVersion = nanoid();
+//       let evalId = ''; // get traceId
 
-  return {
-    output,
-    duration,
-  };
-};
+//       const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
+//         attributes: {
+//           [Attr.GenAI.Operation.Name]: 'eval',
+//           [Attr.Eval.Name]: evalName,
+//           [Attr.Eval.Version]: evalVersion,
+//           [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
+//           [Attr.Eval.Tags]: [],
+//           [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
+//           [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
+//           [Attr.Eval.Collection.Size]: dataset.length,
+//           // metadata
+//           'eval.metadata': JSON.stringify(opts.metadata),
+//           // baseline
+//           [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
+//           [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
+//           // user info
+//           [Attr.Eval.User.Name]: user?.name,
+//           [Attr.Eval.User.Email]: user?.email,
+//           // prompt
+//           ['eval.prompt.messages']: JSON.stringify(opts.prompt),
+//           ['eval.prompt.model']: opts.model,
+//           ['eval.prompt.params']: JSON.stringify(opts.params),
+//         },
+//       });
+//       evalId = suiteSpan.spanContext().traceId;
+//       suiteSpan.setAttribute(Attr.Eval.ID, evalId);
+
+//       const suiteContext = trace.setSpan(context.active(), suiteSpan);
+
+//       beforeAll((suite) => {
+//         suite.meta.evaluation = {
+//           id: evalId,
+//           name: evalName,
+//           version: evalVersion,
+//           baseline: baseline ?? undefined,
+//         };
+//       });
+
+//       afterAll(async () => {
+//         const tags: string[] = ['offline'];
+//         suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
+
+//         // end root span
+//         suiteSpan.setStatus({ code: SpanStatusCode.OK });
+//         suiteSpan.end();
+//         await flush();
+//       });
+
+//       await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
+//         'case',
+//         async (data: { index: number } & CollectionRecord, { task }) => {
+//           const start = performance.now();
+//           const caseSpan = startSpan(
+//             `case ${data.index}`,
+//             {
+//               attributes: {
+//                 [Attr.GenAI.Operation.Name]: 'eval.case',
+//                 [Attr.Eval.ID]: evalId,
+//                 [Attr.Eval.Name]: evalName,
+//                 [Attr.Eval.Version]: evalName,
+//                 [Attr.Eval.Case.Index]: data.index,
+//                 [Attr.Eval.Case.Input]:
+//                   typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
+//                 [Attr.Eval.Case.Expected]:
+//                   typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
+//                 // user info
+//                 [Attr.Eval.User.Name]: user?.name,
+//                 [Attr.Eval.User.Email]: user?.email,
+//               },
+//             },
+//             suiteContext,
+//           );
+//           const caseContext = trace.setSpan(context.active(), caseSpan);
+
+//           try {
+//             const { output, duration } = await runTask(
+//               caseContext,
+//               {
+//                 id: evalId,
+//                 version: evalVersion,
+//                 name: evalName,
+//               },
+//               {
+//                 index: data.index,
+//                 expected: data.expected,
+//                 input: data.input,
+//                 scorers: opts.scorers,
+//                 task: opts.task,
+//                 model: opts.model,
+//                 params: opts.params,
+//                 prompt: opts.prompt,
+//                 metadata: opts.metadata,
+//               },
+//             );
+
+//             // run scorers
+//             const scoreList: Score[] = await Promise.all(
+//               opts.scorers.map(async (scorer) => {
+//                 const scorerSpan = startSpan(
+//                   `score ${scorer.name}`,
+//                   {
+//                     attributes: {
+//                       [Attr.GenAI.Operation.Name]: 'eval.score',
+//                       [Attr.Eval.ID]: evalId,
+//                       [Attr.Eval.Name]: evalName,
+//                       [Attr.Eval.Version]: evalName,
+//                     },
+//                   },
+//                   caseContext,
+//                 );
+
+//                 const start = performance.now();
+//                 const result = await scorer({
+//                   input: data.input,
+//                   output,
+//                   expected: data.expected,
+//                 });
+
+//                 const duration = Math.round(performance.now() - start);
+//                 const scoreValue = result.score as number;
+
+//                 // set score value to the score span
+//                 scorerSpan.setAttributes({
+//                   [Attr.Eval.Score.Name]: result.name, // make sure to use name returned by result not the name of scorer function
+//                   [Attr.Eval.Score.Value]: scoreValue,
+//                 });
+
+//                 scorerSpan.setStatus({ code: SpanStatusCode.OK });
+//                 scorerSpan.end();
+
+//                 return {
+//                   ...result,
+//                   metadata: { duration, startedAt: start, error: null },
+//                 };
+//               }),
+//             );
+
+//             const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
+
+//             // set case output
+//             caseSpan.setAttributes({
+//               [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
+//               [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
+//             });
+//             caseSpan.setStatus({ code: SpanStatusCode.OK });
+
+//             // set task meta for showing result in vitest report
+//             task.meta.case = {
+//               index: data.index,
+//               name: evalName,
+//               expected: data.expected,
+//               input: data.input,
+//               output: output as string,
+//               scores,
+//               status: 'success',
+//               errors: [],
+//               duration,
+//               startedAt: start,
+//             };
+//           } catch (e) {
+//             console.log(e);
+//             const error = e as Error;
+//             caseSpan.recordException(error);
+//             caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+//             task.meta.case = {
+//               name: evalName,
+//               index: data.index,
+//               expected: data.expected,
+//               input: data.input,
+//               output: e as string,
+//               scores: {},
+//               status: 'fail',
+//               errors: [error],
+//               startedAt: start,
+//               duration: Math.round(performance.now() - start),
+//             };
+//             throw e;
+//           } finally {
+//             caseSpan.end();
+//           }
+//         },
+//       );
+//     },
+//     DEFAULT_TIMEOUT,
+//   );
+
+//   return result;
+// }
+
+// const joinArrayOfUnknownResults = (results: unknown[]): unknown => {
+//   return results.reduce((acc, result) => {
+//     if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
+//       return `${acc}${result}`;
+//     }
+//     throw new Error(
+//       `Cannot display results of stream: stream contains non-string, non-number, non-boolean chunks.`,
+//     );
+//   }, '');
+// };
+
+// const executeTask = async <TInput, TExpected, TOutput>(
+//   task: EvalTask<TInput, TExpected>,
+//   model: string,
+//   params: ModelParams,
+//   input: TInput,
+//   expected: TExpected,
+// ): Promise<TOutput> => {
+//   const taskResultOrStream = await task({ model, params, input, expected });
+
+//   if (
+//     typeof taskResultOrStream === 'object' &&
+//     taskResultOrStream &&
+//     Symbol.asyncIterator in taskResultOrStream
+//   ) {
+//     const chunks: TOutput[] = [];
+
+//     for await (const chunk of taskResultOrStream) {
+//       chunks.push(chunk);
+//     }
+
+//     return joinArrayOfUnknownResults(chunks) as TOutput;
+//   }
+
+//   return taskResultOrStream;
+// };
+
+// const runTask = async <TInput, TExpected>(
+//   caseContext: Context,
+//   evaluation: {
+//     id: string;
+//     name: string;
+//     version: string;
+//   },
+//   opts: {
+//     index: number;
+//     input: TInput;
+//     expected: TExpected | undefined;
+//   } & Omit<EvalParams, 'data'>,
+// ) => {
+//   const taskName = opts.task.name ?? 'anonymous';
+//   // start task span
+//   const taskSpan = startSpan(
+//     `task`,
+//     {
+//       attributes: {
+//         [Attr.GenAI.Operation.Name]: 'eval.task',
+//         [Attr.Eval.Task.Name]: taskName,
+//         [Attr.Eval.Task.Type]: 'llm_completion', // TODO: How to determine task type?
+//         [Attr.Eval.ID]: evaluation.id,
+//         [Attr.Eval.Name]: evaluation.name,
+//         [Attr.Eval.Version]: evaluation.version,
+//       },
+//     },
+//     caseContext,
+//   );
+
+//   const { output, duration } = await context.with(
+//     trace.setSpan(context.active(), taskSpan),
+//     async () => {
+//       const start = performance.now();
+//       const output = await executeTask(
+//         opts.task,
+//         opts.model,
+//         opts.params,
+//         opts.input,
+//         opts.expected,
+//       );
+//       const duration = Math.round(performance.now() - start);
+//       // set task output
+//       taskSpan.setAttributes({
+//         [Attr.Eval.Task.Output]: JSON.stringify(output),
+//       });
+
+//       taskSpan.setStatus({ code: SpanStatusCode.OK });
+//       taskSpan.end();
+
+//       return { output, duration };
+//     },
+//   );
+
+//   return {
+//     output,
+//     duration,
+//   };
+// };
