@@ -125,7 +125,9 @@ export function createAppScope<
     }
 
     if (!hasValue) {
-      throw new Error(`Flag '${name}' is required but not provided and has no default value`);
+      // TODO: BEFORE MERGE - what should we do here? error? log? user decides in config?
+      // throw new Error(`Flag '${name}' is required but not provided and has no default value`);
+      console.error(`Flag '${name}' is required but not provided and has no default value`);
     }
 
     // Validate with schema if provided
