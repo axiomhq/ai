@@ -1,11 +1,14 @@
 import { type z, type ZodObject } from 'zod';
 import { formatZodErrors, generateFlagExamples } from './format-zod-errors.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export interface FlagOverrides {
   [key: string]: any;
 }
 
 const FLAG_RE = /^--flag\.([^=]+)(?:=(.*))?$/;
+const CONFIG_RE = /^--flags-config(?:=(.*))?$/;
 
 /**
  * Extract --flag.* arguments from argv and return cleaned argv + parsed overrides.
@@ -66,7 +69,7 @@ export function extractAndValidateFlagOverrides<S extends ZodObject<any>>(
   cleanedArgv: string[];
   overrides: S extends ZodObject<any> ? z.output<S> : FlagOverrides;
 } {
-  const { cleanedArgv, overrides } = extractFlagOverrides(argv);
+  const { cleanedArgv, overrides } = extractOverrides(argv);
   
   if (flagSchema && Object.keys(overrides).length > 0) {
     // Use strict partial schema - reject unknown keys
@@ -112,5 +115,99 @@ function coerceValue(raw: string): any {
   } catch {
     // Fallback to string
     return raw;
+  }
+}
+
+/**
+ * Load and parse a JSON config file
+ */
+function loadConfigFile(path: string): any {
+  const abs = resolve(process.cwd(), path);
+  try {
+    const contents = readFileSync(abs, 'utf8');
+    const parsed = JSON.parse(contents);
+    
+    if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+      console.error(`❌ Flags config must be a JSON object, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+      process.exit(1);
+    }
+    
+    return parsed;
+  } catch (err: any) {
+    console.error(`❌ Could not read or parse flags config "${path}": ${err.message}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Extract flag overrides with support for both CLI flags and config files.
+ * Enforces exclusive mode - cannot use both --flags-config and --flag.* together.
+ */
+export function extractOverrides(argv: string[]): {
+  cleanedArgv: string[];
+  overrides: FlagOverrides;
+} {
+  const cleanedArgv: string[] = [];
+  let configPath: string | null = null;
+  let hasCliFlags = false;
+  let configPathCount = 0;
+
+  // First pass: detect both config and CLI flags, build cleaned argv
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i];
+    const configMatch = token.match(CONFIG_RE);
+    const flagMatch = token.match(FLAG_RE);
+
+    if (configMatch) {
+      configPathCount++;
+      if (configPathCount > 1) {
+        console.error('❌ Only one --flags-config can be supplied.');
+        process.exit(1);
+      }
+
+      let value = configMatch[1]; // may be undefined (space-separated form)
+      
+      if (value === undefined && argv.length > i + 1) {
+        // Check if next token looks like a path (not another option)
+        const nextToken = argv[i + 1];
+        if (!nextToken.startsWith('-')) {
+          value = nextToken;
+          i++; // consume next arg as value
+        }
+      }
+
+      if (!value) {
+        console.error('❌ --flags-config requires a file path');
+        process.exit(1);
+      }
+
+      configPath = value;
+      // Don't add to cleanedArgv
+    } else if (flagMatch) {
+      hasCliFlags = true;
+      // Don't add to cleanedArgv (existing logic will handle this)
+    } else {
+      cleanedArgv.push(token);
+    }
+  }
+
+  // Validate exclusivity
+  if (configPath && hasCliFlags) {
+    console.error('❌ Cannot use both --flags-config and --flag.* arguments together.');
+    console.error('Choose one approach:');
+    console.error('  • Config file: --flags-config=my-flags.json');
+    console.error('  • CLI flags: --flag.temperature=0.9 --flag.model=gpt-4o');
+    process.exit(1);
+  }
+
+  // Extract overrides based on mode
+  if (configPath) {
+    // Config mode
+    const overrides = loadConfigFile(configPath);
+    return { cleanedArgv, overrides };
+  } else {
+    // CLI mode (or no flags at all)
+    const { overrides } = extractFlagOverrides(argv);
+    return { cleanedArgv, overrides };
   }
 }
