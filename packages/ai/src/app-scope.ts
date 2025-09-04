@@ -1,5 +1,5 @@
 import { trace } from '@opentelemetry/api';
-import { type z, type ZodObject } from 'zod';
+import { type z, type ZodObject, type ZodDefault } from 'zod';
 import { getEvalContext, updateEvalContext } from './evals/context/storage';
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 
@@ -11,10 +11,23 @@ export interface AppScopeConfig<
   factSchema?: SC;
 }
 
+// Helper types to detect which fields have defaults in the schema
+type SchemaDefaults<T extends ZodObject<any>> =
+  {
+    [K in keyof T['shape'] as T['shape'][K] extends ZodDefault<any> ? K : never]: K;
+  } extends Record<infer Keys, any>
+    ? Keys
+    : never;
+
 // Helper types for better error messages and type inference
 type FlagFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
-    ? <N extends keyof z.output<FS>>(name: N) => z.output<FS>[N]
+    ? {
+        // Overload for fields with schema defaults - can pass only key, or key and value
+        <N extends SchemaDefaults<FS>>(name: N): z.output<FS>[N];
+        // Overload for any field with explicit default - key and value required for fields without schema defaults
+        <N extends keyof z.output<FS>>(name: N, defaultValue: z.output<FS>[N]): z.output<FS>[N];
+      }
     : <N extends string>(name: N, defaultValue: any) => any;
 
 type FactFunction<SC extends ZodObject<any> | undefined> =
@@ -56,8 +69,10 @@ export function createAppScope<
   SC extends ZodObject<any> | undefined = undefined,
 >(config?: AppScopeConfig<FS, SC>): AppScope<FS, SC>;
 
-// Implementation
-export function createAppScope(config?: any): any {
+export function createAppScope<
+  FS extends ZodObject<any> | undefined = undefined,
+  SC extends ZodObject<any> | undefined = undefined,
+>(config?: AppScopeConfig<FS, SC>): AppScope<FS, SC> {
   // Store schemas for runtime validation (if provided)
   const flagSchema = config?.flagSchema;
   const factSchema = config?.factSchema;
@@ -163,6 +178,7 @@ export function createAppScope(config?: any): any {
     updateEvalContext(undefined, { [name]: finalValue });
 
     // Write to current active span
+    // TODO: BEFORE MERGE - is this what we want?
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
       span.setAttributes({ [`fact.${name}`]: String(finalValue) });
@@ -173,5 +189,8 @@ export function createAppScope(config?: any): any {
     }
   }
 
-  return { flag, fact };
+  return {
+    flag: flag as FlagFunction<FS>,
+    fact: fact as FactFunction<SC>,
+  };
 }
