@@ -2,6 +2,7 @@ import { trace } from '@opentelemetry/api';
 import { type z, type ZodObject, type ZodDefault } from 'zod';
 import { getEvalContext, updateEvalContext } from './evals/context/storage';
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
+import { validateCliFlags } from './validate-flags';
 
 export interface AppScopeConfig<
   FS extends ZodObject<any> | undefined = undefined,
@@ -77,6 +78,11 @@ export function createAppScope<
   // Store schemas for runtime validation (if provided)
   const flagSchema = config?.flagSchema;
   const factSchema = config?.factSchema;
+
+  // Automatically validate CLI flags if flagSchema is provided
+  if (flagSchema) {
+    validateCliFlags(flagSchema);
+  }
 
   /**
    * Get a typed flag value.
