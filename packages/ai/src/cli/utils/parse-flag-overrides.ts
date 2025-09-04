@@ -1,3 +1,6 @@
+import { type z, type ZodObject } from 'zod';
+import { formatZodErrors, generateFlagExamples } from './format-zod-errors.js';
+
 export interface FlagOverrides {
   [key: string]: any;
 }
@@ -51,6 +54,41 @@ export function extractFlagOverrides(argv: string[]): {
   }
 
   return { cleanedArgv, overrides };
+}
+
+/**
+ * Extract and validate flag overrides using a Zod schema
+ */
+export function extractAndValidateFlagOverrides<S extends ZodObject<any>>(
+  argv: string[], 
+  flagSchema?: S
+): {
+  cleanedArgv: string[];
+  overrides: S extends ZodObject<any> ? z.output<S> : FlagOverrides;
+} {
+  const { cleanedArgv, overrides } = extractFlagOverrides(argv);
+  
+  if (flagSchema && Object.keys(overrides).length > 0) {
+    // Use strict partial schema - reject unknown keys
+    const result = flagSchema.strict().partial().safeParse(overrides);
+    
+    if (!result.success) {
+      console.error('❌ Invalid flags:');
+      console.error(formatZodErrors(result.error));
+      
+      const examples = generateFlagExamples(result.error);
+      if (examples.length > 0) {
+        console.error('\n💡 Examples:');
+        examples.forEach(example => console.error(`  ${example}`));
+      }
+      
+      process.exit(1);
+    }
+    
+    return { cleanedArgv, overrides: result.data as any };
+  }
+  
+  return { cleanedArgv, overrides: overrides as any };
 }
 
 /**
