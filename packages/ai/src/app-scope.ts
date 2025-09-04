@@ -1,78 +1,174 @@
 import { trace } from '@opentelemetry/api';
+import { type z, type ZodObject } from 'zod';
 import { getEvalContext, updateEvalContext } from './evals/context/storage';
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 
+export interface AppScopeConfig<
+  FS extends ZodObject<any> | undefined = undefined,
+  SC extends ZodObject<any> | undefined = undefined,
+> {
+  flagSchema?: FS;
+  factSchema?: SC;
+}
+
+// Helper types for better error messages and type inference
+type FlagFunction<FS extends ZodObject<any> | undefined> =
+  FS extends ZodObject<any>
+    ? <N extends keyof z.output<FS>>(name: N) => z.output<FS>[N]
+    : <N extends string>(name: N, defaultValue: any) => any;
+
+type FactFunction<SC extends ZodObject<any> | undefined> =
+  SC extends ZodObject<any>
+    ? <N extends keyof z.output<SC>>(name: N, value: z.output<SC>[N]) => void
+    : 'Error: fact() requires a factSchema to be provided in createAppScope({ factSchema })';
+
+export interface AppScope<
+  FS extends ZodObject<any> | undefined,
+  SC extends ZodObject<any> | undefined,
+> {
+  flag: FlagFunction<FS>;
+  fact: FactFunction<SC>;
+}
+
+class InvalidFlagError extends Error {
+  constructor(
+    message: string,
+    public zodError: z.ZodError,
+  ) {
+    super(message);
+    this.name = 'InvalidFlagError';
+  }
+}
+
+class InvalidFactError extends Error {
+  constructor(
+    message: string,
+    public zodError: z.ZodError,
+  ) {
+    super(message);
+    this.name = 'InvalidFactError';
+  }
+}
+
+// Schema-only API
 export function createAppScope<
-  Flags extends Record<string, any>,
-  Facts extends Record<string, any>,
->() {
-  type FlagName = keyof Flags;
-  type FactName = keyof Facts;
+  FS extends ZodObject<any> | undefined = undefined,
+  SC extends ZodObject<any> | undefined = undefined,
+>(config?: AppScopeConfig<FS, SC>): AppScope<FS, SC>;
+
+// Implementation
+export function createAppScope(config?: any): any {
+  // Store schemas for runtime validation (if provided)
+  const flagSchema = config?.flagSchema;
+  const factSchema = config?.factSchema;
 
   /**
-   * Get a typed flag value with inline default.
-   * Checks context overrides first, falls back to provided default.
+   * Get a typed flag value.
+   * Checks context overrides first, then provided default, then schema defaults.
+   * Validates using schema if provided.
    */
-  function flag<N extends FlagName>(name: N, defaultValue: Flags[N]): Flags[N] {
+  function flag<N extends string>(name: N, defaultValue?: any): any {
     const ctx = getEvalContext();
     const globalOverrides = getGlobalFlagOverrides();
 
+    let finalValue: any;
+    let hasValue = false;
+
     // Check global CLI overrides first (highest priority)
-    if (name as string in globalOverrides) {
-      const overrideValue = globalOverrides[name as string] as Flags[N];
-
-      // Store in context for tracking
-      updateEvalContext({ [name as string]: overrideValue });
-
-      // Write to current active span (use global override value)
-      const span = trace.getActiveSpan();
-      if (span?.isRecording()) {
-        span.setAttributes({ [`flag.${String(name)}`]: String(overrideValue) });
-      }
-
-      return overrideValue;
+    if (name in globalOverrides) {
+      finalValue = globalOverrides[name];
+      hasValue = true;
     }
-
     // Check context overrides (from withFlags() or overrideFlags)
-    if (name in ctx.flags) {
-      const overrideValue = ctx.flags[name] as Flags[N];
-
-      // Write to current active span (use override value)
-      const span = trace.getActiveSpan();
-      if (span?.isRecording()) {
-        span.setAttributes({ [`flag.${String(name)}`]: String(overrideValue) });
+    else if (name in ctx.flags) {
+      finalValue = ctx.flags[name];
+      hasValue = true;
+    }
+    // Use provided default (overrides schema default)
+    else if (defaultValue !== undefined) {
+      finalValue = defaultValue;
+      hasValue = true;
+    }
+    // If no override or explicit default, try schema default
+    else if (flagSchema) {
+      try {
+        // Try to parse just the field to see if it has a default
+        const fieldSchema = flagSchema.shape[name];
+        if (fieldSchema && '_def' in fieldSchema) {
+          const fieldDef = fieldSchema._def;
+          if (fieldDef.defaultValue !== undefined) {
+            finalValue =
+              typeof fieldDef.defaultValue === 'function'
+                ? fieldDef.defaultValue()
+                : fieldDef.defaultValue;
+            hasValue = true;
+          }
+        }
+      } catch {
+        // Schema inspection failed, continue
       }
-
-      return overrideValue;
     }
 
-    // Store accessed flag for tracking (only when using default)
-    updateEvalContext({ [name as string]: defaultValue });
+    if (!hasValue) {
+      throw new Error(`Flag '${name}' is required but not provided and has no default value`);
+    }
 
-    // Write to current active span (use default value)
+    // Validate with schema if provided
+    if (flagSchema) {
+      const result = flagSchema
+        .strict()
+        .partial()
+        .safeParse({ [name]: finalValue });
+      if (!result.success) {
+        throw new InvalidFlagError(`Flag '${name}' validation failed`, result.error);
+      }
+      // Use validated value in case of coercion
+      finalValue = result.data[name] ?? finalValue;
+    }
+
+    // Store accessed flag for tracking
+    updateEvalContext({ [name]: finalValue });
+
+    // Write to current active span
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
-      span.setAttributes({ [`flag.${String(name)}`]: String(defaultValue) });
+      span.setAttributes({ [`flag.${name}`]: String(finalValue) });
     }
 
-    return defaultValue;
+    return finalValue;
   }
 
   /**
    * Record a typed fact value.
    * Facts are write-only, no defaults needed.
+   * Validates using schema if provided.
    */
-  function fact<N extends FactName>(name: N, value: Facts[N]): void {
+  function fact<N extends string>(name: N, value: any): void {
+    let finalValue = value;
+
+    // Validate with schema if provided
+    if (factSchema) {
+      const result = factSchema
+        .strict()
+        .partial()
+        .safeParse({ [name]: value });
+      if (!result.success) {
+        throw new InvalidFactError(`Fact '${name}' validation failed`, result.error);
+      }
+      // Use validated value in case of coercion
+      finalValue = result.data[name] ?? value;
+    }
+
     // Store in context for tracking
-    updateEvalContext(undefined, { [name as string]: value });
+    updateEvalContext(undefined, { [name]: finalValue });
 
     // Write to current active span
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
-      span.setAttributes({ [`fact.${String(name)}`]: String(value) });
+      span.setAttributes({ [`fact.${name}`]: String(finalValue) });
       // Also record as timestamped event for time-series data
       span.addEvent('fact.recorded', {
-        [`fact.${String(name)}`]: String(value),
+        [`fact.${name}`]: String(finalValue),
       });
     }
   }

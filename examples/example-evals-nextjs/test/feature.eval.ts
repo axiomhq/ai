@@ -1,7 +1,18 @@
 import { createAppScope, experimental_Eval as Eval } from 'axiom/ai/evals';
 import { getEvalContext } from 'axiom/ai';
+import { z } from 'zod';
 
-const { flag, fact } = createAppScope<{ strategy: 'dumb' | 'smart' }, { randomNumber: number }>();
+// Define schemas for type safety and runtime validation
+const flagSchema = z.object({
+  strategy: z.enum(['dumb', 'smart']).default('dumb'),
+  foo: z.string().default('foo'),
+});
+
+const factSchema = z.object({
+  randomNumber: z.number(),
+});
+
+const { flag, fact } = createAppScope({ flagSchema, factSchema });
 
 // Define types for this example
 type Score = { name: string; score: number };
@@ -9,6 +20,8 @@ type Scorer = ({ output, expected }: { output: any; expected: any }) => Score;
 
 const myFn = async (input: string, expected: string) => {
   const strategy = flag('strategy', 'dumb');
+  const _s = flag('strategy');
+  const _f = flag('foo');
 
   const response = strategy === 'dumb' ? input : expected;
 
