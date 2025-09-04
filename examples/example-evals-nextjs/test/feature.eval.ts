@@ -1,16 +1,18 @@
-import { createAppScope, experimental_Eval as Eval } from 'axiom/ai/evals';
+import { createAppScope, experimental_Eval as Eval, validateCliFlags } from 'axiom/ai/evals';
 import { getEvalContext } from 'axiom/ai';
 import { z } from 'zod';
 
 // Define schemas for type safety and runtime validation
 const flagSchema = z.object({
   strategy: z.enum(['dumb', 'smart']).default('dumb'),
-  foo: z.string().default('foo'),
 });
 
 const factSchema = z.object({
   randomNumber: z.number(),
 });
+
+// Validate CLI flags against schema early - fail fast on invalid flags
+validateCliFlags(flagSchema);
 
 const { flag, fact } = createAppScope({ flagSchema, factSchema });
 
@@ -19,9 +21,7 @@ type Score = { name: string; score: number };
 type Scorer = ({ output, expected }: { output: any; expected: any }) => Score;
 
 const myFn = async (input: string, expected: string) => {
-  const strategy = flag('strategy', 'dumb');
-  const _s = flag('strategy');
-  const _f = flag('foo');
+  const strategy = flag('strategy');
 
   const response = strategy === 'dumb' ? input : expected;
 

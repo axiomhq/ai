@@ -12,3 +12,4 @@ export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
 export { defineEval, createTypedDefineEval } from './evals/builder';
 export type { EvalBuilder } from './evals/builder';
 export { createAppScope } from './app-scope';
+export { validateCliFlags } from './validate-flags';

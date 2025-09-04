@@ -51,4 +51,5 @@ export type { EvalContextData } from './evals/context/storage';
 
 export { createAppScope } from './app-scope';
 export { defineEval, createTypedDefineEval } from './evals/builder';
+export { validateCliFlags } from './validate-flags';
 export type { EvalBuilder } from './evals/builder';
