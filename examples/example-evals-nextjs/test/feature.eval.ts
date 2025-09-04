@@ -1,4 +1,4 @@
-import { createAppScope, experimental_Eval as Eval, validateCliFlags } from 'axiom/ai/evals';
+import { createAppScope, experimental_Eval as Eval } from 'axiom/ai/evals';
 import { getEvalContext } from 'axiom/ai';
 import { z } from 'zod';
 
@@ -11,9 +11,6 @@ const flagSchema = z.object({
 const factSchema = z.object({
   randomNumber: z.number(),
 });
-
-// Validate CLI flags against schema early - fail fast on invalid flags
-validateCliFlags(flagSchema);
 
 const { flag, fact } = createAppScope({ flagSchema, factSchema });
 

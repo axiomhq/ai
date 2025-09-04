@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { createAppScope } from '../src/app-scope';
+import { setGlobalFlagOverrides, clearGlobalFlagOverrides } from '../src/evals/context/global-flags';
 
 describe('createAppScope with Zod schemas', () => {
   it('should work with schema-based flag validation', () => {
@@ -95,5 +96,181 @@ describe('createAppScope with Zod schemas', () => {
     
     const temperature = appScope.flag('temperature', 0.7);
     expect(temperature).toBe(0.7);
+  });
+});
+
+describe('createAppScope auto-validation', () => {
+  beforeEach(() => {
+    clearGlobalFlagOverrides();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    clearGlobalFlagOverrides();
+  });
+
+  describe('unit tests (mocked validation)', () => {
+    let validateSpy: any;
+
+    beforeEach(async () => {
+      // Create a spy on the actual function
+      const validateModule = await import('../src/validate-flags');
+      validateSpy = vi.spyOn(validateModule, 'validateCliFlags').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      validateSpy?.mockRestore();
+    });
+
+    it('should NOT call validateCliFlags when no flagSchema provided', () => {
+      createAppScope();
+      expect(validateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should call validateCliFlags when flagSchema provided', () => {
+      const flagSchema = z.object({
+        foo: z.string(),
+        bar: z.number().default(42)
+      });
+
+      createAppScope({ flagSchema });
+
+      expect(validateSpy).toHaveBeenCalledTimes(1);
+      expect(validateSpy).toHaveBeenCalledWith(flagSchema);
+    });
+
+    it('should call validateCliFlags only once even with factSchema', () => {
+      const flagSchema = z.object({ test: z.string() });
+      const factSchema = z.object({ metric: z.number() });
+
+      createAppScope({ flagSchema, factSchema });
+
+      expect(validateSpy).toHaveBeenCalledTimes(1);
+      expect(validateSpy).toHaveBeenCalledWith(flagSchema);
+    });
+  });
+
+  describe('integration tests (real validation)', () => {
+    let exitSpy: any;
+    let errorSpy: any;
+
+    beforeEach(() => {
+      // Spy on process.exit but throw instead of actually exiting
+      exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new Error(`process.exit:${code}`);
+      }) as never);
+      
+      // Spy on console.error to capture validation messages
+      errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      exitSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it('should pass validation with valid CLI flags', () => {
+      const flagSchema = z.object({
+        strategy: z.enum(['fast', 'slow']).default('fast'),
+        count: z.number().default(1)
+      });
+
+      setGlobalFlagOverrides({ strategy: 'slow', count: 5 });
+
+      const { flag } = createAppScope({ flagSchema });
+
+      expect(flag('strategy')).toBe('slow');
+      expect(flag('count')).toBe(5);
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should pass validation with no CLI flags (uses schema defaults)', () => {
+      const flagSchema = z.object({
+        strategy: z.enum(['fast', 'slow']).default('fast'),
+        timeout: z.number().default(30)
+      });
+
+      // No CLI flags set
+      const { flag } = createAppScope({ flagSchema });
+
+      expect(flag('strategy')).toBe('fast');
+      expect(flag('timeout')).toBe(30);
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should fail validation with invalid flag value and exit process', () => {
+      const flagSchema = z.object({
+        strategy: z.enum(['fast', 'slow']).default('fast')
+      });
+
+      setGlobalFlagOverrides({ strategy: 'invalid' });
+
+      expect(() => {
+        createAppScope({ flagSchema });
+      }).toThrow('process.exit:1');
+
+      expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    });
+
+    it('should fail validation with unknown flag and exit process', () => {
+      const flagSchema = z.object({
+        strategy: z.string().default('fast')
+      });
+
+      setGlobalFlagOverrides({ unknownFlag: 'value' });
+
+      expect(() => {
+        createAppScope({ flagSchema });
+      }).toThrow('process.exit:1');
+
+      expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    });
+
+    it('should fail validation with type mismatch and exit process', () => {
+      const flagSchema = z.object({
+        count: z.number().default(1)
+      });
+
+      setGlobalFlagOverrides({ count: 'not-a-number' });
+
+      expect(() => {
+        createAppScope({ flagSchema });
+      }).toThrow('process.exit:1');
+
+      expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    });
+
+    it('should handle partial CLI flag overrides correctly', () => {
+      const flagSchema = z.object({
+        strategy: z.enum(['fast', 'slow']).default('fast'),
+        count: z.number().default(10),
+        name: z.string().default('test')
+      });
+
+      // Only override some flags
+      setGlobalFlagOverrides({ strategy: 'slow' });
+
+      const { flag } = createAppScope({ flagSchema });
+
+      expect(flag('strategy')).toBe('slow'); // overridden
+      expect(flag('count')).toBe(10);        // schema default
+      expect(flag('name')).toBe('test');     // schema default
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should work correctly with multiple createAppScope calls', () => {
+      // Use compatible schemas that only reference flags they define
+      const flagSchema1 = z.object({ flag1: z.string().default('default1') });
+      const flagSchema2 = z.object({ flag1: z.string().default('default1') }); // Same schema
+
+      setGlobalFlagOverrides({ flag1: 'override1' });
+
+      const scope1 = createAppScope({ flagSchema: flagSchema1 });
+      const scope2 = createAppScope({ flagSchema: flagSchema2 });
+
+      expect(scope1.flag('flag1')).toBe('override1');
+      expect(scope2.flag('flag1')).toBe('override1');
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
   });
 });
