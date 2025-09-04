@@ -1,4 +1,4 @@
-import { ZodError } from 'zod';
+import { type ZodError } from 'zod';
 
 /**
  * Format ZodError issues into user-friendly CLI error messages
@@ -9,6 +9,7 @@ export function formatZodErrors(error: ZodError): string {
 
   for (const issue of issues) {
     const path = issue.path.join('.');
+    // TODO: BEFORE MERGE - extra root flag currently gives "flag '': Unrecognized key(s) in object: 'asd'"
     const message = formatIssueMessage(issue, path);
     messages.push(`  • ${message}`);
   }
@@ -20,26 +21,26 @@ function formatIssueMessage(issue: any, path: string): string {
   switch (issue.code) {
     case 'invalid_type':
       return `flag '${path}' expected ${issue.expected}, got ${JSON.stringify(issue.received)} (${typeof issue.received})`;
-    
+
     case 'too_small':
       if (issue.type === 'number') {
         return `flag '${path}' must be >= ${issue.minimum}, got ${issue.received}`;
       }
       return `flag '${path}' is too small: ${issue.message}`;
-    
+
     case 'too_big':
       if (issue.type === 'number') {
         return `flag '${path}' must be <= ${issue.maximum}, got ${issue.received}`;
       }
       return `flag '${path}' is too big: ${issue.message}`;
-    
+
     case 'invalid_enum_value':
       const options = issue.options.map((opt: any) => `"${opt}"`).join(', ');
       return `flag '${path}' must be one of: ${options}, got "${issue.received}"`;
-    
+
     case 'custom':
       return `flag '${path}': ${issue.message}`;
-    
+
     default:
       return `flag '${path}': ${issue.message}`;
   }
@@ -50,7 +51,7 @@ function formatIssueMessage(issue: any, path: string): string {
  */
 export function generateFlagExamples(error: ZodError): string[] {
   const examples: string[] = [];
-  
+
   for (const issue of error.issues) {
     const path = issue.path.join('.');
     const example = generateExampleForIssue(issue, path);
@@ -75,19 +76,19 @@ function generateExampleForIssue(issue: any, path: string): string | null {
         return `--flag.${path}="value"`;
       }
       break;
-    
+
     case 'too_small':
       if (issue.type === 'number') {
         return `--flag.${path}=${issue.minimum}`;
       }
       break;
-    
+
     case 'invalid_enum_value':
       if (issue.options.length > 0) {
         return `--flag.${path}=${issue.options[0]}`;
       }
       break;
   }
-  
+
   return null;
 }
