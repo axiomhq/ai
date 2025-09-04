@@ -5,6 +5,7 @@ import { z } from 'zod';
 // Define schemas for type safety and runtime validation
 const flagSchema = z.object({
   strategy: z.enum(['dumb', 'smart']).default('dumb'),
+  foo: z.string(),
 });
 
 const factSchema = z.object({
