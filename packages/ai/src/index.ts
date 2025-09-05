@@ -32,12 +32,6 @@ export type {
 } from './types/metadata';
 
 /**
- * Evals
- */
-
-export type { Score, Scorer } from './scorers/scorer.types';
-
-/**
  * Context & Metadata (Phase 1 - Experimental)
  */
 

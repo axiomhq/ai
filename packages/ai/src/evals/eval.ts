@@ -7,8 +7,7 @@ import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
 import type { CollectionRecord, EvalParams, EvalTask } from './eval.types';
-import type { Score } from '../scorers/scorer.types';
-import type { ModelParams } from 'src/types';
+import type { Score } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
@@ -100,10 +99,6 @@ async function registerEval(evalName: string, opts: EvalParams) {
           // user info
           [Attr.Eval.User.Name]: user?.name,
           [Attr.Eval.User.Email]: user?.email,
-          // prompt
-          ['eval.prompt.messages']: JSON.stringify(opts.prompt),
-          ['eval.prompt.model']: opts.model,
-          ['eval.prompt.params']: JSON.stringify(opts.params),
         },
       });
       evalId = suiteSpan.spanContext().traceId;
@@ -170,9 +165,6 @@ async function registerEval(evalName: string, opts: EvalParams) {
                 input: data.input,
                 scorers: opts.scorers,
                 task: opts.task,
-                model: opts.model,
-                params: opts.params,
-                prompt: opts.prompt,
                 metadata: opts.metadata,
               },
             );
@@ -285,12 +277,10 @@ const joinArrayOfUnknownResults = (results: unknown[]): unknown => {
 
 const executeTask = async <TInput, TExpected, TOutput>(
   task: EvalTask<TInput, TExpected>,
-  model: string,
-  params: ModelParams,
   input: TInput,
   expected: TExpected,
 ): Promise<TOutput> => {
-  const taskResultOrStream = await task({ model, params, input, expected });
+  const taskResultOrStream = await task({ input, expected });
 
   if (
     typeof taskResultOrStream === 'object' &&
@@ -347,8 +337,6 @@ const runTask = async <TInput, TExpected>(
         const start = performance.now();
         const output = await executeTask(
           opts.task,
-          opts.model,
-          opts.params,
           opts.input,
           opts.expected,
         );
