@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { loadPushCommand } from './cli/commands/push.command';
 import { loadPullCommand } from './cli/commands/pull.command';
 import { loadEvalCommand } from './cli/commands/eval.command';
+import { extractFlagOverrides } from './cli/utils/parse-flag-overrides';
 
 // Load environment variables using @next/env
 import pkg from '@next/env';
@@ -11,6 +12,8 @@ const { loadEnvConfig } = pkg;
 
 // Load .env files from the current working directory
 loadEnvConfig(process.cwd());
+
+const { cleanedArgv, overrides } = extractFlagOverrides(process.argv.slice(2));
 
 export const program = new Command();
 
@@ -21,7 +24,8 @@ program
 
 loadPushCommand(program);
 loadPullCommand(program);
-loadEvalCommand(program);
+loadEvalCommand(program, overrides);
 loadVersionCommand(program);
 
-program.parse();
+// Parse cleaned argv (without --flag.* arguments)
+program.parse(['node', 'axiom', ...cleanedArgv]);

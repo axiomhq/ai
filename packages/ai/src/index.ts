@@ -32,7 +32,18 @@ export type {
 } from './types/metadata';
 
 /**
- * Evals
+ * Context & Metadata (Phase 1 - Experimental)
  */
 
-export type { Score, Scorer } from './scorers/scorer.types';
+export { flag, fact, overrideFlags } from './context';
+export { withEvalContext, getEvalContext } from './evals/context/storage';
+export type { EvalContextData } from './evals/context/storage';
+
+/**
+ * App Scope & Builder System (Phase 2 - Experimental)
+ */
+
+export { createAppScope } from './app-scope';
+export { defineEval, createTypedDefineEval } from './evals/builder';
+export { validateCliFlags } from './validate-flags';
+export type { EvalBuilder } from './evals/builder';
