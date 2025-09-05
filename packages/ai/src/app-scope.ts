@@ -24,6 +24,7 @@ type FlagFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
     ? {
         // Overload for fields with schema defaults - can pass only key, or key and value
+        // @ts-expect-error
         <N extends SchemaDefaults<FS>>(name: N): z.output<FS>[N];
         // Overload for any field with explicit default - key and value required for fields without schema defaults
         <N extends keyof z.output<FS>>(name: N, defaultValue: z.output<FS>[N]): z.output<FS>[N];
