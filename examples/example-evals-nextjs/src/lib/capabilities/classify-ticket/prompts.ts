@@ -3,10 +3,10 @@ import z from 'zod';
 import {
   experimental_Type as Type,
   withSpan,
-  type experimental_Prompt as Prompt,
   experimental_parse as parse,
   wrapAISDKModel,
 } from 'axiom/ai';
+import type { experimental_Prompt as Prompt } from 'axiom/ai';
 import { validateCliFlags, createAppScope } from 'axiom/ai/evals';
 
 import { SupportTicketCategorySchema, SupportTicketResponseSchema } from './schemas';
@@ -61,7 +61,7 @@ export const classifyTicketStep = async ({
 }: {
   subject: string | undefined;
   content: string;
-}) => {
+}): Promise<z.infer<typeof SupportTicketResponseSchema>> => {
   const parsedPrompt = await parse(classifyTicketPrompt, {
     context: { subject, content },
   });

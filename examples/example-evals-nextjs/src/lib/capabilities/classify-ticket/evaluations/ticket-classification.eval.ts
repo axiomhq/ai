@@ -1,4 +1,4 @@
-import { experimental_Eval as Eval, getEvalContext } from 'axiom/ai/evals';
+import { experimental_Eval as Eval } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 
@@ -16,9 +16,7 @@ Eval('Spam classification', {
     },
   ],
   task: async ({ input }) => {
-    const r = await classifyTicketStep(input);
-    console.log('tktk context', getEvalContext());
-    return r;
+    return await classifyTicketStep(input);
   },
   scorers: [spamClassificationScorer, jaccardResponseScorer],
   metadata: {
