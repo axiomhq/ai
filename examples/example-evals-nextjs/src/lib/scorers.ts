@@ -14,7 +14,7 @@ export const exactMatchScorer: Scorer = ({ output, expected }) => {
   };
 };
 
-export const spamClassificationScorer = ({
+export const spamClassificationScorer: Scorer = ({
   output,
   expected,
 }: {
@@ -58,6 +58,7 @@ export const jaccardResponseScorer = ({
 
   return {
     score,
+    // TODO: BEFORE MERGE - i hate this. can we use a constructor or function or something so it's like `scorer('Jaccard Response', fn)`?
     name: 'Jaccard Response',
   };
 };

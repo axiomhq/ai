@@ -4,4 +4,12 @@ export type Score = {
   metadata?: Record<string, any>;
 };
 
-export type Scorer = (args: { input?: any; output: any; expected?: any }) => Score | Promise<Score>;
+export type Scorer<
+  TInput = any,
+  TExpected = any,
+  TOutput = any
+> = (args: {
+  input: TInput;
+  output: TOutput;
+  expected: TExpected;
+}) => Score | Promise<Score>;
