@@ -4,12 +4,12 @@ export type Score = {
   metadata?: Record<string, any>;
 };
 
-export type Scorer<
-  TInput = any,
-  TExpected = any,
-  TOutput = any
-> = (args: {
+// Factory function for creating scorers with better ergonomics
+export { createScorer } from './scorer.factory';
+export { createScorer as defineScorer } from './scorer.factory';
+
+export type Scorer<TInput, TExpected, TOutput> = (args: {
   input: TInput;
-  output: TOutput;
   expected: TExpected;
+  output: TOutput;
 }) => Score | Promise<Score>;

@@ -12,7 +12,6 @@ import type {
   EvalTask,
   InputOf,
   ExpectedOf,
-  OutputOf,
 } from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
@@ -68,10 +67,10 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 export function Eval<
   // Inference-friendly overload – no explicit generics required by callers.
   const Data extends readonly { input: any; expected: any }[],
-  TaskFn extends EvalTask<InputOf<Data>, ExpectedOf<Data>, any>,
+  Out extends string | Record<string, any>,
+  TaskFn extends EvalTask<InputOf<Data>, ExpectedOf<Data>, Out>,
   In = InputOf<Data>,
   Exp = ExpectedOf<Data>,
-  Out = OutputOf<TaskFn>,
 >(
   name: string,
   params: {
