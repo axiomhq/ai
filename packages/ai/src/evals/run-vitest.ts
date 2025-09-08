@@ -16,7 +16,7 @@ export const runVitest = async (
     root: dir ? dir : process.cwd(),
     mode: 'test',
     include: opts.include,
-    reporters: [new AxiomReporter()],
+    reporters: ['verbose', new AxiomReporter()],
     environment: 'node',
     browser: undefined,
     watch: opts.watch,

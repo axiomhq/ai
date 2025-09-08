@@ -1,13 +1,19 @@
 import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
+import { withEvalContext } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type { CollectionRecord, EvalParams, EvalTask } from './eval.types';
-import type { Score } from '../scorers/scorer.types';
-import type { ModelParams } from 'src/types';
+import type {
+  CollectionRecord,
+  EvalParams,
+  EvalTask,
+  InputOf,
+  ExpectedOf,
+} from './eval.types';
+import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
@@ -47,7 +53,7 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  *     { input: 'Explain photosynthesis', expected: 'Plants convert light to energy...' },
  *     { input: 'What is gravity?', expected: 'Gravity is a fundamental force...' }
  *   ],
- *   task: async (input) => {
+ *   task: async ({ input }) => {
  *     const result = await generateText({
  *       model: yourModel,
  *       prompt: input
@@ -58,11 +64,46 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  * });
  * ```
  */
-export const Eval = (name: string, params: EvalParams): void => {
-  registerEval(name, params).catch(console.error);
-};
+export function Eval<
+  // Inference-friendly overload – no explicit generics required by callers.
+  const Data extends readonly { input: any; expected: any }[],
+  Out extends string | Record<string, any>,
+  TaskFn extends EvalTask<InputOf<Data>, ExpectedOf<Data>, Out>,
+  In = InputOf<Data>,
+  Exp = ExpectedOf<Data>,
+>(
+  name: string,
+  params: {
+    data: () => Data | Promise<Data>;
+    task: TaskFn;
+    scorers: ReadonlyArray<Scorer<In, Exp, Out>>;
+    metadata?: Record<string, unknown>;
+    timeout?: number;
+  },
+): void;
 
-async function registerEval(evalName: string, opts: EvalParams) {
+/**
+ *
+ */
+export function Eval<
+  // Explicit generics overload – allows users to pass explicit types.
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+  TOutput extends string | Record<string, any>,
+>(name: string, params: EvalParams<TInput, TExpected, TOutput>): void;
+
+/**
+ * Implementation
+ */
+export function Eval(name: string, params: any): void {
+  registerEval(name, params).catch(console.error);
+}
+
+async function registerEval<
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+  TOutput extends string | Record<string, any>,
+>(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
   const datasetPromise = opts.data();
   const user = getGitUserInfo();
 
@@ -99,10 +140,6 @@ async function registerEval(evalName: string, opts: EvalParams) {
           // user info
           [Attr.Eval.User.Name]: user?.name,
           [Attr.Eval.User.Email]: user?.email,
-          // prompt
-          ['eval.prompt.messages']: JSON.stringify(opts.prompt),
-          ['eval.prompt.model']: opts.model,
-          ['eval.prompt.params']: JSON.stringify(opts.params),
         },
       });
       evalId = suiteSpan.spanContext().traceId;
@@ -131,7 +168,7 @@ async function registerEval(evalName: string, opts: EvalParams) {
 
       await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
         'case',
-        async (data: { index: number } & CollectionRecord, { task }) => {
+        async (data: { index: number } & CollectionRecord<TInput, TExpected>, { task }) => {
           const start = performance.now();
           const caseSpan = startSpan(
             `case ${data.index}`,
@@ -169,9 +206,6 @@ async function registerEval(evalName: string, opts: EvalParams) {
                 input: data.input,
                 scorers: opts.scorers,
                 task: opts.task,
-                model: opts.model,
-                params: opts.params,
-                prompt: opts.prompt,
                 metadata: opts.metadata,
               },
             );
@@ -233,7 +267,7 @@ async function registerEval(evalName: string, opts: EvalParams) {
               name: evalName,
               expected: data.expected,
               input: data.input,
-              output: output as string,
+              output: output,
               scores,
               status: 'success',
               errors: [],
@@ -251,7 +285,7 @@ async function registerEval(evalName: string, opts: EvalParams) {
               index: data.index,
               expected: data.expected,
               input: data.input,
-              output: e as string,
+              output: String(e),
               scores: {},
               status: 'fail',
               errors: [error],
@@ -271,25 +305,30 @@ async function registerEval(evalName: string, opts: EvalParams) {
   return result;
 }
 
-const joinArrayOfUnknownResults = (results: unknown[]): unknown => {
-  return results.reduce((acc, result) => {
-    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
-      return `${acc}${result}`;
-    }
-    throw new Error(
-      `Cannot display results of stream: stream contains non-string, non-number, non-boolean chunks.`,
-    );
-  }, '');
+const joinArrayOfUnknownResults = <T extends string | Record<string, any>>(results: T[]): T => {
+  if (results.length === 0) {
+    return '' as unknown as T;
+  }
+
+  // If all results are strings, concatenate them
+  if (results.every((r) => typeof r === 'string')) {
+    return results.join('') as unknown as T;
+  }
+
+  // If we have objects, return the last one (streaming typically overwrites)
+  return results[results.length - 1];
 };
 
-const executeTask = async <TInput, TExpected, TOutput>(
-  task: EvalTask<TInput, TExpected>,
-  model: string,
-  params: ModelParams,
+const executeTask = async <
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+  TOutput extends string | Record<string, any>,
+>(
+  task: EvalTask<TInput, TExpected, TOutput>,
   input: TInput,
   expected: TExpected,
 ): Promise<TOutput> => {
-  const taskResultOrStream = await task({ model, params, input, expected });
+  const taskResultOrStream = await task({ input, expected });
 
   if (
     typeof taskResultOrStream === 'object' &&
@@ -302,13 +341,17 @@ const executeTask = async <TInput, TExpected, TOutput>(
       chunks.push(chunk);
     }
 
-    return joinArrayOfUnknownResults(chunks) as TOutput;
+    return joinArrayOfUnknownResults<TOutput>(chunks as TOutput[]);
   }
 
   return taskResultOrStream;
 };
 
-const runTask = async <TInput, TExpected>(
+const runTask = async <
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+  TOutput extends string | Record<string, any>,
+>(
   caseContext: Context,
   evaluation: {
     id: string;
@@ -319,7 +362,7 @@ const runTask = async <TInput, TExpected>(
     index: number;
     input: TInput;
     expected: TExpected | undefined;
-  } & Omit<EvalParams, 'data'>,
+  } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
   // start task span
@@ -341,24 +384,21 @@ const runTask = async <TInput, TExpected>(
   const { output, duration } = await context.with(
     trace.setSpan(context.active(), taskSpan),
     async () => {
-      const start = performance.now();
-      const output = await executeTask(
-        opts.task,
-        opts.model,
-        opts.params,
-        opts.input,
-        opts.expected,
-      );
-      const duration = Math.round(performance.now() - start);
-      // set task output
-      taskSpan.setAttributes({
-        [Attr.Eval.Task.Output]: JSON.stringify(output),
+      // Initialize evaluation context for flag/fact access
+      return withEvalContext({}, async () => {
+        const start = performance.now();
+        const output = await executeTask(opts.task, opts.input, opts.expected!);
+        const duration = Math.round(performance.now() - start);
+        // set task output
+        taskSpan.setAttributes({
+          [Attr.Eval.Task.Output]: JSON.stringify(output),
+        });
+
+        taskSpan.setStatus({ code: SpanStatusCode.OK });
+        taskSpan.end();
+
+        return { output, duration };
       });
-
-      taskSpan.setStatus({ code: SpanStatusCode.OK });
-      taskSpan.end();
-
-      return { output, duration };
     },
   );
 
