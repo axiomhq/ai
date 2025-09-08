@@ -43,22 +43,12 @@ Eval('feature-example', {
       expected: 'Nginx 5xx Errors',
     },
   ],
-  model: 'o3',
-  params: {
-    temperature: 0.6,
-  },
-  prompt: [
-    {
-      role: 'system',
-      content: 'You are a customer support agent that answers questions about log queries',
-    },
-  ],
   task: async ({ input, expected }) => {
     const r = await myFn(input, expected);
     console.log('tktk context', getEvalContext());
     return r;
   },
-  scorers: [exactMatchScorer as any], // TODO: BEFORE MERGE - types idk
+  scorers: [exactMatchScorer], // TODO: BEFORE MERGE - types idk
   metadata: {
     description:
       'Demonstrates flag and fact usage in eval tasks - flags configure behavior, facts track metrics',
