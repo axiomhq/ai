@@ -8,9 +8,12 @@ export * from './evals/eval.service';
 
 export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
 
-// New Phase 2 builder system
+export { flag, fact, overrideFlags } from './context';
+export { withEvalContext, getEvalContext } from './evals/context/storage';
+export type { EvalContextData } from './evals/context/storage';
+
 export { defineEval, createTypedDefineEval } from './evals/builder';
 export type { EvalBuilder } from './evals/builder';
 export { createAppScope } from './app-scope';
 export { validateCliFlags } from './validate-flags';
-export * from './evals/scorers'
+export * from './evals/scorers';

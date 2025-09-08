@@ -1,5 +1,4 @@
-import { experimental_Eval as Eval } from 'axiom/ai/evals';
-import { getEvalContext } from 'axiom/ai';
+import { experimental_Eval as Eval, getEvalContext } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 
@@ -17,7 +16,6 @@ Eval('feature-example', {
   },
   scorers: [spamClassificationScorer, jaccardResponseScorer],
   metadata: {
-    description:
-      "Classify support tickets as spam or not spam",
+    description: 'Classify support tickets as spam or not spam',
   },
 });
