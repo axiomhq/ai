@@ -2,15 +2,21 @@ import { experimental_Eval as Eval, getEvalContext } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 
-Eval('feature-example', {
+Eval('Spam classification', {
   data: () => [
     {
-      input: "['nginx-access-logs'] | where status >= 500",
-      expected: 'Nginx 5xx Errors',
+      input: {
+        subject: "Congratulations! You've Been Selected for an Exclusive Reward",
+        content: 'Claim your $500 gift card now by clicking this special link before it expires!',
+      },
+      expected: {
+        category: 'spam',
+        response: "We're sorry, but your message has been automatically closed.",
+      },
     },
   ],
   task: async ({ input }) => {
-    const r = await classifyTicketStep({ ...input });
+    const r = await classifyTicketStep(input);
     console.log('tktk context', getEvalContext());
     return r;
   },
