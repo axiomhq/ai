@@ -1,5 +1,5 @@
 import { createAppScope, experimental_Eval as Eval } from 'axiom/ai/evals';
-import { getEvalContext } from 'axiom/ai';
+import { getEvalContext } from 'axiom/ai/evals';
 import { z } from 'zod';
 
 // Define schemas for type safety and runtime validation
@@ -14,10 +14,6 @@ const factSchema = z.object({
 
 const { flag, fact } = createAppScope({ flagSchema, factSchema });
 
-// Define types for this example
-type Score = { name: string; score: number };
-type Scorer = ({ output, expected }: { output: any; expected: any }) => Score;
-
 const myFn = async (input: string, expected: string) => {
   const strategy = flag('strategy');
 
@@ -29,7 +25,7 @@ const myFn = async (input: string, expected: string) => {
 };
 
 // an example of a custom scorer
-const exactMatchScorer: Scorer = ({ output, expected }) => {
+const exactMatchScorer = ({ output, expected }: { output: any; expected?: any }) => {
   return {
     name: 'exact-match',
     score: output == expected ? 1 : 0,

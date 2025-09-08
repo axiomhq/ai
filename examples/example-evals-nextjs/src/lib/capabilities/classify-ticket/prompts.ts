@@ -5,10 +5,9 @@ import {
   withSpan,
   type experimental_Prompt as Prompt,
   experimental_parse as parse,
-  validateCliFlags,
-  createAppScope,
   wrapAISDKModel,
 } from 'axiom/ai';
+import { validateCliFlags, createAppScope } from 'axiom/ai/evals';
 
 import { SupportTicketCategorySchema, SupportTicketResponseSchema } from './schemas';
 import { openai } from '@ai-sdk/openai';
@@ -73,11 +72,12 @@ export const classifyTicketStep = async ({
   const result = await withSpan(
     { capability: 'classify-ticket', step: 'classification' },
     async (_span) => {
-      return generateObject({
+      const f = generateObject({
         model: wrapAISDKModel(openai(model)),
         messages: parsedPrompt.messages.map((m) => ({ role: m.role, content: m.content })),
         schema: SupportTicketResponseSchema,
       });
+      return f;
     },
   );
 
