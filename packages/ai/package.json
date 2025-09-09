@@ -68,7 +68,7 @@
     "@opentelemetry/resources": "^2.0.1",
     "@opentelemetry/sdk-node": "^0.202.0",
     "@opentelemetry/sdk-trace-node": "^2.0.1",
-    "@opentelemetry/semantic-conventions": "^1.36.0",
+    "@opentelemetry/semantic-conventions": "^1.37.0",
     "@sinclair/typebox": "^0.34.37",
     "commander": "^14.0.0",
     "console-table-printer": "^2.14.6",
