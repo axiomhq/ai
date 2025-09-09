@@ -161,7 +161,7 @@ export const Attr = {
       Name: ATTR_GEN_AI_STEP_NAME,
     },
     Provider: {
-      Name: ATTR_GEN_AI_PROVIDER_NAME, // TODO: replace with value imported from 1.37 semconv once they ship
+      Name: ATTR_GEN_AI_PROVIDER_NAME,
       Name_Values: {
         Anthropic: GEN_AI_PROVIDER_NAME_VALUE_ANTHROPIC,
         AssemblyAI: GEN_AI_PROVIDER_NAME_VALUE_ASSEMBLYAI,
@@ -199,12 +199,12 @@ export const Attr = {
      * Regular attributes
      */
     Agent: {
-      Description: ATTR_GEN_AI_AGENT_DESCRIPTION, // TODO: not yet used by axiom-ai
-      ID: ATTR_GEN_AI_AGENT_ID, // TODO: not yet used by axiom-ai
-      Name: ATTR_GEN_AI_AGENT_NAME, // TODO: not yet used by axiom-ai
+      Description: ATTR_GEN_AI_AGENT_DESCRIPTION, // not yet used by axiom-ai
+      ID: ATTR_GEN_AI_AGENT_ID, // not yet used by axiom-ai
+      Name: ATTR_GEN_AI_AGENT_NAME, // not yet used by axiom-ai
     },
     Conversation: {
-      ID: ATTR_GEN_AI_CONVERSATION_ID, // TODO: not yet used by axiom-ai, anyway probably needs to be provided by user
+      ID: ATTR_GEN_AI_CONVERSATION_ID, // not yet used by axiom-ai, anyway probably needs to be provided by user
     },
     Input: {
       Messages: ATTR_GEN_AI_INPUT_MESSAGES,
@@ -238,8 +238,8 @@ export const Attr = {
      * There doesn't seem to be a semconv for this
      */
     Request: {
-      ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT, // TODO: not yet used by axiom-ai
-      EncodingFormats: ATTR_GEN_AI_REQUEST_ENCODING_FORMATS, // TODO: not yet used by axiom-ai
+      ChoiceCount: ATTR_GEN_AI_REQUEST_CHOICE_COUNT, // not yet used by axiom-ai
+      EncodingFormats: ATTR_GEN_AI_REQUEST_ENCODING_FORMATS, // not yet used by axiom-ai
       FrequencyPenalty: ATTR_GEN_AI_REQUEST_FREQUENCY_PENALTY,
       MaxTokens: ATTR_GEN_AI_REQUEST_MAX_TOKENS,
       /**
