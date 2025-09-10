@@ -128,12 +128,130 @@ describe('createAppScope2 runtime behavior', () => {
   });
 
   describe('defaults', () => {
-    test.skip('should use schema defaults for individual flags', () => {
-      // TODO: Implement test
+    test('should extract schema defaults for individual flags', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number(), // no default
+          layout: z.object({
+            sidebar: z.boolean().default(true),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Should extract from schema defaults
+      expect(scope.flag('ui.theme')).toBe('dark');
+      expect(scope.flag('ui.layout.sidebar')).toBe(true);
+    });
+
+    test('partial defaults work when accessing children', () => {
+      const schemas = {
+        ui: z.object({
+          foo: z.string().default('foo'),
+          bar: z.string(),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('ui.foo')).toBe('foo');
+      expect(scope.flag('ui.bar')).toBe(undefined);
+    });
+
+    test('', () => {
+      const schemas = {
+        ui: z.object({
+          foo: z.string().default('foo'),
+          bar: z.string(),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('ui', { foo: 'foo', bar: 'bar' })).toEqual({ foo: 'foo', bar: 'bar' });
+    });
+
+    test('should prefer explicit defaults over schema defaults', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number().default(12),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Explicit defaults should override schema defaults
+      expect(scope.flag('ui.theme', 'light')).toBe('light');
+      expect(scope.flag('ui.fontSize', 16)).toBe(16);
+
+      // But schema defaults should still work when no explicit default
+      expect(scope.flag('ui.theme')).toBe('dark');
+      expect(scope.flag('ui.fontSize')).toBe(12);
+    });
+
+    test('should handle different Zod types with defaults', () => {
+      const schemas = {
+        config: z.object({
+          name: z.string().default('App'),
+          version: z.number().default(1),
+          enabled: z.boolean().default(false),
+          mode: z.enum(['dev', 'prod']).default('dev'),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('config.name')).toBe('App');
+      expect(scope.flag('config.version')).toBe(1);
+      expect(scope.flag('config.enabled')).toBe(false);
+      expect(scope.flag('config.mode')).toBe('dev');
+    });
+
+    test('should return undefined for fields without schema defaults', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number(), // no default
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('ui.theme')).toBe('dark');
+      expect(scope.flag('ui.fontSize')).toBe(undefined);
+    });
+
+    test('should handle deeply nested schema defaults', () => {
+      const schemas = {
+        app: z.object({
+          ui: z.object({
+            theme: z.object({
+              primary: z.string().default('blue'),
+              secondary: z.string().default('gray'),
+            }),
+            layout: z.object({
+              sidebar: z.object({
+                width: z.number().default(250),
+                collapsed: z.boolean().default(false),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('app.ui.theme.primary')).toBe('blue');
+      expect(scope.flag('app.ui.theme.secondary')).toBe('gray');
+      expect(scope.flag('app.ui.layout.sidebar.width')).toBe(250);
+      expect(scope.flag('app.ui.layout.sidebar.collapsed')).toBe(false);
     });
 
     test.skip('should use schema defaults for whole namespaces', () => {
-      // TODO: Implement test
+      // TODO: Implement test for future unit
     });
   });
 
