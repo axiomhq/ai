@@ -12,7 +12,14 @@ describe('createAppScope2 type-level tests', () => {
         }),
       };
       
-      const scope = createAppScope2({ flagSchema: schemas });
+      const factSchema = z.object({
+        userAction: z.string(),
+      });
+      
+      const scope = createAppScope2({ 
+        flagSchema: schemas,
+        factSchema 
+      });
       
       // Basic type checks that should work with current scaffolding
       expectTypeOf(scope).toHaveProperty('flag');
