@@ -8,27 +8,54 @@ export interface AppScope2Config<
   factSchema?: SC;
 }
 
-// Helper types for extracting namespace keys (for future use)
-// type NamespaceKeys<T extends Record<string, ZodObject<any>>> = keyof T;
+// Recursive type to extract all possible paths from an object type
+type ObjectPaths<T, D extends number = 10> = [D] extends [never]
+  ? never
+  : T extends object
+    ? {
+        [K in keyof T]-?: K extends string | number
+          ? `${K}` | `${K}.${ObjectPaths<T[K], Prev[D]>}`
+          : never;
+      }[keyof T]
+    : never;
 
-// Helper types for extracting flag keys from a specific namespace (for future use)
-// type FlagKeys<
-//   T extends Record<string, ZodObject<any>>,
-//   N extends NamespaceKeys<T>
-// > = keyof z.output<T[N]>;
+type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ...0[]];
 
-// Helper types to detect which fields have defaults in the schema (for future use)
-// type SchemaDefaults<T extends ZodObject<any>> =
-//   {
-//     [K in keyof T['shape'] as T['shape'][K] extends any ? K : never]: K;
-//   } extends Record<infer Keys, any>
-//     ? Keys
-//     : never;
+// Type to get value at a specific path in an object
+type ObjectPathValue<T, P extends string> = P extends keyof T
+  ? T[P]
+  : P extends `${infer K}.${infer Rest}`
+    ? K extends keyof T
+      ? ObjectPathValue<T[K], Rest>
+      : never
+    : never;
 
-// Flag function for dot notation access  
+// Enhanced DotPaths that generates deep nested paths from flag schema
+type DotPaths<T extends Record<string, ZodObject<any>>> = {
+  [NS in keyof T]: {
+    [P in ObjectPaths<z.output<T[NS]>>]: `${string & NS}.${P}`;
+  }[ObjectPaths<z.output<T[NS]>>];
+}[keyof T];
+
+// Enhanced PathValue with proper nested type resolution
+type PathValue<
+  T extends Record<string, ZodObject<any>>,
+  P extends string,
+> = P extends `${infer NS}.${infer Rest}`
+  ? NS extends keyof T
+    ? ObjectPathValue<z.output<T[NS]>, Rest>
+    : never
+  : never;
+
+// Enhanced DotNotationFlagFunction with proper overloads and type constraints
 type DotNotationFlagFunction<FS extends Record<string, ZodObject<any>> | undefined> =
   FS extends Record<string, ZodObject<any>>
-    ? (path: string, defaultValue?: any) => any
+    ? {
+        <P extends DotPaths<FS>>(path: P): PathValue<FS, P>;
+        <P extends DotPaths<FS>>(path: P, defaultValue: PathValue<FS, P>): PathValue<FS, P>;
+        // Fallback overload only for string paths that don't match valid paths, with required defaultValue
+        <P extends string>(path: P extends DotPaths<FS> ? never : P, defaultValue: any): any;
+      }
     : (path: string, defaultValue?: any) => any;
 
 type FactFunction<SC extends ZodObject<any> | undefined> =
@@ -49,7 +76,7 @@ export function createAppScope2<
   FS extends Record<string, ZodObject<any>> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
 >(config: AppScope2Config<FS, SC>): AppScope2<FS, SC> {
-  // Store schemas for runtime validation 
+  // Store schemas for runtime validation
   const flagSchema = config?.flagSchema;
 
   // Helper function to split dot notation path and traverse schema
@@ -63,24 +90,24 @@ export function createAppScope2<
     if (!flagSchema || segments.length === 0) return undefined;
 
     let current: any = flagSchema;
-    
+
     // First segment should be the namespace
     const namespace = segments[0];
     if (!(namespace in current)) {
       return undefined;
     }
-    
+
     current = current[namespace];
-    
+
     // For now, just return the namespace schema - we'll implement deeper traversal later
     return current;
   }
 
   // TODO: Implement dot notation flag logic
-  function flag(path: string, defaultValue?: any): any {
+  function flag<P extends string>(path: P, defaultValue?: any): any {
     const segments = parsePath(path);
     findSchemaAtPath(segments); // For now we parse but don't use the result
-    
+
     // Basic implementation - just return defaultValue for now
     // In future units we'll implement actual value lookup and schema validation
     return defaultValue;
