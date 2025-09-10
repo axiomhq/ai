@@ -103,32 +103,71 @@ export function createAppScope2<
     return segments;
   }
 
-  // Helper function to traverse schema object to find the right schema for validation
+  // Helper function to traverse schema object to find the field schema at a specific path
   function findSchemaAtPath(segments: string[]): any {
     if (!flagSchema || segments.length === 0) return undefined;
 
     let current: any = flagSchema;
 
-    // First segment should be the namespace
-    const namespace = segments[0];
-    if (!(namespace in current)) {
-      return undefined;
+    // Traverse through all segments to find the field schema
+    for (const segment of segments) {
+      if (!current || typeof current !== 'object') {
+        return undefined;
+      }
+
+      // Handle ZodObject by accessing its shape
+      if (current._def && current._def.typeName === 'ZodObject' && current.shape) {
+        current = current.shape[segment];
+      } else if (segment in current) {
+        current = current[segment];
+      } else {
+        return undefined;
+      }
     }
 
-    current = current[namespace];
-
-    // For now, just return the namespace schema - we'll implement deeper traversal later
     return current;
   }
 
-  // TODO: Implement dot notation flag logic
+  // Helper function to extract default value from a Zod schema
+  function extractSchemaDefault(schema: any): any {
+    if (!schema || !schema._def) return undefined;
+
+    const fieldDef = schema._def;
+    if (fieldDef.defaultValue !== undefined) {
+      return typeof fieldDef.defaultValue === 'function'
+        ? fieldDef.defaultValue()
+        : fieldDef.defaultValue;
+    }
+
+    return undefined;
+  }
+
+  // Implement dot notation flag logic with schema defaults
   function flag<P extends string>(path: P, defaultValue?: any): any {
     const segments = parsePath(path);
-    findSchemaAtPath(segments); // For now we parse but don't use the result
 
-    // Basic implementation - just return defaultValue for now
-    // In future units we'll implement actual value lookup and schema validation
-    return defaultValue;
+    // Priority order: explicit default → schema default → undefined
+
+    // 1. If explicit default is provided, use it
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+
+    // 2. Try to extract default from schema
+    try {
+      const fieldSchema = findSchemaAtPath(segments);
+      if (fieldSchema) {
+        const schemaDefault = extractSchemaDefault(fieldSchema);
+        if (schemaDefault !== undefined) {
+          return schemaDefault;
+        }
+      }
+    } catch {
+      // Schema inspection failed, continue to undefined
+    }
+
+    // 3. Return undefined if no defaults available
+    return undefined;
   }
 
   // TODO: Implement fact logic
