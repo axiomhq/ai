@@ -26,9 +26,9 @@ describe('createAppScope2 runtime behavior', () => {
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // These should not throw
-      expect(() => scope.flag('ui')).not.toThrow();
-      expect(() => scope.flag('ui', 'theme')).not.toThrow();
+      // These should not throw (using dot notation for now)
+      expect(() => scope.flag('ui.theme')).not.toThrow();
+      expect(() => scope.flag('ui.theme', 'dark')).not.toThrow();
     });
 
     test('should call fact method without crashing', () => {
