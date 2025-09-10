@@ -8,18 +8,27 @@ export interface AppScope2Config<
   factSchema?: SC;
 }
 
-// Recursive type to extract all possible paths from an object type
-type ObjectPaths<T, D extends number = 10> = [D] extends [never]
+/**
+ * Recursive type to extract all possible paths from an object type.
+ * Uses stack-based depth limiting for better performance.
+ *
+ * @template T - The object type to extract paths from
+ * @template Stack - Internal stack counter (do not set manually)
+ * @template MaxDepth - Maximum recursion depth (default: 8 for good balance)
+ */
+type ObjectPaths<
+  T,
+  Stack extends unknown[] = [],
+  MaxDepth extends number = 8,
+> = Stack['length'] extends MaxDepth
   ? never
   : T extends object
     ? {
         [K in keyof T]-?: K extends string | number
-          ? `${K}` | `${K}.${ObjectPaths<T[K], Prev[D]>}`
+          ? `${K}` | `${K}.${ObjectPaths<T[K], [1, ...Stack], MaxDepth>}`
           : never;
       }[keyof T]
     : never;
-
-type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ...0[]];
 
 // Type to get value at a specific path in an object
 type ObjectPathValue<T, P extends string> = P extends keyof T
@@ -30,14 +39,24 @@ type ObjectPathValue<T, P extends string> = P extends keyof T
       : never
     : never;
 
-// Enhanced DotPaths that generates deep nested paths from flag schema
-type DotPaths<T extends Record<string, ZodObject<any>>> = {
+/**
+ * Generate deep nested paths from flag schema.
+ *
+ * @template T - Record of schema objects to extract paths from
+ * @template MaxDepth - Maximum recursion depth (default: 8, override for deeper nesting)
+ * @example
+ * // Default 8-level depth
+ * type Paths = DotPaths<MySchemas>
+ *
+ * // Custom depth for deeper nesting (impacts performance)
+ * type DeepPaths = DotPaths<MySchemas, 12>
+ */
+type DotPaths<T extends Record<string, ZodObject<any>>, MaxDepth extends number = 8> = {
   [NS in keyof T]: {
-    [P in ObjectPaths<z.output<T[NS]>>]: `${string & NS}.${P}`;
-  }[ObjectPaths<z.output<T[NS]>>];
+    [P in ObjectPaths<z.output<T[NS]>, [], MaxDepth>]: `${string & NS}.${P}`;
+  }[ObjectPaths<z.output<T[NS]>, [], MaxDepth>];
 }[keyof T];
 
-// Enhanced PathValue with proper nested type resolution
 type PathValue<
   T extends Record<string, ZodObject<any>>,
   P extends string,
@@ -47,7 +66,6 @@ type PathValue<
     : never
   : never;
 
-// Enhanced DotNotationFlagFunction with proper overloads and type constraints
 type DotNotationFlagFunction<FS extends Record<string, ZodObject<any>> | undefined> =
   FS extends Record<string, ZodObject<any>>
     ? {
