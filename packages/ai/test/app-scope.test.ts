@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { createAppScope } from '../src/app-scope';
-import { setGlobalFlagOverrides, clearGlobalFlagOverrides } from '../src/evals/context/global-flags';
+import {
+  setGlobalFlagOverrides,
+  clearGlobalFlagOverrides,
+} from '../src/evals/context/global-flags';
 
 describe('createAppScope with Zod schemas', () => {
   it('should work with schema-based flag validation', () => {
@@ -38,22 +41,24 @@ describe('createAppScope with Zod schemas', () => {
     });
 
     const appScope = createAppScope({ flagSchema });
-    
+
     // Should get schema default values - no second parameter allowed with schemas
     const temp = appScope.flag('num');
     expect(temp).toBe(1);
-    
+
     const str = appScope.flag('str');
     expect(str).toBe('schema');
-    
+
     const req = appScope.flag('required');
     expect(req).toBe('required-default');
   });
 
   it('should validate flag types strictly', () => {
-    const flagSchema = z.object({
-      num: z.number().default(42),
-    }).strict();
+    const flagSchema = z
+      .object({
+        num: z.number().default(42),
+      })
+      .strict();
 
     const appScope = createAppScope({ flagSchema });
 
@@ -69,11 +74,13 @@ describe('createAppScope with Zod schemas', () => {
   });
 
   it('should validate fact types strictly', () => {
-    const factSchema = z.object({
-      duration: z.number(),
-    }).strict();
+    const factSchema = z
+      .object({
+        duration: z.number(),
+      })
+      .strict();
 
-    const appScope = createAppScope({ factSchema });
+    const appScope = createAppScope({ flagSchema: z.object({}), factSchema });
 
     // Valid fact should work
     expect(() => {
@@ -83,19 +90,14 @@ describe('createAppScope with Zod schemas', () => {
     // Invalid fact type should throw
     expect(() => {
       appScope.fact('duration', 'not a number' as any);
-    }).toThrow('Fact \'duration\' validation failed');
+    }).toThrow("Fact 'duration' validation failed");
   });
 
-  it('should maintain backward compatibility with existing code', () => {
-    // Test without schema (old pattern)
-    const appScope = createAppScope();
-    
-    // Should work with explicit defaults
-    const strategy = appScope.flag('strategy', 'foo');
-    expect(strategy).toBe('foo');
-    
-    const temperature = appScope.flag('temperature', 0.7);
-    expect(temperature).toBe(0.7);
+  it('should not be allowed to call without flagSchema', () => {
+    // @ts-expect-error
+    const _appScope = createAppScope();
+    // @ts-expect-error
+    const _appScope2 = createAppScope({ factSchema: z.object({}) });
   });
 });
 
@@ -122,15 +124,10 @@ describe('createAppScope auto-validation', () => {
       validateSpy?.mockRestore();
     });
 
-    it('should NOT call validateCliFlags when no flagSchema provided', () => {
-      createAppScope();
-      expect(validateSpy).not.toHaveBeenCalled();
-    });
-
     it('should call validateCliFlags when flagSchema provided', () => {
       const flagSchema = z.object({
         foo: z.string(),
-        bar: z.number().default(42)
+        bar: z.number().default(42),
       });
 
       createAppScope({ flagSchema });
@@ -159,7 +156,7 @@ describe('createAppScope auto-validation', () => {
       exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
         throw new Error(`process.exit:${code}`);
       }) as never);
-      
+
       // Spy on console.error to capture validation messages
       errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     });
@@ -172,7 +169,7 @@ describe('createAppScope auto-validation', () => {
     it('should pass validation with valid CLI flags', () => {
       const flagSchema = z.object({
         strategy: z.enum(['fast', 'slow']).default('fast'),
-        count: z.number().default(1)
+        count: z.number().default(1),
       });
 
       setGlobalFlagOverrides({ strategy: 'slow', count: 5 });
@@ -187,7 +184,7 @@ describe('createAppScope auto-validation', () => {
     it('should pass validation with no CLI flags (uses schema defaults)', () => {
       const flagSchema = z.object({
         strategy: z.enum(['fast', 'slow']).default('fast'),
-        timeout: z.number().default(30)
+        timeout: z.number().default(30),
       });
 
       // No CLI flags set
@@ -200,7 +197,7 @@ describe('createAppScope auto-validation', () => {
 
     it('should fail validation with invalid flag value and exit process', () => {
       const flagSchema = z.object({
-        strategy: z.enum(['fast', 'slow']).default('fast')
+        strategy: z.enum(['fast', 'slow']).default('fast'),
       });
 
       setGlobalFlagOverrides({ strategy: 'invalid' });
@@ -214,7 +211,7 @@ describe('createAppScope auto-validation', () => {
 
     it('should fail validation with unknown flag and exit process', () => {
       const flagSchema = z.object({
-        strategy: z.string().default('fast')
+        strategy: z.string().default('fast'),
       });
 
       setGlobalFlagOverrides({ unknownFlag: 'value' });
@@ -228,7 +225,7 @@ describe('createAppScope auto-validation', () => {
 
     it('should fail validation with type mismatch and exit process', () => {
       const flagSchema = z.object({
-        count: z.number().default(1)
+        count: z.number().default(1),
       });
 
       setGlobalFlagOverrides({ count: 'not-a-number' });
@@ -244,7 +241,7 @@ describe('createAppScope auto-validation', () => {
       const flagSchema = z.object({
         strategy: z.enum(['fast', 'slow']).default('fast'),
         count: z.number().default(10),
-        name: z.string().default('test')
+        name: z.string().default('test'),
       });
 
       // Only override some flags
@@ -253,8 +250,8 @@ describe('createAppScope auto-validation', () => {
       const { flag } = createAppScope({ flagSchema });
 
       expect(flag('strategy')).toBe('slow'); // overridden
-      expect(flag('count')).toBe(10);        // schema default
-      expect(flag('name')).toBe('test');     // schema default
+      expect(flag('count')).toBe(10); // schema default
+      expect(flag('name')).toBe('test'); // schema default
       expect(exitSpy).not.toHaveBeenCalled();
     });
 

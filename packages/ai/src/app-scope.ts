@@ -8,7 +8,9 @@ export interface AppScopeConfig<
   FS extends ZodObject<any> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
 > {
-  flagSchema?: FS;
+  // TODO: BEFORE MERGE - do we want to allow instantiating without flagSchema?
+  // maybe a user only wants facts?
+  flagSchema: FS;
   factSchema?: SC;
 }
 
@@ -25,7 +27,6 @@ type FlagFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
     ? {
         // Overload for fields with schema defaults - can pass only key, or key and value
-        // @ts-expect-error
         <N extends SchemaDefaults<FS>>(name: N): z.output<FS>[N];
         // Overload for any field with explicit default - key and value required for fields without schema defaults
         <N extends keyof z.output<FS>>(name: N, defaultValue: z.output<FS>[N]): z.output<FS>[N];
@@ -69,12 +70,12 @@ class InvalidFactError extends Error {
 export function createAppScope<
   FS extends ZodObject<any> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
->(config?: AppScopeConfig<FS, SC>): AppScope<FS, SC>;
+>(config: AppScopeConfig<FS, SC>): AppScope<FS, SC>;
 
 export function createAppScope<
   FS extends ZodObject<any> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
->(config?: AppScopeConfig<FS, SC>): AppScope<FS, SC> {
+>(config: AppScopeConfig<FS, SC>): AppScope<FS, SC> {
   // Store schemas for runtime validation (if provided)
   const flagSchema = config?.flagSchema;
   const factSchema = config?.factSchema;
