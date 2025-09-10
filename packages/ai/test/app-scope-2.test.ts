@@ -10,7 +10,7 @@ describe('createAppScope2 runtime behavior', () => {
           theme: z.string().default('dark'),
         }),
       };
-      
+
       const scope = createAppScope2({ flagSchema: schemas });
       expect(scope).toBeDefined();
       expect(typeof scope.flag).toBe('function');
@@ -23,9 +23,9 @@ describe('createAppScope2 runtime behavior', () => {
           theme: z.string().default('dark'),
         }),
       };
-      
+
       const scope = createAppScope2({ flagSchema: schemas });
-      
+
       // These should not throw
       expect(() => scope.flag('ui')).not.toThrow();
       expect(() => scope.flag('ui', 'theme')).not.toThrow();
@@ -35,24 +35,75 @@ describe('createAppScope2 runtime behavior', () => {
       const factSchema = z.object({
         userAction: z.string(),
       });
-      
-      const scope = createAppScope2({ 
+
+      const scope = createAppScope2({
         flagSchema: { ui: z.object({}) },
-        factSchema 
+        factSchema,
       });
-      
+
       // Should not throw
       expect(() => scope.fact('userAction', 'login')).not.toThrow();
     });
   });
 
   describe('basicAccess', () => {
-    test.skip('should access single flags using namespace.key syntax', () => {
-      // TODO: Implement test
+    test('should access single flags using dot notation syntax', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number(),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // These should not throw and should return defaultValue for now
+      expect(() => scope.flag('ui.theme')).not.toThrow();
+      expect(() => scope.flag('ui.fontSize', 14)).not.toThrow();
+
+      // Should return default value passed in (basic implementation)
+      expect(scope.flag('ui.theme', 'light')).toBe('light');
+      expect(scope.flag('ui.fontSize', 16)).toBe(16);
     });
 
-    test.skip('should access nested object properties', () => {
-      // TODO: Implement test
+    test('should access nested object properties', () => {
+      const schemas = {
+        ui: z.object({
+          layout: z.object({
+            sidebar: z.boolean().default(true),
+            grid: z.object({
+              columns: z.number(),
+            }),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // These should not throw
+      expect(() => scope.flag('ui.layout.sidebar')).not.toThrow();
+      expect(() => scope.flag('ui.layout.grid.columns', 12)).not.toThrow();
+
+      // Should return default value passed in
+      expect(scope.flag('ui.layout.sidebar', false)).toBe(false);
+      expect(scope.flag('ui.layout.grid.columns', 8)).toBe(8);
+    });
+
+    test('should handle invalid paths gracefully', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Invalid paths should not crash and return defaultValue
+      expect(() => scope.flag('nonexistent.path', 'fallback')).not.toThrow();
+      expect(scope.flag('nonexistent.path', 'fallback')).toBe('fallback');
+
+      expect(() => scope.flag('ui.nonexistent', 'fallback')).not.toThrow();
+      expect(scope.flag('ui.nonexistent', 'fallback')).toBe('fallback');
     });
   });
 
