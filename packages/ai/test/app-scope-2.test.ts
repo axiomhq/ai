@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { expectTypeOf } from 'vitest';
 import { createAppScope2, type DotPaths } from '../src/app-scope-2';
@@ -830,16 +830,67 @@ describe('createAppScope2', () => {
   });
 
   describe('validation and error handling', () => {
-    test.skip('should return undefined and log an error for invalid namespace access', () => {
-      // TODO: Implement test
+    test('should return undefined and log an error for invalid namespace access', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Try to access a namespace that doesn't exist
+      const result = (scope.flag as any)('nonexistent.path');
+
+      expect(result).toBeUndefined();
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][0]).toMatch(/Invalid flag/);
+
+      errorSpy.mockRestore();
     });
 
-    test.skip('should return undefined and log an error for invalid flag key access', () => {
-      // TODO: Implement test
+    test('should return undefined and log an error for invalid flag key access', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Try to access a field that doesn't exist in the namespace
+      const result = (scope.flag as any)('ui.unknown');
+
+      expect(result).toBeUndefined();
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][0]).toMatch(/Invalid flag/);
+
+      errorSpy.mockRestore();
     });
 
-    test.skip('should log an error when recording a fact that is not in the schema (but still record it)', () => {
-      // TODO: Implement test
+    test('should log an error when recording a fact that is not in the schema (but still record it)', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const factSchema = z.object({
+        dbVersion: z.string(),
+      });
+
+      const scope = createAppScope2({
+        flagSchema: { ui: z.object({}) },
+        factSchema,
+      });
+
+      // Record a fact that's not in the schema
+      expect(() => scope.fact('unknownFact' as any, 123)).not.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][0]).toMatch(/Invalid fact/);
+
+      errorSpy.mockRestore();
     });
   });
 
