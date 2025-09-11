@@ -1,7 +1,10 @@
-import { type z, type ZodObject } from 'zod';
+import { type z, type ZodObject, type ZodDefault } from 'zod';
+
+// Helper type to allow ZodDefault wrappers around ZodObject
+type FlagSchemaValue = ZodObject<any> | ZodDefault<ZodObject<any>>;
 
 export interface AppScope2Config<
-  FS extends Record<string, ZodObject<any>> | undefined = undefined,
+  FS extends Record<string, FlagSchemaValue> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
 > {
   flagSchema: FS;
@@ -39,6 +42,9 @@ type ObjectPathValue<T, P extends string> = P extends keyof T
       : never
     : never;
 
+// Helper type to extract the underlying ZodObject from ZodDefault wrapper
+type UnwrapSchema<T> = T extends ZodDefault<infer U> ? U : T;
+
 /**
  * Generate deep nested paths from flag schema.
  *
@@ -51,37 +57,46 @@ type ObjectPathValue<T, P extends string> = P extends keyof T
  * // Custom depth for deeper nesting (impacts performance)
  * type DeepPaths = DotPaths<MySchemas, 12>
  */
-type DotPaths<T extends Record<string, ZodObject<any>>, MaxDepth extends number = 8> = {
+type DotPaths<T extends Record<string, FlagSchemaValue>, MaxDepth extends number = 8> = {
   [NS in keyof T]:
     | (string & NS) // Include the namespace itself
     | {
-        [P in ObjectPaths<z.output<T[NS]>, [], MaxDepth>]: `${string & NS}.${P}`;
-      }[ObjectPaths<z.output<T[NS]>, [], MaxDepth>];
+        [P in ObjectPaths<z.output<UnwrapSchema<T[NS]>>, [], MaxDepth>]: `${string & NS}.${P}`;
+      }[ObjectPaths<z.output<UnwrapSchema<T[NS]>>, [], MaxDepth>];
 }[keyof T];
 
 type PathValue<
-  T extends Record<string, ZodObject<any>>,
+  T extends Record<string, FlagSchemaValue>,
   P extends string,
 > = P extends `${infer NS}.${infer Rest}`
   ? NS extends keyof T
-    ? ObjectPathValue<z.output<T[NS]>, Rest>
+    ? ObjectPathValue<z.output<UnwrapSchema<T[NS]>>, Rest>
     : never
   : P extends keyof T
-    ? z.output<T[P]>
+    ? z.output<UnwrapSchema<T[P]>>
     : never;
 
 // Helper to check if a path is a namespace-only path (like 'ui') vs field path (like 'ui.foo')
 type IsNamespaceOnly<T, P extends string> = P extends keyof T ? true : false;
 
-// Helper to check if ALL fields in a namespace schema have defaults
-type AllFieldsHaveDefaults<Schema> =
-  Schema extends ZodObject<infer Shape>
+// Helper to recursively check if a schema has defaults (including nested objects)
+type HasDefaults<S> = S extends { _def: { defaultValue: any } }
+  ? true
+  : S extends ZodObject<infer Shape>
     ? {
-        [K in keyof Shape]: Shape[K] extends { _def: { defaultValue: any } } ? true : false;
+        [K in keyof Shape]: HasDefaults<Shape[K]>;
       } extends Record<keyof Shape, true>
       ? true
       : false
     : false;
+
+// Helper to check if ALL fields in a namespace schema have defaults
+type AllFieldsHaveDefaults<Schema> =
+  // First check if the schema itself has an object-level default
+  Schema extends { _def: { defaultValue: any } }
+    ? true
+    : // Otherwise recursively check if all fields have defaults
+      HasDefaults<UnwrapSchema<Schema>>;
 
 // Helper to check if a namespace has complete defaults (all fields have defaults)
 type NamespaceHasCompleteDefaults<T, P extends string> = P extends keyof T
@@ -91,7 +106,7 @@ type NamespaceHasCompleteDefaults<T, P extends string> = P extends keyof T
 // Helper to find the source Zod schema at a path (not the output type)
 // Uses recursive approach with stack-based depth limiting to match ObjectPaths depth (8 levels)
 type ZodSchemaAtPath<
-  T extends Record<string, ZodObject<any>>,
+  T extends Record<string, FlagSchemaValue>,
   P extends string,
   Stack extends unknown[] = [],
   MaxDepth extends number = 8,
@@ -99,7 +114,7 @@ type ZodSchemaAtPath<
   ? never
   : P extends `${infer NS}.${infer Rest}`
     ? NS extends keyof T
-      ? T[NS] extends ZodObject<infer Shape>
+      ? UnwrapSchema<T[NS]> extends ZodObject<infer Shape>
         ? ZodSchemaAtPathRecursive<Shape, Rest, [1, ...Stack], MaxDepth>
         : never
       : never
@@ -124,19 +139,11 @@ type ZodSchemaAtPathRecursive<
       : never;
 
 // Check if a nested object field has complete defaults
-type NestedObjectHasCompleteDefaults<T extends Record<string, ZodObject<any>>, P extends string> =
-  ZodSchemaAtPath<T, P> extends ZodObject<infer Shape>
-    ? {
-        [K in keyof Shape]: Shape[K] extends { _def: { defaultValue: any } } ? true : false;
-      } extends Record<keyof Shape, true>
-      ? true
-      : false
-    : ZodSchemaAtPath<T, P> extends { _def: { defaultValue: any } }
-      ? true
-      : false; // All individual fields without defaults should require explicit values
+type NestedObjectHasCompleteDefaults<T extends Record<string, FlagSchemaValue>, P extends string> =
+  HasDefaults<ZodSchemaAtPath<T, P>>;
 
-type DotNotationFlagFunction<FS extends Record<string, ZodObject<any>> | undefined> =
-  FS extends Record<string, ZodObject<any>>
+type DotNotationFlagFunction<FS extends Record<string, FlagSchemaValue> | undefined> =
+  FS extends Record<string, FlagSchemaValue>
     ? {
         // For nested object paths WITHOUT complete defaults (like 'ui.foo' where foo has incomplete defaults), require explicit default
         <P extends DotPaths<FS> & string>(
@@ -185,7 +192,7 @@ type FactFunction<SC extends ZodObject<any> | undefined> =
     : 'Error: fact() requires a factSchema to be provided in createAppScope2({ factSchema })';
 
 export interface AppScope2<
-  FS extends Record<string, ZodObject<any>> | undefined,
+  FS extends Record<string, FlagSchemaValue> | undefined,
   SC extends ZodObject<any> | undefined,
 > {
   flag: DotNotationFlagFunction<FS>;
@@ -194,7 +201,7 @@ export interface AppScope2<
 
 // Basic implementation scaffolding
 export function createAppScope2<
-  FS extends Record<string, ZodObject<any>> | undefined = undefined,
+  FS extends Record<string, FlagSchemaValue> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
 >(config: AppScope2Config<FS, SC>): AppScope2<FS, SC> {
   // Store schemas for runtime validation
@@ -231,6 +238,71 @@ export function createAppScope2<
     return current;
   }
 
+  // Helper to check if a path represents a namespace access (no dots after first segment)
+  function isNamespaceAccess(segments: string[]): boolean {
+    if (!flagSchema || segments.length === 0) return false;
+    
+    // For root namespace (like 'ui'), check if it exists and is more than just a namespace
+    if (segments.length === 1) {
+      return segments[0] in flagSchema;
+    }
+    
+    // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
+    const schema = findSchemaAtPath(segments);
+    return schema && schema._def && schema._def.typeName === 'ZodObject';
+  }
+
+  // Helper to traverse nested default objects and extract values
+  function extractFromDefaultValue(defaultValue: any, segments: string[], startIndex: number): any {
+    if (startIndex >= segments.length) return defaultValue;
+    
+    let current = defaultValue;
+    for (let i = startIndex; i < segments.length; i++) {
+      if (current && typeof current === 'object' && segments[i] in current) {
+        current = current[segments[i]];
+      } else {
+        return undefined;
+      }
+    }
+    
+    return current;
+  }
+
+  // Recursively build object with all defaults from a Zod schema
+  function buildObjectWithDefaults(schema: any): any {
+    if (!schema || !schema._def) return undefined;
+
+    // Handle object-level defaults first (z.object({...}).default({...}))
+    if (schema._def.defaultValue !== undefined) {
+      return typeof schema._def.defaultValue === 'function' 
+        ? schema._def.defaultValue()
+        : schema._def.defaultValue;
+    }
+
+    // Handle ZodObject by building object from shape
+    if (schema._def.typeName === 'ZodObject' && schema.shape) {
+      const result: any = {};
+      
+      for (const [key, fieldSchema] of Object.entries(schema.shape)) {
+        const fieldValue = buildObjectWithDefaults(fieldSchema);
+        if (fieldValue !== undefined) {
+          result[key] = fieldValue;
+        }
+      }
+      
+      return Object.keys(result).length > 0 ? result : undefined;
+    }
+
+    // Handle individual field defaults
+    if (schema._def.defaultValue !== undefined) {
+      return typeof schema._def.defaultValue === 'function' 
+        ? schema._def.defaultValue()
+        : schema._def.defaultValue;
+    }
+
+    return undefined;
+  }
+
   // Helper function to extract default value from a Zod schema
   function extractSchemaDefault(schema: any): any {
     if (!schema || !schema._def) return undefined;
@@ -256,7 +328,36 @@ export function createAppScope2<
       return defaultValue;
     }
 
-    // 2. Try to extract default from schema
+    // 2. Check if this is a namespace access (returning whole objects)
+    if (isNamespaceAccess(segments)) {
+      const schema = findSchemaAtPath(segments);
+      if (schema) {
+        const namespaceObject = buildObjectWithDefaults(schema);
+        if (namespaceObject !== undefined) {
+          return namespaceObject;
+        }
+      }
+    }
+
+    // 3. Check if we're accessing a nested property within an object that has an object-level default
+    // Try each parent path to see if any has an object-level default we can extract from
+    for (let i = segments.length - 1; i > 0; i--) {
+      const parentSegments = segments.slice(0, i);
+      const parentSchema = findSchemaAtPath(parentSegments);
+      
+      if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
+        const defaultValue = typeof parentSchema._def.defaultValue === 'function' 
+          ? parentSchema._def.defaultValue()
+          : parentSchema._def.defaultValue;
+        
+        const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
+        if (extractedValue !== undefined) {
+          return extractedValue;
+        }
+      }
+    }
+
+    // 4. Try to extract default from schema for individual fields
     try {
       const fieldSchema = findSchemaAtPath(segments);
       if (fieldSchema) {
@@ -269,7 +370,7 @@ export function createAppScope2<
       // Schema inspection failed, continue to undefined
     }
 
-    // 3. Return undefined if no defaults available
+    // 5. Return undefined if no defaults available
     return undefined;
   }
 

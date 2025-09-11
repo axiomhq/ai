@@ -225,6 +225,228 @@ describe('createAppScope2 type-level tests', () => {
         ssl: boolean;
       }>();
     });
+
+    test('should enforce proper typing for namespaces with incomplete defaults', () => {
+      const flagSchema = {
+        complete: z.object({
+          field1: z.string().default('default1'),
+          field2: z.number().default(42),
+        }),
+        incomplete: z.object({
+          field1: z.string().default('default1'),
+          field2: z.string(), // no default
+        }),
+      };
+      const appScope = createAppScope2({ flagSchema });
+
+      // Complete namespace should not require explicit defaults
+      expectTypeOf(appScope.flag('complete')).toEqualTypeOf<{
+        field1: string;
+        field2: number;
+      }>();
+
+      // Incomplete namespace should require explicit defaults
+      expectTypeOf(appScope.flag('incomplete', {
+        field1: 'value1',
+        field2: 'value2',
+      })).toEqualTypeOf<{
+        field1: string;
+        field2: string;
+      }>();
+
+      // @ts-expect-error - incomplete namespace without explicit defaults should fail
+      appScope.flag('incomplete');
+    });
+
+    test('should handle nested namespace type inference', () => {
+      const flagSchema = {
+        app: z.object({
+          ui: z.object({
+            theme: z.string().default('dark'),
+            layout: z.object({
+              sidebar: z.boolean().default(true),
+              width: z.number().default(300),
+            }),
+          }),
+          features: z.object({
+            auth: z.object({
+              enabled: z.boolean().default(true),
+              provider: z.string(), // no default
+            }),
+            cache: z.object({
+              ttl: z.number().default(3600),
+              maxSize: z.number().default(1000),
+            }),
+          }),
+        }),
+      };
+      const appScope = createAppScope2({ flagSchema });
+
+      // Nested complete namespaces
+      expectTypeOf(appScope.flag('app.ui')).toEqualTypeOf<{
+        theme: string;
+        layout: {
+          sidebar: boolean;
+          width: number;
+        };
+      }>();
+
+      expectTypeOf(appScope.flag('app.ui.layout')).toEqualTypeOf<{
+        sidebar: boolean;
+        width: number;
+      }>();
+
+      expectTypeOf(appScope.flag('app.features.cache')).toEqualTypeOf<{
+        ttl: number;
+        maxSize: number;
+      }>();
+
+      // Incomplete nested namespace should require explicit defaults
+      expectTypeOf(appScope.flag('app.features.auth', {
+        enabled: true,
+        provider: 'oauth',
+      })).toEqualTypeOf<{
+        enabled: boolean;
+        provider: string;
+      }>();
+
+      // @ts-expect-error - incomplete nested namespace without defaults
+      appScope.flag('app.features.auth');
+    });
+
+    test('should handle namespace with object-level defaults in type system', () => {
+      const flagSchema = {
+        config: z.object({
+          database: z
+            .object({
+              host: z.string(),
+              port: z.number(),
+            })
+            .default({
+              host: 'localhost',
+              port: 5432,
+            }),
+          cache: z
+            .object({
+              ttl: z.number(),
+              maxSize: z.number(),
+            })
+            .default({
+              ttl: 3600,
+              maxSize: 1000,
+            }),
+        }),
+      };
+      const appScope = createAppScope2({ flagSchema });
+
+      // Objects with object-level defaults should work without explicit defaults
+      expectTypeOf(appScope.flag('config')).toEqualTypeOf<{
+        database: {
+          host: string;
+          port: number;
+        };
+        cache: {
+          ttl: number;
+          maxSize: number;
+        };
+      }>();
+
+      expectTypeOf(appScope.flag('config.database')).toEqualTypeOf<{
+        host: string;
+        port: number;
+      }>();
+
+      expectTypeOf(appScope.flag('config.cache')).toEqualTypeOf<{
+        ttl: number;
+        maxSize: number;
+      }>();
+    });
+
+    test('should provide correct types for mixed complete and incomplete namespaces', () => {
+      const flagSchema = {
+        settings: z.object({
+          ui: z.object({
+            theme: z.string().default('dark'),
+            fontSize: z.number().default(14),
+          }),
+          api: z.object({
+            baseUrl: z.string().default('https://api.example.com'),
+            timeout: z.number(), // no default
+            retries: z.number(), // no default
+          }),
+        }),
+      };
+      const appScope = createAppScope2({ flagSchema });
+
+      // Complete sub-namespace
+      expectTypeOf(appScope.flag('settings.ui')).toEqualTypeOf<{
+        theme: string;
+        fontSize: number;
+      }>();
+
+      // Incomplete sub-namespace with explicit defaults
+      expectTypeOf(appScope.flag('settings.api', {
+        baseUrl: 'https://prod-api.example.com',
+        timeout: 5000,
+        retries: 3,
+      })).toEqualTypeOf<{
+        baseUrl: string;
+        timeout: number;
+        retries: number;
+      }>();
+
+      // Top-level namespace with mixed completeness should require explicit defaults
+      expectTypeOf(appScope.flag('settings', {
+        ui: { theme: 'light', fontSize: 16 },
+        api: { baseUrl: 'https://api.example.com', timeout: 3000, retries: 2 },
+      })).toEqualTypeOf<{
+        ui: {
+          theme: string;
+          fontSize: number;
+        };
+        api: {
+          baseUrl: string;
+          timeout: number;
+          retries: number;
+        };
+      }>();
+
+      // @ts-expect-error - incomplete top-level namespace without defaults
+      appScope.flag('settings');
+
+      // @ts-expect-error - incomplete sub-namespace without defaults
+      appScope.flag('settings.api');
+    });
+
+    test('should handle edge case types correctly', () => {
+      const flagSchema = {
+        empty: z.object({}),
+        optional: z.object({
+          field: z.string().optional(),
+        }),
+        nullable: z.object({
+          field: z.string().nullable().default(null),
+        }),
+      };
+      const appScope = createAppScope2({ flagSchema });
+
+      // Empty object
+      expectTypeOf(appScope.flag('empty', {})).toEqualTypeOf<{}>();
+
+      // Object with optional field
+      expectTypeOf(appScope.flag('optional', { field: 'value' })).toEqualTypeOf<{
+        field?: string | undefined;
+      }>();
+
+      expectTypeOf(appScope.flag('optional', {})).toEqualTypeOf<{
+        field?: string | undefined;
+      }>();
+
+      // Object with nullable field with default
+      expectTypeOf(appScope.flag('nullable')).toEqualTypeOf<{
+        field: string | null;
+      }>();
+    });
   });
 
   describe('default-handling-ok', () => {
