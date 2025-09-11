@@ -354,7 +354,42 @@ export function createAppScope2<
       return defaultValue;
     }
 
-    // 2. Check if this is a namespace access (returning whole objects)
+    // 2. Invalid namespace check
+    if (!flagSchema || !(segments[0] in flagSchema)) {
+      console.error(`[AxiomAI] Invalid flag: "${path}"`);
+      return undefined;
+    }
+
+    // 3. Invalid flag key check - but only if we can't extract from parent object defaults
+    const schemaForPath = findSchemaAtPath(segments);
+    if (schemaForPath === undefined) {
+      // Before erroring, check if we can extract this value from parent object-level defaults
+      let canExtractFromParents = false;
+      for (let i = segments.length - 1; i > 0; i--) {
+        const parentSegments = segments.slice(0, i);
+        const parentSchema = findSchemaAtPath(parentSegments);
+
+        if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
+          const defaultValue =
+            typeof parentSchema._def.defaultValue === 'function'
+              ? parentSchema._def.defaultValue()
+              : parentSchema._def.defaultValue;
+
+          const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
+          if (extractedValue !== undefined) {
+            canExtractFromParents = true;
+            break;
+          }
+        }
+      }
+
+      if (!canExtractFromParents) {
+        console.error(`[AxiomAI] Invalid flag: "${path}"`);
+        return undefined;
+      }
+    }
+
+    // 4. Check if this is a namespace access (returning whole objects)
     if (isNamespaceAccess(segments)) {
       const schema = findSchemaAtPath(segments);
       if (schema) {
@@ -370,7 +405,7 @@ export function createAppScope2<
       }
     }
 
-    // 3. Check if we're accessing a nested property within an object that has an object-level default
+    // 5. Check if we're accessing a nested property within an object that has an object-level default
     // Try each parent path to see if any has an object-level default we can extract from
     for (let i = segments.length - 1; i > 0; i--) {
       const parentSegments = segments.slice(0, i);
@@ -389,7 +424,7 @@ export function createAppScope2<
       }
     }
 
-    // 4. Try to extract default from schema for individual fields
+    // 6. Try to extract default from schema for individual fields
     try {
       const fieldSchema = findSchemaAtPath(segments);
       if (fieldSchema) {
@@ -402,14 +437,22 @@ export function createAppScope2<
       // Schema inspection failed, continue to undefined
     }
 
-    // 5. Return undefined if no defaults available
+    // 7. Return undefined if no defaults available
     return undefined;
   }
 
-  // TODO: Implement fact logic
+  // TODO: BEFORE MERGE - this isn't right - need to actually implement facts
+  // Storage for facts (demo purposes)
+  const factStore: Record<string, any> = {};
+
   function fact<N extends string>(name: N, value: any): void {
-    // Basic implementation that compiles
-    console.log(`Recording fact ${name}:`, value);
+    // Always record the fact
+    factStore[name] = value;
+
+    // Check if the fact is in the schema and log error if not
+    if (config.factSchema && !(name in (config.factSchema.shape as Record<string, any>))) {
+      console.error(`[AxiomAI] Invalid fact: "${name}"`);
+    }
   }
 
   return {
