@@ -1,23 +1,39 @@
 import { describe, test, expect } from 'vitest';
 import { z } from 'zod';
+import { expectTypeOf } from 'vitest';
 import { createAppScope2 } from '../src/app-scope-2';
 
-describe('createAppScope2 runtime behavior', () => {
-  describe('scaffolding', () => {
-    test('should create instance without errors', () => {
+describe('createAppScope2', () => {
+  describe('basic setup and scaffolding', () => {
+    test('should create instance with correct structure and types', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
         }),
       };
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const factSchema = z.object({
+        userAction: z.string(),
+      });
+
+      const scope = createAppScope2({
+        flagSchema: schemas,
+        factSchema,
+      });
+
+      // Runtime checks
       expect(scope).toBeDefined();
       expect(typeof scope.flag).toBe('function');
       expect(typeof scope.fact).toBe('function');
+
+      // Type checks
+      expectTypeOf(scope).toHaveProperty('flag');
+      expectTypeOf(scope).toHaveProperty('fact');
+      expectTypeOf(scope.flag).toBeFunction();
+      expectTypeOf(scope.fact).toBeFunction();
     });
 
-    test('should call flag method without crashing', () => {
+    test('should handle method calls without crashing', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -26,14 +42,13 @@ describe('createAppScope2 runtime behavior', () => {
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // These should not throw (using dot notation for now)
       expect(() => scope.flag('ui.theme')).not.toThrow();
       expect(() => scope.flag('ui.theme', 'dark')).not.toThrow();
     });
 
-    test('should call fact method without crashing', () => {
+    test('should handle fact recording without crashing', () => {
       const factSchema = z.object({
-        userAction: z.string(),
+        dbVersion: z.string(),
       });
 
       const scope = createAppScope2({
@@ -41,38 +56,53 @@ describe('createAppScope2 runtime behavior', () => {
         factSchema,
       });
 
-      // Should not throw
-      expect(() => scope.fact('userAction', 'login')).not.toThrow();
+      expect(() => scope.fact('dbVersion', '1.2.3')).not.toThrow();
     });
   });
 
-  describe('basicAccess', () => {
-    test('should access single flags using dot notation syntax', () => {
+  describe('dot notation flag access', () => {
+    test('should correctly access individual flags with proper types', () => {
       const schemas = {
         ui: z.object({
-          theme: z.string().default('dark'),
-          fontSize: z.number(),
+          theme: z.enum(['light', 'dark']).default('light'),
+          fontSize: z.number().default(14),
         }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // These should not throw and should return defaultValue for now
+      // Runtime behavior
+      expect(() => scope.flag('ui')).not.toThrow();
       expect(() => scope.flag('ui.theme')).not.toThrow();
-      expect(() => scope.flag('ui.fontSize', 14)).not.toThrow();
-
-      // Should return default value passed in (basic implementation)
-      expect(scope.flag('ui.theme', 'light')).toBe('light');
+      expect(() => scope.flag('ui.fontSize', 16)).not.toThrow();
+      expect(scope.flag('ui')).toEqual({
+        theme: 'light',
+        fontSize: 14,
+      });
+      expect(scope.flag('ui.theme', 'dark')).toBe('dark');
       expect(scope.flag('ui.fontSize', 16)).toBe(16);
+
+      // Type inference
+      expectTypeOf(scope.flag('ui')).toEqualTypeOf<{
+        theme: 'light' | 'dark';
+        fontSize: number;
+      }>();
+      expectTypeOf(scope.flag('ui.theme')).toEqualTypeOf<'light' | 'dark'>();
+      expectTypeOf(scope.flag('ui.fontSize')).toEqualTypeOf<number>();
     });
 
-    test('should access nested object properties', () => {
+    test('should handle nested object properties with correct path types', () => {
       const schemas = {
         ui: z.object({
+          theme: z.string().default('dark'),
           layout: z.object({
             sidebar: z.boolean().default(true),
             grid: z.object({
-              columns: z.number(),
+              columns: z.number().default(12),
+              spacing: z.object({
+                horizontal: z.number().default(8),
+                vertical: z.number().default(4),
+              }),
             }),
           }),
         }),
@@ -80,16 +110,36 @@ describe('createAppScope2 runtime behavior', () => {
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // These should not throw
+      // Runtime behavior
       expect(() => scope.flag('ui.layout.sidebar')).not.toThrow();
-      expect(() => scope.flag('ui.layout.grid.columns', 12)).not.toThrow();
-
-      // Should return default value passed in
+      expect(() => scope.flag('ui.layout.grid.columns', 8)).not.toThrow();
       expect(scope.flag('ui.layout.sidebar', false)).toBe(false);
       expect(scope.flag('ui.layout.grid.columns', 8)).toBe(8);
+
+      // Type inference for nested paths
+      expectTypeOf(scope.flag('ui.layout.sidebar')).toEqualTypeOf<boolean>();
+      expectTypeOf(scope.flag('ui.layout.grid.columns')).toEqualTypeOf<number>();
+      expectTypeOf(scope.flag('ui.layout.grid.spacing.horizontal')).toEqualTypeOf<number>();
+
+      // Type inference for path with nested defaults
+      expectTypeOf(scope.flag('ui.layout')).toEqualTypeOf<{
+        sidebar: boolean;
+        grid: {
+          columns: number;
+          spacing: {
+            horizontal: number;
+            vertical: number;
+          };
+        };
+      }>();
+
+      // @ts-expect-error - invalid paths should be caught
+      scope.flag('ui.layout.invalid');
+      // @ts-expect-error - invalid nested property
+      scope.flag('ui.layout.grid.invalid');
     });
 
-    test('should handle invalid paths gracefully', () => {
+    test('should handle invalid paths gracefully at runtime', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -98,27 +148,161 @@ describe('createAppScope2 runtime behavior', () => {
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Invalid paths should not crash and return defaultValue
       expect(() => scope.flag('nonexistent.path', 'fallback')).not.toThrow();
       expect(scope.flag('nonexistent.path', 'fallback')).toBe('fallback');
-
       expect(() => scope.flag('ui.nonexistent', 'fallback')).not.toThrow();
       expect(scope.flag('ui.nonexistent', 'fallback')).toBe('fallback');
+
+      // @ts-expect-error - type system should catch invalid paths
+      scope.flag('ui.invalid');
+      // @ts-expect-error - type system should catch invalid root namespace
+      scope.flag('nonexistent.path');
+    });
+
+    test('should enforce correct default value types', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.enum(['light', 'dark']).default('light'),
+          fontSize: z.number().default(14),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expectTypeOf(scope.flag('ui.theme', 'dark')).toEqualTypeOf<'light' | 'dark'>();
+      expectTypeOf(scope.flag('ui.fontSize', 16)).toEqualTypeOf<number>();
+
+      // TODO: BEFORE MERGE - these should log an error at runtime
+      // @ts-expect-error - number instead of string enum
+      scope.flag('ui.theme', 123);
+      // @ts-expect-error - string instead of number
+      scope.flag('ui.fontSize', 'large');
+      // @ts-expect-error - invalid enum value
+      scope.flag('ui.theme', 'invalid');
     });
   });
 
-  describe('nestedObjects', () => {
-    test.skip('should handle deeply nested flag structures', () => {
-      // TODO: Implement test
+  describe('schema defaults extraction', () => {
+    test('should extract and use schema defaults for individual flags', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number().default(12),
+          layout: z.object({
+            sidebar: z.boolean().default(true),
+          }),
+        }),
+        config: z.object({
+          name: z.string().default('App'),
+          version: z.number().default(1),
+          enabled: z.boolean().default(false),
+          mode: z.enum(['dev', 'prod']).default('dev'),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Should extract from schema defaults
+      expect(scope.flag('ui.theme')).toBe('dark');
+      expect(scope.flag('ui.fontSize')).toBe(12);
+      expect(scope.flag('ui.layout.sidebar')).toBe(true);
+      expect(scope.flag('config.name')).toBe('App');
+      expect(scope.flag('config.version')).toBe(1);
+      expect(scope.flag('config.enabled')).toBe(false);
+      expect(scope.flag('config.mode')).toBe('dev');
     });
 
-    test.skip('should validate nested object types at runtime', () => {
-      // TODO: Implement test
+    test('should prefer explicit defaults over schema defaults', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number().default(12),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Explicit defaults should override schema defaults
+      expect(scope.flag('ui.theme', 'light')).toBe('light');
+      expect(scope.flag('ui.fontSize', 16)).toBe(16);
+
+      // But schema defaults should still work when no explicit default
+      expect(scope.flag('ui.theme')).toBe('dark');
+      expect(scope.flag('ui.fontSize')).toBe(12);
+    });
+
+    test('should handle fields without schema defaults', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number(), // no default
+          layout: z.object({
+            sidebar: z.boolean().default(true),
+            width: z.number(), // no default
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('ui.theme')).toBe('dark');
+      expect(scope.flag('ui.layout.sidebar')).toBe(true);
+
+      // @ts-expect-error - should not be allowed without default
+      expect(scope.flag('ui.fontSize')).toBe(undefined);
+      // @ts-expect-error - should not be allowed without default
+      expect(scope.flag('ui.layout.width')).toBe(undefined);
+
+      // But explicit defaults should work
+      expect(scope.flag('ui.fontSize', 14)).toBe(14);
+      expect(scope.flag('ui.layout.width', 300)).toBe(300);
+    });
+
+    test('should handle deeply nested schema defaults up to depth 8', () => {
+      const schemas = {
+        app: z.object({
+          hasDefault: z.string().default('L1'),
+          nested: z.object({
+            hasDefault: z.string().default('L2'),
+            nested: z.object({
+              hasDefault: z.string().default('L3'),
+              nested: z.object({
+                hasDefault: z.string().default('L4'),
+                nested: z.object({
+                  hasDefault: z.string().default('L5'),
+                  nested: z.object({
+                    hasDefault: z.string().default('L6'),
+                    nested: z.object({
+                      hasDefault: z.string().default('L7'),
+                      nested: z.object({
+                        hasDefault: z.string().default('L8'),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      expect(scope.flag('app.hasDefault')).toBe('L1');
+      expect(scope.flag('app.nested.hasDefault')).toBe('L2');
+      expect(scope.flag('app.nested.nested.hasDefault')).toBe('L3');
+      expect(scope.flag('app.nested.nested.nested.hasDefault')).toBe('L4');
+      expect(scope.flag('app.nested.nested.nested.nested.hasDefault')).toBe('L5');
+      expect(scope.flag('app.nested.nested.nested.nested.nested.hasDefault')).toBe('L6');
+      expect(scope.flag('app.nested.nested.nested.nested.nested.nested.hasDefault')).toBe('L7');
+      expect(scope.flag('app.nested.nested.nested.nested.nested.nested.nested.hasDefault')).toBe(
+        'L8',
+      );
     });
   });
 
-  describe('wholeNamespace', () => {
-    test('should return entire namespace when accessing namespace key', () => {
+  describe('whole namespace access', () => {
+    test('should return complete namespace objects with schema defaults', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -128,11 +312,16 @@ describe('createAppScope2 runtime behavior', () => {
             width: z.number().default(300),
           }),
         }),
+        database: z.object({
+          host: z.string().default('localhost'),
+          port: z.number().default(5432),
+          ssl: z.boolean().default(false),
+        }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Should return complete namespace object with schema defaults
+      // Runtime behavior
       const uiNamespace = scope.flag('ui');
       expect(uiNamespace).toEqual({
         theme: 'dark',
@@ -142,16 +331,41 @@ describe('createAppScope2 runtime behavior', () => {
           width: 300,
         },
       });
+
+      // Type inference
+      expectTypeOf(scope.flag('database')).toEqualTypeOf<{
+        host: string;
+        port: number;
+        ssl: boolean;
+      }>();
+
+      expectTypeOf(scope.flag('ui')).toEqualTypeOf<{
+        theme: string;
+        fontSize: number;
+        layout: {
+          sidebar: boolean;
+          width: number;
+        };
+      }>();
     });
 
-    test('should return typed namespace object with partial schema defaults', () => {
+    test('should handle namespaces requiring explicit defaults due to incomplete schema defaults', () => {
       const schemas = {
-        config: z.object({
-          host: z.string().default('localhost'),
-          port: z.number(), // no default
-          ssl: z.boolean().default(false),
-          database: z.object({
-            name: z.string().default('app_db'),
+        complete: z.object({
+          field1: z.string().default('default1'),
+          field2: z.number().default(42),
+        }),
+        incomplete: z.object({
+          field1: z.string().default('default1'),
+          field2: z.string(), // no default
+        }),
+        mixed: z.object({
+          ui: z.object({
+            theme: z.string().default('dark'),
+            fontSize: z.number().default(14),
+          }),
+          api: z.object({
+            baseUrl: z.string().default('https://api.example.com'),
             timeout: z.number(), // no default
           }),
         }),
@@ -159,29 +373,44 @@ describe('createAppScope2 runtime behavior', () => {
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Should require explicit default for incomplete namespace
-      const configWithDefaults = scope.flag('config', {
-        host: 'prod-server',
-        port: 5432,
-        ssl: true,
-        database: {
-          name: 'prod_db',
-          timeout: 30000,
-        },
+      // Complete namespace should work without explicit defaults
+      expect(scope.flag('complete')).toEqual({
+        field1: 'default1',
+        field2: 42,
       });
 
-      expect(configWithDefaults).toEqual({
-        host: 'prod-server',
-        port: 5432,
-        ssl: true,
-        database: {
-          name: 'prod_db',
-          timeout: 30000,
-        },
+      expectTypeOf(scope.flag('complete')).toEqualTypeOf<{
+        field1: string;
+        field2: number;
+      }>();
+
+      // Incomplete namespace should require explicit defaults
+      const incompleteWithDefaults = scope.flag('incomplete', {
+        field1: 'value1',
+        field2: 'value2',
       });
+      expect(incompleteWithDefaults).toEqual({
+        field1: 'value1',
+        field2: 'value2',
+      });
+
+      expectTypeOf(
+        scope.flag('incomplete', {
+          field1: 'value1',
+          field2: 'value2',
+        }),
+      ).toEqualTypeOf<{
+        field1: string;
+        field2: string;
+      }>();
+
+      // @ts-expect-error - incomplete namespace without defaults should fail
+      scope.flag('incomplete');
+      // @ts-expect-error - mixed namespace without defaults should fail
+      scope.flag('mixed');
     });
 
-    test('should handle nested namespace access', () => {
+    test('should handle nested namespace access with proper type inference', () => {
       const schemas = {
         app: z.object({
           ui: z.object({
@@ -194,12 +423,22 @@ describe('createAppScope2 runtime behavior', () => {
               }),
             }),
           }),
+          features: z.object({
+            auth: z.object({
+              enabled: z.boolean().default(true),
+              provider: z.string(), // no default
+            }),
+            cache: z.object({
+              ttl: z.number().default(3600),
+              maxSize: z.number().default(1000),
+            }),
+          }),
         }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Access nested namespace
+      // Access nested complete namespaces
       const layout = scope.flag('app.ui.layout');
       expect(layout).toEqual({
         sidebar: true,
@@ -209,12 +448,106 @@ describe('createAppScope2 runtime behavior', () => {
         },
       });
 
-      // Access deeply nested namespace
       const grid = scope.flag('app.ui.layout.grid');
       expect(grid).toEqual({
         columns: 12,
         rows: 8,
       });
+
+      // Type inference for nested namespaces
+      expectTypeOf(scope.flag('app.ui')).toEqualTypeOf<{
+        theme: string;
+        layout: {
+          sidebar: boolean;
+          grid: {
+            columns: number;
+            rows: number;
+          };
+        };
+      }>();
+
+      expectTypeOf(scope.flag('app.features.cache')).toEqualTypeOf<{
+        ttl: number;
+        maxSize: number;
+      }>();
+
+      // Incomplete nested namespace should require explicit defaults
+      expectTypeOf(
+        scope.flag('app.features.auth', {
+          enabled: true,
+          provider: 'oauth',
+        }),
+      ).toEqualTypeOf<{
+        enabled: boolean;
+        provider: string;
+      }>();
+
+      // @ts-expect-error - incomplete nested namespace without defaults
+      scope.flag('app.features.auth');
+    });
+
+    test('should handle object-level defaults correctly', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          layout: z
+            .object({
+              sidebar: z.boolean(),
+              width: z.number(),
+              collapsed: z.boolean(),
+            })
+            .default({
+              sidebar: true,
+              width: 300,
+              collapsed: false,
+            }),
+        }),
+        config: z.object({
+          database: z
+            .object({
+              host: z.string(),
+              port: z.number(),
+            })
+            .default({
+              host: 'localhost',
+              port: 5432,
+            }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Should use object-level defaults
+      const uiConfig = scope.flag('ui');
+      expect(uiConfig).toEqual({
+        theme: 'dark',
+        layout: {
+          sidebar: true,
+          width: 300,
+          collapsed: false,
+        },
+      });
+
+      // Nested object access should also work
+      const layout = scope.flag('ui.layout');
+      expect(layout).toEqual({
+        sidebar: true,
+        width: 300,
+        collapsed: false,
+      });
+
+      // Type inference for object-level defaults
+      expectTypeOf(scope.flag('config')).toEqualTypeOf<{
+        database: {
+          host: string;
+          port: number;
+        };
+      }>();
+
+      expectTypeOf(scope.flag('config.database')).toEqualTypeOf<{
+        host: string;
+        port: number;
+      }>();
     });
 
     test('should prefer explicit defaults over schema defaults for namespaces', () => {
@@ -261,98 +594,92 @@ describe('createAppScope2 runtime behavior', () => {
         },
       });
     });
+  });
 
-    test('should handle namespaces with mixed default availability', () => {
+  describe('type constraint validation', () => {
+    test('should enforce valid namespace and flag keys', () => {
       const schemas = {
-        features: z.object({
-          auth: z.object({
-            enabled: z.boolean().default(true),
-            provider: z.string(), // no default
-          }),
-          cache: z.object({
-            ttl: z.number().default(3600),
-            maxSize: z.number().default(1000),
-          }),
+        database: z.object({
+          host: z.string().default('localhost'),
+          port: z.number().default(5432),
+          ssl: z.boolean().default(false),
+        }),
+        cache: z.object({
+          ttl: z.number().default(3600),
+          maxSize: z.number().default(1000),
         }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Complete namespace (cache) should work without explicit defaults
-      const cacheConfig = scope.flag('features.cache');
-      expect(cacheConfig).toEqual({
-        ttl: 3600,
-        maxSize: 1000,
-      });
+      expectTypeOf(scope.flag('database.host')).toEqualTypeOf<string>();
+      expectTypeOf(scope.flag('cache.ttl')).toEqualTypeOf<number>();
 
-      // Incomplete namespace (auth) should require explicit defaults
-      const authConfig = scope.flag('features.auth', {
-        enabled: true,
-        provider: 'oauth',
-      });
-      expect(authConfig).toEqual({
-        enabled: true,
-        provider: 'oauth',
-      });
+      // @ts-expect-error - invalid property
+      scope.flag('database.invalid');
+      // @ts-expect-error - invalid namespace
+      scope.flag('missing.anything');
     });
 
-    test('should handle namespace with object-level defaults', () => {
+    test('should enforce correct default value types for complex schemas', () => {
       const schemas = {
         ui: z.object({
-          theme: z.string().default('dark'),
+          theme: z.enum(['light', 'dark']).default('light'),
           layout: z
             .object({
-              sidebar: z.boolean(),
-              width: z.number(),
-              collapsed: z.boolean(),
+              sidebar: z.boolean().default(true),
+              width: z.number().default(300),
             })
-            .default({
-              sidebar: true,
-              width: 300,
-              collapsed: false,
-            }),
+            .default({ sidebar: true, width: 300 }),
         }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Should use object-level defaults
-      const uiConfig = scope.flag('ui');
-      expect(uiConfig).toEqual({
-        theme: 'dark',
-        layout: {
-          sidebar: true,
-          width: 300,
-          collapsed: false,
-        },
-      });
+      expectTypeOf(scope.flag('ui.layout', { sidebar: false, width: 250 })).toEqualTypeOf<{
+        sidebar: boolean;
+        width: number;
+      }>();
 
-      // Nested object access should also work
-      const layout = scope.flag('ui.layout');
-      expect(layout).toEqual({
-        sidebar: true,
-        width: 300,
-        collapsed: false,
-      });
+      // @ts-expect-error - wrong object shape
+      scope.flag('ui.layout', { foo: 'bar' });
+      // @ts-expect-error - wrong literal value
+      scope.flag('ui.theme', 'invalid');
     });
 
-    test('should handle empty namespaces', () => {
+    test('should handle edge case types correctly', () => {
       const schemas = {
         empty: z.object({}),
-        withDefaults: z.object({}).default({}),
+        optional: z.object({
+          field: z.string().optional(),
+        }),
+        nullable: z.object({
+          field: z.string().nullable().default(null),
+        }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Empty namespace with explicit default
-      const emptyWithDefault = scope.flag('empty', {});
-      expect(emptyWithDefault).toEqual({});
+      // Empty object
+      expectTypeOf(scope.flag('empty', {})).toEqualTypeOf<{}>();
 
-      // Empty namespace with schema default
-      const emptyWithSchemaDefault = scope.flag('withDefaults');
-      expect(emptyWithSchemaDefault).toEqual({});
+      // Object with optional field
+      expectTypeOf(scope.flag('optional', { field: 'value' })).toEqualTypeOf<{
+        field?: string | undefined;
+      }>();
+
+      expectTypeOf(scope.flag('optional', {})).toEqualTypeOf<{
+        field?: string | undefined;
+      }>();
+
+      // Object with nullable field with default
+      expectTypeOf(scope.flag('nullable')).toEqualTypeOf<{
+        field: string | null;
+      }>();
     });
+  });
 
+  describe('complex integration scenarios', () => {
     test('should handle complex nested structures with mixed defaults', () => {
       const schemas = {
         application: z.object({
@@ -415,280 +742,74 @@ describe('createAppScope2 runtime behavior', () => {
         password: 'secret',
       });
     });
-  });
 
-  describe('defaults', () => {
-    test('should extract schema defaults for individual flags', () => {
+    test('should validate both runtime behavior and type constraints together', () => {
       const schemas = {
-        ui: z.object({
-          theme: z.string().default('dark'),
-          fontSize: z.number(), // no default
-          layout: z.object({
-            sidebar: z.boolean().default(true),
+        features: z.object({
+          auth: z.object({
+            enabled: z.boolean().default(true),
+            provider: z.string(), // no default
+          }),
+          cache: z.object({
+            ttl: z.number().default(3600),
+            maxSize: z.number().default(1000),
           }),
         }),
       };
 
       const scope = createAppScope2({ flagSchema: schemas });
 
-      // Should extract from schema defaults
-      expect(scope.flag('ui.theme')).toBe('dark');
-      expect(scope.flag('ui.layout.sidebar')).toBe(true);
-    });
+      // Complete namespace (cache) should work without explicit defaults
+      const cacheConfig = scope.flag('features.cache');
+      expect(cacheConfig).toEqual({
+        ttl: 3600,
+        maxSize: 1000,
+      });
 
-    test('partial defaults work when accessing children', () => {
-      const schemas = {
-        ui: z.object({
-          foo: z.string().default('foo'),
-          bar: z.string(),
-          biz: z.object({
-            qux: z.string().default('qux'),
-            zap: z.string(),
-          }),
+      // Incomplete namespace (auth) should require explicit defaults
+      const authConfig = scope.flag('features.auth', {
+        enabled: true,
+        provider: 'oauth',
+      });
+      expect(authConfig).toEqual({
+        enabled: true,
+        provider: 'oauth',
+      });
+
+      // if we ignore the type error, it returns undefined
+      // @ts-expect-error - incomplete defaults
+      expect(scope.flag('features.auth')).toBe(undefined);
+
+      // Type validation should match runtime behavior
+      expectTypeOf(scope.flag('features.cache')).toEqualTypeOf<{
+        ttl: number;
+        maxSize: number;
+      }>();
+
+      expectTypeOf(
+        scope.flag('features.auth', {
+          enabled: true,
+          provider: 'oauth',
         }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      expect(scope.flag('ui.foo')).toBe('foo');
-      // @ts-expect-error - shouldn't be allowed to call like this without default in app!
-      expect(scope.flag('ui.bar')).toBe(undefined);
-    });
-
-    test('type error when attempting to access parent with partial defaults', () => {
-      const schemas = {
-        ui: z.object({
-          foo: z.object({
-            bar: z.string().default('bar'),
-            biz: z.string(),
-          }),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      // @ts-expect-error we haven't given a default to `foo` so it should require a value
-      scope.flag('ui.foo');
-
-      // But this should work (explicit default provided):
-      scope.flag('ui.foo', { bar: 'bar', biz: 'value' });
-
-      // And accessing individual fields should still work:
-      scope.flag('ui.foo.bar'); // has default
-      scope.flag('ui.foo.biz', 'explicit'); // needs explicit default
-    });
-
-    test('nested object with complete defaults should work without explicit value', () => {
-      const schemas = {
-        ui: z.object({
-          completeObj: z.object({
-            field1: z.string().default('default1'),
-            field2: z.number().default(42),
-          }),
-          incompleteObj: z.object({
-            field1: z.string().default('default1'),
-            field2: z.string(), // NO default - makes object incomplete
-          }),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      // This should work - all fields have defaults
-      scope.flag('ui.completeObj');
-
-      // @ts-expect-error This should NOT work - object has incomplete defaults
-      scope.flag('ui.incompleteObj');
-
-      // But explicit default should work
-      scope.flag('ui.incompleteObj', { field1: 'value1', field2: 'value2' });
-
-      // Individual field access should still work
-      scope.flag('ui.completeObj.field1');
-      scope.flag('ui.incompleteObj.field1'); // has default
-
-      // @ts-expect-error - this does not have a default!
-      scope.flag('ui.incompleteObj.field2');
-    });
-
-    test('can access parent namespace', () => {
-      const schemas = {
-        ui: z.object({
-          foo: z.string().default('foo'),
-          bar: z.string(),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      expect(scope.flag('ui', { foo: 'foo', bar: 'bar' })).toEqual({ foo: 'foo', bar: 'bar' });
-    });
-
-    test('should prefer explicit defaults over schema defaults', () => {
-      const schemas = {
-        ui: z.object({
-          theme: z.string().default('dark'),
-          fontSize: z.number().default(12),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      // Explicit defaults should override schema defaults
-      expect(scope.flag('ui.theme', 'light')).toBe('light');
-      expect(scope.flag('ui.fontSize', 16)).toBe(16);
-
-      // But schema defaults should still work when no explicit default
-      expect(scope.flag('ui.theme')).toBe('dark');
-      expect(scope.flag('ui.fontSize')).toBe(12);
-    });
-
-    test('should handle different Zod types with defaults', () => {
-      const schemas = {
-        config: z.object({
-          name: z.string().default('App'),
-          version: z.number().default(1),
-          enabled: z.boolean().default(false),
-          mode: z.enum(['dev', 'prod']).default('dev'),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      expect(scope.flag('config.name')).toBe('App');
-      expect(scope.flag('config.version')).toBe(1);
-      expect(scope.flag('config.enabled')).toBe(false);
-      expect(scope.flag('config.mode')).toBe('dev');
-    });
-
-    test('should return undefined for fields without schema defaults', () => {
-      const schemas = {
-        ui: z.object({
-          theme: z.string().default('dark'),
-          fontSize: z.number(), // no default
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      expect(scope.flag('ui.theme')).toBe('dark');
-      // @ts-expect-error - this does not have a default!
-      expect(scope.flag('ui.fontSize')).toBe(undefined);
-    });
-
-    test('should work for depth up to 8', () => {
-      const schemas = {
-        app: z.object({
-          hasDefault: z.string().default(''),
-          noDefault: z.string(),
-          nested: z.object({
-            hasDefault: z.string().default(''),
-            noDefault: z.string(),
-            nested: z.object({
-              hasDefault: z.string().default(''),
-              noDefault: z.string(),
-              nested: z.object({
-                hasDefault: z.string().default(''),
-                noDefault: z.string(),
-                nested: z.object({
-                  hasDefault: z.string().default(''),
-                  noDefault: z.string(),
-                  nested: z.object({
-                    hasDefault: z.string().default(''),
-                    noDefault: z.string(),
-                    nested: z.object({
-                      hasDefault: z.string().default(''),
-                      noDefault: z.string(),
-                      nested: z.object({
-                        hasDefault: z.string().default(''),
-                        noDefault: z.string(),
-                        nested: z.object({
-                          hasDefault: z.string().default(''),
-                          noDefault: z.string(),
-                        }),
-                      }),
-                    }),
-                  }),
-                }),
-              }),
-            }),
-          }),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      // L2
-      scope.flag('app.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.noDefault');
-
-      // L3
-      scope.flag('app.nested.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.nested.noDefault');
-
-      // L4
-      scope.flag('app.nested.nested.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.nested.nested.noDefault');
-
-      // L5
-      scope.flag('app.nested.nested.nested.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.nested.nested.nested.noDefault');
-
-      // L6
-      scope.flag('app.nested.nested.nested.nested.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.nested.nested.nested.nested.noDefault');
-
-      // L7
-      scope.flag('app.nested.nested.nested.nested.nested.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.nested.nested.nested.nested.nested.noDefault');
-
-      // L8
-      scope.flag('app.nested.nested.nested.nested.nested.nested.hasDefault');
-      // @ts-expect-error - no default
-      scope.flag('app.nested.nested.nested.nested.nested.nested.noDefault');
-
-      // (the next level would be too deep for current implementation, but easy to fix by passing depth to ZodSchemaAtPathRecursive)
-    });
-
-    test('should handle deeply nested schema defaults', () => {
-      const schemas = {
-        app: z.object({
-          ui: z.object({
-            theme: z.object({
-              primary: z.string().default('blue'),
-              secondary: z.string().default('gray'),
-            }),
-            layout: z.object({
-              sidebar: z.object({
-                width: z.number().default(250),
-                collapsed: z.boolean().default(false),
-              }),
-            }),
-          }),
-        }),
-      };
-
-      const scope = createAppScope2({ flagSchema: schemas });
-
-      expect(scope.flag('app.ui.theme.primary')).toBe('blue');
-      expect(scope.flag('app.ui.theme.secondary')).toBe('gray');
-      expect(scope.flag('app.ui.theme')).toEqual({ primary: 'blue', secondary: 'gray' });
-      expect(scope.flag('app.ui.layout.sidebar.width')).toBe(250);
-      expect(scope.flag('app.ui.layout.sidebar.collapsed')).toBe(false);
-    });
-
-    test.skip('should use schema defaults for whole namespaces', () => {
-      // TODO: Implement test for future unit
+      ).toEqualTypeOf<{
+        enabled: boolean;
+        provider: string;
+      }>();
     });
   });
 
-  describe('inheritedDefaults', () => {
+  // TODO: BEFORE MERGE - to implement
+  describe('nested object handling', () => {
+    test.skip('should handle deeply nested flag structures', () => {
+      // TODO: Implement test
+    });
+
+    test.skip('should validate nested object types at runtime', () => {
+      // TODO: Implement test
+    });
+  });
+
+  describe('inherited defaults', () => {
     test.skip('should inherit defaults from parent namespaces', () => {
       // TODO: Implement test
     });
@@ -698,7 +819,7 @@ describe('createAppScope2 runtime behavior', () => {
     });
   });
 
-  describe('typeInference', () => {
+  describe('type inference advanced features', () => {
     test.skip('should infer correct types for nested structures', () => {
       // TODO: Implement test
     });
@@ -708,17 +829,31 @@ describe('createAppScope2 runtime behavior', () => {
     });
   });
 
-  describe('errorsRuntime', () => {
-    test.skip('should throw runtime errors for invalid namespace access', () => {
+  describe('validation and error handling', () => {
+    test.skip('should return undefined and log an error for invalid namespace access', () => {
       // TODO: Implement test
     });
 
-    test.skip('should throw runtime errors for invalid flag key access', () => {
+    test.skip('should return undefined and log an error for invalid flag key access', () => {
       // TODO: Implement test
     });
 
-    test.skip('should validate fact recording with schema', () => {
+    test.skip('should log an error when recording a fact that is not in the schema (but still record it)', () => {
       // TODO: Implement test
+    });
+  });
+
+  describe('autocomplete and developer experience', () => {
+    test.skip('should provide autocomplete for namespace keys', () => {
+      // TODO: Test that IDE autocomplete works for namespace keys
+    });
+
+    test.skip('should provide autocomplete for flag keys within namespaces', () => {
+      // TODO: Test that IDE autocomplete works for flag keys
+    });
+
+    test.skip('should provide autocomplete for nested object properties', () => {
+      // TODO: Test autocomplete for nested properties
     });
   });
 });
