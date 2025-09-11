@@ -188,21 +188,42 @@ describe('createAppScope2 type-level tests', () => {
   });
 
   describe('namespace-ok', () => {
-    test.skip('should provide correct types when accessing whole namespaces', () => {
-      // const flagSchema = {
-      //   database: z.object({
-      //     host: z.string().default('localhost'),
-      //     port: z.number().default(5432),
-      //     ssl: z.boolean().default(false),
-      //   }),
-      // };
-      // const appScope = createAppScope2({ flagSchema });
-      // TODO: Add type assertions for whole namespace access
-      // expectTypeOf(appScope.flag('database')).toEqualTypeOf<{
-      //   host: string;
-      //   port: number;
-      //   ssl: boolean;
-      // }>();
+    test('should provide correct types when accessing whole namespaces', () => {
+      const flagSchema = {
+        database: z.object({
+          host: z.string().default('localhost'),
+          port: z.number().default(5432),
+          ssl: z.boolean().default(false),
+        }),
+        ui: z.object({
+          theme: z.enum(['light', 'dark']).default('light'),
+          fontSize: z.number().default(14),
+        }),
+      };
+      const appScope = createAppScope2({ flagSchema });
+      
+      // Test that namespace access provides correct object types
+      expectTypeOf(appScope.flag('database')).toEqualTypeOf<{
+        host: string;
+        port: number;
+        ssl: boolean;
+      }>();
+      
+      expectTypeOf(appScope.flag('ui')).toEqualTypeOf<{
+        theme: 'light' | 'dark';
+        fontSize: number;
+      }>();
+      
+      // Test with defaults
+      expectTypeOf(appScope.flag('database', {
+        host: 'custom',
+        port: 3306,
+        ssl: true,
+      })).toEqualTypeOf<{
+        host: string;
+        port: number;
+        ssl: boolean;
+      }>();
     });
   });
 
