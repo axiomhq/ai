@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { z } from 'zod';
 import { expectTypeOf } from 'vitest';
-import { createAppScope2 } from '../src/app-scope-2';
+import { createAppScope2, type DotPaths } from '../src/app-scope-2';
 
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
@@ -844,8 +844,31 @@ describe('createAppScope2', () => {
   });
 
   describe('autocomplete and developer experience', () => {
-    test.skip('should provide autocomplete for namespace keys', () => {
-      // TODO: Test that IDE autocomplete works for namespace keys
+    test('should provide autocomplete for namespace keys', () => {
+      const _schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number().default(14),
+        }),
+        features: z.object({
+          auth: z.boolean().default(true),
+          cache: z.object({
+            ttl: z.number().default(3600),
+          }),
+        }),
+      };
+
+      type ActualDotPaths = DotPaths<typeof _schemas>;
+      type ExpectedDotPaths =
+        | 'ui'
+        | 'ui.theme'
+        | 'ui.fontSize'
+        | 'features'
+        | 'features.auth'
+        | 'features.cache'
+        | 'features.cache.ttl';
+
+      expectTypeOf<ActualDotPaths>().toEqualTypeOf<ExpectedDotPaths>();
     });
 
     test.skip('should provide autocomplete for flag keys within namespaces', () => {
