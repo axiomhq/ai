@@ -268,6 +268,30 @@ export function createAppScope2<
     return current;
   }
 
+  // Helper function to check if a schema has complete defaults at runtime
+  // This mirrors the compile-time AllFieldsHaveDefaults<> type
+  function schemaHasCompleteDefaults(schema: any): boolean {
+    if (!schema || !schema._def) return false;
+
+    // If the schema itself has an object-level default, all fields are considered to have defaults
+    if (schema._def.defaultValue !== undefined) {
+      return true;
+    }
+
+    // For ZodObject, check if ALL fields have defaults recursively
+    if (schema._def.typeName === 'ZodObject' && schema.shape) {
+      for (const fieldSchema of Object.values(schema.shape)) {
+        if (!schemaHasCompleteDefaults(fieldSchema)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // For individual fields, check if they have a default value
+    return schema._def.defaultValue !== undefined;
+  }
+
   // Recursively build object with all defaults from a Zod schema
   function buildObjectWithDefaults(schema: any): any {
     if (!schema || !schema._def) return undefined;
@@ -332,10 +356,15 @@ export function createAppScope2<
     if (isNamespaceAccess(segments)) {
       const schema = findSchemaAtPath(segments);
       if (schema) {
-        const namespaceObject = buildObjectWithDefaults(schema);
-        if (namespaceObject !== undefined) {
-          return namespaceObject;
+        // Only return namespace objects if ALL fields have defaults
+        if (schemaHasCompleteDefaults(schema)) {
+          const namespaceObject = buildObjectWithDefaults(schema);
+          if (namespaceObject !== undefined) {
+            return namespaceObject;
+          }
         }
+        // If not all fields have defaults, return undefined
+        return undefined;
       }
     }
 
