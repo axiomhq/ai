@@ -798,34 +798,65 @@ describe('createAppScope2', () => {
     });
   });
 
-  // TODO: BEFORE MERGE - to implement
-  describe('nested object handling', () => {
-    test.skip('should handle deeply nested flag structures', () => {
-      // TODO: Implement test
-    });
-
-    test.skip('should validate nested object types at runtime', () => {
-      // TODO: Implement test
-    });
-  });
-
-  describe('inherited defaults', () => {
-    test.skip('should inherit defaults from parent namespaces', () => {
-      // TODO: Implement test
-    });
-
-    test.skip('should override inherited defaults with specific values', () => {
-      // TODO: Implement test
-    });
-  });
-
   describe('type inference advanced features', () => {
-    test.skip('should infer correct types for nested structures', () => {
-      // TODO: Implement test
+    test('should reject union types in schemas at compile time and runtime', () => {
+      // This should produce a TypeScript error but not execute
+      // @ts-expect-error - union types should be rejected at compile time
+      const _shouldNotCompile = () =>
+        // @ts-expect-error
+        createAppScope2({
+          flagSchema: {
+            payment: z.union([
+              z.object({ type: z.literal('stripe'), apiKey: z.string() }),
+              z.object({ type: z.literal('paypal'), clientId: z.string() }),
+            ]),
+          },
+        });
+
+      // Runtime validation should still work for cases that bypass TypeScript
+      expect(() => {
+        // @ts-expect-error
+        createAppScope2({
+          flagSchema: {
+            payment: z.union([
+              z.object({ type: z.literal('stripe'), apiKey: z.string() }),
+              z.object({ type: z.literal('paypal'), clientId: z.string() }),
+            ]),
+          },
+        });
+      }).toThrow('[AxiomAI] Union types are not supported in flag schemas (found at "payment")');
     });
 
-    test.skip('should handle union types in namespaces', () => {
-      // TODO: Implement test
+    test('should reject nested union types in schemas', () => {
+      expect(() => {
+        // @ts-expect-error - nested union types should be rejected at compile time
+        createAppScope2({
+          flagSchema: {
+            ui: z.object({
+              theme: z.string().default('dark'),
+              layout: z.union([
+                z.object({ type: z.literal('grid') }),
+                z.object({ type: z.literal('list') }),
+              ]),
+            }),
+          },
+        });
+      }).toThrow('[AxiomAI] Union types are not supported in flag schemas (found at "ui.layout")');
+    });
+
+    test('should reject .or() usage in schemas', () => {
+      expect(() => {
+        // @ts-expect-error - .or() usage should be rejected at compile time
+        createAppScope2({
+          flagSchema: {
+            config: z.object({
+              value: z.string().or(z.number()),
+            }),
+          },
+        });
+      }).toThrow(
+        '[AxiomAI] Union types are not supported in flag schemas (found at "config.value")',
+      );
     });
   });
 

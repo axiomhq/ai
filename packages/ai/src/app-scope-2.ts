@@ -1,7 +1,68 @@
-import { type z, type ZodObject, type ZodDefault } from 'zod';
+import {
+  type z,
+  type ZodObject,
+  type ZodDefault,
+  type ZodUnion,
+  type ZodDiscriminatedUnion,
+  type ZodOptional,
+  type ZodNullable,
+  type ZodEffects,
+  type ZodArray,
+  type ZodRecord,
+} from 'zod';
+
+type DefaultMaxDepth = 8;
 
 // Helper type to allow ZodDefault wrappers around ZodObject
 type FlagSchemaValue = ZodObject<any> | ZodDefault<ZodObject<any>>;
+
+// Strip wrapper types to get to the core schema
+type StripWrappers<T> =
+  T extends ZodDefault<infer U>
+    ? StripWrappers<U>
+    : T extends ZodOptional<infer U>
+      ? StripWrappers<U>
+      : T extends ZodNullable<infer U>
+        ? StripWrappers<U>
+        : T extends ZodEffects<infer U, any, any>
+          ? StripWrappers<U>
+          : T;
+
+// Main recursive union detector
+type _ContainsUnion<
+  T,
+  Stack extends unknown[] = [],
+  MaxDepth extends number = DefaultMaxDepth,
+> = Stack['length'] extends MaxDepth
+  ? false
+  : StripWrappers<T> extends ZodUnion<any> | ZodDiscriminatedUnion<any, any>
+    ? true
+    : StripWrappers<T> extends ZodObject<infer Shape>
+      ? _ContainsUnionInShape<Shape, [1, ...Stack], MaxDepth>
+      : StripWrappers<T> extends ZodArray<infer Item>
+        ? _ContainsUnion<Item, [1, ...Stack], MaxDepth>
+        : StripWrappers<T> extends ZodRecord<any, infer Value>
+          ? _ContainsUnion<Value, [1, ...Stack], MaxDepth>
+          : false;
+
+// Helper for ZodObject shapes
+type _ContainsUnionInShape<
+  Shape,
+  Stack extends unknown[] = [],
+  MaxDepth extends number = DefaultMaxDepth,
+> = Stack['length'] extends MaxDepth
+  ? false
+  : {
+        [K in keyof Shape]: _ContainsUnion<Shape[K], Stack, MaxDepth>;
+      }[keyof Shape] extends false
+    ? false
+    : true;
+
+// Public interface with error message
+type ForbidUnionsDeep<T> =
+  _ContainsUnion<T> extends true
+    ? 'Error: Union types (z.union, .or) are not allowed in flag schemas'
+    : T;
 
 export interface AppScope2Config<
   FS extends Record<string, FlagSchemaValue> | undefined = undefined,
@@ -22,7 +83,7 @@ export interface AppScope2Config<
 type ObjectPaths<
   T,
   Stack extends unknown[] = [],
-  MaxDepth extends number = 8,
+  MaxDepth extends number = DefaultMaxDepth,
 > = Stack['length'] extends MaxDepth
   ? never
   : T extends object
@@ -57,7 +118,10 @@ type UnwrapSchema<T> = T extends ZodDefault<infer U> ? U : T;
  * // Custom depth for deeper nesting (impacts performance)
  * type DeepPaths = DotPaths<MySchemas, 12>
  */
-export type DotPaths<T extends Record<string, FlagSchemaValue>, MaxDepth extends number = 8> = {
+export type DotPaths<
+  T extends Record<string, FlagSchemaValue>,
+  MaxDepth extends number = DefaultMaxDepth,
+> = {
   [NS in keyof T]:
     | (string & NS) // Include the namespace itself
     | {
@@ -109,7 +173,7 @@ type ZodSchemaAtPath<
   T extends Record<string, FlagSchemaValue>,
   P extends string,
   Stack extends unknown[] = [],
-  MaxDepth extends number = 8,
+  MaxDepth extends number = DefaultMaxDepth,
 > = Stack['length'] extends MaxDepth
   ? never
   : P extends `${infer NS}.${infer Rest}`
@@ -125,7 +189,7 @@ type ZodSchemaAtPathRecursive<
   Shape extends Record<string, any>,
   P extends string,
   Stack extends unknown[] = [],
-  MaxDepth extends number = 8,
+  MaxDepth extends number = DefaultMaxDepth,
 > = Stack['length'] extends MaxDepth
   ? never
   : P extends keyof Shape
@@ -201,13 +265,66 @@ export interface AppScope2<
   fact: FactFunction<SC>;
 }
 
-// Basic implementation scaffolding
+// Helper to recursively validate that schemas don't contain union types
+function assertNoUnions(schema: any, path = 'schema'): void {
+  if (!schema || !schema._def) return;
+
+  // Unwrap transparent containers
+  const { typeName, innerType } = schema._def as any;
+
+  if (
+    typeName === 'ZodDefault' ||
+    typeName === 'ZodOptional' ||
+    typeName === 'ZodNullable' ||
+    typeName === 'ZodEffects'
+  ) {
+    return assertNoUnions(innerType, path);
+  }
+
+  // Hard-fail on unions
+  if (typeName === 'ZodUnion' || typeName === 'ZodDiscriminatedUnion') {
+    throw new Error(`[AxiomAI] Union types are not supported in flag schemas (found at "${path}")`);
+  }
+
+  // Recurse into compound types
+  if (typeName === 'ZodObject' && schema.shape) {
+    for (const [k, v] of Object.entries(schema.shape)) {
+      assertNoUnions(v, `${path}.${k}`);
+    }
+  } else if (typeName === 'ZodArray') {
+    assertNoUnions(schema._def.type, `${path}[]`);
+  } else if (typeName === 'ZodRecord') {
+    assertNoUnions(schema._def.valueType, `${path}{}`);
+  }
+}
+
+// Function overloads with comprehensive union validation
 export function createAppScope2<
-  FS extends Record<string, FlagSchemaValue> | undefined = undefined,
+  FS extends Record<string, FlagSchemaValue>,
   SC extends ZodObject<any> | undefined = undefined,
->(config: AppScope2Config<FS, SC>): AppScope2<FS, SC> {
+>(
+  config: AppScope2Config<FS, SC> & {
+    flagSchema: {
+      [K in keyof FS]: ForbidUnionsDeep<FS[K]>;
+    };
+  },
+): AppScope2<FS, SC>;
+
+export function createAppScope2<SC extends ZodObject<any> | undefined = undefined>(
+  config: AppScope2Config<undefined, SC>,
+): AppScope2<undefined, SC>;
+
+// Implementation
+export function createAppScope2(config: any): any {
   // Store schemas for runtime validation
   const flagSchema = config?.flagSchema;
+
+  // Runtime validation – reject union types up-front
+  if (flagSchema) {
+    for (const [namespace, schema] of Object.entries(flagSchema)) {
+      assertNoUnions(schema, namespace);
+    }
+  }
 
   // Helper function to split dot notation path and traverse schema
   function parsePath(path: string) {
@@ -456,7 +573,7 @@ export function createAppScope2<
   }
 
   return {
-    flag: flag as DotNotationFlagFunction<FS>,
-    fact: fact as FactFunction<SC>,
+    flag: flag as any,
+    fact: fact as any,
   };
 }
