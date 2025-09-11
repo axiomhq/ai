@@ -678,6 +678,7 @@ describe('createAppScope2 runtime behavior', () => {
 
       expect(scope.flag('app.ui.theme.primary')).toBe('blue');
       expect(scope.flag('app.ui.theme.secondary')).toBe('gray');
+      expect(scope.flag('app.ui.theme')).toEqual({ primary: 'blue', secondary: 'gray' });
       expect(scope.flag('app.ui.layout.sidebar.width')).toBe(250);
       expect(scope.flag('app.ui.layout.sidebar.collapsed')).toBe(false);
     });
