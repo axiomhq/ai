@@ -151,6 +151,10 @@ describe('createAppScope2 runtime behavior', () => {
         ui: z.object({
           foo: z.string().default('foo'),
           bar: z.string(),
+          biz: z.object({
+            qux: z.string().default('qux'),
+            zap: z.string(),
+          }),
         }),
       };
 
@@ -160,7 +164,63 @@ describe('createAppScope2 runtime behavior', () => {
       expect(scope.flag('ui.bar')).toBe(undefined);
     });
 
-    test('', () => {
+    test('type error when attempting to access parent with partial defaults', () => {
+      const schemas = {
+        ui: z.object({
+          foo: z.object({
+            bar: z.string().default('bar'),
+            biz: z.string(),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // @ts-expect-error we haven't given a default to `foo` so it should require a value
+      scope.flag('ui.foo');
+
+      // But this should work (explicit default provided):
+      scope.flag('ui.foo', { bar: 'bar', biz: 'value' });
+
+      // And accessing individual fields should still work:
+      scope.flag('ui.foo.bar'); // has default
+      scope.flag('ui.foo.biz', 'explicit'); // needs explicit default
+    });
+
+    test('nested object with complete defaults should work without explicit value', () => {
+      const schemas = {
+        ui: z.object({
+          completeObj: z.object({
+            field1: z.string().default('default1'),
+            field2: z.number().default(42),
+          }),
+          incompleteObj: z.object({
+            field1: z.string().default('default1'),
+            field2: z.string(), // NO default - makes object incomplete
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // This should work - all fields have defaults
+      scope.flag('ui.completeObj');
+
+      // @ts-expect-error This should NOT work - object has incomplete defaults
+      scope.flag('ui.incompleteObj');
+
+      // But explicit default should work
+      scope.flag('ui.incompleteObj', { field1: 'value1', field2: 'value2' });
+
+      // Individual field access should still work
+      scope.flag('ui.completeObj.field1');
+      scope.flag('ui.incompleteObj.field1'); // has default
+
+      // @ts-expect-error - this does not have a default!
+      scope.flag('ui.incompleteObj.field2');
+    });
+
+    test('can access parent namespace', () => {
       const schemas = {
         ui: z.object({
           foo: z.string().default('foo'),
