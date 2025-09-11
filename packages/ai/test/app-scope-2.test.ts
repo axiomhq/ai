@@ -161,6 +161,7 @@ describe('createAppScope2 runtime behavior', () => {
       const scope = createAppScope2({ flagSchema: schemas });
 
       expect(scope.flag('ui.foo')).toBe('foo');
+      // @ts-expect-error - shouldn't be allowed to call like this without default in app!
       expect(scope.flag('ui.bar')).toBe(undefined);
     });
 
@@ -281,6 +282,7 @@ describe('createAppScope2 runtime behavior', () => {
       const scope = createAppScope2({ flagSchema: schemas });
 
       expect(scope.flag('ui.theme')).toBe('dark');
+      // @ts-expect-error - this does not have a default!
       expect(scope.flag('ui.fontSize')).toBe(undefined);
     });
 

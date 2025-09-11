@@ -52,7 +52,7 @@ type ObjectPathValue<T, P extends string> = P extends keyof T
  * type DeepPaths = DotPaths<MySchemas, 12>
  */
 type DotPaths<T extends Record<string, ZodObject<any>>, MaxDepth extends number = 8> = {
-  [NS in keyof T]: 
+  [NS in keyof T]:
     | (string & NS) // Include the namespace itself
     | {
         [P in ObjectPaths<z.output<T[NS]>, [], MaxDepth>]: `${string & NS}.${P}`;
@@ -74,13 +74,14 @@ type PathValue<
 type IsNamespaceOnly<T, P extends string> = P extends keyof T ? true : false;
 
 // Helper to check if ALL fields in a namespace schema have defaults
-type AllFieldsHaveDefaults<Schema> = Schema extends ZodObject<infer Shape>
-  ? {
-      [K in keyof Shape]: Shape[K] extends { _def: { defaultValue: any } } ? true : false;
-    } extends Record<keyof Shape, true>
-    ? true
-    : false
-  : false;
+type AllFieldsHaveDefaults<Schema> =
+  Schema extends ZodObject<infer Shape>
+    ? {
+        [K in keyof Shape]: Shape[K] extends { _def: { defaultValue: any } } ? true : false;
+      } extends Record<keyof Shape, true>
+      ? true
+      : false
+    : false;
 
 // Helper to check if a namespace has complete defaults (all fields have defaults)
 type NamespaceHasCompleteDefaults<T, P extends string> = P extends keyof T
@@ -88,27 +89,38 @@ type NamespaceHasCompleteDefaults<T, P extends string> = P extends keyof T
   : false;
 
 // Helper to find the source Zod schema at a path (not the output type)
-// This needs to traverse the Zod schema structure, not the output types
-type ZodSchemaAtPath<T extends Record<string, ZodObject<any>>, P extends string> = 
-  P extends `${infer NS}.${infer Field}`
-    ? NS extends keyof T
-      ? T[NS] extends ZodObject<infer Shape>
-        ? Field extends keyof Shape
-          ? Shape[Field]
+type ZodSchemaAtPath<
+  T extends Record<string, ZodObject<any>>,
+  P extends string,
+> = P extends `${infer NS}.${infer Rest}`
+  ? NS extends keyof T
+    ? T[NS] extends ZodObject<infer Shape>
+      ? Rest extends keyof Shape
+        ? Shape[Rest] // Direct field access: foo.bar
+        : Rest extends `${infer NextField}.${infer Deeper}`
+          ? NextField extends keyof Shape
+            ? Shape[NextField] extends ZodObject<infer NestedShape>
+              ? Deeper extends keyof NestedShape
+                ? NestedShape[Deeper] // Nested field access: foo.bar.baz
+                : never
+              : never
+            : never
           : never
-        : never
       : never
-    : never;
+    : never
+  : never;
 
 // Check if a nested object field has complete defaults
-type NestedObjectHasCompleteDefaults<T extends Record<string, ZodObject<any>>, P extends string> = 
+type NestedObjectHasCompleteDefaults<T extends Record<string, ZodObject<any>>, P extends string> =
   ZodSchemaAtPath<T, P> extends ZodObject<infer Shape>
     ? {
         [K in keyof Shape]: Shape[K] extends { _def: { defaultValue: any } } ? true : false;
       } extends Record<keyof Shape, true>
       ? true
       : false
-    : true; // If it's not a ZodObject, treat as having defaults (primitive fields)
+    : ZodSchemaAtPath<T, P> extends { _def: { defaultValue: any } }
+      ? true
+      : false; // All individual fields without defaults should require explicit values
 
 type DotNotationFlagFunction<FS extends Record<string, ZodObject<any>> | undefined> =
   FS extends Record<string, ZodObject<any>>
@@ -120,7 +132,7 @@ type DotNotationFlagFunction<FS extends Record<string, ZodObject<any>> | undefin
               ? P
               : never
             : never,
-          defaultValue: PathValue<FS, P>
+          defaultValue: PathValue<FS, P>,
         ): PathValue<FS, P>;
         // For field paths WITH complete defaults OR primitive paths, allow single argument
         <P extends DotPaths<FS> & string>(
@@ -128,24 +140,24 @@ type DotNotationFlagFunction<FS extends Record<string, ZodObject<any>> | undefin
             ? NestedObjectHasCompleteDefaults<FS, P> extends true
               ? P
               : never
-            : never
+            : never,
         ): PathValue<FS, P>;
         // For namespace paths WITH complete defaults (all fields have defaults), allow single argument
         <P extends DotPaths<FS> & string>(
-          path: IsNamespaceOnly<FS, P> extends true 
-            ? NamespaceHasCompleteDefaults<FS, P> extends true 
-              ? P 
+          path: IsNamespaceOnly<FS, P> extends true
+            ? NamespaceHasCompleteDefaults<FS, P> extends true
+              ? P
               : never
-            : never
+            : never,
         ): PathValue<FS, P>;
         // For namespace paths WITHOUT complete defaults, require explicit default
         <P extends DotPaths<FS> & string>(
-          path: IsNamespaceOnly<FS, P> extends true 
-            ? NamespaceHasCompleteDefaults<FS, P> extends false 
-              ? P 
+          path: IsNamespaceOnly<FS, P> extends true
+            ? NamespaceHasCompleteDefaults<FS, P> extends false
+              ? P
               : never
             : never,
-          defaultValue: PathValue<FS, P>
+          defaultValue: PathValue<FS, P>,
         ): PathValue<FS, P>;
         // For any valid path, allow explicit default (override)
         <P extends DotPaths<FS>>(path: P, defaultValue: PathValue<FS, P>): PathValue<FS, P>;
