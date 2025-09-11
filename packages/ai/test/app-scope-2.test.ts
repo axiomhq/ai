@@ -870,13 +870,5 @@ describe('createAppScope2', () => {
 
       expectTypeOf<ActualDotPaths>().toEqualTypeOf<ExpectedDotPaths>();
     });
-
-    test.skip('should provide autocomplete for flag keys within namespaces', () => {
-      // TODO: Test that IDE autocomplete works for flag keys
-    });
-
-    test.skip('should provide autocomplete for nested object properties', () => {
-      // TODO: Test autocomplete for nested properties
-    });
   });
 });
