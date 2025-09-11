@@ -57,7 +57,7 @@ type UnwrapSchema<T> = T extends ZodDefault<infer U> ? U : T;
  * // Custom depth for deeper nesting (impacts performance)
  * type DeepPaths = DotPaths<MySchemas, 12>
  */
-type DotPaths<T extends Record<string, FlagSchemaValue>, MaxDepth extends number = 8> = {
+export type DotPaths<T extends Record<string, FlagSchemaValue>, MaxDepth extends number = 8> = {
   [NS in keyof T]:
     | (string & NS) // Include the namespace itself
     | {
