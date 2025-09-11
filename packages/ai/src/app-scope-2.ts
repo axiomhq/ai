@@ -139,8 +139,10 @@ type ZodSchemaAtPathRecursive<
       : never;
 
 // Check if a nested object field has complete defaults
-type NestedObjectHasCompleteDefaults<T extends Record<string, FlagSchemaValue>, P extends string> =
-  HasDefaults<ZodSchemaAtPath<T, P>>;
+type NestedObjectHasCompleteDefaults<
+  T extends Record<string, FlagSchemaValue>,
+  P extends string,
+> = HasDefaults<ZodSchemaAtPath<T, P>>;
 
 type DotNotationFlagFunction<FS extends Record<string, FlagSchemaValue> | undefined> =
   FS extends Record<string, FlagSchemaValue>
@@ -241,12 +243,12 @@ export function createAppScope2<
   // Helper to check if a path represents a namespace access (no dots after first segment)
   function isNamespaceAccess(segments: string[]): boolean {
     if (!flagSchema || segments.length === 0) return false;
-    
+
     // For root namespace (like 'ui'), check if it exists and is more than just a namespace
     if (segments.length === 1) {
       return segments[0] in flagSchema;
     }
-    
+
     // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
     const schema = findSchemaAtPath(segments);
     return schema && schema._def && schema._def.typeName === 'ZodObject';
@@ -255,7 +257,7 @@ export function createAppScope2<
   // Helper to traverse nested default objects and extract values
   function extractFromDefaultValue(defaultValue: any, segments: string[], startIndex: number): any {
     if (startIndex >= segments.length) return defaultValue;
-    
+
     let current = defaultValue;
     for (let i = startIndex; i < segments.length; i++) {
       if (current && typeof current === 'object' && segments[i] in current) {
@@ -264,7 +266,7 @@ export function createAppScope2<
         return undefined;
       }
     }
-    
+
     return current;
   }
 
@@ -298,7 +300,7 @@ export function createAppScope2<
 
     // Handle object-level defaults first (z.object({...}).default({...}))
     if (schema._def.defaultValue !== undefined) {
-      return typeof schema._def.defaultValue === 'function' 
+      return typeof schema._def.defaultValue === 'function'
         ? schema._def.defaultValue()
         : schema._def.defaultValue;
     }
@@ -306,20 +308,20 @@ export function createAppScope2<
     // Handle ZodObject by building object from shape
     if (schema._def.typeName === 'ZodObject' && schema.shape) {
       const result: any = {};
-      
+
       for (const [key, fieldSchema] of Object.entries(schema.shape)) {
         const fieldValue = buildObjectWithDefaults(fieldSchema);
         if (fieldValue !== undefined) {
           result[key] = fieldValue;
         }
       }
-      
+
       return Object.keys(result).length > 0 ? result : undefined;
     }
 
     // Handle individual field defaults
     if (schema._def.defaultValue !== undefined) {
-      return typeof schema._def.defaultValue === 'function' 
+      return typeof schema._def.defaultValue === 'function'
         ? schema._def.defaultValue()
         : schema._def.defaultValue;
     }
@@ -373,12 +375,13 @@ export function createAppScope2<
     for (let i = segments.length - 1; i > 0; i--) {
       const parentSegments = segments.slice(0, i);
       const parentSchema = findSchemaAtPath(parentSegments);
-      
+
       if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
-        const defaultValue = typeof parentSchema._def.defaultValue === 'function' 
-          ? parentSchema._def.defaultValue()
-          : parentSchema._def.defaultValue;
-        
+        const defaultValue =
+          typeof parentSchema._def.defaultValue === 'function'
+            ? parentSchema._def.defaultValue()
+            : parentSchema._def.defaultValue;
+
         const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
         if (extractedValue !== undefined) {
           return extractedValue;
