@@ -89,26 +89,39 @@ type NamespaceHasCompleteDefaults<T, P extends string> = P extends keyof T
   : false;
 
 // Helper to find the source Zod schema at a path (not the output type)
+// Uses recursive approach with stack-based depth limiting to match ObjectPaths depth (8 levels)
 type ZodSchemaAtPath<
   T extends Record<string, ZodObject<any>>,
   P extends string,
-> = P extends `${infer NS}.${infer Rest}`
-  ? NS extends keyof T
-    ? T[NS] extends ZodObject<infer Shape>
-      ? Rest extends keyof Shape
-        ? Shape[Rest] // Direct field access: foo.bar
-        : Rest extends `${infer NextField}.${infer Deeper}`
-          ? NextField extends keyof Shape
-            ? Shape[NextField] extends ZodObject<infer NestedShape>
-              ? Deeper extends keyof NestedShape
-                ? NestedShape[Deeper] // Nested field access: foo.bar.baz
-                : never
-              : never
-            : never
-          : never
+  Stack extends unknown[] = [],
+  MaxDepth extends number = 8,
+> = Stack['length'] extends MaxDepth
+  ? never
+  : P extends `${infer NS}.${infer Rest}`
+    ? NS extends keyof T
+      ? T[NS] extends ZodObject<infer Shape>
+        ? ZodSchemaAtPathRecursive<Shape, Rest, [1, ...Stack], MaxDepth>
+        : never
       : never
-    : never
-  : never;
+    : never;
+
+// Recursive helper type to traverse Zod schema shapes at arbitrary depth
+type ZodSchemaAtPathRecursive<
+  Shape extends Record<string, any>,
+  P extends string,
+  Stack extends unknown[] = [],
+  MaxDepth extends number = 8,
+> = Stack['length'] extends MaxDepth
+  ? never
+  : P extends keyof Shape
+    ? Shape[P] // Direct field access
+    : P extends `${infer Field}.${infer Rest}`
+      ? Field extends keyof Shape
+        ? Shape[Field] extends ZodObject<infer NestedShape>
+          ? ZodSchemaAtPathRecursive<NestedShape, Rest, [1, ...Stack], MaxDepth>
+          : never
+        : never
+      : never;
 
 // Check if a nested object field has complete defaults
 type NestedObjectHasCompleteDefaults<T extends Record<string, ZodObject<any>>, P extends string> =

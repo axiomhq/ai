@@ -286,6 +286,86 @@ describe('createAppScope2 runtime behavior', () => {
       expect(scope.flag('ui.fontSize')).toBe(undefined);
     });
 
+    test('should work for depth up to 8', () => {
+      const schemas = {
+        app: z.object({
+          hasDefault: z.string().default(''),
+          noDefault: z.string(),
+          nested: z.object({
+            hasDefault: z.string().default(''),
+            noDefault: z.string(),
+            nested: z.object({
+              hasDefault: z.string().default(''),
+              noDefault: z.string(),
+              nested: z.object({
+                hasDefault: z.string().default(''),
+                noDefault: z.string(),
+                nested: z.object({
+                  hasDefault: z.string().default(''),
+                  noDefault: z.string(),
+                  nested: z.object({
+                    hasDefault: z.string().default(''),
+                    noDefault: z.string(),
+                    nested: z.object({
+                      hasDefault: z.string().default(''),
+                      noDefault: z.string(),
+                      nested: z.object({
+                        hasDefault: z.string().default(''),
+                        noDefault: z.string(),
+                        nested: z.object({
+                          hasDefault: z.string().default(''),
+                          noDefault: z.string(),
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // L2
+      scope.flag('app.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.noDefault');
+
+      // L3
+      scope.flag('app.nested.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.nested.noDefault');
+
+      // L4
+      scope.flag('app.nested.nested.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.nested.nested.noDefault');
+
+      // L5
+      scope.flag('app.nested.nested.nested.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.nested.nested.nested.noDefault');
+
+      // L6
+      scope.flag('app.nested.nested.nested.nested.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.nested.nested.nested.nested.noDefault');
+
+      // L7
+      scope.flag('app.nested.nested.nested.nested.nested.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.nested.nested.nested.nested.nested.noDefault');
+
+      // L8
+      scope.flag('app.nested.nested.nested.nested.nested.nested.hasDefault');
+      // @ts-expect-error - no default
+      scope.flag('app.nested.nested.nested.nested.nested.nested.noDefault');
+
+      // (the next level would be too deep for current implementation, but easy to fix by passing depth to ZodSchemaAtPathRecursive)
+    });
+
     test('should handle deeply nested schema defaults', () => {
       const schemas = {
         app: z.object({
