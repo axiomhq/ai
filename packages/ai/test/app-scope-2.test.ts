@@ -118,12 +118,302 @@ describe('createAppScope2 runtime behavior', () => {
   });
 
   describe('wholeNamespace', () => {
-    test.skip('should return entire namespace when key is omitted', () => {
-      // TODO: Implement test
+    test('should return entire namespace when accessing namespace key', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number().default(14),
+          layout: z.object({
+            sidebar: z.boolean().default(true),
+            width: z.number().default(300),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Should return complete namespace object with schema defaults
+      const uiNamespace = scope.flag('ui');
+      expect(uiNamespace).toEqual({
+        theme: 'dark',
+        fontSize: 14,
+        layout: {
+          sidebar: true,
+          width: 300,
+        },
+      });
     });
 
-    test.skip('should return typed namespace object', () => {
-      // TODO: Implement test
+    test('should return typed namespace object with partial schema defaults', () => {
+      const schemas = {
+        config: z.object({
+          host: z.string().default('localhost'),
+          port: z.number(), // no default
+          ssl: z.boolean().default(false),
+          database: z.object({
+            name: z.string().default('app_db'),
+            timeout: z.number(), // no default
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Should require explicit default for incomplete namespace
+      const configWithDefaults = scope.flag('config', {
+        host: 'prod-server',
+        port: 5432,
+        ssl: true,
+        database: {
+          name: 'prod_db',
+          timeout: 30000,
+        },
+      });
+
+      expect(configWithDefaults).toEqual({
+        host: 'prod-server',
+        port: 5432,
+        ssl: true,
+        database: {
+          name: 'prod_db',
+          timeout: 30000,
+        },
+      });
+    });
+
+    test('should handle nested namespace access', () => {
+      const schemas = {
+        app: z.object({
+          ui: z.object({
+            theme: z.string().default('light'),
+            layout: z.object({
+              sidebar: z.boolean().default(true),
+              grid: z.object({
+                columns: z.number().default(12),
+                rows: z.number().default(8),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Access nested namespace
+      const layout = scope.flag('app.ui.layout');
+      expect(layout).toEqual({
+        sidebar: true,
+        grid: {
+          columns: 12,
+          rows: 8,
+        },
+      });
+
+      // Access deeply nested namespace
+      const grid = scope.flag('app.ui.layout.grid');
+      expect(grid).toEqual({
+        columns: 12,
+        rows: 8,
+      });
+    });
+
+    test('should prefer explicit defaults over schema defaults for namespaces', () => {
+      const schemas = {
+        settings: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number().default(12),
+          notifications: z.object({
+            enabled: z.boolean().default(true),
+            position: z.string().default('top-right'),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Override with explicit defaults
+      const customSettings = scope.flag('settings', {
+        theme: 'light',
+        fontSize: 16,
+        notifications: {
+          enabled: false,
+          position: 'bottom-left',
+        },
+      });
+
+      expect(customSettings).toEqual({
+        theme: 'light',
+        fontSize: 16,
+        notifications: {
+          enabled: false,
+          position: 'bottom-left',
+        },
+      });
+
+      // Schema defaults should still work when no explicit defaults
+      const defaultSettings = scope.flag('settings');
+      expect(defaultSettings).toEqual({
+        theme: 'dark',
+        fontSize: 12,
+        notifications: {
+          enabled: true,
+          position: 'top-right',
+        },
+      });
+    });
+
+    test('should handle namespaces with mixed default availability', () => {
+      const schemas = {
+        features: z.object({
+          auth: z.object({
+            enabled: z.boolean().default(true),
+            provider: z.string(), // no default
+          }),
+          cache: z.object({
+            ttl: z.number().default(3600),
+            maxSize: z.number().default(1000),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Complete namespace (cache) should work without explicit defaults
+      const cacheConfig = scope.flag('features.cache');
+      expect(cacheConfig).toEqual({
+        ttl: 3600,
+        maxSize: 1000,
+      });
+
+      // Incomplete namespace (auth) should require explicit defaults
+      const authConfig = scope.flag('features.auth', {
+        enabled: true,
+        provider: 'oauth',
+      });
+      expect(authConfig).toEqual({
+        enabled: true,
+        provider: 'oauth',
+      });
+    });
+
+    test('should handle namespace with object-level defaults', () => {
+      const schemas = {
+        ui: z.object({
+          theme: z.string().default('dark'),
+          layout: z
+            .object({
+              sidebar: z.boolean(),
+              width: z.number(),
+              collapsed: z.boolean(),
+            })
+            .default({
+              sidebar: true,
+              width: 300,
+              collapsed: false,
+            }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Should use object-level defaults
+      const uiConfig = scope.flag('ui');
+      expect(uiConfig).toEqual({
+        theme: 'dark',
+        layout: {
+          sidebar: true,
+          width: 300,
+          collapsed: false,
+        },
+      });
+
+      // Nested object access should also work
+      const layout = scope.flag('ui.layout');
+      expect(layout).toEqual({
+        sidebar: true,
+        width: 300,
+        collapsed: false,
+      });
+    });
+
+    test('should handle empty namespaces', () => {
+      const schemas = {
+        empty: z.object({}),
+        withDefaults: z.object({}).default({}),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Empty namespace with explicit default
+      const emptyWithDefault = scope.flag('empty', {});
+      expect(emptyWithDefault).toEqual({});
+
+      // Empty namespace with schema default
+      const emptyWithSchemaDefault = scope.flag('withDefaults');
+      expect(emptyWithSchemaDefault).toEqual({});
+    });
+
+    test('should handle complex nested structures with mixed defaults', () => {
+      const schemas = {
+        application: z.object({
+          name: z.string().default('MyApp'),
+          version: z.string(), // no default
+          ui: z.object({
+            theme: z.string().default('system'),
+            components: z
+              .object({
+                header: z.object({
+                  visible: z.boolean(),
+                  title: z.string(),
+                }),
+                footer: z.object({
+                  visible: z.boolean(),
+                  text: z.string(),
+                }),
+              })
+              .default({
+                header: { visible: true, title: 'App Header' },
+                footer: { visible: false, text: 'Footer Text' },
+              }),
+          }),
+          database: z.object({
+            host: z.string().default('localhost'),
+            port: z.number().default(5432),
+            credentials: z.object({
+              username: z.string(),
+              password: z.string(),
+            }),
+          }),
+        }),
+      };
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Access complete sub-namespaces
+      const components = scope.flag('application.ui.components');
+      expect(components).toEqual({
+        header: { visible: true, title: 'App Header' },
+        footer: { visible: false, text: 'Footer Text' },
+      });
+
+      // Access individual nested objects with defaults
+      const header = scope.flag('application.ui.components.header');
+      expect(header).toEqual({ visible: true, title: 'App Header' });
+
+      // Test incomplete namespace requiring explicit defaults
+      const dbWithCreds = scope.flag('application.database', {
+        host: 'prod-db',
+        port: 3306,
+        credentials: {
+          username: 'admin',
+          password: 'secret',
+        },
+      });
+
+      expect(dbWithCreds.credentials).toEqual({
+        username: 'admin',
+        password: 'secret',
+      });
     });
   });
 
