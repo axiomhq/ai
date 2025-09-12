@@ -6,11 +6,11 @@ import { createAppScope2, type DotPaths } from '../src/app-scope-2';
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
     it('should create instance with correct structure and types', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
         }),
-      };
+      });
 
       const factSchema = z.object({
         userAction: z.string(),
@@ -34,11 +34,11 @@ describe('createAppScope2', () => {
     });
 
     it('should handle method calls without crashing', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -52,7 +52,7 @@ describe('createAppScope2', () => {
       });
 
       const scope = createAppScope2({
-        flagSchema: { ui: z.object({}) },
+        flagSchema: z.object({ ui: z.object({}) }),
         factSchema,
       });
 
@@ -62,12 +62,12 @@ describe('createAppScope2', () => {
 
   describe('dot notation flag access', () => {
     it('should correctly access individual flags with proper types', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
           fontSize: z.number().default(14),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -92,7 +92,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle nested object properties with correct path types', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           layout: z.object({
@@ -106,7 +106,7 @@ describe('createAppScope2', () => {
             }),
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -140,11 +140,11 @@ describe('createAppScope2', () => {
     });
 
     it('should handle invalid paths gracefully at runtime', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -160,12 +160,12 @@ describe('createAppScope2', () => {
     });
 
     it('should enforce correct default value types', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
           fontSize: z.number().default(14),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -184,7 +184,7 @@ describe('createAppScope2', () => {
 
   describe('schema defaults extraction', () => {
     it('should extract and use schema defaults for individual flags', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           fontSize: z.number().default(12),
@@ -198,7 +198,7 @@ describe('createAppScope2', () => {
           enabled: z.boolean().default(false),
           mode: z.enum(['dev', 'prod']).default('dev'),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -213,12 +213,12 @@ describe('createAppScope2', () => {
     });
 
     it('should prefer explicit defaults over schema defaults', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           fontSize: z.number().default(12),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -232,7 +232,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle fields without schema defaults', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           fontSize: z.number(), // no default
@@ -241,7 +241,7 @@ describe('createAppScope2', () => {
             width: z.number(), // no default
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -259,7 +259,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle deeply nested schema defaults up to depth 8', () => {
-      const schemas = {
+      const schemas = z.object({
         app: z.object({
           hasDefault: z.string().default('L1'),
           nested: z.object({
@@ -284,7 +284,7 @@ describe('createAppScope2', () => {
             }),
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -303,7 +303,7 @@ describe('createAppScope2', () => {
 
   describe('whole namespace access', () => {
     it('should return complete namespace objects with schema defaults', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           fontSize: z.number().default(14),
@@ -317,7 +317,7 @@ describe('createAppScope2', () => {
           port: z.number().default(5432),
           ssl: z.boolean().default(false),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -350,7 +350,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle namespaces requiring explicit defaults due to incomplete schema defaults', () => {
-      const schemas = {
+      const schemas = z.object({
         complete: z.object({
           field1: z.string().default('default1'),
           field2: z.number().default(42),
@@ -369,7 +369,7 @@ describe('createAppScope2', () => {
             timeout: z.number(), // no default
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -411,7 +411,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle nested namespace access with proper type inference', () => {
-      const schemas = {
+      const schemas = z.object({
         app: z.object({
           ui: z.object({
             theme: z.string().default('light'),
@@ -434,7 +434,7 @@ describe('createAppScope2', () => {
             }),
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -487,7 +487,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle object-level defaults correctly', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           layout: z
@@ -513,7 +513,7 @@ describe('createAppScope2', () => {
               port: 5432,
             }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -551,7 +551,7 @@ describe('createAppScope2', () => {
     });
 
     it('should prefer explicit defaults over schema defaults for namespaces', () => {
-      const schemas = {
+      const schemas = z.object({
         settings: z.object({
           theme: z.string().default('dark'),
           fontSize: z.number().default(12),
@@ -560,7 +560,7 @@ describe('createAppScope2', () => {
             position: z.string().default('top-right'),
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -598,7 +598,7 @@ describe('createAppScope2', () => {
 
   describe('type constraint validation', () => {
     it('should enforce valid namespace and flag keys', () => {
-      const schemas = {
+      const schemas = z.object({
         database: z.object({
           host: z.string().default('localhost'),
           port: z.number().default(5432),
@@ -608,7 +608,7 @@ describe('createAppScope2', () => {
           ttl: z.number().default(3600),
           maxSize: z.number().default(1000),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -622,7 +622,7 @@ describe('createAppScope2', () => {
     });
 
     it('should enforce correct default value types for complex schemas', () => {
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
           layout: z
@@ -632,7 +632,7 @@ describe('createAppScope2', () => {
             })
             .default({ sidebar: true, width: 300 }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -648,7 +648,7 @@ describe('createAppScope2', () => {
     });
 
     it('should handle edge case types correctly', () => {
-      const schemas = {
+      const schemas = z.object({
         empty: z.object({}),
         optional: z.object({
           field: z.string().optional(),
@@ -656,7 +656,7 @@ describe('createAppScope2', () => {
         nullable: z.object({
           field: z.string().nullable().default(null),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -681,7 +681,7 @@ describe('createAppScope2', () => {
 
   describe('complex integration scenarios', () => {
     it('should handle complex nested structures with mixed defaults', () => {
-      const schemas = {
+      const schemas = z.object({
         application: z.object({
           name: z.string().default('MyApp'),
           version: z.string(), // no default
@@ -712,7 +712,7 @@ describe('createAppScope2', () => {
             }),
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -744,7 +744,7 @@ describe('createAppScope2', () => {
     });
 
     it('should validate both runtime behavior and type constraints together', () => {
-      const schemas = {
+      const schemas = z.object({
         features: z.object({
           auth: z.object({
             enabled: z.boolean().default(true),
@@ -755,7 +755,7 @@ describe('createAppScope2', () => {
             maxSize: z.number().default(1000),
           }),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -803,35 +803,37 @@ describe('createAppScope2', () => {
       // This should produce a TypeScript error but not execute
       // @ts-expect-error - union types should be rejected at compile time
       const _shouldNotCompile = () =>
-        // @ts-expect-error
         createAppScope2({
-          flagSchema: {
+          // @ts-expect-error
+          flagSchema: z.object({
             payment: z.union([
               z.object({ type: z.literal('stripe'), apiKey: z.string() }),
               z.object({ type: z.literal('paypal'), clientId: z.string() }),
             ]),
-          },
+          }),
         });
 
       // Runtime validation should still work for cases that bypass TypeScript
       expect(() => {
-        // @ts-expect-error
         createAppScope2({
-          flagSchema: {
+          // @ts-expect-error
+          flagSchema: z.object({
             payment: z.union([
               z.object({ type: z.literal('stripe'), apiKey: z.string() }),
               z.object({ type: z.literal('paypal'), clientId: z.string() }),
             ]),
-          },
+          }),
         });
-      }).toThrow('[AxiomAI] Union types are not supported in flag schemas (found at "payment")');
+      }).toThrow(
+        '[AxiomAI] Union types are not supported in flag schemas (found at "flagSchema.payment")',
+      );
     });
 
     it('should reject nested union types in schemas', () => {
       expect(() => {
-        // @ts-expect-error - nested union types should be rejected at compile time
         createAppScope2({
-          flagSchema: {
+          // @ts-expect-error - nested union types should be rejected at compile time
+          flagSchema: z.object({
             ui: z.object({
               theme: z.string().default('dark'),
               layout: z.union([
@@ -839,23 +841,25 @@ describe('createAppScope2', () => {
                 z.object({ type: z.literal('list') }),
               ]),
             }),
-          },
+          }),
         });
-      }).toThrow('[AxiomAI] Union types are not supported in flag schemas (found at "ui.layout")');
+      }).toThrow(
+        '[AxiomAI] Union types are not supported in flag schemas (found at "flagSchema.ui.layout")',
+      );
     });
 
     it('should reject .or() usage in schemas', () => {
       expect(() => {
-        // @ts-expect-error - .or() usage should be rejected at compile time
         createAppScope2({
-          flagSchema: {
+          // @ts-expect-error - .or() usage should be rejected at compile time
+          flagSchema: z.object({
             config: z.object({
               value: z.string().or(z.number()),
             }),
-          },
+          }),
         });
       }).toThrow(
-        '[AxiomAI] Union types are not supported in flag schemas (found at "config.value")',
+        '[AxiomAI] Union types are not supported in flag schemas (found at "flagSchema.config.value")',
       );
     });
   });
@@ -864,11 +868,11 @@ describe('createAppScope2', () => {
     it('should return undefined and log an error for invalid namespace access', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -885,11 +889,11 @@ describe('createAppScope2', () => {
     it('should return undefined and log an error for invalid flag key access', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const schemas = {
+      const schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
         }),
-      };
+      });
 
       const scope = createAppScope2({ flagSchema: schemas });
 
@@ -911,7 +915,7 @@ describe('createAppScope2', () => {
       });
 
       const scope = createAppScope2({
-        flagSchema: { ui: z.object({}) },
+        flagSchema: z.object({ ui: z.object({}) }),
         factSchema,
       });
 
@@ -927,7 +931,7 @@ describe('createAppScope2', () => {
 
   describe('autocomplete and developer experience', () => {
     it('should provide autocomplete for namespace keys', () => {
-      const _schemas = {
+      const _schemas = z.object({
         ui: z.object({
           theme: z.string().default('dark'),
           fontSize: z.number().default(14),
@@ -938,7 +942,7 @@ describe('createAppScope2', () => {
             ttl: z.number().default(3600),
           }),
         }),
-      };
+      });
 
       type ActualDotPaths = DotPaths<typeof _schemas>;
       type ExpectedDotPaths =
@@ -951,6 +955,123 @@ describe('createAppScope2', () => {
         | 'features.cache.ttl';
 
       expectTypeOf<ActualDotPaths>().toEqualTypeOf<ExpectedDotPaths>();
+    });
+  });
+
+  describe('primitive flag schemas', () => {
+    it('should support primitive Zod types as flag schema values', () => {
+      const schemas = z.object({
+        appName: z.string().default('MyApp'),
+        version: z.number().default(1),
+        isEnabled: z.boolean().default(false),
+        mode: z.enum(['dev', 'prod']).default('dev'),
+      });
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Runtime behavior
+      expect(scope.flag('appName')).toBe('MyApp');
+      expect(scope.flag('version')).toBe(1);
+      expect(scope.flag('isEnabled')).toBe(false);
+      expect(scope.flag('mode')).toBe('dev');
+
+      // With explicit defaults
+      expect(scope.flag('appName', 'CustomApp')).toBe('CustomApp');
+      expect(scope.flag('version', 2)).toBe(2);
+      expect(scope.flag('isEnabled', true)).toBe(true);
+      expect(scope.flag('mode', 'prod')).toBe('prod');
+
+      // Type inference
+      expectTypeOf(scope.flag('appName')).toEqualTypeOf<string>();
+      expectTypeOf(scope.flag('version')).toEqualTypeOf<number>();
+      expectTypeOf(scope.flag('isEnabled')).toEqualTypeOf<boolean>();
+      expectTypeOf(scope.flag('mode')).toEqualTypeOf<'dev' | 'prod'>();
+    });
+
+    it('should handle primitive schemas without defaults', () => {
+      const schemas = z.object({
+        title: z.string(),
+        count: z.number(),
+        active: z.boolean(),
+      });
+
+      const scope = createAppScope2({ flagSchema: schemas });
+
+      // Without defaults, should require explicit fallback
+      expect(scope.flag('title', 'Default Title')).toBe('Default Title');
+      expect(scope.flag('count', 42)).toBe(42);
+      expect(scope.flag('active', true)).toBe(true);
+
+      // Without explicit fallback, should return undefined
+      expect((scope.flag as any)('title')).toBeUndefined();
+      expect((scope.flag as any)('count')).toBeUndefined();
+      expect((scope.flag as any)('active')).toBeUndefined();
+    });
+
+    it('should provide correct dot paths for primitive schemas', () => {
+      const _schemas = z.object({
+        appName: z.string().default('MyApp'),
+        version: z.number().default(1),
+        ui: z.object({
+          theme: z.string().default('dark'),
+        }),
+      });
+
+      type ActualDotPaths = DotPaths<typeof _schemas>;
+      type ExpectedDotPaths = 'appName' | 'version' | 'ui' | 'ui.theme';
+
+      expectTypeOf<ActualDotPaths>().toEqualTypeOf<ExpectedDotPaths>();
+    });
+  });
+
+  describe('fact', () => {
+    it('should record facts', () => {
+      const scope = createAppScope2({
+        flagSchema: z.object({}),
+        factSchema: z.object({
+          dbVersion: z.string(),
+        }),
+      });
+
+      void scope.fact('dbVersion', '1.2.3');
+    });
+
+    it('should provide autocomplete and type-safety for fact keys', () => {
+      const factSchema = z.object({
+        dbVersion: z.string(),
+        retries: z.number(),
+        isBeta: z.boolean(),
+        userCount: z.number(),
+        deploymentRegion: z.string(),
+      });
+
+      const scope = createAppScope2({
+        flagSchema: z.object({}),
+        factSchema,
+      });
+
+      // ----- 1. Exact key union ----------------------------------------------
+      type ActualFactKeys = Parameters<typeof scope.fact>[0];
+      type ExpectedFactKeys = 'dbVersion' | 'retries' | 'isBeta' | 'userCount' | 'deploymentRegion';
+
+      expectTypeOf<ActualFactKeys>().toEqualTypeOf<ExpectedFactKeys>();
+
+      // ----- 2. Value coupling check ------------------------------------------
+      scope.fact('dbVersion', '1.2.3'); // ok
+      scope.fact('retries', 5); // ok
+      scope.fact('isBeta', true); // ok
+      scope.fact('userCount', 1000); // ok
+      scope.fact('deploymentRegion', 'us-east-1'); // ok
+
+      // @ts-expect-error – invalid key
+      scope.fact('unknownKey', 'whatever');
+
+      // @ts-expect-error – wrong value type for key
+      scope.fact('dbVersion', 42);
+      // @ts-expect-error – wrong value type for key
+      scope.fact('retries', 'five');
+      // @ts-expect-error – wrong value type for key
+      scope.fact('isBeta', 'yes');
     });
   });
 });

@@ -9,6 +9,7 @@ const GLOBAL_FLAGS_ENV_KEY = '__AXIOM_CLI_FLAGS__';
  * Set global flag overrides (called by CLI)
  */
 export function setGlobalFlagOverrides(overrides: Record<string, any>): void {
+  // TODO: BEFORE MERGE - this can't be right? where should we put these...
   // Store in process.env as JSON string
   process.env[GLOBAL_FLAGS_ENV_KEY] = JSON.stringify(overrides);
 }
@@ -17,11 +18,12 @@ export function setGlobalFlagOverrides(overrides: Record<string, any>): void {
  * Get global flag overrides (called by flag functions)
  */
 export function getGlobalFlagOverrides(): Record<string, any> {
+  // TODO: BEFORE MERGE - this can't be right? where should we put these...
   const stored = process.env[GLOBAL_FLAGS_ENV_KEY];
   if (!stored) {
     return {};
   }
-  
+
   try {
     return JSON.parse(stored);
   } catch {

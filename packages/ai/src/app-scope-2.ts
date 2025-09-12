@@ -1,20 +1,18 @@
-import {
-  type z,
-  type ZodObject,
-  type ZodDefault,
-  type ZodUnion,
-  type ZodDiscriminatedUnion,
-  type ZodOptional,
-  type ZodNullable,
-  type ZodEffects,
-  type ZodArray,
-  type ZodRecord,
+import { getGlobalFlagOverrides } from './evals/context/global-flags';
+import type {
+  z,
+  ZodObject,
+  ZodDefault,
+  ZodUnion,
+  ZodDiscriminatedUnion,
+  ZodOptional,
+  ZodNullable,
+  ZodEffects,
+  ZodArray,
+  ZodRecord,
 } from 'zod';
 
 type DefaultMaxDepth = 8;
-
-// Helper type to allow ZodDefault wrappers around ZodObject
-type FlagSchemaValue = ZodObject<any> | ZodDefault<ZodObject<any>>;
 
 // Strip wrapper types to get to the core schema
 type StripWrappers<T> =
@@ -65,7 +63,7 @@ type ForbidUnionsDeep<T> =
     : T;
 
 export interface AppScope2Config<
-  FS extends Record<string, FlagSchemaValue> | undefined = undefined,
+  FS extends ZodObject<any> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
 > {
   flagSchema: FS;
@@ -109,39 +107,39 @@ type UnwrapSchema<T> = T extends ZodDefault<infer U> ? U : T;
 /**
  * Generate deep nested paths from flag schema.
  *
- * @template T - Record of schema objects to extract paths from
+ * @template T - ZodObject to extract paths from
  * @template MaxDepth - Maximum recursion depth (default: 8, override for deeper nesting)
  * @example
  * // Default 8-level depth
- * type Paths = DotPaths<MySchemas>
+ * type Paths = DotPaths<MySchema>
  *
  * // Custom depth for deeper nesting (impacts performance)
- * type DeepPaths = DotPaths<MySchemas, 12>
+ * type DeepPaths = DotPaths<MySchema, 12>
  */
-export type DotPaths<
-  T extends Record<string, FlagSchemaValue>,
-  MaxDepth extends number = DefaultMaxDepth,
-> = {
-  [NS in keyof T]:
+export type DotPaths<T extends ZodObject<any>, MaxDepth extends number = DefaultMaxDepth> = {
+  [NS in keyof T['shape']]:
     | (string & NS) // Include the namespace itself
     | {
-        [P in ObjectPaths<z.output<UnwrapSchema<T[NS]>>, [], MaxDepth>]: `${string & NS}.${P}`;
-      }[ObjectPaths<z.output<UnwrapSchema<T[NS]>>, [], MaxDepth>];
-}[keyof T];
+        [P in ObjectPaths<
+          z.output<UnwrapSchema<T['shape'][NS]>>,
+          [],
+          MaxDepth
+        >]: `${string & NS}.${P}`;
+      }[ObjectPaths<z.output<UnwrapSchema<T['shape'][NS]>>, [], MaxDepth>];
+}[keyof T['shape']];
 
-type PathValue<
-  T extends Record<string, FlagSchemaValue>,
-  P extends string,
-> = P extends `${infer NS}.${infer Rest}`
-  ? NS extends keyof T
-    ? ObjectPathValue<z.output<UnwrapSchema<T[NS]>>, Rest>
+type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer NS}.${infer Rest}`
+  ? NS extends keyof T['shape']
+    ? ObjectPathValue<z.output<UnwrapSchema<T['shape'][NS]>>, Rest>
     : never
-  : P extends keyof T
-    ? z.output<UnwrapSchema<T[P]>>
+  : P extends keyof T['shape']
+    ? z.output<UnwrapSchema<T['shape'][P]>>
     : never;
 
 // Helper to check if a path is a namespace-only path (like 'ui') vs field path (like 'ui.foo')
-type IsNamespaceOnly<T, P extends string> = P extends keyof T ? true : false;
+type IsNamespaceOnly<T extends ZodObject<any>, P extends string> = P extends keyof T['shape']
+  ? true
+  : false;
 
 // Helper to recursively check if a schema has defaults (including nested objects)
 type HasDefaults<S> = S extends { _def: { defaultValue: any } }
@@ -163,22 +161,23 @@ type AllFieldsHaveDefaults<Schema> =
       HasDefaults<UnwrapSchema<Schema>>;
 
 // Helper to check if a namespace has complete defaults (all fields have defaults)
-type NamespaceHasCompleteDefaults<T, P extends string> = P extends keyof T
-  ? AllFieldsHaveDefaults<T[P]>
-  : false;
+type NamespaceHasCompleteDefaults<
+  T extends ZodObject<any>,
+  P extends string,
+> = P extends keyof T['shape'] ? AllFieldsHaveDefaults<T['shape'][P]> : false;
 
 // Helper to find the source Zod schema at a path (not the output type)
 // Uses recursive approach with stack-based depth limiting to match ObjectPaths depth (8 levels)
 type ZodSchemaAtPath<
-  T extends Record<string, FlagSchemaValue>,
+  T extends ZodObject<any>,
   P extends string,
   Stack extends unknown[] = [],
   MaxDepth extends number = DefaultMaxDepth,
 > = Stack['length'] extends MaxDepth
   ? never
   : P extends `${infer NS}.${infer Rest}`
-    ? NS extends keyof T
-      ? UnwrapSchema<T[NS]> extends ZodObject<infer Shape>
+    ? NS extends keyof T['shape']
+      ? UnwrapSchema<T['shape'][NS]> extends ZodObject<infer Shape>
         ? ZodSchemaAtPathRecursive<Shape, Rest, [1, ...Stack], MaxDepth>
         : never
       : never
@@ -203,13 +202,12 @@ type ZodSchemaAtPathRecursive<
       : never;
 
 // Check if a nested object field has complete defaults
-type NestedObjectHasCompleteDefaults<
-  T extends Record<string, FlagSchemaValue>,
-  P extends string,
-> = HasDefaults<ZodSchemaAtPath<T, P>>;
+type NestedObjectHasCompleteDefaults<T extends ZodObject<any>, P extends string> = HasDefaults<
+  ZodSchemaAtPath<T, P>
+>;
 
-type DotNotationFlagFunction<FS extends Record<string, FlagSchemaValue> | undefined> =
-  FS extends Record<string, FlagSchemaValue>
+type DotNotationFlagFunction<FS extends ZodObject<any> | undefined> =
+  FS extends ZodObject<any>
     ? {
         // For nested object paths WITHOUT complete defaults (like 'ui.foo' where foo has incomplete defaults), require explicit default
         <P extends DotPaths<FS> & string>(
@@ -257,12 +255,21 @@ type FactFunction<SC extends ZodObject<any> | undefined> =
     ? <N extends keyof z.output<SC>>(name: N, value: z.output<SC>[N]) => void
     : 'Error: fact() requires a factSchema to be provided in createAppScope2({ factSchema })';
 
+// Simple function type that works for ZodObject pattern only
+type FlagSchemaFunction<FS extends ZodObject<any> | undefined> = {
+  // No arguments - return whole schema (allow when FS is not undefined)
+  (): FS extends undefined ? never : FS;
+  // Single or multiple keys - return sub-schema or array of sub-schemas
+  (...keys: string[]): any;
+};
+
 export interface AppScope2<
-  FS extends Record<string, FlagSchemaValue> | undefined,
+  FS extends ZodObject<any> | undefined,
   SC extends ZodObject<any> | undefined,
 > {
   flag: DotNotationFlagFunction<FS>;
   fact: FactFunction<SC>;
+  flagSchema: FlagSchemaFunction<FS>;
 }
 
 // Helper to recursively validate that schemas don't contain union types
@@ -298,15 +305,12 @@ function assertNoUnions(schema: any, path = 'schema'): void {
   }
 }
 
-// Function overloads with comprehensive union validation
 export function createAppScope2<
-  FS extends Record<string, FlagSchemaValue>,
+  FS extends ZodObject<any>,
   SC extends ZodObject<any> | undefined = undefined,
 >(
   config: AppScope2Config<FS, SC> & {
-    flagSchema: {
-      [K in keyof FS]: ForbidUnionsDeep<FS[K]>;
-    };
+    flagSchema: ForbidUnionsDeep<FS>;
   },
 ): AppScope2<FS, SC>;
 
@@ -317,16 +321,13 @@ export function createAppScope2<SC extends ZodObject<any> | undefined = undefine
 // Implementation
 export function createAppScope2(config: any): any {
   // Store schemas for runtime validation
-  const flagSchema = config?.flagSchema;
+  const flagSchemaConfig = config?.flagSchema;
 
   // Runtime validation – reject union types up-front
-  if (flagSchema) {
-    for (const [namespace, schema] of Object.entries(flagSchema)) {
-      assertNoUnions(schema, namespace);
-    }
+  if (flagSchemaConfig) {
+    assertNoUnions(flagSchemaConfig, 'flagSchema');
   }
 
-  // Helper function to split dot notation path and traverse schema
   function parsePath(path: string) {
     const segments = path.split('.');
     return segments;
@@ -334,24 +335,31 @@ export function createAppScope2(config: any): any {
 
   // Helper function to traverse schema object to find the field schema at a specific path
   function findSchemaAtPath(segments: string[]): any {
-    if (!flagSchema || segments.length === 0) return undefined;
+    if (!flagSchemaConfig || segments.length === 0) return undefined;
 
-    let current: any = flagSchema;
+    let current: any = flagSchemaConfig;
 
-    // Traverse through all segments to find the field schema
-    for (const segment of segments) {
-      if (!current || typeof current !== 'object') {
+    // ZodObject root - start with the shape
+    if (segments.length > 0) {
+      if (!current.shape || !(segments[0] in current.shape)) {
         return undefined;
       }
+      current = current.shape[segments[0]];
+      // Continue with remaining segments starting from index 1
+      for (let i = 1; i < segments.length; i++) {
+        const segment = segments[i];
+        if (!current || typeof current !== 'object') {
+          return undefined;
+        }
 
-      // Handle ZodObject by accessing its shape
-      if (current._def && current._def.typeName === 'ZodObject' && current.shape) {
-        current = current.shape[segment];
-      } else if (segment in current) {
-        current = current[segment];
-      } else {
-        return undefined;
+        // Handle ZodObject by accessing its shape
+        if (current._def && current._def.typeName === 'ZodObject' && current.shape) {
+          current = current.shape[segment];
+        } else {
+          return undefined;
+        }
       }
+      return current;
     }
 
     return current;
@@ -359,11 +367,11 @@ export function createAppScope2(config: any): any {
 
   // Helper to check if a path represents a namespace access (no dots after first segment)
   function isNamespaceAccess(segments: string[]): boolean {
-    if (!flagSchema || segments.length === 0) return false;
+    if (!flagSchemaConfig || segments.length === 0) return false;
 
-    // For root namespace (like 'ui'), check if it exists and is more than just a namespace
+    // For root namespace (like 'ui'), check if it exists in the ZodObject shape
     if (segments.length === 1) {
-      return segments[0] in flagSchema;
+      return segments[0] in flagSchemaConfig.shape;
     }
 
     // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
@@ -464,20 +472,35 @@ export function createAppScope2(config: any): any {
   function flag<P extends string>(path: P, defaultValue?: any): any {
     const segments = parsePath(path);
 
-    // Priority order: explicit default → schema default → undefined
+    // Get global CLI overrides
+    const globalOverrides = getGlobalFlagOverrides();
 
-    // 1. If explicit default is provided, use it
+    // Priority order: CLI overrides → explicit default → schema default → undefined
+
+    // 1. Check CLI overrides first (highest priority)
+    if (path in globalOverrides) {
+      return globalOverrides[path];
+    }
+
+    // 2. If explicit default is provided, use it
     if (defaultValue !== undefined) {
       return defaultValue;
     }
 
-    // 2. Invalid namespace check
-    if (!flagSchema || !(segments[0] in flagSchema)) {
+    // 3. Invalid namespace check
+    if (!flagSchemaConfig) {
       console.error(`[AxiomAI] Invalid flag: "${path}"`);
       return undefined;
     }
 
-    // 3. Invalid flag key check - but only if we can't extract from parent object defaults
+    const hasValidNamespace = flagSchemaConfig.shape && segments[0] in flagSchemaConfig.shape;
+
+    if (!hasValidNamespace) {
+      console.error(`[AxiomAI] Invalid flag: "${path}"`);
+      return undefined;
+    }
+
+    // 4. Invalid flag key check - but only if we can't extract from parent object defaults
     const schemaForPath = findSchemaAtPath(segments);
     if (schemaForPath === undefined) {
       // Before erroring, check if we can extract this value from parent object-level defaults
@@ -506,7 +529,7 @@ export function createAppScope2(config: any): any {
       }
     }
 
-    // 4. Check if this is a namespace access (returning whole objects)
+    // 5. Check if this is a namespace access (returning whole objects)
     if (isNamespaceAccess(segments)) {
       const schema = findSchemaAtPath(segments);
       if (schema) {
@@ -522,7 +545,7 @@ export function createAppScope2(config: any): any {
       }
     }
 
-    // 5. Check if we're accessing a nested property within an object that has an object-level default
+    // 6. Check if we're accessing a nested property within an object that has an object-level default
     // Try each parent path to see if any has an object-level default we can extract from
     for (let i = segments.length - 1; i > 0; i--) {
       const parentSegments = segments.slice(0, i);
@@ -541,7 +564,7 @@ export function createAppScope2(config: any): any {
       }
     }
 
-    // 6. Try to extract default from schema for individual fields
+    // 7. Try to extract default from schema for individual fields
     try {
       const fieldSchema = findSchemaAtPath(segments);
       if (fieldSchema) {
@@ -554,7 +577,7 @@ export function createAppScope2(config: any): any {
       // Schema inspection failed, continue to undefined
     }
 
-    // 7. Return undefined if no defaults available
+    // 8. Return undefined if no defaults available
     return undefined;
   }
 
@@ -572,8 +595,79 @@ export function createAppScope2(config: any): any {
     }
   }
 
+  // Implement flagSchema function
+  function flagSchema(...keys: string[]): any {
+    // Handle undefined flagSchema
+    if (!flagSchemaConfig) {
+      throw new Error('[AxiomAI] flagSchema not provided in createAppScope2 config');
+    }
+
+    if (keys.length === 0) {
+      // No arguments - return entire schema
+      return flagSchemaConfig;
+    } else if (keys.length === 1) {
+      // Single key - return specific sub-schema
+      const key = keys[0];
+
+      // Validate key type
+      if (typeof key !== 'string') {
+        throw new Error(
+          `[AxiomAI] Invalid flag schema key type: expected string, got ${typeof key}`,
+        );
+      }
+
+      // Handle empty or whitespace-only strings
+      if (key.trim() === '') {
+        throw new Error(
+          '[AxiomAI] Invalid flag schema key: key cannot be empty or whitespace-only',
+        );
+      }
+
+      // Handle special characters that aren't valid keys
+      if (/[.\s/]/.test(key)) {
+        throw new Error(`[AxiomAI] Invalid flag schema key: "${key}" contains invalid characters`);
+      }
+
+      // ZodObject pattern: schema.shape[key]
+      if (!flagSchemaConfig.shape || !(key in flagSchemaConfig.shape)) {
+        const availableKeys = flagSchemaConfig.shape
+          ? Object.keys(flagSchemaConfig.shape).join(', ')
+          : '(none)';
+        throw new Error(
+          `[AxiomAI] Invalid flag schema key: "${key}". Available keys: ${availableKeys}`,
+        );
+      }
+      return flagSchemaConfig.shape[key];
+    } else {
+      // Multiple keys - return array of sub-schemas
+      const result: any[] = [];
+
+      for (const key of keys) {
+        // Validate each key type
+        if (typeof key !== 'string') {
+          throw new Error(
+            `[AxiomAI] Invalid flag schema key type: expected string, got ${typeof key}`,
+          );
+        }
+
+        if (!flagSchemaConfig.shape || !(key in flagSchemaConfig.shape)) {
+          const availableKeys = flagSchemaConfig.shape
+            ? Object.keys(flagSchemaConfig.shape).join(', ')
+            : '(none)';
+          throw new Error(
+            `[AxiomAI] Invalid flag schema key: "${key}". Available keys: ${availableKeys}`,
+          );
+        }
+        result.push(flagSchemaConfig.shape[key]);
+      }
+
+      return result;
+    }
+  }
+
   return {
-    flag: flag as any,
-    fact: fact as any,
+    flag: flag,
+    fact: fact,
+    flagSchema: flagSchema,
   };
 }
