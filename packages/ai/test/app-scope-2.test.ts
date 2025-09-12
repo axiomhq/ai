@@ -1,11 +1,11 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, expect, vi, it } from 'vitest';
 import { z } from 'zod';
 import { expectTypeOf } from 'vitest';
 import { createAppScope2, type DotPaths } from '../src/app-scope-2';
 
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
-    test('should create instance with correct structure and types', () => {
+    it('should create instance with correct structure and types', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -33,7 +33,7 @@ describe('createAppScope2', () => {
       expectTypeOf(scope.fact).toBeFunction();
     });
 
-    test('should handle method calls without crashing', () => {
+    it('should handle method calls without crashing', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -46,7 +46,7 @@ describe('createAppScope2', () => {
       expect(() => scope.flag('ui.theme', 'dark')).not.toThrow();
     });
 
-    test('should handle fact recording without crashing', () => {
+    it('should handle fact recording without crashing', () => {
       const factSchema = z.object({
         dbVersion: z.string(),
       });
@@ -61,7 +61,7 @@ describe('createAppScope2', () => {
   });
 
   describe('dot notation flag access', () => {
-    test('should correctly access individual flags with proper types', () => {
+    it('should correctly access individual flags with proper types', () => {
       const schemas = {
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
@@ -91,7 +91,7 @@ describe('createAppScope2', () => {
       expectTypeOf(scope.flag('ui.fontSize')).toEqualTypeOf<number>();
     });
 
-    test('should handle nested object properties with correct path types', () => {
+    it('should handle nested object properties with correct path types', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -139,7 +139,7 @@ describe('createAppScope2', () => {
       scope.flag('ui.layout.grid.invalid');
     });
 
-    test('should handle invalid paths gracefully at runtime', () => {
+    it('should handle invalid paths gracefully at runtime', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -159,7 +159,7 @@ describe('createAppScope2', () => {
       scope.flag('nonexistent.path');
     });
 
-    test('should enforce correct default value types', () => {
+    it('should enforce correct default value types', () => {
       const schemas = {
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
@@ -183,7 +183,7 @@ describe('createAppScope2', () => {
   });
 
   describe('schema defaults extraction', () => {
-    test('should extract and use schema defaults for individual flags', () => {
+    it('should extract and use schema defaults for individual flags', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -212,7 +212,7 @@ describe('createAppScope2', () => {
       expect(scope.flag('config.mode')).toBe('dev');
     });
 
-    test('should prefer explicit defaults over schema defaults', () => {
+    it('should prefer explicit defaults over schema defaults', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -231,7 +231,7 @@ describe('createAppScope2', () => {
       expect(scope.flag('ui.fontSize')).toBe(12);
     });
 
-    test('should handle fields without schema defaults', () => {
+    it('should handle fields without schema defaults', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -258,7 +258,7 @@ describe('createAppScope2', () => {
       expect(scope.flag('ui.layout.width', 300)).toBe(300);
     });
 
-    test('should handle deeply nested schema defaults up to depth 8', () => {
+    it('should handle deeply nested schema defaults up to depth 8', () => {
       const schemas = {
         app: z.object({
           hasDefault: z.string().default('L1'),
@@ -302,7 +302,7 @@ describe('createAppScope2', () => {
   });
 
   describe('whole namespace access', () => {
-    test('should return complete namespace objects with schema defaults', () => {
+    it('should return complete namespace objects with schema defaults', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -349,7 +349,7 @@ describe('createAppScope2', () => {
       }>();
     });
 
-    test('should handle namespaces requiring explicit defaults due to incomplete schema defaults', () => {
+    it('should handle namespaces requiring explicit defaults due to incomplete schema defaults', () => {
       const schemas = {
         complete: z.object({
           field1: z.string().default('default1'),
@@ -410,7 +410,7 @@ describe('createAppScope2', () => {
       scope.flag('mixed');
     });
 
-    test('should handle nested namespace access with proper type inference', () => {
+    it('should handle nested namespace access with proper type inference', () => {
       const schemas = {
         app: z.object({
           ui: z.object({
@@ -486,7 +486,7 @@ describe('createAppScope2', () => {
       scope.flag('app.features.auth');
     });
 
-    test('should handle object-level defaults correctly', () => {
+    it('should handle object-level defaults correctly', () => {
       const schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
@@ -550,7 +550,7 @@ describe('createAppScope2', () => {
       }>();
     });
 
-    test('should prefer explicit defaults over schema defaults for namespaces', () => {
+    it('should prefer explicit defaults over schema defaults for namespaces', () => {
       const schemas = {
         settings: z.object({
           theme: z.string().default('dark'),
@@ -597,7 +597,7 @@ describe('createAppScope2', () => {
   });
 
   describe('type constraint validation', () => {
-    test('should enforce valid namespace and flag keys', () => {
+    it('should enforce valid namespace and flag keys', () => {
       const schemas = {
         database: z.object({
           host: z.string().default('localhost'),
@@ -621,7 +621,7 @@ describe('createAppScope2', () => {
       scope.flag('missing.anything');
     });
 
-    test('should enforce correct default value types for complex schemas', () => {
+    it('should enforce correct default value types for complex schemas', () => {
       const schemas = {
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
@@ -647,7 +647,7 @@ describe('createAppScope2', () => {
       scope.flag('ui.theme', 'invalid');
     });
 
-    test('should handle edge case types correctly', () => {
+    it('should handle edge case types correctly', () => {
       const schemas = {
         empty: z.object({}),
         optional: z.object({
@@ -680,7 +680,7 @@ describe('createAppScope2', () => {
   });
 
   describe('complex integration scenarios', () => {
-    test('should handle complex nested structures with mixed defaults', () => {
+    it('should handle complex nested structures with mixed defaults', () => {
       const schemas = {
         application: z.object({
           name: z.string().default('MyApp'),
@@ -743,7 +743,7 @@ describe('createAppScope2', () => {
       });
     });
 
-    test('should validate both runtime behavior and type constraints together', () => {
+    it('should validate both runtime behavior and type constraints together', () => {
       const schemas = {
         features: z.object({
           auth: z.object({
@@ -799,7 +799,7 @@ describe('createAppScope2', () => {
   });
 
   describe('type inference advanced features', () => {
-    test('should reject union types in schemas at compile time and runtime', () => {
+    it('should reject union types in schemas at compile time and runtime', () => {
       // This should produce a TypeScript error but not execute
       // @ts-expect-error - union types should be rejected at compile time
       const _shouldNotCompile = () =>
@@ -827,7 +827,7 @@ describe('createAppScope2', () => {
       }).toThrow('[AxiomAI] Union types are not supported in flag schemas (found at "payment")');
     });
 
-    test('should reject nested union types in schemas', () => {
+    it('should reject nested union types in schemas', () => {
       expect(() => {
         // @ts-expect-error - nested union types should be rejected at compile time
         createAppScope2({
@@ -844,7 +844,7 @@ describe('createAppScope2', () => {
       }).toThrow('[AxiomAI] Union types are not supported in flag schemas (found at "ui.layout")');
     });
 
-    test('should reject .or() usage in schemas', () => {
+    it('should reject .or() usage in schemas', () => {
       expect(() => {
         // @ts-expect-error - .or() usage should be rejected at compile time
         createAppScope2({
@@ -861,7 +861,7 @@ describe('createAppScope2', () => {
   });
 
   describe('validation and error handling', () => {
-    test('should return undefined and log an error for invalid namespace access', () => {
+    it('should return undefined and log an error for invalid namespace access', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const schemas = {
@@ -882,7 +882,7 @@ describe('createAppScope2', () => {
       errorSpy.mockRestore();
     });
 
-    test('should return undefined and log an error for invalid flag key access', () => {
+    it('should return undefined and log an error for invalid flag key access', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const schemas = {
@@ -903,7 +903,7 @@ describe('createAppScope2', () => {
       errorSpy.mockRestore();
     });
 
-    test('should log an error when recording a fact that is not in the schema (but still record it)', () => {
+    it('should log an error when recording a fact that is not in the schema (but still record it)', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const factSchema = z.object({
@@ -926,7 +926,7 @@ describe('createAppScope2', () => {
   });
 
   describe('autocomplete and developer experience', () => {
-    test('should provide autocomplete for namespace keys', () => {
+    it('should provide autocomplete for namespace keys', () => {
       const _schemas = {
         ui: z.object({
           theme: z.string().default('dark'),
