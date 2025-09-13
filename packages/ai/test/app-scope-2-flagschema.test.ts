@@ -162,20 +162,15 @@ describe('flagSchema API', () => {
     const appScope = createAppScope2({ flagSchema: schema });
 
     it('should provide correct return types', () => {
-      // No arguments - returns entire schema
-      expectTypeOf((appScope as any).flagSchema()).toEqualTypeOf<any>();
-
-      // Single argument - returns specific sub-schema
-      expectTypeOf(appScope.flagSchema('foo')).toEqualTypeOf<any>();
-
-      // Multiple arguments - returns array of sub-schemas
-      expectTypeOf(appScope.flagSchema('foo', 'baz')).toEqualTypeOf<any>();
+      expectTypeOf(appScope.flagSchema()).not.toEqualTypeOf<any>();
+      expectTypeOf(appScope.flagSchema('foo')).not.toEqualTypeOf<any>();
+      expectTypeOf(appScope.flagSchema('foo', 'baz')).not.toEqualTypeOf<any>();
     });
 
     it('should enforce valid key names at compile time', () => {
       // Invalid key should cause runtime error
       try {
-        appScope.flagSchema('invalid');
+        (appScope.flagSchema as any)('invalid');
         // Should not reach here - runtime should catch invalid key
         expect.fail('Expected runtime error for invalid key');
       } catch (error: any) {
@@ -184,7 +179,7 @@ describe('flagSchema API', () => {
 
       // Mixed valid/invalid should cause runtime error
       try {
-        appScope.flagSchema('foo', 'invalid');
+        (appScope.flagSchema as any)('foo', 'invalid');
         // Should not reach here - runtime should catch invalid key
         expect.fail('Expected runtime error for mixed valid/invalid keys');
       } catch (error: any) {
@@ -349,8 +344,8 @@ describe('flagSchema API', () => {
       const appScope = createAppScope2({ flagSchema: constSchema });
       const result = appScope.flagSchema('config');
 
-      expectTypeOf(result.shape.mode).toEqualTypeOf<any>();
-      expectTypeOf(result.shape.version).toEqualTypeOf<any>();
+      expectTypeOf(result.shape.mode).not.toEqualTypeOf<any>();
+      expectTypeOf(result.shape.version).not.toEqualTypeOf<any>();
     });
 
     it('should handle branded types correctly', () => {

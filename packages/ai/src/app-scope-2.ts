@@ -1,15 +1,15 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
-import type {
-  z,
-  ZodObject,
-  ZodDefault,
-  ZodUnion,
-  ZodDiscriminatedUnion,
-  ZodOptional,
-  ZodNullable,
-  ZodEffects,
-  ZodArray,
-  ZodRecord,
+import {
+  type z,
+  type ZodObject,
+  type ZodDefault,
+  type ZodUnion,
+  type ZodDiscriminatedUnion,
+  type ZodOptional,
+  type ZodNullable,
+  type ZodEffects,
+  type ZodArray,
+  type ZodRecord,
 } from 'zod';
 
 type DefaultMaxDepth = 8;
@@ -259,8 +259,14 @@ type FactFunction<SC extends ZodObject<any> | undefined> =
 type FlagSchemaFunction<FS extends ZodObject<any> | undefined> = {
   // No arguments - return whole schema (allow when FS is not undefined)
   (): FS extends undefined ? never : FS;
-  // Single or multiple keys - return sub-schema or array of sub-schemas
-  (...keys: string[]): any;
+  // Single key - return specific sub-schema
+  <K extends keyof (FS extends ZodObject<any> ? FS['shape'] : {})>(
+    key: K,
+  ): FS extends ZodObject<any> ? FS['shape'][K] : never;
+  // Multiple keys - return array of sub-schemas
+  <K extends keyof (FS extends ZodObject<any> ? FS['shape'] : {})>(
+    ...keys: K[]
+  ): FS extends ZodObject<any> ? FS['shape'][K][] : never;
 };
 
 export interface AppScope2<
