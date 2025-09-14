@@ -1,4 +1,5 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
+import { validateCliFlags } from './validate-flags';
 import {
   type z,
   type ZodObject,
@@ -355,6 +356,11 @@ export function createAppScope2(config: any): any {
   // Runtime validation – reject union types up-front
   if (flagSchemaConfig) {
     assertNoUnions(flagSchemaConfig, 'flagSchema');
+  }
+
+  // CLI validation with dot notation support
+  if (flagSchemaConfig) {
+    validateCliFlags(flagSchemaConfig);
   }
 
   function parsePath(path: string) {
