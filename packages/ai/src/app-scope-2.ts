@@ -1,5 +1,7 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
+import { getEvalContext, updateEvalContext } from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
+import { trace } from '@opentelemetry/api';
 import {
   type z,
   type ZodObject,
@@ -507,118 +509,159 @@ export function createAppScope2(config: any): any {
   function flag<P extends string>(path: P, defaultValue?: any): any {
     const segments = parsePath(path);
 
-    // Get global CLI overrides
+    // Get eval context and global CLI overrides
+    const ctx = getEvalContext();
     const globalOverrides = getGlobalFlagOverrides();
 
-    // Priority order: CLI overrides → explicit default → schema default → undefined
+    let finalValue: any;
+    let hasValue = false;
+
+    // Flag precedence order (as per oracle plan):
+    // 1. CLI overrides (getGlobalFlagOverrides)
+    // 2. Eval context overrides (getEvalContext().flags)
+    // 3. Explicit defaultValue passed by caller
+    // 4. Schema/object defaults
+    // 5. undefined + console.error
 
     // 1. Check CLI overrides first (highest priority)
     if (path in globalOverrides) {
-      return globalOverrides[path];
+      finalValue = globalOverrides[path];
+      hasValue = true;
+    }
+    // 2. Check context overrides (from withFlags() or overrideFlags)
+    else if (path in ctx.flags) {
+      finalValue = ctx.flags[path];
+      hasValue = true;
+    }
+    // 3. Use explicit default if provided (overrides schema default)
+    else if (defaultValue !== undefined) {
+      finalValue = defaultValue;
+      hasValue = true;
     }
 
-    // 2. If explicit default is provided, use it
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-
-    // 3. Invalid namespace check
-    if (!flagSchemaConfig) {
-      console.error(`[AxiomAI] Invalid flag: "${path}"`);
-      return undefined;
-    }
-
-    const hasValidNamespace = flagSchemaConfig.shape && segments[0] in flagSchemaConfig.shape;
-
-    if (!hasValidNamespace) {
-      console.error(`[AxiomAI] Invalid flag: "${path}"`);
-      return undefined;
-    }
-
-    // 4. Invalid flag key check - but only if we can't extract from parent object defaults
-    const schemaForPath = findSchemaAtPath(segments);
-    if (schemaForPath === undefined) {
-      // Before erroring, check if we can extract this value from parent object-level defaults
-      let canExtractFromParents = false;
-      for (let i = segments.length - 1; i > 0; i--) {
-        const parentSegments = segments.slice(0, i);
-        const parentSchema = findSchemaAtPath(parentSegments);
-
-        if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
-          const defaultValue =
-            typeof parentSchema._def.defaultValue === 'function'
-              ? parentSchema._def.defaultValue()
-              : parentSchema._def.defaultValue;
-
-          const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
-          if (extractedValue !== undefined) {
-            canExtractFromParents = true;
-            break;
-          }
-        }
-      }
-
-      if (!canExtractFromParents) {
+    // 4. If we don't have a value yet, try to get from schema/object defaults
+    if (!hasValue) {
+      // Invalid namespace check
+      if (!flagSchemaConfig) {
         console.error(`[AxiomAI] Invalid flag: "${path}"`);
         return undefined;
       }
-    }
 
-    // 5. Check if this is a namespace access (returning whole objects)
-    if (isNamespaceAccess(segments)) {
-      const schema = findSchemaAtPath(segments);
-      if (schema) {
-        // Only return namespace objects if ALL fields have defaults
-        if (schemaHasCompleteDefaults(schema)) {
-          const namespaceObject = buildObjectWithDefaults(schema);
-          if (namespaceObject !== undefined) {
-            return namespaceObject;
-          }
-        }
-        // If not all fields have defaults, return undefined
+      const hasValidNamespace = flagSchemaConfig.shape && segments[0] in flagSchemaConfig.shape;
+
+      if (!hasValidNamespace) {
+        console.error(`[AxiomAI] Invalid flag: "${path}"`);
         return undefined;
       }
-    }
 
-    // 6. Check if we're accessing a nested property within an object that has an object-level default
-    // Try each parent path to see if any has an object-level default we can extract from
-    for (let i = segments.length - 1; i > 0; i--) {
-      const parentSegments = segments.slice(0, i);
-      const parentSchema = findSchemaAtPath(parentSegments);
+      // Invalid flag key check - but only if we can't extract from parent object defaults
+      const schemaForPath = findSchemaAtPath(segments);
+      if (schemaForPath === undefined) {
+        // Before erroring, check if we can extract this value from parent object-level defaults
+        let canExtractFromParents = false;
+        for (let i = segments.length - 1; i > 0; i--) {
+          const parentSegments = segments.slice(0, i);
+          const parentSchema = findSchemaAtPath(parentSegments);
 
-      if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
-        const defaultValue =
-          typeof parentSchema._def.defaultValue === 'function'
-            ? parentSchema._def.defaultValue()
-            : parentSchema._def.defaultValue;
+          if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
+            const defaultValue =
+              typeof parentSchema._def.defaultValue === 'function'
+                ? parentSchema._def.defaultValue()
+                : parentSchema._def.defaultValue;
 
-        const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
-        if (extractedValue !== undefined) {
-          return extractedValue;
+            const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
+            if (extractedValue !== undefined) {
+              finalValue = extractedValue;
+              hasValue = true;
+              canExtractFromParents = true;
+              break;
+            }
+          }
+        }
+
+        if (!canExtractFromParents) {
+          console.error(`[AxiomAI] Invalid flag: "${path}"`);
+          return undefined;
+        }
+      }
+
+      // Check if this is a namespace access (returning whole objects)
+      if (!hasValue && isNamespaceAccess(segments)) {
+        const schema = findSchemaAtPath(segments);
+        if (schema) {
+          // Only return namespace objects if ALL fields have defaults
+          if (schemaHasCompleteDefaults(schema)) {
+            const namespaceObject = buildObjectWithDefaults(schema);
+            if (namespaceObject !== undefined) {
+              finalValue = namespaceObject;
+              hasValue = true;
+            }
+          }
+        }
+      }
+
+      // Check if we're accessing a nested property within an object that has an object-level default
+      if (!hasValue) {
+        // Try each parent path to see if any has an object-level default we can extract from
+        for (let i = segments.length - 1; i > 0; i--) {
+          const parentSegments = segments.slice(0, i);
+          const parentSchema = findSchemaAtPath(parentSegments);
+
+          if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
+            const defaultValue =
+              typeof parentSchema._def.defaultValue === 'function'
+                ? parentSchema._def.defaultValue()
+                : parentSchema._def.defaultValue;
+
+            const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
+            if (extractedValue !== undefined) {
+              finalValue = extractedValue;
+              hasValue = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Try to extract default from schema for individual fields
+      if (!hasValue) {
+        try {
+          const fieldSchema = findSchemaAtPath(segments);
+          if (fieldSchema) {
+            const schemaDefault = extractSchemaDefault(fieldSchema);
+            if (schemaDefault !== undefined) {
+              finalValue = schemaDefault;
+              hasValue = true;
+            }
+          }
+        } catch {
+          // Schema inspection failed, continue to undefined
         }
       }
     }
 
-    // 7. Try to extract default from schema for individual fields
-    try {
-      const fieldSchema = findSchemaAtPath(segments);
-      if (fieldSchema) {
-        const schemaDefault = extractSchemaDefault(fieldSchema);
-        if (schemaDefault !== undefined) {
-          return schemaDefault;
-        }
-      }
-    } catch {
-      // Schema inspection failed, continue to undefined
+    // 5. If we still don't have a value, log error and return undefined
+    if (!hasValue) {
+      console.error(`[AxiomAI] Invalid flag: "${path}"`);
+      return undefined;
     }
 
-    // 8. Return undefined if no defaults available
-    return undefined;
+    // TODO: BEFORE MERGE - we need validation...
+    // Skip validation for now - the complex dot notation validation needs more careful handling
+    // This matches the oracle plan which says to focus on core functionality first
+
+    // Store accessed flag for context tracking
+    updateEvalContext({ [path]: finalValue });
+
+    // TODO: BEFORE MERGE - do a span event instead?
+    // Add OpenTelemetry span attributes
+    const span = trace.getActiveSpan();
+    if (span?.isRecording()) {
+      span.setAttributes({ [`flag.${path}`]: String(finalValue) });
+    }
+
+    return finalValue;
   }
-
-  // TODO: BEFORE MERGE - this isn't right - need to actually implement facts
-  // Storage for facts (demo purposes)
-  const factStore: Record<string, any> = {};
 
   /**
    * Record a typed fact value.
