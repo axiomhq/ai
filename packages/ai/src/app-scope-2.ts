@@ -350,6 +350,7 @@ export function createAppScope2<SC extends ZodObject<any> | undefined = undefine
 export function createAppScope2(config: any): any {
   // Store schemas for runtime validation
   const flagSchemaConfig = config?.flagSchema;
+  const factSchemaConfig = config?.factSchema;
 
   // Runtime validation – reject union types up-front
   if (flagSchemaConfig) {
@@ -613,13 +614,43 @@ export function createAppScope2(config: any): any {
   // Storage for facts (demo purposes)
   const factStore: Record<string, any> = {};
 
+  /**
+   * Record a typed fact value.
+   * Facts are write-only, no defaults needed.
+   * Validates using schema if provided.
+   */
   function fact<N extends string>(name: N, value: any): void {
-    // Always record the fact
-    factStore[name] = value;
+    let finalValue = value;
 
-    // Check if the fact is in the schema and log error if not
-    if (config.factSchema && !(name in (config.factSchema.shape as Record<string, any>))) {
-      console.error(`[AxiomAI] Invalid fact: "${name}"`);
+    // Validate with schema if provided (but only log errors for now to match tests)
+    if (factSchemaConfig) {
+      const result = factSchemaConfig
+        .strict()
+        .partial()
+        .safeParse({ [name]: value });
+      if (!result.success) {
+        console.error(`[AxiomAI] Invalid fact: "${name}"`);
+        // TODO: BEFORE MERGE - decide what to do
+        // For now, continue recording the fact even if validation fails
+        // This matches the existing test expectations
+      } else {
+        // Use validated value in case of coercion
+        finalValue = result.data[name] ?? value;
+      }
+    }
+
+    // Store in context for tracking
+    updateEvalContext(undefined, { [name]: finalValue });
+
+    // Add OpenTelemetry integration
+    const span = trace.getActiveSpan();
+    if (span?.isRecording()) {
+      // TODO: BEFORE MERGE - is this right?
+      span.setAttributes({ [`fact.${name}`]: String(finalValue) });
+      // Also record as timestamped event for time-series data
+      span.addEvent('fact.recorded', {
+        [`fact.${name}`]: String(finalValue),
+      });
     }
   }
 
