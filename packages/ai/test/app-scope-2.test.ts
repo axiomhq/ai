@@ -7,8 +7,6 @@ import {
   clearGlobalFlagOverrides,
 } from '../src/evals/context/global-flags';
 
-const questions = [{ text: 'How are you', tags: ['greeting', 'somethingElse'] }];
-
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
     it('should create instance with correct structure and types', () => {
