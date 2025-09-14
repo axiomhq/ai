@@ -336,6 +336,9 @@ function assertNoUnions(schema: any, path = 'schema'): void {
   }
 }
 
+/**
+ * TODO: BEFORE MERGE - jsdoc here
+ */
 export function createAppScope2<
   FS extends ZodObject<any>,
   SC extends ZodObject<any> | undefined = undefined,
@@ -345,11 +348,13 @@ export function createAppScope2<
   },
 ): AppScope2<FS, SC>;
 
+/**
+ * TODO: BEFORE MERGE - jsdoc here also
+ */
 export function createAppScope2<SC extends ZodObject<any> | undefined = undefined>(
   config: AppScope2Config<undefined, SC>,
 ): AppScope2<undefined, SC>;
 
-// Implementation
 export function createAppScope2(config: any): any {
   // Store schemas for runtime validation
   const flagSchemaConfig = config?.flagSchema;
@@ -452,22 +457,21 @@ export function createAppScope2(config: any): any {
       return true;
     }
 
-    // For individual fields, check if they have a default value
-    return schema._def.defaultValue !== undefined;
+    return false;
   }
 
   // Recursively build object with all defaults from a Zod schema
   function buildObjectWithDefaults(schema: any): any {
     if (!schema || !schema._def) return undefined;
 
-    // Handle object-level defaults first (z.object({...}).default({...}))
-    if (schema._def.defaultValue !== undefined) {
-      return typeof schema._def.defaultValue === 'function'
-        ? schema._def.defaultValue()
-        : schema._def.defaultValue;
+    // `directDefault`: default for the entire object
+    // If this is not present, we try to construct the defaults from child fields (recursively)
+    const directDefault = extractDefault(schema);
+    if (directDefault !== undefined) {
+      return directDefault;
     }
 
-    // Handle ZodObject by building object from shape
+    // We can only collect defaults from child fields if we're dealing with an object (for a scalar, there are no children)
     if (schema._def.typeName === 'ZodObject' && schema.shape) {
       const result: any = {};
 
@@ -481,31 +485,56 @@ export function createAppScope2(config: any): any {
       return Object.keys(result).length > 0 ? result : undefined;
     }
 
-    // Handle individual field defaults
-    if (schema._def.defaultValue !== undefined) {
-      return typeof schema._def.defaultValue === 'function'
-        ? schema._def.defaultValue()
-        : schema._def.defaultValue;
-    }
-
+    // No direct default, and it's not an object
     return undefined;
   }
 
-  // Helper function to extract default value from a Zod schema
-  function extractSchemaDefault(schema: any): any {
+  function getValueFromParentDefaults(segments: string[]): unknown | undefined {
+    for (let i = segments.length - 1; i > 0; i--) {
+      const parentSchema = findSchemaAtPath(segments.slice(0, i));
+      const val = parentSchema && extractDefault(parentSchema);
+      if (val !== undefined) {
+        const extractedValue = extractFromDefaultValue(val, segments, i);
+        if (extractedValue !== undefined) return extractedValue;
+      }
+    }
+    return undefined;
+  }
+
+  function extractDefault(schema: any): unknown {
     if (!schema || !schema._def) return undefined;
 
-    const fieldDef = schema._def;
-    if (fieldDef.defaultValue !== undefined) {
-      return typeof fieldDef.defaultValue === 'function'
-        ? fieldDef.defaultValue()
-        : fieldDef.defaultValue;
+    // Unwrap transparent containers first, checking for defaults at each level
+    let current = schema;
+
+    while (current && current._def) {
+      // Check for default value at current level
+      if (current._def.defaultValue !== undefined) {
+        return typeof current._def.defaultValue === 'function'
+          ? current._def.defaultValue()
+          : current._def.defaultValue;
+      }
+
+      // Unwrap one level if possible
+      if ('innerType' in current._def) {
+        current = current._def.innerType;
+      } else if ('schema' in current._def) {
+        current = current._def.schema;
+      } else {
+        // No more wrapping, stop here
+        break;
+      }
     }
 
     return undefined;
   }
 
-  // Implement dot notation flag logic with schema defaults
+  /**
+   * Get flag value with dot notation path support and schema validation.
+   * @param path - Dot notation path to the flag (e.g., 'ui.theme' or 'api.timeout')
+   * @param defaultValue - Optional default value if flag not found
+   * @returns The flag value or undefined if not found
+   */
   function flag<P extends string>(path: P, defaultValue?: any): any {
     const segments = parsePath(path);
 
@@ -516,7 +545,7 @@ export function createAppScope2(config: any): any {
     let finalValue: any;
     let hasValue = false;
 
-    // Flag precedence order (as per oracle plan):
+    // Flag precedence order:
     // 1. CLI overrides (getGlobalFlagOverrides)
     // 2. Eval context overrides (getEvalContext().flags)
     // 3. Explicit defaultValue passed by caller
@@ -558,28 +587,11 @@ export function createAppScope2(config: any): any {
       const schemaForPath = findSchemaAtPath(segments);
       if (schemaForPath === undefined) {
         // Before erroring, check if we can extract this value from parent object-level defaults
-        let canExtractFromParents = false;
-        for (let i = segments.length - 1; i > 0; i--) {
-          const parentSegments = segments.slice(0, i);
-          const parentSchema = findSchemaAtPath(parentSegments);
-
-          if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
-            const defaultValue =
-              typeof parentSchema._def.defaultValue === 'function'
-                ? parentSchema._def.defaultValue()
-                : parentSchema._def.defaultValue;
-
-            const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
-            if (extractedValue !== undefined) {
-              finalValue = extractedValue;
-              hasValue = true;
-              canExtractFromParents = true;
-              break;
-            }
-          }
-        }
-
-        if (!canExtractFromParents) {
+        const extractedValue = getValueFromParentDefaults(segments);
+        if (extractedValue !== undefined) {
+          finalValue = extractedValue;
+          hasValue = true;
+        } else {
           console.error(`[AxiomAI] Invalid flag: "${path}"`);
           return undefined;
         }
@@ -602,24 +614,10 @@ export function createAppScope2(config: any): any {
 
       // Check if we're accessing a nested property within an object that has an object-level default
       if (!hasValue) {
-        // Try each parent path to see if any has an object-level default we can extract from
-        for (let i = segments.length - 1; i > 0; i--) {
-          const parentSegments = segments.slice(0, i);
-          const parentSchema = findSchemaAtPath(parentSegments);
-
-          if (parentSchema && parentSchema._def && parentSchema._def.defaultValue !== undefined) {
-            const defaultValue =
-              typeof parentSchema._def.defaultValue === 'function'
-                ? parentSchema._def.defaultValue()
-                : parentSchema._def.defaultValue;
-
-            const extractedValue = extractFromDefaultValue(defaultValue, segments, i);
-            if (extractedValue !== undefined) {
-              finalValue = extractedValue;
-              hasValue = true;
-              break;
-            }
-          }
+        const extractedValue = getValueFromParentDefaults(segments);
+        if (extractedValue !== undefined) {
+          finalValue = extractedValue;
+          hasValue = true;
         }
       }
 
@@ -628,7 +626,7 @@ export function createAppScope2(config: any): any {
         try {
           const fieldSchema = findSchemaAtPath(segments);
           if (fieldSchema) {
-            const schemaDefault = extractSchemaDefault(fieldSchema);
+            const schemaDefault = extractDefault(fieldSchema);
             if (schemaDefault !== undefined) {
               finalValue = schemaDefault;
               hasValue = true;
@@ -664,9 +662,9 @@ export function createAppScope2(config: any): any {
   }
 
   /**
-   * Record a typed fact value.
-   * Facts are write-only, no defaults needed.
-   * Validates using schema if provided.
+   * Record a typed fact value for tracking and telemetry.
+   * @param name - The fact name/key
+   * @param value - The fact value to record
    */
   function fact<N extends string>(name: N, value: any): void {
     let finalValue = value;
@@ -703,7 +701,11 @@ export function createAppScope2(config: any): any {
     }
   }
 
-  // Implement flagSchema function
+  /**
+   * Access flag schema definitions for validation and inspection.
+   * @param keys - Optional schema keys to retrieve specific sub-schemas
+   * @returns The full schema or specific sub-schemas
+   */
   function flagSchema(...keys: string[]): any {
     // Handle undefined flagSchema
     if (!flagSchemaConfig) {
@@ -774,8 +776,8 @@ export function createAppScope2(config: any): any {
   }
 
   return {
-    flag: flag,
-    fact: fact,
-    flagSchema: flagSchema,
+    flag,
+    fact,
+    flagSchema,
   };
 }
