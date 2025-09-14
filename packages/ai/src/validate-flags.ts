@@ -62,6 +62,38 @@ function DEPRECATED__validateFlatFlags(
     process.exit(1);
   }
 }
+
+/**
+ * Transform dot notation object to nested object structure
+ * Example: {"ui.theme": "dark", "config.name": "test"}
+ * -> {ui: {theme: "dark"}, config: {name: "test"}}
+ */
+function dotNotationToNested(dotNotationObject: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  for (const [dotPath, value] of Object.entries(dotNotationObject)) {
+    const segments = dotPath.split('.');
+    let current = result;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+
+      if (i === segments.length - 1) {
+        // Last segment - set the value
+        current[segment] = value;
+      } else {
+        // Intermediate segment - ensure object exists
+        if (!(segment in current) || typeof current[segment] !== 'object') {
+          current[segment] = {};
+        }
+        current = current[segment];
+      }
+    }
+  }
+
+  return result;
+}
+
 /**
  * Check if a dot notation path exists in the schema
  */
