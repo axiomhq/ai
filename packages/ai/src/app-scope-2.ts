@@ -70,6 +70,28 @@ export interface AppScope2Config<
   factSchema?: SC;
 }
 
+// TODO: BEFORE MERGE - use this
+class _InvalidFlagError extends Error {
+  constructor(
+    message: string,
+    public zodError: z.ZodError,
+  ) {
+    super(message);
+    this.name = 'InvalidFlagError';
+  }
+}
+
+// TODO: BEFORE MERGE - use this
+class _InvalidFactError extends Error {
+  constructor(
+    message: string,
+    public zodError: z.ZodError,
+  ) {
+    super(message);
+    this.name = 'InvalidFactError';
+  }
+}
+
 /**
  * Recursive type to extract all possible paths from an object type.
  * Uses stack-based depth limiting for better performance.
