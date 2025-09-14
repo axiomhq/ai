@@ -1,7 +1,13 @@
-import { describe, expect, vi, it } from 'vitest';
+import { describe, expect, vi, it, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { expectTypeOf } from 'vitest';
 import { createAppScope2, type DotPaths } from '../src/app-scope-2';
+import {
+  setGlobalFlagOverrides,
+  clearGlobalFlagOverrides,
+} from '../src/evals/context/global-flags';
+
+const questions = [{ text: 'How are you', tags: ['greeting', 'somethingElse'] }];
 
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
@@ -1072,6 +1078,153 @@ describe('createAppScope2', () => {
       scope.fact('retries', 'five');
       // @ts-expect-error – wrong value type for key
       scope.fact('isBeta', 'yes');
+    });
+  });
+
+  describe('CLI validation', () => {
+    let exitSpy: any;
+    let errorSpy: any;
+
+    beforeEach(() => {
+      // Spy on process.exit but throw instead of actually exiting
+      exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+        throw new Error(`process.exit:${code}`);
+      }) as never);
+
+      // Spy on console.error to capture validation messages
+      errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      exitSpy.mockRestore();
+      errorSpy.mockRestore();
+      clearGlobalFlagOverrides();
+    });
+
+    it('should pass validation with valid CLI flags using dot notation', () => {
+      const flagSchema = z.object({
+        ui: z.object({
+          theme: z.enum(['light', 'dark']).default('dark'),
+          fontSize: z.number().default(14),
+        }),
+      });
+
+      setGlobalFlagOverrides({ 'ui.theme': 'light', 'ui.fontSize': 16 });
+
+      const { flag } = createAppScope2({ flagSchema });
+
+      expect(flag('ui.theme')).toBe('light');
+      expect(flag('ui.fontSize')).toBe(16);
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should pass validation with no CLI flags (uses schema defaults)', () => {
+      const flagSchema = z.object({
+        config: z.object({
+          mode: z.enum(['dev', 'prod']).default('dev'),
+          timeout: z.number().default(30),
+        }),
+      });
+
+      // No CLI flags set
+      const { flag } = createAppScope2({ flagSchema });
+
+      expect(flag('config.mode')).toBe('dev');
+      expect(flag('config.timeout')).toBe(30);
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should fail validation with invalid flag value and exit process', () => {
+      const flagSchema = z.object({
+        ui: z.object({
+          theme: z.enum(['light', 'dark']).default('dark'),
+        }),
+      });
+
+      setGlobalFlagOverrides({ 'ui.theme': 'invalid' });
+
+      expect(() => {
+        createAppScope2({ flagSchema });
+      }).toThrow('process.exit:1');
+
+      expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    });
+
+    it('should fail validation with unknown flag path and exit process', () => {
+      const flagSchema = z.object({
+        ui: z.object({
+          theme: z.string().default('dark'),
+        }),
+      });
+
+      setGlobalFlagOverrides({ 'ui.unknownFlag': 'value' });
+
+      expect(() => {
+        createAppScope2({ flagSchema });
+      }).toThrow('process.exit:1');
+
+      expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    });
+
+    it('should fail validation with type mismatch and exit process', () => {
+      const flagSchema = z.object({
+        config: z.object({
+          count: z.number().default(1),
+        }),
+      });
+
+      setGlobalFlagOverrides({ 'config.count': 'not-a-number' });
+
+      expect(() => {
+        createAppScope2({ flagSchema });
+      }).toThrow('process.exit:1');
+
+      expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    });
+
+    it('should handle partial CLI flag overrides correctly with dot notation', () => {
+      const flagSchema = z.object({
+        ui: z.object({
+          theme: z.enum(['light', 'dark']).default('dark'),
+          fontSize: z.number().default(14),
+        }),
+        config: z.object({
+          name: z.string().default('test'),
+        }),
+      });
+
+      // Only override some flags
+      setGlobalFlagOverrides({ 'ui.theme': 'light' });
+
+      const { flag } = createAppScope2({ flagSchema });
+
+      expect(flag('ui.theme')).toBe('light'); // overridden
+      expect(flag('ui.fontSize')).toBe(14); // schema default
+      expect(flag('config.name')).toBe('test'); // schema default
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should work correctly with multiple createAppScope2 calls', () => {
+      // Use compatible schemas that only reference flags they define
+      const flagSchema1 = z.object({
+        config: z.object({
+          flag1: z.string().default('default1'),
+        }),
+      });
+      const flagSchema2 = z.object({
+        config: z.object({
+          flag1: z.string().default('default1'),
+        }),
+      }); // Same schema
+
+      setGlobalFlagOverrides({ 'config.flag1': 'override1' });
+
+      const scope1 = createAppScope2({ flagSchema: flagSchema1 });
+      const scope2 = createAppScope2({ flagSchema: flagSchema2 });
+
+      expect(scope1.flag('config.flag1')).toBe('override1');
+      expect(scope2.flag('config.flag1')).toBe('override1');
+      expect(exitSpy).not.toHaveBeenCalled();
     });
   });
 });
