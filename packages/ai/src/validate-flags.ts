@@ -30,6 +30,40 @@ export function validateCliFlags(flagSchema: ZodObject<any>): void {
       examples.forEach(example => console.error(`  ${example}`));
     }
     
+/**
+ * Check if a dot notation path exists in the schema
+ */
+function isValidPath(schema: ZodObject<any>, segments: string[]): boolean {
+  let currentSchema = schema;
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+
+    if (!currentSchema.shape || !(segment in currentSchema.shape)) {
+      return false;
+    }
+
+    if (i < segments.length - 1) {
+      // Not the last segment, should be a ZodObject
+      const nextSchema = currentSchema.shape[segment];
+
+      // Handle wrapped schemas (ZodDefault, ZodOptional, etc.)
+      let unwrappedSchema = nextSchema;
+      while (unwrappedSchema?._def?.innerType || unwrappedSchema?._def?.schema) {
+        unwrappedSchema = unwrappedSchema._def.innerType || unwrappedSchema._def.schema;
+      }
+
+      if (!unwrappedSchema || unwrappedSchema._def?.typeName !== 'ZodObject') {
+        return false;
+      }
+
+      currentSchema = unwrappedSchema;
+    }
+  }
+
+  return true;
+}
+
 function validateFlags(flagSchema: ZodObject<any>, globalOverrides: Record<string, any>): void {
   // First pass: check all paths exist in schema
   for (const [dotPath, _value] of Object.entries(globalOverrides)) {
