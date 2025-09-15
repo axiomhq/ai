@@ -1,6 +1,6 @@
 import { expectTypeOf, describe, it } from 'vitest';
 import { z } from 'zod';
-import { createAppScope } from '../src/app-scope';
+import { createAppScope as createAppScope } from '../src/app-scope';
 
 describe('type-level tests for app scope', () => {
   it('basic type', () => {
@@ -16,10 +16,10 @@ describe('type-level tests for app scope', () => {
     const flagSchema = z.object({ foo: z.string() });
     const { flag } = createAppScope({ flagSchema });
 
-    // @ts-expect-error this is wrong syntax
-    const f = flag('foo');
+    // This should be valid with v2 - it will return the value with a required default parameter
+    const f = flag('foo', 'default-value');
 
-    expectTypeOf(f).toBeNever();
+    expectTypeOf(f).toEqualTypeOf<string>();
   });
 
   it('flags with defaults in schema should work with or without a value', () => {

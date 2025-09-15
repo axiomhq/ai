@@ -1,7 +1,7 @@
 import { describe, expect, vi, it, beforeEach, afterEach } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import { z } from 'zod';
-import { createAppScope2 } from '../src/app-scope-2';
+import { createAppScope } from '../src/app-scope';
 import {
   setGlobalFlagOverrides,
   clearGlobalFlagOverrides,
@@ -19,7 +19,7 @@ describe('flagSchema API', () => {
 
   beforeEach(() => {
     clearGlobalFlagOverrides();
-    appScope = createAppScope2({ flagSchema: standardSchema });
+    appScope = createAppScope({ flagSchema: standardSchema });
   });
 
   afterEach(() => {
@@ -33,7 +33,7 @@ describe('flagSchema API', () => {
         foo: z.object({ bar: z.string() }),
         baz: z.object({ qux: z.number() }),
       });
-      const appScope = createAppScope2({ flagSchema: schema });
+      const appScope = createAppScope({ flagSchema: schema });
 
       const result = appScope.flagSchema();
       expect(result).toBe(schema);
@@ -113,7 +113,7 @@ describe('flagSchema API', () => {
         key4: z.object({ value: z.string() }),
         key5: z.object({ value: z.string() }),
       });
-      const appScope = createAppScope2({ flagSchema: largeSchema });
+      const appScope = createAppScope({ flagSchema: largeSchema });
 
       const allKeys = Object.keys(largeSchema.shape) as Array<keyof typeof largeSchema.shape>;
       const result = appScope.flagSchema(...allKeys);
@@ -138,7 +138,7 @@ describe('flagSchema API', () => {
     });
 
     it('should handle single character key names', () => {
-      const appScope = createAppScope2({ flagSchema: edgeCaseSchema });
+      const appScope = createAppScope({ flagSchema: edgeCaseSchema });
       expect(() => appScope.flagSchema('a')).not.toThrow();
 
       const result = appScope.flagSchema('a');
@@ -146,7 +146,7 @@ describe('flagSchema API', () => {
     });
 
     it('should handle very long key names', () => {
-      const appScope = createAppScope2({ flagSchema: edgeCaseSchema });
+      const appScope = createAppScope({ flagSchema: edgeCaseSchema });
       expect(() => appScope.flagSchema('very_long_key_name_that_tests_boundaries')).not.toThrow();
 
       const result = appScope.flagSchema('very_long_key_name_that_tests_boundaries');
@@ -159,7 +159,7 @@ describe('flagSchema API', () => {
       foo: z.object({ bar: z.string() }),
       baz: z.object({ qux: z.number() }),
     });
-    const appScope = createAppScope2({ flagSchema: schema });
+    const appScope = createAppScope({ flagSchema: schema });
 
     it('should provide correct return types', () => {
       expectTypeOf(appScope.flagSchema()).not.toEqualTypeOf<any>();
@@ -209,7 +209,7 @@ describe('flagSchema API', () => {
       const schema = z.object({
         ui: z.object({ theme: z.string().default('dark') }),
       });
-      const appScope = createAppScope2({ flagSchema: schema });
+      const appScope = createAppScope({ flagSchema: schema });
 
       const uiSchema = appScope.flagSchema('ui');
       const themeValue = appScope.flag('ui.theme');
@@ -236,7 +236,7 @@ describe('flagSchema API', () => {
           }),
         }),
       });
-      const appScope = createAppScope2({ flagSchema: complexSchema });
+      const appScope = createAppScope({ flagSchema: complexSchema });
 
       const uiSchema = appScope.flagSchema('ui');
       const layoutValue = appScope.flag('ui.layout');
@@ -253,7 +253,7 @@ describe('flagSchema API', () => {
       const flagSchema = z.object({ ui: z.object({ enabled: z.boolean().default(true) }) });
       const factSchema = z.object({ renderTime: z.number() });
 
-      const appScope = createAppScope2({ flagSchema, factSchema });
+      const appScope = createAppScope({ flagSchema, factSchema });
 
       expect(() => {
         const uiSchema = appScope.flagSchema('ui');
@@ -264,7 +264,7 @@ describe('flagSchema API', () => {
 
     it('should not interfere with fact recording', () => {
       const factSchema = z.object({ actionCount: z.number() });
-      const appScope = createAppScope2({
+      const appScope = createAppScope({
         flagSchema: standardSchema,
         factSchema,
       });
@@ -293,7 +293,7 @@ describe('flagSchema API', () => {
       const schema = z.object({
         ui: z.object({ theme: z.string().default('dark') }),
       });
-      const appScope = createAppScope2({ flagSchema: schema });
+      const appScope = createAppScope({ flagSchema: schema });
 
       const uiSchema = appScope.flagSchema('ui');
       const themeValue = appScope.flag('ui.theme');
@@ -309,7 +309,7 @@ describe('flagSchema API', () => {
           fontSize: z.number().default(14),
         }),
       });
-      const appScope = createAppScope2({ flagSchema: schema });
+      const appScope = createAppScope({ flagSchema: schema });
 
       const uiSchema = appScope.flagSchema('ui');
 
@@ -322,7 +322,7 @@ describe('flagSchema API', () => {
   describe('Memory efficiency', () => {
     it('should not create unnecessary copies', () => {
       const schema = z.object({ foo: z.object({ bar: z.string() }) });
-      const appScope = createAppScope2({ flagSchema: schema });
+      const appScope = createAppScope({ flagSchema: schema });
 
       const result1 = appScope.flagSchema('foo');
       const result2 = appScope.flagSchema('foo');
@@ -341,7 +341,7 @@ describe('flagSchema API', () => {
         }),
       });
 
-      const appScope = createAppScope2({ flagSchema: constSchema });
+      const appScope = createAppScope({ flagSchema: constSchema });
       const result = appScope.flagSchema('config');
 
       expectTypeOf(result.shape.mode).not.toEqualTypeOf<any>();
@@ -356,7 +356,7 @@ describe('flagSchema API', () => {
         }),
       });
 
-      const appScope = createAppScope2({ flagSchema: brandedSchema });
+      const appScope = createAppScope({ flagSchema: brandedSchema });
       const result = appScope.flagSchema('user');
 
       expect(result).toBeDefined();

@@ -62,15 +62,16 @@ describe('createAppScope with Zod schemas', () => {
 
     const appScope = createAppScope({ flagSchema });
 
-    // Valid flag should work
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const num = appScope.flag('num');
     expect(num).toBe(42);
+    expect(consoleSpy).not.toHaveBeenCalled();
 
-    // This would now be caught by TypeScript, but test runtime behavior
-    expect(() => {
-      // Simulate invalid value from CLI override
-      (appScope as any).flag('invalidKey');
-    }).toThrow();
+    const result = (appScope as any).flag('invalidKey');
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
+    expect(result).toBeUndefined();
+    consoleSpy.mockRestore();
   });
 
   it('should validate fact types strictly', () => {
@@ -82,15 +83,14 @@ describe('createAppScope with Zod schemas', () => {
 
     const appScope = createAppScope({ flagSchema: z.object({}), factSchema });
 
-    // Valid fact should work
-    expect(() => {
-      appScope.fact('duration', 123.45);
-    }).not.toThrow();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Invalid fact type should throw
-    expect(() => {
-      appScope.fact('duration', 'not a number' as any);
-    }).toThrow("Fact 'duration' validation failed");
+    appScope.fact('duration', 123.45);
+    expect(consoleSpy).not.toHaveBeenCalled();
+
+    appScope.fact('duration', 'not a number' as any);
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid fact'));
+    consoleSpy.mockRestore();
   });
 
   it('should not be allowed to call without flagSchema', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, expectTypeOf, vi } from 'vitest';
 import { z } from 'zod';
 import { pickCapabilities } from '../src/evals/pick-capabilities';
-import { createAppScope2 } from '../src/app-scope-2';
+import { createAppScope } from '../src/app-scope';
 
 describe('pickNamespaces', () => {
   describe('basic functionality', () => {
@@ -123,7 +123,7 @@ describe('pickNamespaces', () => {
       const pickedSchema = pickCapabilities(fullSchema, ['ui', 'features']);
 
       // Should work with createAppScope2
-      const scope = createAppScope2({ flagSchema: pickedSchema });
+      const scope = createAppScope({ flagSchema: pickedSchema });
 
       expect(scope.flag('ui.theme')).toBe('dark');
       expect(scope.flag('features.auth')).toBe(true);
