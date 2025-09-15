@@ -1,5 +1,8 @@
 import type { Scorer } from './scorers';
 
+// TODO: BEFORE MERGE - really?
+export type { Scorer } from './scorers';
+
 // Type utilities for automatic inference
 /** Extract the input type from CollectionRecord[] */
 export type InputOf<Data extends readonly CollectionRecord<any, any>[]> =
@@ -10,10 +13,11 @@ export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
   Data[number] extends CollectionRecord<any, infer E> ? E : never;
 
 /** Extract the output type from a task function */
-export type OutputOf<TaskFn extends (...args: any) => any> =
-  TaskFn extends (...args: any) => AsyncIterable<infer O>
-    ? O
-    : Awaited<ReturnType<TaskFn>>;
+export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
+  ...args: any
+) => AsyncIterable<infer O>
+  ? O
+  : Awaited<ReturnType<TaskFn>>;
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
@@ -41,7 +45,7 @@ export type OutputOf<TaskFn extends (...args: any) => any> =
 export type EvalTask<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
-  TOutput extends string | Record<string, any>
+  TOutput extends string | Record<string, any>,
 > = (args: {
   input: TInput;
   expected: TExpected;
@@ -54,7 +58,7 @@ export type EvalTask<
  */
 export type CollectionRecord<
   TInput extends string | Record<string, any>,
-  TExpected extends string | Record<string, any>
+  TExpected extends string | Record<string, any>,
 > = {
   /** The input data for the evaluation case */
   input: TInput;
@@ -75,14 +79,16 @@ export type CollectionRecord<
 export type EvalParams<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
-  TOutput extends string | Record<string, any>
+  TOutput extends string | Record<string, any>,
 > = {
   /** Function that returns the dataset with input/expected pairs for evaluation */
-  data: () => CollectionRecord<TInput, TExpected>[] | Promise<CollectionRecord<TInput, TExpected>[]>;
+  data: () =>
+    | readonly CollectionRecord<TInput, TExpected>[]
+    | Promise<readonly CollectionRecord<TInput, TExpected>[]>;
   /** The task function to evaluate */
   task: EvalTask<TInput, TExpected, TOutput>;
   /** Array of scoring functions to evaluate the task output */
-  scorers: Array<Scorer<TInput, TExpected, TOutput>>;
+  scorers: ReadonlyArray<Scorer<TInput, TExpected, TOutput>>;
   /** Optional metadata for the evaluation */
   metadata?: Record<string, unknown>;
   /** Optional timeout in milliseconds for task execution */
