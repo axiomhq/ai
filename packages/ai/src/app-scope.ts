@@ -256,7 +256,7 @@ type DotNotationFlagFunction<FS extends ZodObject<any> | undefined> =
 type FactFunction<SC extends ZodObject<any> | undefined> =
   SC extends ZodObject<any>
     ? <N extends keyof z.output<SC>>(name: N, value: z.output<SC>[N]) => void
-    : 'Error: fact() requires a factSchema to be provided in createAppScope2({ factSchema })';
+    : 'Error: fact() requires a factSchema to be provided in createAppScope({ factSchema })';
 
 // Simple function type that works for ZodObject pattern only
 type FlagSchemaFunction<FS extends ZodObject<any> | undefined> = {
@@ -699,7 +699,7 @@ export function createAppScope(config: any): any {
   function flagSchema(...keys: string[]): any {
     // Handle undefined flagSchema
     if (!flagSchemaConfig) {
-      throw new Error('[AxiomAI] flagSchema not provided in createAppScope2 config');
+      throw new Error('[AxiomAI] flagSchema not provided in createAppScope config');
     }
 
     if (keys.length === 0) {

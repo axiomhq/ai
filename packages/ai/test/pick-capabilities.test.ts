@@ -122,7 +122,7 @@ describe('pickNamespaces', () => {
       // Pick only ui and features namespaces
       const pickedSchema = pickCapabilities(fullSchema, ['ui', 'features']);
 
-      // Should work with createAppScope2
+      // Should work with createAppScope
       const scope = createAppScope({ flagSchema: pickedSchema });
 
       expect(scope.flag('ui.theme')).toBe('dark');
