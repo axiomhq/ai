@@ -39,6 +39,7 @@ export function fact<V>(key: string, value: V): void {
  * Override flag values for the current evaluation context.
  * This merges the provided flags with any existing flags.
  * 
+ * @internal - For framework use only. Use scope.overrideFlags() for typed flag access.
  * @param partial - Partial flag overrides
  */
 export function overrideFlags(partial: Record<string, any>): void {

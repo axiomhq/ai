@@ -6,6 +6,7 @@ import {
   setGlobalFlagOverrides,
   clearGlobalFlagOverrides,
 } from '../src/evals/context/global-flags';
+import { withEvalContext } from '../src/evals/context/storage';
 
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
@@ -1025,6 +1026,189 @@ describe('createAppScope2', () => {
       type ExpectedDotPaths = 'appName' | 'version' | 'ui' | 'ui.theme';
 
       expectTypeOf<ActualDotPaths>().toEqualTypeOf<ExpectedDotPaths>();
+    });
+  });
+
+  describe('overrideFlags', () => {
+    it('should allow typed flag overrides', () => {
+      withEvalContext({}, () => {
+        const schemas = z.object({
+          ui: z.object({
+            theme: z.enum(['light', 'dark']).default('light'),
+            fontSize: z.number().default(14),
+          }),
+        });
+
+        const scope = createAppScope2({ flagSchema: schemas });
+
+        // Before override
+        expect(scope.flag('ui.theme')).toBe('light');
+        expect(scope.flag('ui.fontSize')).toBe(14);
+
+        // Apply typed overrides
+        scope.overrideFlags({
+          'ui.theme': 'dark',
+          'ui.fontSize': 16,
+        });
+
+        // After override
+        expect(scope.flag('ui.theme')).toBe('dark');
+        expect(scope.flag('ui.fontSize')).toBe(16);
+
+        // Type checking
+        expectTypeOf(scope.overrideFlags).parameter(0).toEqualTypeOf<{
+          'ui'?: { theme: 'light' | 'dark'; fontSize: number };
+          'ui.theme'?: 'light' | 'dark';
+          'ui.fontSize'?: number;
+        }>();
+
+        // @ts-expect-error - invalid path should be caught
+        scope.overrideFlags({ 'nonexistent.path': 'value' });
+        // @ts-expect-error - wrong type should be caught
+        scope.overrideFlags({ 'ui.theme': 123 });
+      });
+    });
+
+    it('should handle partial overrides', () => {
+      withEvalContext({}, () => {
+        const schemas = z.object({
+          ui: z.object({
+            theme: z.enum(['light', 'dark']).default('light'),
+            fontSize: z.number().default(14),
+          }),
+          config: z.object({
+            name: z.string().default('App'),
+          }),
+        });
+
+        const scope = createAppScope2({ flagSchema: schemas });
+
+        // Override only some flags
+        scope.overrideFlags({
+          'ui.theme': 'dark',
+          'config.name': 'TestApp',
+        });
+
+        expect(scope.flag('ui.theme')).toBe('dark');
+        expect(scope.flag('ui.fontSize')).toBe(14); // unchanged
+        expect(scope.flag('config.name')).toBe('TestApp');
+      });
+    });
+
+    it('should work with valid paths only', () => {
+      withEvalContext({}, () => {
+        const scope = createAppScope2({
+          flagSchema: z.object({ 
+            ui: z.object({
+              theme: z.string().default('light')
+            }) 
+          }),
+        });
+
+        expect(() => {
+          scope.overrideFlags({ 'ui.theme': 'dark' });
+        }).not.toThrow();
+        
+        expect(scope.flag('ui.theme')).toBe('dark');
+      });
+    });
+  });
+
+  describe('withFlags', () => {
+    it('should temporarily override flags with automatic restore', () => {
+      withEvalContext({}, () => {
+        const schemas = z.object({
+          ui: z.object({
+            theme: z.enum(['light', 'dark']).default('light'),
+            fontSize: z.number().default(14),
+          }),
+        });
+
+        const scope = createAppScope2({ flagSchema: schemas });
+
+        // Before override
+        expect(scope.flag('ui.theme')).toBe('light');
+        expect(scope.flag('ui.fontSize')).toBe(14);
+
+        const result = scope.withFlags(
+          {
+            'ui.theme': 'dark',
+            'ui.fontSize': 16,
+          },
+          () => {
+            // Inside override scope
+            expect(scope.flag('ui.theme')).toBe('dark');
+            expect(scope.flag('ui.fontSize')).toBe(16);
+            return 'test-result';
+          }
+        );
+
+        // After override - should be restored
+        expect(scope.flag('ui.theme')).toBe('light');
+        expect(scope.flag('ui.fontSize')).toBe(14);
+        expect(result).toBe('test-result');
+
+        // Type checking
+        expectTypeOf(scope.withFlags).parameter(0).toEqualTypeOf<{
+          'ui'?: { theme: 'light' | 'dark'; fontSize: number };
+          'ui.theme'?: 'light' | 'dark';
+          'ui.fontSize'?: number;
+        }>();
+
+        // @ts-expect-error - invalid path should be caught
+        scope.withFlags({ 'nonexistent.path': 'value' }, () => {});
+        // @ts-expect-error - wrong type should be caught  
+        scope.withFlags({ 'ui.theme': 123 }, () => {});
+      });
+    });
+
+    it('should restore flags even if function throws', () => {
+      withEvalContext({}, () => {
+        const schemas = z.object({
+          ui: z.object({
+            theme: z.enum(['light', 'dark']).default('light'),
+          }),
+        });
+
+        const scope = createAppScope2({ flagSchema: schemas });
+
+        // Before override
+        expect(scope.flag('ui.theme')).toBe('light');
+
+        expect(() => {
+          scope.withFlags({ 'ui.theme': 'dark' }, () => {
+            expect(scope.flag('ui.theme')).toBe('dark');
+            throw new Error('Test error');
+          });
+        }).toThrow('Test error');
+
+        // Should still be restored after error
+        expect(scope.flag('ui.theme')).toBe('light');
+      });
+    });
+
+    it('should return function result with correct type inference', () => {
+      withEvalContext({}, () => {
+        const schemas = z.object({
+          ui: z.object({
+            theme: z.string().default('light'),
+          }),
+        });
+
+        const scope = createAppScope2({ flagSchema: schemas });
+
+        const stringResult = scope.withFlags({ 'ui.theme': 'dark' }, () => 'string');
+        const numberResult = scope.withFlags({ 'ui.theme': 'dark' }, () => 42);
+        const objectResult = scope.withFlags({ 'ui.theme': 'dark' }, () => ({ test: true }));
+
+        expectTypeOf(stringResult).toEqualTypeOf<string>();
+        expectTypeOf(numberResult).toEqualTypeOf<number>();
+        expectTypeOf(objectResult).toEqualTypeOf<{ test: boolean }>();
+
+        expect(stringResult).toBe('string');
+        expect(numberResult).toBe(42);
+        expect(objectResult).toEqual({ test: true });
+      });
     });
   });
 

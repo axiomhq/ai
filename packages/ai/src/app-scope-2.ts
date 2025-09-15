@@ -294,6 +294,16 @@ type FlagSchemaFunction<FS extends ZodObject<any> | undefined> = {
   ): FS extends ZodObject<any> ? FS['shape'][K][] : never;
 };
 
+type OverrideFlagsFunction<FS extends ZodObject<any> | undefined> =
+  FS extends ZodObject<any>
+    ? (partial: { [K in DotPaths<FS>]?: PathValue<FS, K> }) => void
+    : (partial: Record<string, any>) => void;
+
+type WithFlagsFunction<FS extends ZodObject<any> | undefined> =
+  FS extends ZodObject<any>
+    ? <T>(overrides: { [K in DotPaths<FS>]?: PathValue<FS, K> }, fn: () => T) => T
+    : <T>(overrides: Record<string, any>, fn: () => T) => T;
+
 export interface AppScope2<
   FS extends ZodObject<any> | undefined,
   SC extends ZodObject<any> | undefined,
@@ -301,6 +311,8 @@ export interface AppScope2<
   flag: DotNotationFlagFunction<FS>;
   fact: FactFunction<SC>;
   flagSchema: FlagSchemaFunction<FS>;
+  overrideFlags: OverrideFlagsFunction<FS>;
+  withFlags: WithFlagsFunction<FS>;
 }
 
 // Helper to recursively validate that schemas don't contain union types
@@ -775,9 +787,42 @@ export function createAppScope2(config: any): any {
     }
   }
 
+  /**
+   * Override flag values for the current evaluation context with type safety.
+   * @param partial - Typed flag overrides that must match the flag schema paths and types
+   */
+  function overrideFlags(partial: Record<string, any>): void {
+    const ctx = getEvalContext();
+    Object.assign(ctx.flags, partial);
+  }
+
+  /**
+   * Execute code with temporary flag overrides, automatically restoring original values.
+   * @param overrides - Typed flag overrides that must match the flag schema paths and types
+   * @param fn - Function to execute with the overridden flags
+   * @returns The return value of the executed function
+   */
+  function withFlags<T>(overrides: Record<string, any>, fn: () => T): T {
+    const ctx = getEvalContext();
+    const originalFlags = { ...ctx.flags };
+
+    // Apply overrides
+    Object.assign(ctx.flags, overrides);
+
+    try {
+      return fn();
+    } finally {
+      // Restore original flags by clearing and reassigning
+      Object.keys(ctx.flags).forEach((key) => delete ctx.flags[key]);
+      Object.assign(ctx.flags, originalFlags);
+    }
+  }
+
   return {
     flag,
     fact,
     flagSchema,
+    overrideFlags,
+    withFlags,
   };
 }
