@@ -287,10 +287,10 @@ type PickFlagsFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
     ? <K extends ReadonlyArray<keyof FS['shape']>>(
         keys: K,
-      ) => AppScope2<ZodObject<Pick<FS['shape'], K[number]>>, undefined>
+      ) => AppScope<ZodObject<Pick<FS['shape'], K[number]>>, undefined>
     : never;
 
-export interface AppScope2<
+export interface AppScope<
   FS extends ZodObject<any> | undefined,
   SC extends ZodObject<any> | undefined,
 > {
@@ -345,14 +345,14 @@ export function createAppScope<
   config: AppScope2Config<FS, SC> & {
     flagSchema: ForbidUnionsDeep<FS>;
   },
-): AppScope2<FS, SC>;
+): AppScope<FS, SC>;
 
 /**
  * TODO: BEFORE MERGE - jsdoc here also
  */
 export function createAppScope<SC extends ZodObject<any> | undefined = undefined>(
   config: AppScope2Config<undefined, SC>,
-): AppScope2<undefined, SC>;
+): AppScope<undefined, SC>;
 
 export function createAppScope(config: any): any {
   // Store schemas for runtime validation
