@@ -8,7 +8,7 @@ export * from './evals/eval.service';
 
 export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
 
-export { flag, fact, overrideFlags } from './context';
+export { flag, fact } from './context';
 export { withEvalContext, getEvalContext } from './evals/context/storage';
 export type { EvalContextData } from './evals/context/storage';
 
