@@ -1,7 +1,7 @@
 import { describe, expect, vi, it, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { expectTypeOf } from 'vitest';
-import { createAppScope2, type DotPaths } from '../src/app-scope-2';
+import { createAppScope, type DotPaths } from '../src/app-scope';
 import {
   setGlobalFlagOverrides,
   clearGlobalFlagOverrides,
@@ -21,7 +21,7 @@ describe('createAppScope2', () => {
         userAction: z.string(),
       });
 
-      const scope = createAppScope2({
+      const scope = createAppScope({
         flagSchema: schemas,
         factSchema,
       });
@@ -45,7 +45,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expect(() => scope.flag('ui.theme')).not.toThrow();
       expect(() => scope.flag('ui.theme', 'dark')).not.toThrow();
@@ -56,7 +56,7 @@ describe('createAppScope2', () => {
         dbVersion: z.string(),
       });
 
-      const scope = createAppScope2({
+      const scope = createAppScope({
         flagSchema: z.object({ ui: z.object({}) }),
         factSchema,
       });
@@ -74,7 +74,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Runtime behavior
       expect(() => scope.flag('ui')).not.toThrow();
@@ -113,7 +113,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Runtime behavior
       expect(() => scope.flag('ui.layout.sidebar')).not.toThrow();
@@ -151,7 +151,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expect(() => scope.flag('nonexistent.path', 'fallback')).not.toThrow();
       expect(scope.flag('nonexistent.path', 'fallback')).toBe('fallback');
@@ -172,7 +172,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expectTypeOf(scope.flag('ui.theme', 'dark')).toEqualTypeOf<'light' | 'dark'>();
       expectTypeOf(scope.flag('ui.fontSize', 16)).toEqualTypeOf<number>();
@@ -205,7 +205,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Should extract from schema defaults
       expect(scope.flag('ui.theme')).toBe('dark');
@@ -225,7 +225,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Explicit defaults should override schema defaults
       expect(scope.flag('ui.theme', 'light')).toBe('light');
@@ -248,7 +248,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expect(scope.flag('ui.theme')).toBe('dark');
       expect(scope.flag('ui.layout.sidebar')).toBe(true);
@@ -291,7 +291,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expect(scope.flag('app.hasDefault')).toBe('L1');
       expect(scope.flag('app.nested.hasDefault')).toBe('L2');
@@ -324,7 +324,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Runtime behavior
       const uiNamespace = scope.flag('ui');
@@ -376,7 +376,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Complete namespace should work without explicit defaults
       expect(scope.flag('complete')).toEqual({
@@ -441,7 +441,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Access nested complete namespaces
       const layout = scope.flag('app.ui.layout');
@@ -520,7 +520,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Should use object-level defaults
       const uiConfig = scope.flag('ui');
@@ -567,7 +567,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Override with explicit defaults
       const customSettings = scope.flag('settings', {
@@ -615,7 +615,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expectTypeOf(scope.flag('database.host')).toEqualTypeOf<string>();
       expectTypeOf(scope.flag('cache.ttl')).toEqualTypeOf<number>();
@@ -639,7 +639,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       expectTypeOf(scope.flag('ui.layout', { sidebar: false, width: 250 })).toEqualTypeOf<{
         sidebar: boolean;
@@ -663,7 +663,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Empty object
       expectTypeOf(scope.flag('empty', {})).toEqualTypeOf<{}>();
@@ -719,7 +719,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Access complete sub-namespaces
       const components = scope.flag('application.ui.components');
@@ -762,7 +762,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Complete namespace (cache) should work without explicit defaults
       const cacheConfig = scope.flag('features.cache');
@@ -808,7 +808,7 @@ describe('createAppScope2', () => {
       // This should produce a TypeScript error but not execute
       // @ts-expect-error - union types should be rejected at compile time
       const _shouldNotCompile = () =>
-        createAppScope2({
+        createAppScope({
           // @ts-expect-error
           flagSchema: z.object({
             payment: z.union([
@@ -820,7 +820,7 @@ describe('createAppScope2', () => {
 
       // Runtime validation should still work for cases that bypass TypeScript
       expect(() => {
-        createAppScope2({
+        createAppScope({
           // @ts-expect-error
           flagSchema: z.object({
             payment: z.union([
@@ -836,7 +836,7 @@ describe('createAppScope2', () => {
 
     it('should reject nested union types in schemas', () => {
       expect(() => {
-        createAppScope2({
+        createAppScope({
           // @ts-expect-error - nested union types should be rejected at compile time
           flagSchema: z.object({
             ui: z.object({
@@ -855,7 +855,7 @@ describe('createAppScope2', () => {
 
     it('should reject .or() usage in schemas', () => {
       expect(() => {
-        createAppScope2({
+        createAppScope({
           // @ts-expect-error - .or() usage should be rejected at compile time
           flagSchema: z.object({
             config: z.object({
@@ -879,7 +879,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Try to access a namespace that doesn't exist
       const result = (scope.flag as any)('nonexistent.path');
@@ -900,7 +900,7 @@ describe('createAppScope2', () => {
         }),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Try to access a field that doesn't exist in the namespace
       const result = (scope.flag as any)('ui.unknown');
@@ -919,7 +919,7 @@ describe('createAppScope2', () => {
         dbVersion: z.string(),
       });
 
-      const scope = createAppScope2({
+      const scope = createAppScope({
         flagSchema: z.object({ ui: z.object({}) }),
         factSchema,
       });
@@ -972,7 +972,7 @@ describe('createAppScope2', () => {
         mode: z.enum(['dev', 'prod']).default('dev'),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Runtime behavior
       expect(scope.flag('appName')).toBe('MyApp');
@@ -1000,7 +1000,7 @@ describe('createAppScope2', () => {
         active: z.boolean(),
       });
 
-      const scope = createAppScope2({ flagSchema: schemas });
+      const scope = createAppScope({ flagSchema: schemas });
 
       // Without defaults, should require explicit fallback
       expect(scope.flag('title', 'Default Title')).toBe('Default Title');
@@ -1039,7 +1039,7 @@ describe('createAppScope2', () => {
           }),
         });
 
-        const scope = createAppScope2({ flagSchema: schemas });
+        const scope = createAppScope({ flagSchema: schemas });
 
         // Before override
         expect(scope.flag('ui.theme')).toBe('light');
@@ -1057,7 +1057,7 @@ describe('createAppScope2', () => {
 
         // Type checking
         expectTypeOf(scope.overrideFlags).parameter(0).toEqualTypeOf<{
-          'ui'?: { theme: 'light' | 'dark'; fontSize: number };
+          ui?: { theme: 'light' | 'dark'; fontSize: number };
           'ui.theme'?: 'light' | 'dark';
           'ui.fontSize'?: number;
         }>();
@@ -1081,7 +1081,7 @@ describe('createAppScope2', () => {
           }),
         });
 
-        const scope = createAppScope2({ flagSchema: schemas });
+        const scope = createAppScope({ flagSchema: schemas });
 
         // Override only some flags
         scope.overrideFlags({
@@ -1097,18 +1097,18 @@ describe('createAppScope2', () => {
 
     it('should work with valid paths only', () => {
       withEvalContext({}, () => {
-        const scope = createAppScope2({
-          flagSchema: z.object({ 
+        const scope = createAppScope({
+          flagSchema: z.object({
             ui: z.object({
-              theme: z.string().default('light')
-            }) 
+              theme: z.string().default('light'),
+            }),
           }),
         });
 
         expect(() => {
           scope.overrideFlags({ 'ui.theme': 'dark' });
         }).not.toThrow();
-        
+
         expect(scope.flag('ui.theme')).toBe('dark');
       });
     });
@@ -1124,7 +1124,7 @@ describe('createAppScope2', () => {
           }),
         });
 
-        const scope = createAppScope2({ flagSchema: schemas });
+        const scope = createAppScope({ flagSchema: schemas });
 
         // Before override
         expect(scope.flag('ui.theme')).toBe('light');
@@ -1140,7 +1140,7 @@ describe('createAppScope2', () => {
             expect(scope.flag('ui.theme')).toBe('dark');
             expect(scope.flag('ui.fontSize')).toBe(16);
             return 'test-result';
-          }
+          },
         );
 
         // After override - should be restored
@@ -1150,14 +1150,14 @@ describe('createAppScope2', () => {
 
         // Type checking
         expectTypeOf(scope.withFlags).parameter(0).toEqualTypeOf<{
-          'ui'?: { theme: 'light' | 'dark'; fontSize: number };
+          ui?: { theme: 'light' | 'dark'; fontSize: number };
           'ui.theme'?: 'light' | 'dark';
           'ui.fontSize'?: number;
         }>();
 
         // @ts-expect-error - invalid path should be caught
         scope.withFlags({ 'nonexistent.path': 'value' }, () => {});
-        // @ts-expect-error - wrong type should be caught  
+        // @ts-expect-error - wrong type should be caught
         scope.withFlags({ 'ui.theme': 123 }, () => {});
       });
     });
@@ -1170,7 +1170,7 @@ describe('createAppScope2', () => {
           }),
         });
 
-        const scope = createAppScope2({ flagSchema: schemas });
+        const scope = createAppScope({ flagSchema: schemas });
 
         // Before override
         expect(scope.flag('ui.theme')).toBe('light');
@@ -1195,7 +1195,7 @@ describe('createAppScope2', () => {
           }),
         });
 
-        const scope = createAppScope2({ flagSchema: schemas });
+        const scope = createAppScope({ flagSchema: schemas });
 
         const stringResult = scope.withFlags({ 'ui.theme': 'dark' }, () => 'string');
         const numberResult = scope.withFlags({ 'ui.theme': 'dark' }, () => 42);
@@ -1214,7 +1214,7 @@ describe('createAppScope2', () => {
 
   describe('fact', () => {
     it('should record facts', () => {
-      const scope = createAppScope2({
+      const scope = createAppScope({
         flagSchema: z.object({}),
         factSchema: z.object({
           dbVersion: z.string(),
@@ -1233,7 +1233,7 @@ describe('createAppScope2', () => {
         deploymentRegion: z.string(),
       });
 
-      const scope = createAppScope2({
+      const scope = createAppScope({
         flagSchema: z.object({}),
         factSchema,
       });
@@ -1293,7 +1293,7 @@ describe('createAppScope2', () => {
 
       setGlobalFlagOverrides({ 'ui.theme': 'light', 'ui.fontSize': 16 });
 
-      const { flag } = createAppScope2({ flagSchema });
+      const { flag } = createAppScope({ flagSchema });
 
       expect(flag('ui.theme')).toBe('light');
       expect(flag('ui.fontSize')).toBe(16);
@@ -1309,7 +1309,7 @@ describe('createAppScope2', () => {
       });
 
       // No CLI flags set
-      const { flag } = createAppScope2({ flagSchema });
+      const { flag } = createAppScope({ flagSchema });
 
       expect(flag('config.mode')).toBe('dev');
       expect(flag('config.timeout')).toBe(30);
@@ -1326,7 +1326,7 @@ describe('createAppScope2', () => {
       setGlobalFlagOverrides({ 'ui.theme': 'invalid' });
 
       expect(() => {
-        createAppScope2({ flagSchema });
+        createAppScope({ flagSchema });
       }).toThrow('process.exit:1');
 
       expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
@@ -1342,7 +1342,7 @@ describe('createAppScope2', () => {
       setGlobalFlagOverrides({ 'ui.unknownFlag': 'value' });
 
       expect(() => {
-        createAppScope2({ flagSchema });
+        createAppScope({ flagSchema });
       }).toThrow('process.exit:1');
 
       expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
@@ -1358,7 +1358,7 @@ describe('createAppScope2', () => {
       setGlobalFlagOverrides({ 'config.count': 'not-a-number' });
 
       expect(() => {
-        createAppScope2({ flagSchema });
+        createAppScope({ flagSchema });
       }).toThrow('process.exit:1');
 
       expect(errorSpy).toHaveBeenCalledWith('❌ Invalid CLI flags:');
@@ -1378,7 +1378,7 @@ describe('createAppScope2', () => {
       // Only override some flags
       setGlobalFlagOverrides({ 'ui.theme': 'light' });
 
-      const { flag } = createAppScope2({ flagSchema });
+      const { flag } = createAppScope({ flagSchema });
 
       expect(flag('ui.theme')).toBe('light'); // overridden
       expect(flag('ui.fontSize')).toBe(14); // schema default
@@ -1401,8 +1401,8 @@ describe('createAppScope2', () => {
 
       setGlobalFlagOverrides({ 'config.flag1': 'override1' });
 
-      const scope1 = createAppScope2({ flagSchema: flagSchema1 });
-      const scope2 = createAppScope2({ flagSchema: flagSchema2 });
+      const scope1 = createAppScope({ flagSchema: flagSchema1 });
+      const scope2 = createAppScope({ flagSchema: flagSchema2 });
 
       expect(scope1.flag('config.flag1')).toBe('override1');
       expect(scope2.flag('config.flag1')).toBe('override1');
