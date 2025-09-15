@@ -17,43 +17,7 @@ export function validateCliFlags(flagSchema: ZodObject<any>): void {
     return;
   }
 
-  // Check if we need to handle dot notation (app-scope-2 style)
-  const hasDotNotationKeys = Object.keys(globalOverrides).some((key) => key.includes('.'));
-
-  if (hasDotNotationKeys) {
-    // Handle dot notation validation for app-scope-2
-    validateFlags(flagSchema, globalOverrides);
-  } else {
-    // TODO: BEFORE MERGE - remove this after deleting old createAppScope
-    // Handle flat key validation for app-scope
-    DEPRECATED__validateFlatFlags(flagSchema, globalOverrides);
-  }
-}
-
-/**
- * Validate CLI flags with flat keys (app-scope style)
- * @deprecated - delete after migrating to createAppScope2
- */
-function DEPRECATED__validateFlatFlags(
-  flagSchema: ZodObject<any>,
-  globalOverrides: Record<string, any>,
-): void {
-  // Use strict partial schema - reject unknown keys and validate types
-  const result = flagSchema.strict().partial().safeParse(globalOverrides);
-
-  if (!result.success) {
-    console.error('❌ Invalid CLI flags:');
-    console.error(formatZodErrors(result.error));
-
-    const examples = generateFlagExamples(result.error);
-    if (examples.length > 0) {
-      console.error('\n💡 Valid examples:');
-      examples.forEach((example) => console.error(`  ${example}`));
-    }
-
-    console.error('\n🔧 Fix your CLI flags and try again.\n');
-    process.exit(1);
-  }
+  validateFlags(flagSchema, globalOverrides);
 }
 
 /**
