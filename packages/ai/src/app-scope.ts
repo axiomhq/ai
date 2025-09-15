@@ -1,6 +1,7 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 import { getEvalContext, updateEvalContext } from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
+import { pickFlags as pickFlagsInternal } from './pick-flags';
 import { trace } from '@opentelemetry/api';
 import {
   type z,
@@ -282,6 +283,13 @@ type WithFlagsFunction<FS extends ZodObject<any> | undefined> =
     ? <T>(overrides: { [K in DotPaths<FS>]?: PathValue<FS, K> }, fn: () => T) => T
     : <T>(overrides: Record<string, any>, fn: () => T) => T;
 
+type PickFlagsFunction<FS extends ZodObject<any> | undefined> =
+  FS extends ZodObject<any>
+    ? <K extends ReadonlyArray<keyof FS['shape']>>(
+        keys: K,
+      ) => AppScope2<ZodObject<Pick<FS['shape'], K[number]>>, undefined>
+    : never;
+
 export interface AppScope2<
   FS extends ZodObject<any> | undefined,
   SC extends ZodObject<any> | undefined,
@@ -291,6 +299,7 @@ export interface AppScope2<
   flagSchema: FlagSchemaFunction<FS>;
   overrideFlags: OverrideFlagsFunction<FS>;
   withFlags: WithFlagsFunction<FS>;
+  pickFlags: PickFlagsFunction<FS>;
 }
 
 // Helper to recursively validate that schemas don't contain union types
@@ -802,5 +811,17 @@ export function createAppScope(config: any): any {
     flagSchema,
     overrideFlags,
     withFlags,
+    // TODO: BEFORE MERGE - can we return undefined if flagSchemaConfig is missing?
+    pickFlags: flagSchemaConfig
+      ? <K extends ReadonlyArray<keyof (typeof flagSchemaConfig)['shape']>>(keys: K) =>
+          createAppScope({
+            flagSchema: pickFlagsInternal(flagSchemaConfig, keys) as any,
+            factSchema: factSchemaConfig,
+          })
+      : ((() => {
+          throw new Error(
+            '[AxiomAI] pickFlags requires a flagSchema to be provided in createAppScope({ flagSchema })',
+          );
+        }) as any),
   };
 }
