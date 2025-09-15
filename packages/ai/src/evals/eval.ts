@@ -12,8 +12,9 @@ import type {
   EvalTask,
   InputOf,
   ExpectedOf,
+  Scorer,
 } from './eval.types';
-import type { Score, Scorer } from './scorers';
+import type { Score } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
@@ -95,8 +96,11 @@ export function Eval<
 /**
  * Implementation
  */
-export function Eval(name: string, params: any): void {
-  registerEval(name, params).catch(console.error);
+export function Eval(
+  name: string, 
+  params: any
+): void {
+  registerEval(name, params as EvalParams<any, any, any>).catch(console.error);
 }
 
 async function registerEval<
