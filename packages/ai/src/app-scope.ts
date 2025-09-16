@@ -65,7 +65,7 @@ type ForbidUnionsDeep<T> =
     ? 'Error: Union types (z.union, .or) are not allowed in flag schemas'
     : T;
 
-export interface AppScope2Config<
+interface AppScopeConfig<
   FS extends ZodObject<any> | undefined = undefined,
   SC extends ZodObject<any> | undefined = undefined,
 > {
@@ -374,7 +374,7 @@ export function createAppScope<
   FS extends ZodObject<any>,
   SC extends ZodObject<any> | undefined = undefined,
 >(
-  config: AppScope2Config<FS, SC> & {
+  config: AppScopeConfig<FS, SC> & {
     flagSchema: ForbidUnionsDeep<FS>;
   },
 ): AppScope<FS, SC>;
@@ -383,7 +383,7 @@ export function createAppScope<
  * TODO: BEFORE MERGE - jsdoc here also
  */
 export function createAppScope<SC extends ZodObject<any> | undefined = undefined>(
-  config: AppScope2Config<undefined, SC>,
+  config: AppScopeConfig<undefined, SC>,
 ): AppScope<undefined, SC>;
 
 export function createAppScope(config: any): any {
@@ -741,80 +741,6 @@ export function createAppScope(config: any): any {
   }
 
   /**
-   * Access flag schema definitions for validation and inspection.
-   * @param keys - Optional schema keys to retrieve specific sub-schemas
-   * @returns The full schema or specific sub-schemas
-   */
-  function flagSchema(...keys: string[]): any {
-    // Handle undefined flagSchema
-    if (!flagSchemaConfig) {
-      throw new Error('[AxiomAI] flagSchema not provided in createAppScope config');
-    }
-
-    if (keys.length === 0) {
-      // No arguments - return entire schema
-      return flagSchemaConfig;
-    } else if (keys.length === 1) {
-      // Single key - return specific sub-schema
-      const key = keys[0];
-
-      // Validate key type
-      if (typeof key !== 'string') {
-        throw new Error(
-          `[AxiomAI] Invalid flag schema key type: expected string, got ${typeof key}`,
-        );
-      }
-
-      // Handle empty or whitespace-only strings
-      if (key.trim() === '') {
-        throw new Error(
-          '[AxiomAI] Invalid flag schema key: key cannot be empty or whitespace-only',
-        );
-      }
-
-      // Handle special characters that aren't valid keys
-      if (/[.\s/]/.test(key)) {
-        throw new Error(`[AxiomAI] Invalid flag schema key: "${key}" contains invalid characters`);
-      }
-
-      // ZodObject pattern: schema.shape[key]
-      if (!flagSchemaConfig.shape || !(key in flagSchemaConfig.shape)) {
-        const availableKeys = flagSchemaConfig.shape
-          ? Object.keys(flagSchemaConfig.shape).join(', ')
-          : '(none)';
-        throw new Error(
-          `[AxiomAI] Invalid flag schema key: "${key}". Available keys: ${availableKeys}`,
-        );
-      }
-      return flagSchemaConfig.shape[key];
-    } else {
-      // Multiple keys - return array of sub-schemas
-      const result: any[] = [];
-
-      for (const key of keys) {
-        // Validate each key type
-        if (typeof key !== 'string') {
-          throw new Error(
-            `[AxiomAI] Invalid flag schema key type: expected string, got ${typeof key}`,
-          );
-        }
-
-        if (!flagSchemaConfig.shape || !(key in flagSchemaConfig.shape)) {
-          const availableKeys = flagSchemaConfig.shape
-            ? Object.keys(flagSchemaConfig.shape).join(', ')
-            : '(none)';
-          throw new Error(
-            `[AxiomAI] Invalid flag schema key: "${key}". Available keys: ${availableKeys}`,
-          );
-        }
-        result.push(flagSchemaConfig.shape[key]);
-      }
-
-      return result;
-    }
-  }
-
-  /**
    * Override flag values for the current evaluation context with type safety.
    * @param partial - Typed flag overrides that must match the flag schema paths and types
    */
@@ -862,7 +788,6 @@ export function createAppScope(config: any): any {
   return {
     flag,
     fact,
-    flagSchema,
     overrideFlags,
     withFlags,
     // TODO: BEFORE MERGE - can we return undefined if flagSchemaConfig is missing?
