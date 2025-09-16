@@ -270,4 +270,30 @@ describe('createAppScope auto-validation', () => {
       expect(exitSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('pickFlags', () => {
+    it('should handle typical cases', () => {
+      const flagSchema = z.object({
+        ui: z.object({
+          theme: z.string().default('dark'),
+        }),
+        something: z.object({
+          else: z.number().default(123),
+        }),
+      });
+
+      const { pickFlags } = createAppScope({ flagSchema });
+
+      expect(pickFlags('ui')).toEqual(['ui']);
+      expect(pickFlags(['ui'])).toEqual(['ui']);
+      expect(pickFlags('ui', 'something')).toEqual(['ui', 'something']);
+      expect(pickFlags(['ui', 'something'])).toEqual(['ui', 'something']);
+      expect(pickFlags('ui', 'ui.theme', 'something', 'something.else')).toEqual([
+        'ui',
+        'ui.theme',
+        'something',
+        'something.else',
+      ]);
+    });
+  });
 });
