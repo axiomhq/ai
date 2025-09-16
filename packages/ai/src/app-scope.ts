@@ -310,7 +310,12 @@ export interface AppScope<
  * @param pickedFlags - Array of picked flag paths
  * @returns true if the flag is covered by picked flags
  */
-export function isPickedFlag(flagPath: string, pickedFlags: string[]): boolean {
+export function isPickedFlag(flagPath: string, pickedFlags?: string[]): boolean {
+  if (!pickedFlags) {
+    // If no picked flags are provided, all flags are allowed
+    return true;
+  }
+
   if (pickedFlags.length === 0) {
     // If no flags are picked, all flags are allowed
     return true;
