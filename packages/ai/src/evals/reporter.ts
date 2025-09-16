@@ -97,6 +97,11 @@ export class AxiomReporter implements Reporter {
 
   onTestCaseReady(test: TestCase) {
     const meta = test.meta() as TaskMeta & { case: EvalCaseReport };
+
+    // TODO: there seem to be some cases where `meta` is undefined
+    // maybe we get here to early?
+    if (!meta.case) return;
+
     console.log(c.blue(` \u2713 evaluating case ${meta.case.index}`));
   }
 
