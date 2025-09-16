@@ -1,7 +1,6 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 import { getEvalContext, updateEvalContext } from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
-import { pickFlags as pickFlagsInternal } from './pick-flags';
 import { trace } from '@opentelemetry/api';
 import {
   type z,
@@ -285,9 +284,12 @@ type WithFlagsFunction<FS extends ZodObject<any> | undefined> =
 
 type PickFlagsFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
-    ? <K extends ReadonlyArray<keyof FS['shape']>>(
-        keys: K,
-      ) => AppScope<ZodObject<Pick<FS['shape'], K[number]>>, undefined>
+    ? {
+        // Spread arguments: pickFlags2('foo', 'bar')
+        <K extends ReadonlyArray<DotPaths<FS> & string>>(...paths: K): K;
+        // Array argument: pickFlags2(['foo', 'bar'])
+        <K extends ReadonlyArray<DotPaths<FS> & string>>(paths: K): K;
+      }
     : never;
 
 export interface AppScope<
@@ -805,6 +807,20 @@ export function createAppScope(config: any): any {
     }
   }
 
+  const pickFlags: PickFlagsFunction<typeof flagSchemaConfig> = flagSchemaConfig
+    ? (...args: any[]) => {
+        // Handle both array and spread arguments
+        const keys = args[0] && Array.isArray(args[0]) ? args[0] : args;
+
+        return keys;
+      }
+    : ((() => {
+        // TODO: BEFORE MERGE - is this right?
+        throw new Error(
+          '[AxiomAI] pickFlags requires a flagSchema to be provided in createAppScope({ flagSchema })',
+        );
+      }) as any);
+
   return {
     flag,
     fact,
@@ -812,16 +828,6 @@ export function createAppScope(config: any): any {
     overrideFlags,
     withFlags,
     // TODO: BEFORE MERGE - can we return undefined if flagSchemaConfig is missing?
-    pickFlags: flagSchemaConfig
-      ? <K extends ReadonlyArray<keyof (typeof flagSchemaConfig)['shape']>>(keys: K) =>
-          createAppScope({
-            flagSchema: pickFlagsInternal(flagSchemaConfig, keys) as any,
-            factSchema: factSchemaConfig,
-          })
-      : ((() => {
-          throw new Error(
-            '[AxiomAI] pickFlags requires a flagSchema to be provided in createAppScope({ flagSchema })',
-          );
-        }) as any),
+    pickFlags,
   };
 }
