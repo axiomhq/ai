@@ -1,5 +1,5 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
-import { getEvalContext, updateEvalContext } from './evals/context/storage';
+import { getEvalContext, updateEvalContext, addOutOfScopeFlag } from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
 import { trace } from '@opentelemetry/api';
 import {
@@ -595,7 +595,8 @@ export function createAppScope(config: any): any {
       console.warn(
         `[AxiomAI] Flag "${path}" is not in the picked flags for this evaluation (pickedFlags = ${ctx.pickedFlags ? `[${ctx.pickedFlags?.map((f) => `'${f}'`).join(', ')}]` : 'undefined'})`,
       );
-      // TODO: BEFORE MERGE - add to reporter
+      // Track out-of-scope flag access for reporting
+      addOutOfScopeFlag(path);
       // Continue with normal flag logic - still return the value
     }
 

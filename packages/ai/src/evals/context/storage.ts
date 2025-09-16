@@ -8,6 +8,7 @@ const EVAL_CONTEXT = createAsyncHook<{
   facts: Record<string, any>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
+  outOfScopeFlags?: { flagPath: string; accessedAt: number }[];
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
@@ -15,6 +16,7 @@ export interface EvalContextData<Flags = any, Facts = any> {
   facts: Partial<Facts>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
+  outOfScopeFlags?: { flagPath: string; accessedAt: number }[];
 }
 
 export function getEvalContext<
@@ -24,12 +26,13 @@ export function getEvalContext<
   const ctx = EVAL_CONTEXT.get();
   if (!ctx) {
     // Return empty context if none exists
-    return { flags: {} as Partial<Flags>, facts: {} as Partial<Facts>, pickedFlags: undefined };
+    return { flags: {} as Partial<Flags>, facts: {} as Partial<Facts>, pickedFlags: undefined, outOfScopeFlags: undefined };
   }
   return {
     flags: ctx.flags as Partial<Flags>,
     facts: ctx.facts as Partial<Facts>,
     pickedFlags: ctx.pickedFlags,
+    outOfScopeFlags: ctx.outOfScopeFlags,
   };
 }
 
@@ -55,6 +58,25 @@ export function updateEvalContext(flags?: Record<string, any>, facts?: Record<st
   }
 }
 
+export function addOutOfScopeFlag(flagPath: string) {
+  const current = EVAL_CONTEXT.get();
+  if (!current) {
+    console.warn('addOutOfScopeFlag called outside of evaluation context');
+    return;
+  }
+
+  // Initialize outOfScopeFlags array if not exists
+  if (!current.outOfScopeFlags) {
+    current.outOfScopeFlags = [];
+  }
+
+  // Add the out-of-scope flag access
+  current.outOfScopeFlags.push({
+    flagPath,
+    accessedAt: Date.now(),
+  });
+}
+
 // Helper: write to current span + context
 export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
   const span = trace.getActiveSpan();
@@ -71,7 +93,7 @@ export function withEvalContext<T>(
   fn: () => T,
 ): T {
   const { initialFlags = {}, pickedFlags = [] } = options;
-  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {}, pickedFlags }, fn);
+  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {}, pickedFlags, outOfScopeFlags: [] }, fn);
 }
 
 /**

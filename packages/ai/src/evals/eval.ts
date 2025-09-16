@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
-import { withEvalContext } from './context/storage';
+import { withEvalContext, getEvalContext } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
@@ -151,6 +151,9 @@ async function registerEval<
 
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
 
+      // Track out-of-scope flags across all cases for evaluation-level reporting
+      const allOutOfScopeFlags: { flagPath: string; accessedAt: number }[] = [];
+
       beforeAll((suite) => {
         suite.meta.evaluation = {
           id: evalId,
@@ -160,9 +163,40 @@ async function registerEval<
         };
       });
 
-      afterAll(async () => {
+      afterAll(async (suite) => {
         const tags: string[] = ['offline'];
         suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
+
+        // Aggregate out-of-scope flags for evaluation-level reporting
+        const flagSummary = new Map<
+          string,
+          { count: number; firstAccessedAt: number; lastAccessedAt: number }
+        >();
+
+        for (const flag of allOutOfScopeFlags) {
+          if (flagSummary.has(flag.flagPath)) {
+            const existing = flagSummary.get(flag.flagPath)!;
+            existing.count++;
+            existing.firstAccessedAt = Math.min(existing.firstAccessedAt, flag.accessedAt);
+            existing.lastAccessedAt = Math.max(existing.lastAccessedAt, flag.accessedAt);
+          } else {
+            flagSummary.set(flag.flagPath, {
+              count: 1,
+              firstAccessedAt: flag.accessedAt,
+              lastAccessedAt: flag.accessedAt,
+            });
+          }
+        }
+
+        // Update evaluation report with aggregated out-of-scope flags
+        if (suite.meta.evaluation) {
+          suite.meta.evaluation.outOfScopeFlags = Array.from(flagSummary.entries()).map(
+            ([flagPath, stats]) => ({
+              flagPath,
+              ...stats,
+            }),
+          );
+        }
 
         // end root span
         suiteSpan.setStatus({ code: SpanStatusCode.OK });
@@ -196,8 +230,9 @@ async function registerEval<
           );
           const caseContext = trace.setSpan(context.active(), caseSpan);
 
+          let outOfScopeFlags: { flagPath: string; accessedAt: number }[] = [];
           try {
-            const { output, duration } = await runTask(
+            const result = await runTask(
               caseContext,
               {
                 id: evalId,
@@ -214,6 +249,8 @@ async function registerEval<
                 configFlags: opts.configFlags,
               },
             );
+            const { output, duration } = result;
+            outOfScopeFlags = result.outOfScopeFlags;
 
             // run scorers
             const scoreList: Score[] = await Promise.all(
@@ -278,12 +315,25 @@ async function registerEval<
               errors: [],
               duration,
               startedAt: start,
+              outOfScopeFlags,
             };
+
+            // Collect out-of-scope flags for evaluation-level aggregation
+            allOutOfScopeFlags.push(...outOfScopeFlags);
           } catch (e) {
             console.log(e);
             const error = e as Error;
             caseSpan.recordException(error);
             caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+            // Try to get out-of-scope flags even in error case
+            try {
+              const ctx = getEvalContext();
+              outOfScopeFlags = ctx.outOfScopeFlags || [];
+            } catch {
+              // If we can't get context, use empty array
+              outOfScopeFlags = [];
+            }
 
             task.meta.case = {
               name: evalName,
@@ -296,7 +346,11 @@ async function registerEval<
               errors: [error],
               startedAt: start,
               duration: Math.round(performance.now() - start),
+              outOfScopeFlags,
             };
+
+            // Collect out-of-scope flags for evaluation-level aggregation even in error case
+            allOutOfScopeFlags.push(...outOfScopeFlags);
             throw e;
           } finally {
             caseSpan.end();
@@ -387,31 +441,48 @@ const runTask = async <
     caseContext,
   );
 
-  const { output, duration } = await context.with(
+  const { output, duration, outOfScopeFlags } = await context.with(
     trace.setSpan(context.active(), taskSpan),
-    async (): Promise<{ output: TOutput; duration: number }> => {
+    async (): Promise<{
+      output: TOutput;
+      duration: number;
+      outOfScopeFlags: { flagPath: string; accessedAt: number }[];
+    }> => {
       // Initialize evaluation context for flag/fact access
-      return withEvalContext({ pickedFlags: opts.configFlags }, async (): Promise<{ output: TOutput; duration: number }> => {
-        // TODO: BEFORE MERGE - before we were setting config scope if provided here
+      return withEvalContext(
+        { pickedFlags: opts.configFlags },
+        async (): Promise<{
+          output: TOutput;
+          duration: number;
+          outOfScopeFlags: { flagPath: string; accessedAt: number }[];
+        }> => {
+          // TODO: BEFORE MERGE - before we were setting config scope if provided here
 
-        const start = performance.now();
-        const output = await executeTask(opts.task, opts.input, opts.expected!);
-        const duration = Math.round(performance.now() - start);
-        // set task output
-        taskSpan.setAttributes({
-          [Attr.Eval.Task.Output]: JSON.stringify(output),
-        });
+          const start = performance.now();
+          const output = await executeTask(opts.task, opts.input, opts.expected!);
+          const duration = Math.round(performance.now() - start);
+          // set task output
+          taskSpan.setAttributes({
+            [Attr.Eval.Task.Output]: JSON.stringify(output),
+          });
 
-        taskSpan.setStatus({ code: SpanStatusCode.OK });
-        taskSpan.end();
+          taskSpan.setStatus({ code: SpanStatusCode.OK });
+          taskSpan.end();
 
-        return { output, duration };
-      });
+          // Get out-of-scope flags from the evaluation context
+          const ctx = getEvalContext();
+          console.log('tktk runTask got ctx:', ctx);
+          const outOfScopeFlags = ctx.outOfScopeFlags || [];
+
+          return { output, duration, outOfScopeFlags };
+        },
+      );
     },
   );
 
   return {
     output,
     duration,
+    outOfScopeFlags,
   };
 };
