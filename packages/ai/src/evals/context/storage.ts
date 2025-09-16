@@ -7,12 +7,14 @@ const EVAL_CONTEXT = createAsyncHook<{
   flags: Record<string, any>;
   facts: Record<string, any>;
   configScope?: ReturnType<typeof createAppScope>;
+  pickedFlags?: string[];
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
   flags: Partial<Flags>;
   facts: Partial<Facts>;
   configScope?: ReturnType<typeof createAppScope>;
+  pickedFlags?: string[];
 }
 
 export function getEvalContext<
@@ -22,11 +24,12 @@ export function getEvalContext<
   const ctx = EVAL_CONTEXT.get();
   if (!ctx) {
     // Return empty context if none exists
-    return { flags: {} as Partial<Flags>, facts: {} as Partial<Facts> };
+    return { flags: {} as Partial<Flags>, facts: {} as Partial<Facts>, pickedFlags: undefined };
   }
   return {
     flags: ctx.flags as Partial<Flags>,
     facts: ctx.facts as Partial<Facts>,
+    pickedFlags: ctx.pickedFlags,
   };
 }
 
@@ -60,8 +63,15 @@ export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
   }
 }
 
-export function withEvalContext<T>(initialFlags: Record<string, any> = {}, fn: () => T): T {
-  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {} }, fn);
+export function withEvalContext<T>(
+  options: {
+    initialFlags?: Record<string, any>;
+    pickedFlags?: string[];
+  } = {},
+  fn: () => T,
+): T {
+  const { initialFlags = {}, pickedFlags = [] } = options;
+  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {}, pickedFlags }, fn);
 }
 
 /**
@@ -84,4 +94,12 @@ export function setConfigScope(scope: ReturnType<typeof createAppScope>) {
 export function getConfigScope(): ReturnType<typeof createAppScope> | undefined {
   const current = EVAL_CONTEXT.get();
   return current?.configScope;
+}
+
+/**
+ * Get the picked flags from the current evaluation context.
+ * Returns undefined if no picked flags are set or if called outside eval context.
+ */
+export function getPickedFlags(): string[] | undefined {
+  return EVAL_CONTEXT.get()?.pickedFlags;
 }

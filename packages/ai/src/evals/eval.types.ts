@@ -1,5 +1,4 @@
 import type { Scorer } from './scorers';
-import type { ZodObject } from 'zod';
 
 // TODO: BEFORE MERGE - really?
 export type { Scorer } from './scorers';
@@ -94,6 +93,7 @@ export type EvalParams<
   metadata?: Record<string, unknown>;
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
-  /** Optional restricted flag schema for this evaluation */
-  configSchema?: ZodObject<any>;
+  /** Optional reduction of flag namespace */
+  // TODO: BEFORE MERGE - make more typesafe
+  configFlags?: string[];
 };

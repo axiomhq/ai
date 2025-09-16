@@ -22,6 +22,9 @@ const { pickFlags, flag, fact } = createAppScope({ flagSchema, factSchema });
 
 const myFn = async (input: string, expected: string) => {
   const strategy = flag('behavior.strategy');
+  console.log('tktk strategy', strategy);
+  const theme = flag('ui.theme');
+  console.log('tktk theme', theme);
 
   const response = strategy === 'dumb' ? input : expected;
 
@@ -39,7 +42,7 @@ const exactMatchScorer = ({ output, expected }: { output: any; expected?: any })
 };
 
 Eval('feature-example', {
-  configSchema: pickFlags(['ui']).flagSchema(),
+  configFlags: pickFlags(['ui']),
   data: () => [
     {
       input: "['nginx-access-logs'] | where status >= 500",

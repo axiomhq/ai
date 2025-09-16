@@ -75,7 +75,7 @@ class EvalBuilderImpl<
     if (this.overrides.flags && Object.keys(this.overrides.flags).length > 0) {
       const originalTask = finalParams.task;
       finalParams.task = (args: { input: TInput; expected: TExpected }) => {
-        return withEvalContext(this.overrides.flags!, () => originalTask(args));
+        return withEvalContext({ initialFlags: this.overrides.flags! }, () => originalTask(args));
       };
     }
 
