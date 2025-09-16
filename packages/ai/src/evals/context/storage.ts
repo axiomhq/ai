@@ -1,15 +1,18 @@
 import { trace } from '@opentelemetry/api';
 import { createAsyncHook } from './manager';
+import { type createAppScope } from '../../app-scope';
 
 // Mini-context for in-process access
 const EVAL_CONTEXT = createAsyncHook<{
   flags: Record<string, any>;
   facts: Record<string, any>;
+  configScope?: ReturnType<typeof createAppScope>;
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
   flags: Partial<Flags>;
   facts: Partial<Facts>;
+  configScope?: ReturnType<typeof createAppScope>;
 }
 
 export function getEvalContext<
@@ -59,4 +62,26 @@ export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
 
 export function withEvalContext<T>(initialFlags: Record<string, any> = {}, fn: () => T): T {
   return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {} }, fn);
+}
+
+/**
+ * Set the config scope for the current evaluation context.
+ * This makes the scope available for global flag/fact access.
+ */
+export function setConfigScope(scope: ReturnType<typeof createAppScope>) {
+  const current = EVAL_CONTEXT.get();
+  if (!current) {
+    console.warn('setConfigScope called outside of evaluation context');
+    return;
+  }
+  current.configScope = scope;
+}
+
+/**
+ * Get the config scope from the current evaluation context.
+ * Returns undefined if no scope is set or if called outside eval context.
+ */
+export function getConfigScope(): ReturnType<typeof createAppScope> | undefined {
+  const current = EVAL_CONTEXT.get();
+  return current?.configScope;
 }
