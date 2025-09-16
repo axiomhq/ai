@@ -2,20 +2,26 @@ import { createAppScope, experimental_Eval as Eval } from 'axiom/ai/evals';
 import { getEvalContext } from 'axiom/ai/evals';
 import { z } from 'zod';
 
-// Define schemas for type safety and runtime validation
+// Define namespaced schemas for type safety and runtime validation
 const flagSchema = z.object({
-  strategy: z.enum(['dumb', 'smart']).default('dumb'),
-  foo: z.string(),
+  behavior: z.object({
+    strategy: z.enum(['dumb', 'smart']).default('dumb'),
+    foo: z.string().default('default-value'),
+  }),
+  ui: z.object({
+    theme: z.enum(['light', 'dark']).default('light'),
+    showDebug: z.boolean().default(false),
+  }),
 });
 
 const factSchema = z.object({
   randomNumber: z.number(),
 });
 
-const { flag, fact } = createAppScope({ flagSchema, factSchema });
+const { pickFlags, flag, fact } = createAppScope({ flagSchema, factSchema });
 
 const myFn = async (input: string, expected: string) => {
-  const strategy = flag('strategy');
+  const strategy = flag('behavior.strategy');
 
   const response = strategy === 'dumb' ? input : expected;
 
@@ -33,6 +39,7 @@ const exactMatchScorer = ({ output, expected }: { output: any; expected?: any })
 };
 
 Eval('feature-example', {
+  configSchema: pickFlags(['ui']).flagSchema(),
   data: () => [
     {
       input: "['nginx-access-logs'] | where status >= 500",
@@ -47,6 +54,6 @@ Eval('feature-example', {
   scorers: [exactMatchScorer], // TODO: BEFORE MERGE - types idk
   metadata: {
     description:
-      'Demonstrates flag and fact usage in eval tasks - flags configure behavior, facts track metrics',
+      'Demonstrates pickFlags functionality - only behavior namespace is available, ui namespace is excluded',
   },
 });

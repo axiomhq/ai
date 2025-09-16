@@ -1,15 +1,27 @@
-import { getEvalContext, updateEvalContext, putOnSpan } from './evals/context/storage';
+import { getEvalContext, updateEvalContext, putOnSpan, getConfigScope } from './evals/context/storage';
 
 /**
  * Get the value of a feature flag with a default fallback.
- * If the flag has been overridden, returns the overridden value.
- * Otherwise, returns the provided default value.
+ * If there's a config scope available, delegates to it.
+ * Otherwise, uses the eval context with provided default value.
  * 
  * @param key - The flag key
  * @param defaultValue - The default value to use if flag is not set
  * @returns The flag value
  */
 export function flag<V>(key: string, defaultValue: V): V {
+  // Try to delegate to config scope first
+  const configScope = getConfigScope();
+  if (configScope) {
+    try {
+      return (configScope as any).flag(key, defaultValue);
+    } catch (error) {
+      // If config scope fails (e.g., invalid key), fall back to default
+      console.warn(`[AxiomAI] Config scope flag access failed for "${key}": ${error}`);
+    }
+  }
+
+  // Fallback to original behavior
   const ctx = getEvalContext();
   const value = (key in ctx.flags) ? ctx.flags[key] as V : defaultValue;
   
@@ -24,13 +36,26 @@ export function flag<V>(key: string, defaultValue: V): V {
 
 /**
  * Record a fact (metadata) about the current evaluation.
- * Facts are stored both in the evaluation context and as span attributes.
+ * If there's a config scope available, delegates to it.
+ * Otherwise, stores in eval context and span attributes.
  * 
  * @param key - The fact key
  * @param value - The fact value
  */
 export function fact<V>(key: string, value: V): void {
-  // Store in context + span
+  // Try to delegate to config scope first
+  const configScope = getConfigScope();
+  if (configScope) {
+    try {
+      (configScope as any).fact(key, value);
+      return;
+    } catch (error) {
+      // If config scope fails, fall back to original behavior
+      console.warn(`[AxiomAI] Config scope fact recording failed for "${key}": ${error}`);
+    }
+  }
+
+  // Fallback to original behavior
   updateEvalContext(undefined, { [key]: value });
   putOnSpan('fact', key, value);
 }

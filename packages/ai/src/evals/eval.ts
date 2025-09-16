@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
-import { withEvalContext } from './context/storage';
+import { withEvalContext, setConfigScope } from './context/storage';
+import { createAppScope } from '../app-scope';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
@@ -14,6 +15,7 @@ import type {
   ExpectedOf,
   Scorer,
 } from './eval.types';
+import type { ZodObject } from 'zod';
 import type { Score } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
@@ -80,6 +82,7 @@ export function Eval<
     scorers: ReadonlyArray<Scorer<In, Exp, Out>>;
     metadata?: Record<string, unknown>;
     timeout?: number;
+    configSchema?: ZodObject<any>;
   },
 ): void;
 
@@ -110,6 +113,12 @@ async function registerEval<
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
   const datasetPromise = opts.data();
   const user = getGitUserInfo();
+
+  // Create and set config scope if configSchema is provided
+  let evalScope: any;
+  if (opts.configSchema) {
+    evalScope = createAppScope({ flagSchema: opts.configSchema as any });
+  }
 
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
@@ -212,6 +221,7 @@ async function registerEval<
                 task: opts.task,
                 metadata: opts.metadata,
               },
+              evalScope,
             );
 
             // run scorers
@@ -367,6 +377,7 @@ const runTask = async <
     input: TInput;
     expected: TExpected | undefined;
   } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
+  configScope?: any,
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
   // start task span
@@ -390,6 +401,11 @@ const runTask = async <
     async () => {
       // Initialize evaluation context for flag/fact access
       return withEvalContext({}, async () => {
+        // Set config scope if provided
+        if (configScope) {
+          setConfigScope(configScope);
+        }
+        
         const start = performance.now();
         const output = await executeTask(opts.task, opts.input, opts.expected!);
         const duration = Math.round(performance.now() - start);
