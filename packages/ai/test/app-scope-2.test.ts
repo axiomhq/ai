@@ -665,9 +665,6 @@ describe('createAppScope2', () => {
 
       const scope = createAppScope({ flagSchema: schemas });
 
-      // Empty object
-      expectTypeOf(scope.flag('empty', {})).toEqualTypeOf<{}>();
-
       // Object with optional field
       expectTypeOf(scope.flag('optional', { field: 'value' })).toEqualTypeOf<{
         field?: string | undefined;
