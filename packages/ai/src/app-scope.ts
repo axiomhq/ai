@@ -586,17 +586,12 @@ export function createAppScope(config: any): any {
   function flag<P extends string>(path: P, defaultValue?: any): any {
     const segments = parsePath(path);
 
-    // Get eval context and global CLI overrides
     const ctx = getEvalContext();
     const globalOverrides = getGlobalFlagOverrides();
 
-    // If this eval declared a pick list, warn about anything outside it
     if (!isPickedFlag(path, ctx.pickedFlags)) {
-      console.warn(
-        `[AxiomAI] Flag "${path}" is not in the picked flags for this evaluation (pickedFlags = ${ctx.pickedFlags ? `[${ctx.pickedFlags?.map((f) => `'${f}'`).join(', ')}]` : 'undefined'})`,
-      );
-      // Track out-of-scope flag access for reporting
       addOutOfScopeFlag(path);
+
       // Continue with normal flag logic - still return the value
     }
 
@@ -724,6 +719,7 @@ export function createAppScope(config: any): any {
    * @param name - The fact name/key
    * @param value - The fact value to record
    */
+  // TODO: BEFORE MERGE - this still has wrong types, see `prompts.ts` in the ticket classification example
   function fact<N extends string>(name: N, value: any): void {
     let finalValue = value;
 

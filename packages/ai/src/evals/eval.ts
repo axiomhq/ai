@@ -318,6 +318,7 @@ async function registerEval<
               duration,
               startedAt: start,
               outOfScopeFlags,
+              pickedFlags: opts.configFlags,
             };
 
             // Collect out-of-scope flags for evaluation-level aggregation
@@ -355,6 +356,7 @@ async function registerEval<
               startedAt: start,
               duration: Math.round(performance.now() - start),
               outOfScopeFlags,
+              pickedFlags: opts.configFlags,
             };
 
             // Collect out-of-scope flags for evaluation-level aggregation even in error case

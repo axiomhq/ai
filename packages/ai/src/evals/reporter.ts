@@ -37,6 +37,8 @@ export type EvalCaseReport = {
   startedAt: number | undefined;
   /** Flags accessed outside of the picked flags scope for this case */
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  /** Flags that are in scope for this evaluation */
+  pickedFlags?: string[];
 };
 
 export type EvaluationReport = {
@@ -196,10 +198,13 @@ export class AxiomReporter implements Reporter {
 
     // Print out-of-scope flags for this case
     if (testMeta.case.outOfScopeFlags && testMeta.case.outOfScopeFlags.length > 0) {
-      console.log('   ', c.yellow('⚠ Out-of-scope flags:'));
+      const pickedFlagsText = testMeta.case.pickedFlags
+        ? `(picked: ${testMeta.case.pickedFlags.map((f) => `'${f}'`).join(', ')})`
+        : '(none)';
+      console.log('   ', c.yellow(`⚠ Out-of-scope flags: ${pickedFlagsText}`));
       testMeta.case.outOfScopeFlags.forEach((flag) => {
         const timeStr = new Date(flag.accessedAt).toLocaleTimeString();
-        console.log('     ', c.dim(`${flag.flagPath} (at ${timeStr})`));
+        console.log('     ', `${flag.flagPath} (at ${timeStr})`);
 
         // Show top stack trace frames
         if (flag.stackTrace && flag.stackTrace.length > 0) {

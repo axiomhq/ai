@@ -1,5 +1,4 @@
 import { generateObject } from 'ai';
-import z from 'zod';
 import {
   experimental_Type as Type,
   withSpan,
@@ -7,10 +6,11 @@ import {
   wrapAISDKModel,
 } from 'axiom/ai';
 import type { experimental_Prompt as Prompt } from 'axiom/ai';
-import { validateCliFlags, createAppScope } from 'axiom/ai/evals';
 
 import { SupportTicketCategorySchema, SupportTicketResponseSchema } from './schemas';
 import { openai } from '@ai-sdk/openai';
+import { flag } from '@/lib/app-scope';
+import type z from 'zod';
 
 // TODO: We should incorporate structured output support here.
 export const classifyTicketPrompt = {
@@ -40,21 +40,6 @@ export const classifyTicketPrompt = {
   version: '1.0.0',
 } satisfies Prompt;
 
-// Define schemas for type safety and runtime validation
-export const flagSchema = z.object({
-  strategy: z.enum(['dumb', 'smart']).default('dumb'),
-  model: z.string().default('gpt-4o-mini'),
-});
-
-const factSchema = z.object({
-  randomNumber: z.number(),
-});
-
-const { flag, fact } = createAppScope({ flagSchema, factSchema });
-
-// TODO @chris: where should this live?
-validateCliFlags(flagSchema);
-
 export const classifyTicketStep = async ({
   subject,
   content,
@@ -66,8 +51,8 @@ export const classifyTicketStep = async ({
     context: { subject, content },
   });
 
-  const model = flag('model');
-  fact('randomNumber', Math.random());
+  const model = flag('ticketClassification.model');
+  const _foo = flag('handleReturnRequest.policy', 'auto-approve');
 
   const result = await withSpan(
     { capability: 'classify-ticket', step: 'classification' },
