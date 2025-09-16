@@ -297,6 +297,11 @@ describe('createAppScope auto-validation', () => {
     });
 
     describe('isPickedFlag', () => {
+      it('should allow all flags when pickedFlags are undefined', () => {
+        expect(isPickedFlag('ui.theme', undefined)).toBe(true);
+        expect(isPickedFlag('ui.theme')).toBe(true);
+      });
+
       it('should allow all flags when none are picked', () => {
         expect(isPickedFlag('ui.theme', [])).toBe(true);
       });
