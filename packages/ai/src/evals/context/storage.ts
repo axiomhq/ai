@@ -8,7 +8,7 @@ const EVAL_CONTEXT = createAsyncHook<{
   facts: Record<string, any>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
-  outOfScopeFlags?: { flagPath: string; accessedAt: number }[];
+  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
@@ -16,7 +16,7 @@ export interface EvalContextData<Flags = any, Facts = any> {
   facts: Partial<Facts>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
-  outOfScopeFlags?: { flagPath: string; accessedAt: number }[];
+  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
 }
 
 export function getEvalContext<
@@ -26,7 +26,12 @@ export function getEvalContext<
   const ctx = EVAL_CONTEXT.get();
   if (!ctx) {
     // Return empty context if none exists
-    return { flags: {} as Partial<Flags>, facts: {} as Partial<Facts>, pickedFlags: undefined, outOfScopeFlags: undefined };
+    return {
+      flags: {} as Partial<Flags>,
+      facts: {} as Partial<Facts>,
+      pickedFlags: undefined,
+      outOfScopeFlags: undefined,
+    };
   }
   return {
     flags: ctx.flags as Partial<Flags>,
@@ -58,6 +63,41 @@ export function updateEvalContext(flags?: Record<string, any>, facts?: Record<st
   }
 }
 
+/**
+ * Parse stack trace to extract relevant frames, filtering out internal/framework frames
+ */
+function parseStackTrace(stack: string): string[] {
+  const lines = stack.split('\n');
+  const frames: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip empty lines and the error message line
+    if (!trimmed || !trimmed.startsWith('at ')) {
+      continue;
+    }
+
+    // Filter out internal Node.js, framework, and this file's frames
+    if (
+      trimmed.includes('node_modules') ||
+      trimmed.includes('node:internal') ||
+      trimmed.includes('addOutOfScopeFlag') ||
+      trimmed.includes('storage.ts') ||
+      // Keep app-scope.ts frames that aren't the flag() function itself
+      (trimmed.includes('app-scope.ts') &&
+        (trimmed.includes('flag (') || trimmed.includes('flag2 (')))
+    ) {
+      continue;
+    }
+
+    // Extract the meaningful part of the frame
+    frames.push(trimmed.replace('at ', ''));
+  }
+
+  return frames.slice(0, 5);
+}
+
 export function addOutOfScopeFlag(flagPath: string) {
   const current = EVAL_CONTEXT.get();
   if (!current) {
@@ -70,10 +110,15 @@ export function addOutOfScopeFlag(flagPath: string) {
     current.outOfScopeFlags = [];
   }
 
+  // Capture and parse stack trace
+  const stack = new Error().stack || '';
+  const stackTrace = parseStackTrace(stack);
+
   // Add the out-of-scope flag access
   current.outOfScopeFlags.push({
     flagPath,
     accessedAt: Date.now(),
+    stackTrace,
   });
 }
 
@@ -93,7 +138,10 @@ export function withEvalContext<T>(
   fn: () => T,
 ): T {
   const { initialFlags = {}, pickedFlags = [] } = options;
-  return EVAL_CONTEXT.run({ flags: { ...initialFlags }, facts: {}, pickedFlags, outOfScopeFlags: [] }, fn);
+  return EVAL_CONTEXT.run(
+    { flags: { ...initialFlags }, facts: {}, pickedFlags, outOfScopeFlags: [] },
+    fn,
+  );
 }
 
 /**
