@@ -1,8 +1,10 @@
 import { experimental_Eval as Eval } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
+import { pickFlags } from '@/lib/app-scope';
 
 Eval('Spam classification', {
+  configFlags: pickFlags('ticketClassification'),
   data: () => [
     {
       input: {
