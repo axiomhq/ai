@@ -13,6 +13,7 @@ import {
   // type ZodEffects,
   type ZodArray,
   type ZodRecord,
+  type ZodSchema,
 } from 'zod';
 
 type DefaultMaxDepth = 8;
@@ -339,30 +340,30 @@ function assertNoUnions(schema: any, path = 'schema'): void {
   if (!schema || !schema._def) return;
 
   // Unwrap transparent containers
-  const { typeName, innerType } = schema._def as any;
+  const { type: typeName, innerType } = schema._def;
 
   if (
-    typeName === 'ZodDefault' ||
-    typeName === 'ZodOptional' ||
-    typeName === 'ZodNullable' // ||
-    // typeName === 'ZodEffects'
+    typeName === 'default' ||
+    typeName === 'optional' ||
+    typeName === 'nullable' // ||
+    // typeName === 'effects'
   ) {
     return assertNoUnions(innerType, path);
   }
 
   // Hard-fail on unions
-  if (typeName === 'ZodUnion' || typeName === 'ZodDiscriminatedUnion') {
+  if (typeName === 'union' || typeName === 'discriminatedUnion') {
     throw new Error(`[AxiomAI] Union types are not supported in flag schemas (found at "${path}")`);
   }
 
   // Recurse into compound types
-  if (typeName === 'ZodObject' && schema.shape) {
+  if (typeName === 'object' && schema.shape) {
     for (const [k, v] of Object.entries(schema.shape)) {
       assertNoUnions(v, `${path}.${k}`);
     }
-  } else if (typeName === 'ZodArray') {
+  } else if (typeName === 'array') {
     assertNoUnions(schema._def.type, `${path}[]`);
-  } else if (typeName === 'ZodRecord') {
+  } else if (typeName === 'record') {
     assertNoUnions(schema._def.valueType, `${path}{}`);
   }
 }
@@ -407,7 +408,7 @@ export function createAppScope(config: any): any {
   }
 
   // Helper function to traverse schema object to find the field schema at a specific path
-  function findSchemaAtPath(segments: string[]): any {
+  function findSchemaAtPath(segments: string[]): ZodSchema<any> | undefined {
     if (!flagSchemaConfig || segments.length === 0) return undefined;
 
     let current: any = flagSchemaConfig;
@@ -421,13 +422,17 @@ export function createAppScope(config: any): any {
       // Continue with remaining segments starting from index 1
       for (let i = 1; i < segments.length; i++) {
         const segment = segments[i];
-        if (!current || typeof current !== 'object') {
+        if (!current || !current._def) {
           return undefined;
         }
 
         // Handle ZodObject by accessing its shape
-        if (current._def && current._def.typeName === 'ZodObject' && current.shape) {
-          current = current.shape[segment];
+        if (current._def.type === 'object' && current.shape) {
+          const nextSchema = current.shape[segment];
+          if (!nextSchema) {
+            return undefined;
+          }
+          current = nextSchema;
         } else {
           return undefined;
         }
@@ -444,22 +449,30 @@ export function createAppScope(config: any): any {
 
     // For root namespace (like 'ui'), check if it exists in the ZodObject shape
     if (segments.length === 1) {
-      return segments[0] in flagSchemaConfig.shape;
+      return flagSchemaConfig.shape ? segments[0] in flagSchemaConfig.shape : false;
     }
 
     // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
     const schema = findSchemaAtPath(segments);
-    return schema && schema._def && schema._def.typeName === 'ZodObject';
+    return Boolean(schema?._def?.type === 'object');
   }
 
   // Helper to traverse nested default objects and extract values
-  function extractFromDefaultValue(defaultValue: any, segments: string[], startIndex: number): any {
+  function extractFromDefaultValue(
+    defaultValue: unknown,
+    segments: string[],
+    startIndex: number,
+  ): unknown {
     if (startIndex >= segments.length) return defaultValue;
 
     let current = defaultValue;
     for (let i = startIndex; i < segments.length; i++) {
-      if (current && typeof current === 'object' && segments[i] in current) {
-        current = current[segments[i]];
+      if (
+        current != null &&
+        typeof current === 'object' &&
+        segments[i] in (current as Record<string, unknown>)
+      ) {
+        current = (current as Record<string, unknown>)[segments[i]];
       } else {
         return undefined;
       }
@@ -470,16 +483,18 @@ export function createAppScope(config: any): any {
 
   // Helper function to check if a schema has complete defaults at runtime
   // This mirrors the compile-time AllFieldsHaveDefaults<> type
+  // TODO: BEFORE MERGE - bad type
   function schemaHasCompleteDefaults(schema: any): boolean {
     if (!schema || !schema._def) return false;
 
     // If the schema itself has an object-level default, all fields are considered to have defaults
+    // TODO: BEFORE MERGE - why is this here?
     if (schema._def.defaultValue !== undefined) {
       return true;
     }
 
     // For ZodObject, check if ALL fields have defaults recursively
-    if (schema._def.typeName === 'ZodObject' && schema.shape) {
+    if (schema._def.type === 'object' && schema.shape) {
       for (const fieldSchema of Object.values(schema.shape)) {
         if (!schemaHasCompleteDefaults(fieldSchema)) {
           return false;
@@ -492,7 +507,8 @@ export function createAppScope(config: any): any {
   }
 
   // Recursively build object with all defaults from a Zod schema
-  function buildObjectWithDefaults(schema: any): any {
+  // TODO: BEFORE MERGE - bad type
+  function buildObjectWithDefaults(schema: any): unknown {
     if (!schema || !schema._def) return undefined;
 
     // `directDefault`: default for the entire object
@@ -503,8 +519,8 @@ export function createAppScope(config: any): any {
     }
 
     // We can only collect defaults from child fields if we're dealing with an object (for a scalar, there are no children)
-    if (schema._def.typeName === 'ZodObject' && schema.shape) {
-      const result: any = {};
+    if (schema._def.type === 'object' && schema.shape) {
+      const result: Record<string, unknown> = {};
 
       for (const [key, fieldSchema] of Object.entries(schema.shape)) {
         const fieldValue = buildObjectWithDefaults(fieldSchema);
@@ -536,7 +552,8 @@ export function createAppScope(config: any): any {
     if (!schema || !schema._def) return undefined;
 
     // Unwrap transparent containers first, checking for defaults at each level
-    let current = schema;
+    // TODO: BEFORE MERGE - bad type 'any' here, use something from zod?
+    let current: any = schema;
 
     while (current && current._def) {
       // Check for default value at current level
@@ -547,9 +564,9 @@ export function createAppScope(config: any): any {
       }
 
       // Unwrap one level if possible
-      if ('innerType' in current._def) {
+      if (current._def.innerType) {
         current = current._def.innerType;
-      } else if ('schema' in current._def) {
+      } else if (current._def.schema) {
         current = current._def.schema;
       } else {
         // No more wrapping, stop here

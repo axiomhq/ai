@@ -74,7 +74,7 @@ function isValidPath(schema: ZodObject<any>, segments: string[]): boolean {
         unwrappedSchema = unwrappedSchema._def.innerType || unwrappedSchema._def.schema;
       }
 
-      if (!unwrappedSchema || unwrappedSchema._def?.typeName !== 'ZodObject') {
+      if (!unwrappedSchema || unwrappedSchema._def?.type !== 'object') {
         return false;
       }
 
