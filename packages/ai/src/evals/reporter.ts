@@ -35,6 +35,8 @@ export type EvalCaseReport = {
   duration: number | undefined;
   /** Timestamp when the case started */
   startedAt: number | undefined;
+  /** Flags accessed outside of the picked flags scope for this case */
+  outOfScopeFlags?: { flagPath: string; accessedAt: number }[];
 };
 
 export type EvaluationReport = {
@@ -42,6 +44,13 @@ export type EvaluationReport = {
   name: string;
   version: string;
   baseline: Evaluation | undefined;
+  /** Summary of all flags accessed outside of picked flags scope across all cases */
+  outOfScopeFlags?: {
+    flagPath: string;
+    count: number;
+    firstAccessedAt: number;
+    lastAccessedAt: number;
+  }[];
 };
 
 /**
@@ -122,6 +131,8 @@ export class AxiomReporter implements Reporter {
       this.printCaseResult(test);
     }
 
+    // TODO: BEFORE MERGE - MAYBE log out of scope flags summary here?
+
     console.log('');
     console.log(
       ' ',
@@ -182,5 +193,14 @@ export class AxiomReporter implements Reporter {
 
       return [k, scoreValue];
     });
+
+    // Print out-of-scope flags for this case
+    if (testMeta.case.outOfScopeFlags && testMeta.case.outOfScopeFlags.length > 0) {
+      console.log('   ', c.yellow('⚠ Out-of-scope flags:'));
+      testMeta.case.outOfScopeFlags.forEach((flag) => {
+        const timeStr = new Date(flag.accessedAt).toLocaleTimeString();
+        console.log('     ', c.dim(`${flag.flagPath} (at ${timeStr})`));
+      });
+    }
   }
 }
