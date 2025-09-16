@@ -11,7 +11,7 @@ import {
   type ZodDiscriminatedUnion,
   type ZodOptional,
   type ZodNullable,
-  type ZodEffects,
+  // type ZodEffects,
   type ZodArray,
   type ZodRecord,
 } from 'zod';
@@ -26,9 +26,9 @@ type StripWrappers<T> =
       ? StripWrappers<U>
       : T extends ZodNullable<infer U>
         ? StripWrappers<U>
-        : T extends ZodEffects<infer U, any, any>
-          ? StripWrappers<U>
-          : T;
+        : // : T extends ZodEffects<infer U, any, any>
+          // ? StripWrappers<U>
+          T;
 
 // Main recursive union detector
 type _ContainsUnion<
@@ -312,8 +312,8 @@ function assertNoUnions(schema: any, path = 'schema'): void {
   if (
     typeName === 'ZodDefault' ||
     typeName === 'ZodOptional' ||
-    typeName === 'ZodNullable' ||
-    typeName === 'ZodEffects'
+    typeName === 'ZodNullable' // ||
+    // typeName === 'ZodEffects'
   ) {
     return assertNoUnions(innerType, path);
   }
