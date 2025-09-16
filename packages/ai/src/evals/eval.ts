@@ -152,7 +152,8 @@ async function registerEval<
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
 
       // Track out-of-scope flags across all cases for evaluation-level reporting
-      const allOutOfScopeFlags: { flagPath: string; accessedAt: number }[] = [];
+      const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
+        [];
 
       beforeAll((suite) => {
         suite.meta.evaluation = {
@@ -230,7 +231,8 @@ async function registerEval<
           );
           const caseContext = trace.setSpan(context.active(), caseSpan);
 
-          let outOfScopeFlags: { flagPath: string; accessedAt: number }[] = [];
+          let outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
+            [];
           try {
             const result = await runTask(
               caseContext,
@@ -329,10 +331,16 @@ async function registerEval<
             // Try to get out-of-scope flags even in error case
             try {
               const ctx = getEvalContext();
-              outOfScopeFlags = ctx.outOfScopeFlags || [];
+              outOfScopeFlags =
+                ctx.outOfScopeFlags ||
+                ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
             } catch {
               // If we can't get context, use empty array
-              outOfScopeFlags = [];
+              outOfScopeFlags = [] as {
+                flagPath: string;
+                accessedAt: number;
+                stackTrace: string[];
+              }[];
             }
 
             task.meta.case = {
@@ -446,7 +454,7 @@ const runTask = async <
     async (): Promise<{
       output: TOutput;
       duration: number;
-      outOfScopeFlags: { flagPath: string; accessedAt: number }[];
+      outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
     }> => {
       // Initialize evaluation context for flag/fact access
       return withEvalContext(
@@ -454,7 +462,7 @@ const runTask = async <
         async (): Promise<{
           output: TOutput;
           duration: number;
-          outOfScopeFlags: { flagPath: string; accessedAt: number }[];
+          outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
         }> => {
           // TODO: BEFORE MERGE - before we were setting config scope if provided here
 
@@ -471,7 +479,6 @@ const runTask = async <
 
           // Get out-of-scope flags from the evaluation context
           const ctx = getEvalContext();
-          console.log('tktk runTask got ctx:', ctx);
           const outOfScopeFlags = ctx.outOfScopeFlags || [];
 
           return { output, duration, outOfScopeFlags };
