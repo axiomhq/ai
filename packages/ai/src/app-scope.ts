@@ -573,6 +573,14 @@ export function createAppScope(config: any): any {
     const ctx = getEvalContext();
     const globalOverrides = getGlobalFlagOverrides();
 
+    // If this eval declared a pick list, warn about anything outside it
+    if (!isPickedFlag(path, ctx.pickedFlags)) {
+      console.warn(
+        `[AxiomAI] Flag "${path}" is not in the picked flags for this evaluation (pickedFlags = [${(ctx as any).pickedFlags.join(', ')}])`,
+      );
+      // Continue with normal flag logic - still return the value
+    }
+
     let finalValue: any;
     let hasValue = false;
 

@@ -18,4 +18,3 @@ export { createAppScope } from './app-scope';
 export { validateCliFlags } from './validate-flags';
 export { type Score } from './evals/scorers';
 export { createScorer as Scorer } from './evals/scorer.factory';
-export { pickCapabilities } from './evals/pick-capabilities';
