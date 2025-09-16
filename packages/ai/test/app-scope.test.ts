@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
-import { createAppScope } from '../src/app-scope';
+import { createAppScope, isPickedFlag } from '../src/app-scope';
 import {
   setGlobalFlagOverrides,
   clearGlobalFlagOverrides,
@@ -294,6 +294,37 @@ describe('createAppScope auto-validation', () => {
         'something',
         'something.else',
       ]);
+    });
+
+    describe('isPickedFlag', () => {
+      it('should allow all flags when none are picked', () => {
+        expect(isPickedFlag('ui.theme', [])).toBe(true);
+      });
+
+      it('should allow exact matches', () => {
+        expect(isPickedFlag('ui', ['ui'])).toBe(true);
+      });
+
+      it('should allow exact matches with dots', () => {
+        expect(isPickedFlag('ui.theme', ['ui.theme'])).toBe(true);
+      });
+
+      it('should allow children of exact matches', () => {
+        expect(isPickedFlag('ui.theme.color', ['ui.theme'])).toBe(true);
+        expect(isPickedFlag('ui.theme.color.shade', ['ui.theme'])).toBe(true);
+      });
+
+      it('should not allow non-matching flags', () => {
+        expect(isPickedFlag('feature', ['ui'])).toBe(false);
+      });
+
+      it('should not allow partial namespace matches', () => {
+        expect(isPickedFlag('ui', ['ui.theme'])).toBe(false);
+      });
+
+      it('should not allow partial string matches', () => {
+        expect(isPickedFlag('foobar', ['foo'])).toBe(false);
+      });
     });
   });
 });
