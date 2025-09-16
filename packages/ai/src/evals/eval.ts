@@ -211,6 +211,7 @@ async function registerEval<
                 scorers: opts.scorers,
                 task: opts.task,
                 metadata: opts.metadata,
+                configFlags: opts.configFlags,
               },
             );
 
