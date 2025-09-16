@@ -304,6 +304,31 @@ export interface AppScope<
   pickFlags: PickFlagsFunction<FS>;
 }
 
+/**
+ * Check if a flag path is covered by the picked flags.
+ * @param flagPath - The flag path to check (e.g., 'foo', 'foo.bar')
+ * @param pickedFlags - Array of picked flag paths
+ * @returns true if the flag is covered by picked flags
+ */
+export function isPickedFlag(flagPath: string, pickedFlags: string[]): boolean {
+  if (pickedFlags.length === 0) {
+    // If no flags are picked, all flags are allowed
+    return true;
+  }
+
+  return pickedFlags.some((picked) => {
+    // Exact match
+    if (flagPath === picked) {
+      return true;
+    }
+    // Nested match: flagPath starts with picked flag followed by a dot
+    if (flagPath.startsWith(picked + '.')) {
+      return true;
+    }
+    return false;
+  });
+}
+
 // Helper to recursively validate that schemas don't contain union types
 function assertNoUnions(schema: any, path = 'schema'): void {
   if (!schema || !schema._def) return;
