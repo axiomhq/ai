@@ -423,13 +423,22 @@ describe('createAppScope', () => {
       expectTypeOf(scope.flag('ui.theme', 'dark')).toEqualTypeOf<'light' | 'dark'>();
       expectTypeOf(scope.flag('ui.fontSize', 16)).toEqualTypeOf<number>();
 
-      // TODO: BEFORE MERGE - these should log an error at runtime
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // These should log an error at runtime for type mismatches
       // @ts-expect-error - number instead of string enum
       scope.flag('ui.theme', 123);
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
+
       // @ts-expect-error - string instead of number
       scope.flag('ui.fontSize', 'large');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
+
       // @ts-expect-error - invalid enum value
       scope.flag('ui.theme', 'invalid');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
+
+      consoleSpy.mockRestore();
     });
 
     it('should return complete namespace objects with schema defaults', () => {

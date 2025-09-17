@@ -133,8 +133,6 @@ export type DotPaths<T extends ZodObject<any>, MaxDepth extends number = Default
       }[ObjectPaths<z.output<UnwrapSchema<T['shape'][NS]>>, [], MaxDepth>];
 }[keyof T['shape']];
 
-
-
 type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer NS}.${infer Rest}`
   ? NS extends keyof T['shape']
     ? ObjectPathValue<z.output<UnwrapSchema<T['shape'][NS]>>, Rest>
@@ -142,8 +140,6 @@ type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer 
   : P extends keyof T['shape']
     ? z.output<UnwrapSchema<T['shape'][P]>>
     : never;
-
-
 
 // Helper to check if a path is a namespace-only path (like 'ui') vs field path (like 'ui.foo')
 type IsNamespaceOnly<T extends ZodObject<any>, P extends string> = P extends keyof T['shape']
@@ -602,6 +598,27 @@ export function createAppScope(config: any): any {
     }
     // 3. Use explicit default if provided (overrides schema default)
     else if (defaultValue !== undefined) {
+      // Validate explicit default value against schema if available
+      if (flagSchemaConfig) {
+        const segments = parsePath(path);
+        const schemaForPath = findSchemaAtPath(segments);
+
+        if (schemaForPath) {
+          try {
+            const result = schemaForPath.safeParse(defaultValue);
+            if (!result.success) {
+              console.error(
+                `[AxiomAI] Invalid flag: "${path}" - provided default value does not match schema`,
+              );
+              // Continue with the invalid value for backward compatibility, but warn
+            }
+          } catch {
+            // Schema validation failed, log error but continue
+            console.error(`[AxiomAI] Invalid flag: "${path}" - validation failed`);
+          }
+        }
+      }
+
       finalValue = defaultValue;
       hasValue = true;
     }
