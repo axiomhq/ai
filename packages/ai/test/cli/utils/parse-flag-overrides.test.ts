@@ -87,7 +87,6 @@ describe('extractFlagOverrides', () => {
   });
 
   it('handles last flag wins for duplicates', () => {
-    // TODO: BEFORE MERGE - should we fail instead?
     const argv = ['--flag.temperature=0.7', '--flag.temperature=0.9'];
     const result = extractFlagOverrides(argv);
 
@@ -177,7 +176,7 @@ describe('extractOverrides', () => {
       });
       expect(mockReadFileSync).toHaveBeenCalledWith(
         expect.stringContaining('test-flags.json'),
-        'utf8'
+        'utf8',
       );
     });
 
@@ -222,11 +221,15 @@ describe('extractOverrides', () => {
       extractOverrides(argv);
 
       expect(mockConsoleError).toHaveBeenCalledWith(
-        '❌ Cannot use both --flags-config and --flag.* arguments together.'
+        '❌ Cannot use both --flags-config and --flag.* arguments together.',
       );
       expect(mockConsoleError).toHaveBeenCalledWith('Choose one approach:');
-      expect(mockConsoleError).toHaveBeenCalledWith('  • Config file: --flags-config=my-flags.json');
-      expect(mockConsoleError).toHaveBeenCalledWith('  • CLI flags: --flag.temperature=0.9 --flag.model=gpt-4o');
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '  • Config file: --flags-config=my-flags.json',
+      );
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '  • CLI flags: --flag.temperature=0.9 --flag.model=gpt-4o',
+      );
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 
@@ -259,7 +262,7 @@ describe('extractOverrides', () => {
       extractOverrides(argv);
 
       expect(mockConsoleError).toHaveBeenCalledWith(
-        '❌ Could not read or parse flags config "missing.json": ENOENT: no such file or directory'
+        '❌ Could not read or parse flags config "missing.json": ENOENT: no such file or directory',
       );
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
@@ -271,7 +274,7 @@ describe('extractOverrides', () => {
       extractOverrides(argv);
 
       expect(mockConsoleError).toHaveBeenCalledWith(
-        expect.stringMatching(/❌ Could not read or parse flags config "invalid\.json": .*/)
+        expect.stringMatching(/❌ Could not read or parse flags config "invalid\.json": .*/),
       );
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
@@ -282,7 +285,9 @@ describe('extractOverrides', () => {
       const argv = ['--flags-config=array.json'];
       extractOverrides(argv);
 
-      expect(mockConsoleError).toHaveBeenCalledWith('❌ Flags config must be a JSON object, got array');
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '❌ Flags config must be a JSON object, got array',
+      );
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 
@@ -292,7 +297,9 @@ describe('extractOverrides', () => {
       const argv = ['--flags-config=string.json'];
       extractOverrides(argv);
 
-      expect(mockConsoleError).toHaveBeenCalledWith('❌ Flags config must be a JSON object, got string');
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '❌ Flags config must be a JSON object, got string',
+      );
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 
@@ -302,7 +309,9 @@ describe('extractOverrides', () => {
       const argv = ['--flags-config=null.json'];
       extractOverrides(argv);
 
-      expect(mockConsoleError).toHaveBeenCalledWith('❌ Flags config must be a JSON object, got object');
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '❌ Flags config must be a JSON object, got object',
+      );
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
   });
