@@ -54,7 +54,7 @@ function dotNotationToNested(dotNotationObject: Record<string, any>): Record<str
 /**
  * Check if a dot notation path exists in the schema
  */
-function isValidPath(schema: ZodObject<any>, segments: string[]): boolean {
+export function isValidPath(schema: ZodObject<any>, segments: string[]): boolean {
   let currentSchema = schema;
 
   for (let i = 0; i < segments.length; i++) {
@@ -90,9 +90,10 @@ function validateFlags(flagSchema: ZodObject<any>, globalOverrides: Record<strin
   for (const [dotPath, _value] of Object.entries(globalOverrides)) {
     const segments = dotPath.split('.');
     if (!isValidPath(flagSchema, segments)) {
-      console.error('❌ Invalid CLI flags:');
+      console.error('❌ Invalid CLI flags 1:');
       console.error(`  • flag '${dotPath}': Invalid flag path`);
       console.error('\n🔧 Fix your CLI flags and try again.\n');
+      console.log('tktk', { shape: flagSchema.def.shape, segments });
       process.exit(1);
     }
   }
@@ -102,7 +103,7 @@ function validateFlags(flagSchema: ZodObject<any>, globalOverrides: Record<strin
   const result = flagSchema.strict().partial().safeParse(nestedObject);
 
   if (!result.success) {
-    console.error('❌ Invalid CLI flags:');
+    console.error('❌ Invalid CLI flags 2:');
     console.error(formatZodErrors(result.error));
 
     const examples = generateFlagExamples(result.error);
