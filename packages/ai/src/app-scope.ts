@@ -16,6 +16,7 @@ import {
   type ZodRecord,
   type ZodSchema,
 } from 'zod';
+import type { $ZodObject } from 'zod/v4/core';
 
 type DefaultMaxDepth = 8;
 
@@ -147,9 +148,10 @@ type IsNamespaceOnly<T extends ZodObject<any>, P extends string> = P extends key
   : false;
 
 // Helper to recursively check if a schema has defaults (including nested objects)
-type HasDefaults<S> = S extends { _def: { defaultValue: any } }
+type HasDefaults<S> = S extends { _zod: { def: { defaultValue: unknown } } }
   ? true
-  : S extends ZodObject<infer Shape>
+  : // v4 | v3
+    S extends $ZodObject<infer Shape> | ZodObject<infer Shape>
     ? {
         [K in keyof Shape]: HasDefaults<Shape[K]>;
       } extends Record<keyof Shape, true>
@@ -160,7 +162,7 @@ type HasDefaults<S> = S extends { _def: { defaultValue: any } }
 // Helper to check if ALL fields in a namespace schema have defaults
 type AllFieldsHaveDefaults<Schema> =
   // First check if the schema itself has an object-level default
-  Schema extends { _def: { defaultValue: any } }
+  Schema extends { _zod: { def: { defaultValue: unknown } } }
     ? true
     : // Otherwise recursively check if all fields have defaults
       HasDefaults<UnwrapSchema<Schema>>;
@@ -323,10 +325,15 @@ export function isPickedFlag(flagPath: string, pickedFlags?: string[]): boolean 
 
 // Helper to recursively validate that schemas don't contain union types
 function assertNoUnions(schema: any, path = 'schema'): void {
-  if (!schema || !schema._def) return;
+  if (!schema) return;
+
+  // Handle both Zod v4 (_zod.def) and v3 (_def) structures
+  const def = schema._zod?.def || schema._def;
+
+  if (!def) return;
 
   // Unwrap transparent containers
-  const { type: typeName, innerType } = schema._def;
+  const { type: typeName, innerType } = def;
 
   if (
     typeName === 'default' ||
@@ -343,14 +350,24 @@ function assertNoUnions(schema: any, path = 'schema'): void {
   }
 
   // Recurse into compound types
-  if (typeName === 'object' && schema.shape) {
-    for (const [k, v] of Object.entries(schema.shape)) {
-      assertNoUnions(v, `${path}.${k}`);
+  if (typeName === 'object') {
+    // Handle both v3 (.shape) and v4 (def.shape) structures
+    const shape = def.shape || schema.shape;
+    if (shape) {
+      for (const [k, v] of Object.entries(shape)) {
+        assertNoUnions(v, `${path}.${k}`);
+      }
     }
   } else if (typeName === 'array') {
-    assertNoUnions(schema._def.type, `${path}[]`);
+    const arrayType = def.type || def.innerType || (schema._def && schema._def.type);
+    if (arrayType) {
+      assertNoUnions(arrayType, `${path}[]`);
+    }
   } else if (typeName === 'record') {
-    assertNoUnions(schema._def.valueType, `${path}{}`);
+    const valueType = def.valueType || (schema._def && schema._def.valueType);
+    if (valueType) {
+      assertNoUnions(valueType, `${path}{}`);
+    }
   }
 }
 
@@ -373,7 +390,18 @@ export function createAppScope<SC extends ZodObject<any> | undefined = undefined
   config: AppScopeConfig<undefined, SC>,
 ): AppScope<undefined, SC>;
 
-export function createAppScope(config: any): any {
+export function createAppScope<
+  FS extends ZodObject<any> | undefined = undefined,
+  SC extends ZodObject<any> | undefined = undefined,
+>(
+  config: AppScopeConfig<FS, SC>,
+): {
+  flag: DotNotationFlagFunction<FS>;
+  fact: (name: string, value: unknown) => void;
+  overrideFlags: (partial: Record<string, unknown>) => void;
+  withFlags: <T>(overrides: Record<string, unknown>, fn: () => T) => T;
+  pickFlags: PickFlagsFunction<FS>;
+} {
   // Store schemas for runtime validation
   const flagSchemaConfig = config?.flagSchema;
   const factSchemaConfig = config?.factSchema;
@@ -464,33 +492,41 @@ export function createAppScope(config: any): any {
 
   // Helper function to check if a schema has complete defaults at runtime
   // This mirrors the compile-time AllFieldsHaveDefaults<> type
-  // TODO: BEFORE MERGE - bad type
   function schemaHasCompleteDefaults(schema: any): boolean {
-    if (!schema || !schema._def) return false;
+    if (!schema) return false;
+
+    // Handle both v3 and v4 structures
+    const def = schema._zod?.def || schema._def;
+    if (!def) return false;
 
     // If the schema itself has an object-level default, all fields are considered to have defaults
-    // TODO: BEFORE MERGE - why is this here?
-    if (schema._def.defaultValue !== undefined) {
+    if (def.defaultValue !== undefined) {
       return true;
     }
 
     // For ZodObject, check if ALL fields have defaults recursively
-    if (schema._def.type === 'object' && schema.shape) {
-      for (const fieldSchema of Object.values(schema.shape)) {
-        if (!schemaHasCompleteDefaults(fieldSchema)) {
-          return false;
+    if (def.type === 'object') {
+      const shape = def.shape || schema.shape;
+      if (shape) {
+        for (const fieldSchema of Object.values(shape)) {
+          if (!schemaHasCompleteDefaults(fieldSchema)) {
+            return false;
+          }
         }
+        return true;
       }
-      return true;
     }
 
     return false;
   }
 
   // Recursively build object with all defaults from a Zod schema
-  // TODO: BEFORE MERGE - bad type
   function buildObjectWithDefaults(schema: any): unknown {
-    if (!schema || !schema._def) return undefined;
+    if (!schema) return undefined;
+
+    // Handle both v3 and v4 structures
+    const def = schema._zod?.def || schema._def;
+    if (!def) return undefined;
 
     // `directDefault`: default for the entire object
     // If this is not present, we try to construct the defaults from child fields (recursively)
@@ -500,17 +536,20 @@ export function createAppScope(config: any): any {
     }
 
     // We can only collect defaults from child fields if we're dealing with an object (for a scalar, there are no children)
-    if (schema._def.type === 'object' && schema.shape) {
-      const result: Record<string, unknown> = {};
+    if (def.type === 'object') {
+      const shape = def.shape || schema.shape;
+      if (shape) {
+        const result: Record<string, unknown> = {};
 
-      for (const [key, fieldSchema] of Object.entries(schema.shape)) {
-        const fieldValue = buildObjectWithDefaults(fieldSchema);
-        if (fieldValue !== undefined) {
-          result[key] = fieldValue;
+        for (const [key, fieldSchema] of Object.entries(shape)) {
+          const fieldValue = buildObjectWithDefaults(fieldSchema);
+          if (fieldValue !== undefined) {
+            result[key] = fieldValue;
+          }
         }
-      }
 
-      return Object.keys(result).length > 0 ? result : undefined;
+        return Object.keys(result).length > 0 ? result : undefined;
+      }
     }
 
     // No direct default, and it's not an object
@@ -533,22 +572,23 @@ export function createAppScope(config: any): any {
     if (!schema || !schema._def) return undefined;
 
     // Unwrap transparent containers first, checking for defaults at each level
-    // TODO: BEFORE MERGE - bad type 'any' here, use something from zod?
     let current: any = schema;
 
-    while (current && current._def) {
+    while (current) {
+      // Handle both v3 and v4 structures
+      const def = current._zod?.def || current._def;
+      if (!def) break;
+
       // Check for default value at current level
-      if (current._def.defaultValue !== undefined) {
-        return typeof current._def.defaultValue === 'function'
-          ? current._def.defaultValue()
-          : current._def.defaultValue;
+      if (def.defaultValue !== undefined) {
+        return typeof def.defaultValue === 'function' ? def.defaultValue() : def.defaultValue;
       }
 
       // Unwrap one level if possible
-      if (current._def.innerType) {
-        current = current._def.innerType;
-      } else if (current._def.schema) {
-        current = current._def.schema;
+      if (def.innerType) {
+        current = def.innerType;
+      } else if (def.schema) {
+        current = def.schema;
       } else {
         // No more wrapping, stop here
         break;
@@ -564,7 +604,7 @@ export function createAppScope(config: any): any {
    * @param defaultValue - Optional default value if flag not found
    * @returns The flag value or undefined if not found
    */
-  function flag<P extends string>(path: P, defaultValue?: any): any {
+  function flag<P extends string>(path: P, defaultValue?: unknown): unknown {
     const segments = parsePath(path);
 
     const ctx = getEvalContext();
@@ -721,7 +761,7 @@ export function createAppScope(config: any): any {
    * @param name - The fact name/key
    */
   // TODO: BEFORE MERGE - this still has wrong types, see `prompts.ts` in the ticket classification example (MAYBE?)
-  function fact<N extends string>(name: N, value: any): void {
+  function fact<N extends string>(name: N, value: unknown): void {
     let finalValue = value;
 
     // Validate with schema if provided (but only log errors for now to match tests)
@@ -810,7 +850,7 @@ export function createAppScope(config: any): any {
       }) as any);
 
   return {
-    flag,
+    flag: flag as any as DotNotationFlagFunction<FS>,
     fact,
     overrideFlags,
     withFlags,
