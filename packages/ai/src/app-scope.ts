@@ -835,26 +835,16 @@ export function createAppScope<
     }
   }
 
-  const pickFlags: PickFlagsFunction<typeof flagSchemaConfig> = flagSchemaConfig
-    ? (...args: any[]) => {
-        // Handle both array and spread arguments
-        const keys = args[0] && Array.isArray(args[0]) ? args[0] : args;
-
-        return keys;
-      }
-    : ((() => {
-        // TODO: BEFORE MERGE - is this right?
-        throw new Error(
-          '[AxiomAI] pickFlags requires a flagSchema to be provided in createAppScope({ flagSchema })',
-        );
-      }) as any);
+  const pickFlags = ((...args: any[]) => {
+    // Handle both array and spread arguments
+    return args[0] && Array.isArray(args[0]) ? args[0] : args;
+  }) as PickFlagsFunction<typeof flagSchemaConfig>;
 
   return {
     flag: flag as any as DotNotationFlagFunction<FS>,
     fact,
     overrideFlags,
     withFlags,
-    // TODO: BEFORE MERGE - can we return undefined if flagSchemaConfig is missing?
     pickFlags,
   };
 }
