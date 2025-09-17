@@ -91,6 +91,5 @@ export type EvalParams<
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
   /** Optional reduction of flag namespace */
-  // TODO: BEFORE MERGE - make more typesafe
   configFlags?: string[];
 };
