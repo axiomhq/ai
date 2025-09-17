@@ -1,6 +1,7 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 import { getEvalContext, updateEvalContext, addOutOfScopeFlag } from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
+import { parsePath, dotNotationToNested, isValidPath, getValueAtPath } from './util/dot-path';
 import { trace } from '@opentelemetry/api';
 import {
   type z,
@@ -132,6 +133,8 @@ export type DotPaths<T extends ZodObject<any>, MaxDepth extends number = Default
       }[ObjectPaths<z.output<UnwrapSchema<T['shape'][NS]>>, [], MaxDepth>];
 }[keyof T['shape']];
 
+
+
 type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer NS}.${infer Rest}`
   ? NS extends keyof T['shape']
     ? ObjectPathValue<z.output<UnwrapSchema<T['shape'][NS]>>, Rest>
@@ -139,6 +142,8 @@ type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer 
   : P extends keyof T['shape']
     ? z.output<UnwrapSchema<T['shape'][P]>>
     : never;
+
+
 
 // Helper to check if a path is a namespace-only path (like 'ui') vs field path (like 'ui.foo')
 type IsNamespaceOnly<T extends ZodObject<any>, P extends string> = P extends keyof T['shape']
@@ -256,22 +261,8 @@ type DotNotationFlagFunction<FS extends ZodObject<any> | undefined> =
 
 type FactFunction<SC extends ZodObject<any> | undefined> =
   SC extends ZodObject<any>
-    ? <N extends keyof z.output<SC>>(name: N, value: z.output<SC>[N]) => void
-    : 'Error: fact() requires a factSchema to be provided in createAppScope({ factSchema })';
-
-// Simple function type that works for ZodObject pattern only
-type FlagSchemaFunction<FS extends ZodObject<any> | undefined> = {
-  // No arguments - return whole schema (allow when FS is not undefined)
-  (): FS extends undefined ? never : FS;
-  // Single key - return specific sub-schema
-  <K extends keyof (FS extends ZodObject<any> ? FS['shape'] : {})>(
-    key: K,
-  ): FS extends ZodObject<any> ? FS['shape'][K] : never;
-  // Multiple keys - return array of sub-schemas
-  <K extends keyof (FS extends ZodObject<any> ? FS['shape'] : {})>(
-    ...keys: K[]
-  ): FS extends ZodObject<any> ? FS['shape'][K][] : never;
-};
+    ? <P extends DotPaths<SC> & string>(name: P, value: PathValue<SC, P>) => void
+    : (name: string, value: any) => void;
 
 type OverrideFlagsFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
@@ -299,7 +290,6 @@ export interface AppScope<
 > {
   flag: DotNotationFlagFunction<FS>;
   fact: FactFunction<SC>;
-  flagSchema: FlagSchemaFunction<FS>;
   overrideFlags: OverrideFlagsFunction<FS>;
   withFlags: WithFlagsFunction<FS>;
   pickFlags: PickFlagsFunction<FS>;
@@ -400,11 +390,6 @@ export function createAppScope(config: any): any {
   // CLI validation with dot notation support
   if (flagSchemaConfig) {
     validateCliFlags(flagSchemaConfig);
-  }
-
-  function parsePath(path: string) {
-    const segments = path.split('.');
-    return segments;
   }
 
   // Helper function to traverse schema object to find the field schema at a specific path
@@ -715,28 +700,32 @@ export function createAppScope(config: any): any {
   }
 
   /**
-   * Record a typed fact value for tracking and telemetry.
+   * Record a typed fact value for tracking and telemetry with dot notation support.
    * @param name - The fact name/key
-   * @param value - The fact value to record
    */
-  // TODO: BEFORE MERGE - this still has wrong types, see `prompts.ts` in the ticket classification example
+  // TODO: BEFORE MERGE - this still has wrong types, see `prompts.ts` in the ticket classification example (MAYBE?)
   function fact<N extends string>(name: N, value: any): void {
     let finalValue = value;
 
     // Validate with schema if provided (but only log errors for now to match tests)
     if (factSchemaConfig) {
-      const result = factSchemaConfig
-        .strict()
-        .partial()
-        .safeParse({ [name]: value });
-      if (!result.success) {
+      const segments = parsePath(name);
+
+      // Fast path check - validate path exists in schema before creating nested object
+      if (!isValidPath(factSchemaConfig, segments)) {
         console.error(`[AxiomAI] Invalid fact: "${name}"`);
-        // TODO: BEFORE MERGE - decide what to do
-        // For now, continue recording the fact even if validation fails
-        // This matches the existing test expectations
+        // Continue recording the fact even if validation fails for backward compatibility
       } else {
-        // Use validated value in case of coercion
-        finalValue = result.data[name] ?? value;
+        // Convert dot notation to nested object for validation
+        const nested = dotNotationToNested({ [name]: value });
+        const result = factSchemaConfig.strict().partial().safeParse(nested);
+
+        if (!result.success) {
+          console.error(`[AxiomAI] Invalid fact: "${name}"`);
+          // Continue recording the fact even if validation fails for backward compatibility
+        } else {
+          finalValue = getValueAtPath(result.data, segments) ?? value;
+        }
       }
     }
 
@@ -746,9 +735,9 @@ export function createAppScope(config: any): any {
     // Add OpenTelemetry integration
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
-      // TODO: BEFORE MERGE - is this right?
       span.setAttributes({
         [`fact.${name}`]:
+          // TODO: BEFORE MERGE - better handling of this
           typeof finalValue === 'object' ? JSON.stringify(finalValue) : String(finalValue),
       });
       // Also record as timestamped event for time-series data

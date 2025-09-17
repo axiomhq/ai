@@ -6,7 +6,7 @@ const myFn = async (input: string, expected: string) => {
 
   const response = strategy === 'dumb' ? input : expected;
 
-  fact('randomNumber', Math.random());
+  fact('demo.randomNumber', Math.random());
 
   return response;
 };

@@ -1323,7 +1323,10 @@ describe('createAppScope', () => {
     });
 
     it('flags with defaults in schema should work with or without a value', () => {
-      const flagSchema = z.object({ foo: z.string().default('foo'), bar: z.string().default('bar') });
+      const flagSchema = z.object({
+        foo: z.string().default('foo'),
+        bar: z.string().default('bar'),
+      });
       const { flag } = createAppScope({ flagSchema });
 
       const foo = flag('foo');
@@ -1340,6 +1343,114 @@ describe('createAppScope', () => {
       const obj = flag('obj', { foo: 'foo-value' });
 
       expectTypeOf(obj).toEqualTypeOf<{ foo: string }>();
+    });
+  });
+
+  describe('Fact Dot Notation Support', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should support nested fact schema with dot notation', () => {
+      const factSchema = z.object({
+        user: z.object({
+          action: z.string(),
+          duration: z.number(),
+        }),
+        system: z.object({
+          memory: z.object({
+            used: z.number(),
+            total: z.number(),
+          }),
+        }),
+      });
+
+      const { fact } = createAppScope({
+        flagSchema: z.object({ ui: z.object({}) }),
+        factSchema,
+      });
+
+      // Should support dot notation paths
+      expect(() => fact('system', { memory: { used: 8192, total: 16384 } })).not.toThrow();
+      expect(() => fact('system.memory', { used: 8192, total: 16384 })).not.toThrow();
+      expect(() => fact('system.memory.used', 8192)).not.toThrow();
+      expect(() => fact('system.memory.total', 16384)).not.toThrow();
+    });
+
+    it('should validate nested paths and show errors for invalid paths', () => {
+      const factSchema = z.object({
+        user: z.object({
+          action: z.string(),
+        }),
+      });
+
+      const { fact } = createAppScope({
+        flagSchema: z.object({ ui: z.object({}) }),
+        factSchema,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Valid path - no error
+      fact('user.action', 'click');
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      // Invalid path - should log error (using 'as any' to bypass TypeScript checking for testing purposes)
+      fact('user.nonexistent' as any, 'value');
+      expect(consoleSpy).toHaveBeenCalledWith('[AxiomAI] Invalid fact: "user.nonexistent"');
+
+      // Invalid namespace - should log error
+      fact('invalid.action' as any, 'value');
+      expect(consoleSpy).toHaveBeenCalledWith('[AxiomAI] Invalid fact: "invalid.action"');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should validate types with nested schemas', () => {
+      const factSchema = z.object({
+        user: z.object({
+          action: z.string(),
+          count: z.number(),
+        }),
+      });
+
+      const { fact } = createAppScope({
+        flagSchema: z.object({ ui: z.object({}) }),
+        factSchema,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      fact('user.action', 123 as any);
+      expect(consoleSpy).toHaveBeenCalledWith('[AxiomAI] Invalid fact: "user.action"');
+
+      fact('user.count', 'not-a-number' as any);
+      expect(consoleSpy).toHaveBeenCalledWith('[AxiomAI] Invalid fact: "user.count"');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should work with deeply nested schemas', () => {
+      const factSchema = z.object({
+        app: z.object({
+          ui: z.object({
+            theme: z.object({
+              colors: z.object({
+                primary: z.string(),
+                secondary: z.string(),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      const { fact } = createAppScope({
+        flagSchema: z.object({ ui: z.object({}) }),
+        factSchema,
+      });
+
+      expect(() => fact('app.ui.theme.colors.primary', '#ff0000')).not.toThrow();
+      expect(() => fact('app.ui.theme.colors.secondary', '#00ff00')).not.toThrow();
     });
   });
 });
