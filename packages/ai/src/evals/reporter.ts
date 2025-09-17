@@ -133,8 +133,6 @@ export class AxiomReporter implements Reporter {
       this.printCaseResult(test);
     }
 
-    // TODO: BEFORE MERGE - MAYBE log out of scope flags summary here?
-
     console.log('');
     console.log(
       ' ',
