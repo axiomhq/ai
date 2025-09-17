@@ -1,7 +1,4 @@
 import { describe, expect, it, beforeAll, beforeEach, afterAll } from 'vitest';
-import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { trace } from '@opentelemetry/api';
 
 // V1 imports
 import { generateText } from 'aiv4';
@@ -20,36 +17,22 @@ import {
 import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { axiomAIMiddlewareV1, axiomAIMiddlewareV2 } from '../../src/otel/middleware';
-import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
 import { parse, Template } from '../../src/prompt';
 import type { Prompt } from '../../src/types';
+import { createOtelTestSetup } from '../helpers/otel-test-setup';
 
-let memoryExporter: InMemorySpanExporter;
-let tracerProvider: NodeTracerProvider;
+const otelTestSetup = createOtelTestSetup();
 
 beforeAll(() => {
-  memoryExporter = new InMemorySpanExporter();
-  const spanProcessor = new SimpleSpanProcessor(memoryExporter);
-  tracerProvider = new NodeTracerProvider({
-    spanProcessors: [spanProcessor],
-  });
-  tracerProvider.register();
-
-  // Initialize AxiomAI with the tracer to prevent "No tracer found" warnings
-  const tracer = trace.getTracer('axiom-ai-test');
-  initAxiomAI({ tracer });
+  otelTestSetup.setup();
 });
 
 beforeEach(() => {
-  memoryExporter.reset();
+  otelTestSetup.reset();
 });
 
 afterAll(async () => {
-  // Reset AxiomAI configuration before shutting down
-  resetAxiomAI();
-
-  await tracerProvider.shutdown();
-  await memoryExporter.shutdown();
+  await otelTestSetup.cleanup();
 });
 
 describe('prompt metadata attributes unified tests', async () => {
@@ -86,7 +69,7 @@ describe('prompt metadata attributes unified tests', async () => {
         });
       });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -111,7 +94,7 @@ describe('prompt metadata attributes unified tests', async () => {
       const providerMetadata = mockProvider.getProviderMetadata();
       expect(providerMetadata).toMatchObject({ test: { test: 'test' } });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -135,7 +118,7 @@ describe('prompt metadata attributes unified tests', async () => {
         });
       });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -160,7 +143,7 @@ describe('prompt metadata attributes unified tests', async () => {
       const providerMetadata = mockProvider.getProviderMetadata();
       expect(providerMetadata).toMatchObject({ test: { test: 'test' } });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -189,7 +172,7 @@ describe('prompt metadata attributes unified tests', async () => {
         });
       });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -219,7 +202,7 @@ describe('prompt metadata attributes unified tests', async () => {
       const providerMetadata = mockProvider.getProviderMetadata();
       expect(providerMetadata).toMatchObject({ test: { test: 'test' } });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -248,7 +231,7 @@ describe('prompt metadata attributes unified tests', async () => {
         });
       });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
@@ -277,7 +260,7 @@ describe('prompt metadata attributes unified tests', async () => {
       const providerMetadata = mockProvider.getProviderMetadata();
       expect(providerMetadata).toMatchObject({ test: { test: 'test' } });
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans.length).toBe(1);
 
       const attributes = spans[0].attributes;
