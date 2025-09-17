@@ -1,12 +1,12 @@
 import { describe, expect, vi, it, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { expectTypeOf } from 'vitest';
-import { createAppScope, type DotPaths } from '../src/app-scope';
+import { createAppScope, type DotPaths } from '../../src/app-scope';
 import {
   setGlobalFlagOverrides,
   clearGlobalFlagOverrides,
-} from '../src/evals/context/global-flags';
-import { withEvalContext } from '../src/evals/context/storage';
+} from '../../src/evals/context/global-flags';
+import { withEvalContext } from '../../src/evals/context/storage';
 
 describe('createAppScope2', () => {
   describe('basic setup and scaffolding', () => {
