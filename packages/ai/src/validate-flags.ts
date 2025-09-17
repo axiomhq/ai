@@ -93,7 +93,6 @@ function validateFlags(flagSchema: ZodObject<any>, globalOverrides: Record<strin
       console.error('❌ Invalid CLI flags 1:');
       console.error(`  • flag '${dotPath}': Invalid flag path`);
       console.error('\n🔧 Fix your CLI flags and try again.\n');
-      console.log('tktk', { shape: flagSchema.def.shape, segments });
       process.exit(1);
     }
   }

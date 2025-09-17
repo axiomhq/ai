@@ -454,6 +454,7 @@ export function createAppScope(config: any): any {
 
     // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
     const schema = findSchemaAtPath(segments);
+    // @ts-expect-error TODO: BEFORE MERGE - why?
     return Boolean(schema?._def?.type === 'object');
   }
 
