@@ -1,8 +1,5 @@
 import type { Scorer } from './scorers';
 
-// TODO: BEFORE MERGE - really?
-export type { Scorer } from './scorers';
-
 // Type utilities for automatic inference
 /** Extract the input type from CollectionRecord[] */
 export type InputOf<Data extends readonly CollectionRecord<any, any>[]> =
