@@ -19,8 +19,9 @@ export const flagSchema = z.object({
 });
 
 const factSchema = z.object({
-  // TODO: BEFORE MERGE: nested fact schema!
-  randomNumber: z.number(),
+  demo: z.object({
+    randomNumber: z.number(),
+  }),
 });
 
 const { flag, fact, pickFlags } = createAppScope({ flagSchema, factSchema });
