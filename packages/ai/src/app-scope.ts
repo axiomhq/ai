@@ -747,7 +747,10 @@ export function createAppScope(config: any): any {
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
       // TODO: BEFORE MERGE - is this right?
-      span.setAttributes({ [`fact.${name}`]: String(finalValue) });
+      span.setAttributes({
+        [`fact.${name}`]:
+          typeof finalValue === 'object' ? JSON.stringify(finalValue) : String(finalValue),
+      });
       // Also record as timestamped event for time-series data
       span.addEvent('fact.recorded', {
         [`fact.${name}`]: String(finalValue),
