@@ -51,8 +51,9 @@ export const classifyTicketStep = async ({
     context: { subject, content },
   });
 
-  const model = flag('ticketClassification.model');
-  const _foo = flag('handleReturnRequest.policy', 'auto-approve');
+  const model = flag('ticketClassification.model', 'gpt-4');
+  const policy = flag('handleReturnRequest.policy', 'auto-approve');
+  console.log('policy:', policy);
 
   const result = await withSpan(
     { capability: 'classify-ticket', step: 'classification' },
