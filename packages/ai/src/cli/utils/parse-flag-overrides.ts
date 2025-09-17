@@ -15,7 +15,6 @@ const CONFIG_RE = /^--flags-config(?:=(.*))?$/;
  * 
  * Supported forms:
  * - --flag.temperature=0.9
- * - --flag.temperature 0.9 (space-separated)
  * - --flag.dryRun=true | false
  * - --flag.foo='{"bar":1}' (JSON literal)
  * - --flag.bare (interpreted as true)
@@ -37,23 +36,21 @@ export function extractFlagOverrides(argv: string[]): {
     }
 
     const key = match[1];
-    let value = match[2]; // may be undefined (space-separated form)
+    const value = match[2]; // undefined means bare flag (boolean true)
 
+    // Check for deprecated space-separated syntax
     if (value === undefined && argv.length > i + 1) {
-      // Check if next token looks like a flag value (not another option)
       const nextToken = argv[i + 1];
-      if (!nextToken.startsWith('-')) {
-        value = nextToken;
-        i++; // consume next arg as value
+      if (!nextToken.startsWith('-') && nextToken !== 'true' && nextToken !== 'false') {
+        console.error(`❌ Invalid syntax: --flag.${key} ${nextToken}`);
+        console.error(`💡 Use: --flag.${key}=${nextToken}`);
+        process.exit(1);
       }
     }
 
-    // If still no value, treat as boolean true
-    if (value === undefined) {
-      value = 'true';
-    }
-
-    overrides[key] = coerceValue(value);
+    // If no value, treat as boolean true
+    const finalValue = value === undefined ? 'true' : value;
+    overrides[key] = coerceValue(finalValue);
   }
 
   return { cleanedArgv, overrides };
@@ -165,19 +162,21 @@ export function extractOverrides(argv: string[]): {
         process.exit(1);
       }
 
-      let value = configMatch[1]; // may be undefined (space-separated form)
+      const value = configMatch[1]; // undefined means no equals sign
       
+      // Check for deprecated space-separated syntax
       if (value === undefined && argv.length > i + 1) {
-        // Check if next token looks like a path (not another option)
         const nextToken = argv[i + 1];
         if (!nextToken.startsWith('-')) {
-          value = nextToken;
-          i++; // consume next arg as value
+          console.error(`❌ Invalid syntax: --flags-config ${nextToken}`);
+          console.error(`💡 Use: --flags-config=${nextToken}`);
+          process.exit(1);
         }
       }
 
       if (!value) {
         console.error('❌ --flags-config requires a file path');
+        console.error('💡 Use: --flags-config=path/to/config.json');
         process.exit(1);
       }
 

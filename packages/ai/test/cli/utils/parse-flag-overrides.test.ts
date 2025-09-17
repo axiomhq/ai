@@ -21,16 +21,19 @@ describe('extractFlagOverrides', () => {
     });
   });
 
-  it('parses --flag.key value syntax (space-separated)', () => {
-    // TODO: BEFORE MERGE - should we allow both `flag.key=value` AND `flag.key value` syntax?
-    const argv = ['eval', '--flag.temperature', '0.7', '--flag.dryRun', 'true'];
-    const result = extractFlagOverrides(argv);
+  it('errors on deprecated space-separated syntax', () => {
+    const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
-    expect(result.cleanedArgv).toEqual(['eval']);
-    expect(result.overrides).toEqual({
-      temperature: 0.7,
-      dryRun: true,
-    });
+    const argv = ['eval', '--flag.temperature', '0.7'];
+    extractFlagOverrides(argv);
+
+    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid syntax: --flag.temperature 0.7');
+    expect(mockConsoleError).toHaveBeenCalledWith('💡 Use: --flag.temperature=0.7');
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
+
+    mockConsoleError.mockRestore();
+    mockProcessExit.mockRestore();
   });
 
   it('treats bare flags as true', () => {
@@ -55,7 +58,6 @@ describe('extractFlagOverrides', () => {
   });
 
   it('coerces numbers', () => {
-    // TODO: BEFORE MERGE - should we force strings to be in quotes to prevent coercion?
     const argv = ['--flag.count=42', '--flag.rate=0.5', '--flag.negative=-10'];
     const result = extractFlagOverrides(argv);
 
@@ -123,6 +125,37 @@ describe('extractFlagOverrides', () => {
       config: '{invalid:json}',
     });
   });
+
+  it('handles negative numbers correctly', () => {
+    const argv = ['--flag.threshold=-0.5', '--flag.offset=-10'];
+    const result = extractFlagOverrides(argv);
+
+    expect(result.overrides).toEqual({
+      threshold: -0.5,
+      offset: -10,
+    });
+  });
+
+  it('handles values starting with dashes', () => {
+    const argv = ['--flag.prefix=--something', '--flag.option=--verbose'];
+    const result = extractFlagOverrides(argv);
+
+    expect(result.overrides).toEqual({
+      prefix: '--something',
+      option: '--verbose',
+    });
+  });
+
+  it('allows bare flags with true/false values following them', () => {
+    const argv = ['--flag.enabled', 'true', '--flag.disabled', 'false'];
+    const result = extractFlagOverrides(argv);
+
+    expect(result.cleanedArgv).toEqual(['true', 'false']);
+    expect(result.overrides).toEqual({
+      enabled: true,
+      disabled: true,
+    });
+  });
 });
 
 describe('extractOverrides', () => {
@@ -180,16 +213,13 @@ describe('extractOverrides', () => {
       );
     });
 
-    it('loads config file with --flags-config path syntax (space-separated)', () => {
-      mockReadFileSync.mockReturnValue('{"temperature": 0.7}');
-
+    it('errors on deprecated space-separated --flags-config syntax', () => {
       const argv = ['eval', '--flags-config', 'config/flags.json'];
-      const result = extractOverrides(argv);
+      extractOverrides(argv);
 
-      expect(result.cleanedArgv).toEqual(['eval']);
-      expect(result.overrides).toEqual({
-        temperature: 0.7,
-      });
+      expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid syntax: --flags-config config/flags.json');
+      expect(mockConsoleError).toHaveBeenCalledWith('💡 Use: --flags-config=config/flags.json');
+      expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 
     it('works with partial config (subset of flags)', () => {
@@ -246,6 +276,7 @@ describe('extractOverrides', () => {
       extractOverrides(argv);
 
       expect(mockConsoleError).toHaveBeenCalledWith('❌ --flags-config requires a file path');
+      expect(mockConsoleError).toHaveBeenCalledWith('💡 Use: --flags-config=path/to/config.json');
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
   });
@@ -326,13 +357,6 @@ describe('extractOverrides', () => {
       expect(result.cleanedArgv).toEqual(['eval', 'test.eval.ts', '--watch']);
     });
 
-    it('removes space-separated --flags-config and path from cleanedArgv', () => {
-      mockReadFileSync.mockReturnValue('{"temp": 0.9}');
 
-      const argv = ['eval', '--flags-config', 'config.json', '--watch'];
-      const result = extractOverrides(argv);
-
-      expect(result.cleanedArgv).toEqual(['eval', '--watch']);
-    });
   });
 });
