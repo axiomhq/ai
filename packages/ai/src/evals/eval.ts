@@ -6,15 +6,8 @@ import { withEvalContext, getEvalContext } from './context/storage';
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type {
-  CollectionRecord,
-  EvalParams,
-  EvalTask,
-  InputOf,
-  ExpectedOf,
-  Scorer,
-} from './eval.types';
-import type { Score } from './scorers';
+import type { CollectionRecord, EvalParams, EvalTask, InputOf, ExpectedOf } from './eval.types';
+import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
