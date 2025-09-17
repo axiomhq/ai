@@ -9,7 +9,6 @@ export function formatZodErrors(error: ZodError): string {
 
   for (const issue of issues) {
     const path = issue.path.join('.');
-    // TODO: BEFORE MERGE - extra root flag currently gives "flag '': Unrecognized key(s) in object: 'asd'"
     const message = formatIssueMessage(issue, path);
     messages.push(`  • ${message}`);
   }
@@ -37,6 +36,25 @@ function formatIssueMessage(issue: any, path: string): string {
     case 'invalid_enum_value':
       const options = issue.options.map((opt: any) => `"${opt}"`).join(', ');
       return `flag '${path}' must be one of: ${options}, got "${issue.received}"`;
+
+    case 'invalid_value':
+      // Handle enum validation errors
+      if (issue.values && Array.isArray(issue.values)) {
+        const values = issue.values.map((val: any) => `"${val}"`).join(', ');
+        return `flag '${path}' must be one of: ${values}`;
+      }
+      return `flag '${path}': ${issue.message}`;
+
+    case 'unrecognized_keys':
+      // Handle unrecognized keys properly, especially when path is empty
+      const keys = issue.keys || [];
+      if (keys.length === 1) {
+        return `unrecognized flag '${keys[0]}'`;
+      } else if (keys.length > 1) {
+        const keysList = keys.map((key: string) => `'${key}'`).join(', ');
+        return `unrecognized flags ${keysList}`;
+      }
+      return `unrecognized keys in flags`;
 
     case 'custom':
       return `flag '${path}': ${issue.message}`;
@@ -78,7 +96,7 @@ function generateExampleForIssue(issue: any, path: string): string | null {
       break;
 
     case 'too_small':
-      if (issue.type === 'number') {
+      if (issue.origin === 'number' || issue.type === 'number') {
         return `--flag.${path}=${issue.minimum}`;
       }
       break;
@@ -86,6 +104,12 @@ function generateExampleForIssue(issue: any, path: string): string | null {
     case 'invalid_enum_value':
       if (issue.options.length > 0) {
         return `--flag.${path}=${issue.options[0]}`;
+      }
+      break;
+
+    case 'invalid_value':
+      if (issue.values && Array.isArray(issue.values) && issue.values.length > 0) {
+        return `--flag.${path}=${issue.values[0]}`;
       }
       break;
   }
