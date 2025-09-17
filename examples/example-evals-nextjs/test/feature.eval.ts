@@ -1,23 +1,5 @@
-import { createAppScope, experimental_Eval as Eval } from 'axiom/ai/evals';
-import { z } from 'zod';
-
-// Define namespaced schemas for type safety and runtime validation
-const flagSchema = z.object({
-  behavior: z.object({
-    strategy: z.enum(['dumb', 'smart']).default('dumb'),
-    foo: z.string().default('default-value'),
-  }),
-  ui: z.object({
-    theme: z.enum(['light', 'dark']).default('light'),
-    showDebug: z.boolean().default(false),
-  }),
-});
-
-const factSchema = z.object({
-  randomNumber: z.number(),
-});
-
-const { pickFlags, flag, fact } = createAppScope({ flagSchema, factSchema });
+import { experimental_Eval as Eval } from 'axiom/ai/evals';
+import { flag, fact, pickFlags } from '../src/lib/app-scope';
 
 const myFn = async (input: string, expected: string) => {
   const strategy = flag('behavior.strategy');

@@ -2,8 +2,13 @@ import { createAppScope } from 'axiom/ai/evals';
 import z from 'zod';
 
 export const flagSchema = z.object({
-  ticketClassification: z.object({
+  behavior: z.object({
     strategy: z.enum(['dumb', 'smart']).default('dumb'),
+  }),
+  ui: z.object({
+    theme: z.enum(['light', 'dark']).default('light'),
+  }),
+  ticketClassification: z.object({
     model: z.string().default('gpt-4o-mini'),
   }),
   handleReturnRequest: z.object({
@@ -14,9 +19,8 @@ export const flagSchema = z.object({
 });
 
 const factSchema = z.object({
-  ticketClassification: z.object({
-    randomNumber: z.number(),
-  }),
+  // TODO: BEFORE MERGE: nested fact schema!
+  randomNumber: z.number(),
 });
 
 const { flag, fact, pickFlags } = createAppScope({ flagSchema, factSchema });
