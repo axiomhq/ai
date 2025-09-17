@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
-import { createAppScope, isPickedFlag } from '../src/app-scope';
+import { createAppScope, isPickedFlag } from '../../src/app-scope';
 import {
   setGlobalFlagOverrides,
   clearGlobalFlagOverrides,
-} from '../src/evals/context/global-flags';
+} from '../../src/evals/context/global-flags';
 
 describe('createAppScope with Zod schemas', () => {
   it('should work with schema-based flag validation', () => {
@@ -116,7 +116,7 @@ describe('createAppScope auto-validation', () => {
 
     beforeEach(async () => {
       // Create a spy on the actual function
-      const validateModule = await import('../src/validate-flags');
+      const validateModule = await import('../../src/validate-flags');
       validateSpy = vi.spyOn(validateModule, 'validateCliFlags').mockImplementation(() => {});
     });
 

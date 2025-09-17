@@ -1,6 +1,6 @@
 import { expectTypeOf, describe, it } from 'vitest';
 import { z } from 'zod';
-import { createAppScope as createAppScope } from '../src/app-scope';
+import { createAppScope as createAppScope } from '../../src/app-scope';
 
 describe('type-level tests for app scope', () => {
   it('basic type', () => {
