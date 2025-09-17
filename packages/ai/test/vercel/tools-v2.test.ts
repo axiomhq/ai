@@ -1,43 +1,26 @@
 import { describe, expect, it, beforeAll, beforeEach, afterAll } from 'vitest';
-import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { trace } from '@opentelemetry/api';
 import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { wrapTool } from '../../src/otel/wrapTool';
 import { generateText, tool, stepCountIs } from 'aiv5';
 import { createMockProvider, mockResponses } from './mock-provider-v2/mock-provider-v2';
-import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
 import packageJson from '../../package.json';
+import { createOtelTestSetup } from '../helpers/otel-test-setup';
 
 import { z } from 'zod';
 
-let memoryExporter: InMemorySpanExporter;
-let tracerProvider: NodeTracerProvider;
+const otelTestSetup = createOtelTestSetup();
 
 beforeAll(() => {
-  memoryExporter = new InMemorySpanExporter();
-  const spanProcessor = new SimpleSpanProcessor(memoryExporter);
-  tracerProvider = new NodeTracerProvider({
-    spanProcessors: [spanProcessor],
-  });
-  tracerProvider.register();
-
-  // Initialize AxiomAI with the tracer to prevent "No tracer found" warnings
-  const tracer = trace.getTracer('axiom-ai-test');
-  initAxiomAI({ tracer });
+  otelTestSetup.setup();
 });
 
 beforeEach(() => {
-  memoryExporter.reset();
+  otelTestSetup.reset();
 });
 
 afterAll(async () => {
-  // Reset AxiomAI configuration before shutting down
-  resetAxiomAI();
-
-  await tracerProvider.shutdown();
-  await memoryExporter.shutdown();
+  await otelTestSetup.cleanup();
 });
 
 describe('tool call attributes', () => {
@@ -97,7 +80,7 @@ describe('tool call attributes', () => {
       return res;
     });
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     expect(spans.length).toBe(2);
 
     const toolSpan = spans.find((s) => s.name.startsWith('execute_tool'));
