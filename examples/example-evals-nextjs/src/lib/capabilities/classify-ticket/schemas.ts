@@ -1,10 +1,10 @@
-import z from "zod";
+import z from 'zod';
 
 export const SupportTicketCategorySchema = z.enum([
-  "spam",
-  "question",
-  "feature_request",
-  "bug_report",
+  'spam',
+  'question',
+  'feature_request',
+  'bug_report',
 ]);
 
 export const SupportTicketInputSchema = z.object({
@@ -19,7 +19,7 @@ export const SupportTicketResponseSchema = z.object({
 
 export const SupportTicketMetadataSchema = z.object({
   id: z.string(),
-  channel: z.enum(["EMAIL", "SLACK"]),
+  channel: z.enum(['EMAIL', 'SLACK']),
 });
 
 export const SupportTicketDatasetRecordSchema = z.object({
@@ -28,9 +28,7 @@ export const SupportTicketDatasetRecordSchema = z.object({
   metadata: SupportTicketMetadataSchema,
 });
 
-export const SupportTicketDatasetSchema = z.array(
-  SupportTicketDatasetRecordSchema
-);
+export const SupportTicketDatasetSchema = z.array(SupportTicketDatasetRecordSchema);
 
 export type SupportTicketInput = z.infer<typeof SupportTicketInputSchema>;
 export type SupportTicketDataset = z.infer<typeof SupportTicketDatasetSchema>;

@@ -217,7 +217,9 @@ describe('extractOverrides', () => {
       const argv = ['eval', '--flags-config', 'config/flags.json'];
       extractOverrides(argv);
 
-      expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid syntax: --flags-config config/flags.json');
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '❌ Invalid syntax: --flags-config config/flags.json',
+      );
       expect(mockConsoleError).toHaveBeenCalledWith('💡 Use: --flags-config=config/flags.json');
       expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
@@ -356,7 +358,5 @@ describe('extractOverrides', () => {
 
       expect(result.cleanedArgv).toEqual(['eval', 'test.eval.ts', '--watch']);
     });
-
-
   });
 });
