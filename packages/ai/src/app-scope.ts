@@ -11,12 +11,12 @@ import {
   type ZodDiscriminatedUnion,
   type ZodOptional,
   type ZodNullable,
-  // type ZodEffects,
   type ZodArray,
   type ZodRecord,
   type ZodSchema,
 } from 'zod';
 import type { $ZodObject } from 'zod/v4/core';
+import { toOtelAttribute } from './util/to-otel-attribute';
 
 type DefaultMaxDepth = 8;
 
@@ -28,9 +28,7 @@ type StripWrappers<T> =
       ? StripWrappers<U>
       : T extends ZodNullable<infer U>
         ? StripWrappers<U>
-        : // : T extends ZodEffects<infer U, any, any>
-          // ? StripWrappers<U>
-          T;
+        : T;
 
 // Main recursive union detector
 type _ContainsUnion<
@@ -743,14 +741,14 @@ export function createAppScope<
     // Skip validation for now - the complex dot notation validation needs more careful handling
     // This matches the oracle plan which says to focus on core functionality first
 
-    // Store accessed flag for context tracking
     updateEvalContext({ [path]: finalValue });
 
-    // TODO: BEFORE MERGE - do a span event instead?
-    // Add OpenTelemetry span attributes
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
-      span.setAttributes({ [`flag.${path}`]: String(finalValue) });
+      const attr = toOtelAttribute(finalValue);
+      if (attr) {
+        span.setAttribute(`flag.${path}`, attr);
+      }
     }
 
     return finalValue;
@@ -768,39 +766,35 @@ export function createAppScope<
     if (factSchemaConfig) {
       const segments = parsePath(name);
 
+      let success = true;
       // Fast path check - validate path exists in schema before creating nested object
       if (!isValidPath(factSchemaConfig, segments)) {
-        console.error(`[AxiomAI] Invalid fact: "${name}"`);
-        // Continue recording the fact even if validation fails for backward compatibility
+        success = false;
       } else {
         // Convert dot notation to nested object for validation
         const nested = dotNotationToNested({ [name]: value });
         const result = factSchemaConfig.strict().partial().safeParse(nested);
 
         if (!result.success) {
-          console.error(`[AxiomAI] Invalid fact: "${name}"`);
-          // Continue recording the fact even if validation fails for backward compatibility
+          success = false;
         } else {
           finalValue = getValueAtPath(result.data, segments) ?? value;
         }
       }
+
+      if (!success) {
+        console.error(`[AxiomAI] Invalid fact: "${name}"`);
+      }
     }
 
-    // Store in context for tracking
     updateEvalContext(undefined, { [name]: finalValue });
 
-    // Add OpenTelemetry integration
     const span = trace.getActiveSpan();
     if (span?.isRecording()) {
-      span.setAttributes({
-        [`fact.${name}`]:
-          // TODO: BEFORE MERGE - better handling of this
-          typeof finalValue === 'object' ? JSON.stringify(finalValue) : String(finalValue),
-      });
-      // Also record as timestamped event for time-series data
-      span.addEvent('fact.recorded', {
-        [`fact.${name}`]: String(finalValue),
-      });
+      const attr = toOtelAttribute(finalValue);
+      if (attr) {
+        span.setAttribute(`fact.${name}`, attr);
+      }
     }
   }
 
