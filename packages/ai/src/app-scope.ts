@@ -60,12 +60,6 @@ type _ContainsUnionInShape<
     ? false
     : true;
 
-// Public interface with error message
-type ForbidUnionsDeep<T> =
-  _ContainsUnion<T> extends true
-    ? 'Error: Union types (z.union, .or) are not allowed in flag schemas'
-    : T;
-
 interface AppScopeConfig<
   FlagSchema extends ZodObject<any> | undefined = undefined,
   FactSchema extends ZodObject<any> | undefined = undefined,
@@ -370,41 +364,49 @@ function assertNoUnions(schema: any, path = 'schema'): void {
 }
 
 /**
- * TODO: BEFORE MERGE - jsdoc here
+ * Create a new application-level evaluation scope.
+ *
+ * @param config.flagSchema A zod object describing the schema for flags **(required)**
+ * @param config.factSchema A zod object describing the schema for facts (optional)
+ *
+ * @example
+ * import { z } from 'zod';
+ *
+ * const scope = createAppScope({
+ *   flagSchema: z.object({
+ *     ui: z.object({
+ *       darkMode: z.boolean().default(false),
+ *       theme:    z.object({
+ *         primary: z.string().default('#00f'),
+ *       }),
+ *     }),
+ *     api: z.object({ endpoint: z.string() }),
+ *   }),
+ *   factSchema: z.object({
+ *     userAction: z.string(),
+ *     timing: z.number(),
+ *   }),
+ * });
+ *
+ * // Typed flag access
+ * const dark = scope.flag('ui.darkMode'); // inferred boolean
+ * const theme = scope.flag('ui.theme'); // entire object
+ * const primary = scope.flag('ui.theme.primary'); // '#00f'
+ * const endpoint = scope.flag('api.endpoint', '/api'); // must provide default
+ *
+ * // Typed fact recording
+ * scope.fact('userAction', 'clicked_button');
+ * scope.fact('timing', 1250);
  */
-export function createAppScope<
-  FlagSchema extends ZodObject<any>,
-  FactSchema extends ZodObject<any> | undefined = undefined,
->(
-  config: AppScopeConfig<FlagSchema, FactSchema> & {
-    flagSchema: ForbidUnionsDeep<FlagSchema>;
-  },
-): AppScope<FlagSchema, FactSchema>;
-
-/**
- * TODO: BEFORE MERGE - jsdoc here also
- */
-export function createAppScope<FactSchema extends ZodObject<any> | undefined = undefined>(
-  config: AppScopeConfig<undefined, FactSchema>,
-): AppScope<undefined, FactSchema>;
-
 export function createAppScope<
   FlagSchema extends ZodObject<any> | undefined = undefined,
   FactSchema extends ZodObject<any> | undefined = undefined,
->(
-  config: AppScopeConfig<FlagSchema, FactSchema>,
-): {
-  flag: DotNotationFlagFunction<FlagSchema>;
-  fact: (name: string, value: unknown) => void;
-  overrideFlags: (partial: Record<string, unknown>) => void;
-  withFlags: <T>(overrides: Record<string, unknown>, fn: () => T) => T;
-  pickFlags: PickFlagsFunction<FlagSchema>;
-} {
+>(config: AppScopeConfig<FlagSchema, FactSchema>): AppScope<FlagSchema, FactSchema> {
   // Store schemas for runtime validation
   const flagSchemaConfig = config?.flagSchema;
   const factSchemaConfig = config?.factSchema;
 
-  // Runtime validation – reject union types up-front
+  // reject union types
   if (flagSchemaConfig) {
     assertNoUnions(flagSchemaConfig, 'flagSchema');
   }
@@ -758,7 +760,6 @@ export function createAppScope<
    * Record a typed fact value for tracking and telemetry with dot notation support.
    * @param name - The fact name/key
    */
-  // TODO: BEFORE MERGE - this still has wrong types, see `prompts.ts` in the ticket classification example (MAYBE?)
   function fact<N extends string>(name: N, value: unknown): void {
     let finalValue = value;
 
@@ -832,13 +833,13 @@ export function createAppScope<
   const pickFlags = ((...args: any[]) => {
     // Handle both array and spread arguments
     return args[0] && Array.isArray(args[0]) ? args[0] : args;
-  }) as PickFlagsFunction<typeof flagSchemaConfig>;
+  }) as PickFlagsFunction<FlagSchema>;
 
   return {
     flag: flag as any as DotNotationFlagFunction<FlagSchema>,
-    fact,
-    overrideFlags,
-    withFlags,
+    fact: fact as any as FactFunction<FactSchema>,
+    overrideFlags: overrideFlags as any as OverrideFlagsFunction<FlagSchema>,
+    withFlags: withFlags as any as WithFlagsFunction<FlagSchema>,
     pickFlags,
   };
 }
