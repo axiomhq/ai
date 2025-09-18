@@ -3,7 +3,7 @@ import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from
 import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
 
-import type { Score } from '../scorers/scorer.types';
+import type { Score } from './scorers';
 import { findEvaluationCases, type Evaluation } from './eval.service';
 
 /**
@@ -35,6 +35,10 @@ export type EvalCaseReport = {
   duration: number | undefined;
   /** Timestamp when the case started */
   startedAt: number | undefined;
+  /** Flags accessed outside of the picked flags scope for this case */
+  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  /** Flags that are in scope for this evaluation */
+  pickedFlags?: string[];
 };
 
 export type EvaluationReport = {
@@ -42,6 +46,13 @@ export type EvaluationReport = {
   name: string;
   version: string;
   baseline: Evaluation | undefined;
+  /** Summary of all flags accessed outside of picked flags scope across all cases */
+  outOfScopeFlags?: {
+    flagPath: string;
+    count: number;
+    firstAccessedAt: number;
+    lastAccessedAt: number;
+  }[];
 };
 
 /**
@@ -97,6 +108,11 @@ export class AxiomReporter implements Reporter {
 
   onTestCaseReady(test: TestCase) {
     const meta = test.meta() as TaskMeta & { case: EvalCaseReport };
+
+    // TODO: there seem to be some cases where `meta` is undefined
+    // maybe we get here to early?
+    if (!meta.case) return;
+
     console.log(c.blue(` \u2713 evaluating case ${meta.case.index}`));
   }
 
@@ -177,5 +193,25 @@ export class AxiomReporter implements Reporter {
 
       return [k, scoreValue];
     });
+
+    // Print out-of-scope flags for this case
+    if (testMeta.case.outOfScopeFlags && testMeta.case.outOfScopeFlags.length > 0) {
+      const pickedFlagsText = testMeta.case.pickedFlags
+        ? `(picked: ${testMeta.case.pickedFlags.map((f) => `'${f}'`).join(', ')})`
+        : '(none)';
+      console.log('   ', c.yellow(`⚠ Out-of-scope flags: ${pickedFlagsText}`));
+      testMeta.case.outOfScopeFlags.forEach((flag) => {
+        const timeStr = new Date(flag.accessedAt).toLocaleTimeString();
+        console.log('     ', `${flag.flagPath} (at ${timeStr})`);
+
+        // Show top stack trace frames
+        if (flag.stackTrace && flag.stackTrace.length > 0) {
+          flag.stackTrace.forEach((frame, i) => {
+            const prefix = i === flag.stackTrace.length - 1 ? ' └─' : ' ├─';
+            console.log('     ', c.dim(`${prefix} ${frame}`));
+          });
+        }
+      });
+    }
   }
 }

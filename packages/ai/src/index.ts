@@ -30,9 +30,3 @@ export type {
   ParsedMessage as experimental_ParsedMessage,
   ParsedMessagesArray as experimental_ParsedMessagesArray,
 } from './types/metadata';
-
-/**
- * Evals
- */
-
-export type { Score, Scorer } from './scorers/scorer.types';

@@ -1,5 +1,20 @@
-import type { Scorer } from 'src/scorers/scorer.types';
-import type { ModelParams, PromptMessage } from 'src/types';
+import type { Scorer } from './scorers';
+
+// Type utilities for automatic inference
+/** Extract the input type from CollectionRecord[] */
+export type InputOf<Data extends readonly CollectionRecord<any, any>[]> =
+  Data[number] extends CollectionRecord<infer I, any> ? I : never;
+
+/** Extract the expected type from CollectionRecord[] */
+export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
+  Data[number] extends CollectionRecord<any, infer E> ? E : never;
+
+/** Extract the output type from a task function */
+export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
+  ...args: any
+) => AsyncIterable<infer O>
+  ? O
+  : Awaited<ReturnType<TaskFn>>;
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
@@ -11,11 +26,11 @@ import type { ModelParams, PromptMessage } from 'src/types';
  *
  * @param input - The input data to process
  * @param expected - The expected output for comparison/validation
- * @returns Promise that resolves to the task output, or the output directly
+ * @returns The task output, Promise, or AsyncIterable for streaming
  *
  * @example
  * ```typescript
- * const textGenerationTask: EvalTask<string, string> = async (input, expected) => {
+ * const textGenerationTask: EvalTask<string, string, string> = async ({ input, expected }) => {
  *   const result = await generateText({
  *     model: myModel,
  *     prompt: input
@@ -24,21 +39,30 @@ import type { ModelParams, PromptMessage } from 'src/types';
  * };
  * ```
  */
-export type EvalTask<TInput, TExpected> = (args: {
-  model: string;
-  params: ModelParams;
+export type EvalTask<
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+  TOutput extends string | Record<string, any>,
+> = (args: {
   input: TInput;
   expected: TExpected;
-}) => Promise<any> | any;
+}) => TOutput | Promise<TOutput> | AsyncIterable<TOutput>;
 
 /**
- * Record type of a matric of collection data
+ * Record type representing a single data point in an evaluation dataset.
+ *
+ * @experimental This API is experimental and may change in future versions.
  */
-export type CollectionRecord = {
-  /** Optional name for the record, if not set, it will default to eval name + index of the record */
-  input: string | Record<string, any>;
-  expected: string | Record<string, any>;
-  metadata?: Record<string, any>;
+export type CollectionRecord<
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+> = {
+  /** The input data for the evaluation case */
+  input: TInput;
+  /** The expected output for comparison/validation */
+  expected: TExpected;
+  /** Optional metadata for the record */
+  metadata?: Record<string, unknown>;
 };
 
 /**
@@ -49,21 +73,23 @@ export type CollectionRecord = {
  *
  * @experimental This API is experimental and may change in future versions.
  */
-export type EvalParams = {
+export type EvalParams<
+  TInput extends string | Record<string, any>,
+  TExpected extends string | Record<string, any>,
+  TOutput extends string | Record<string, any>,
+> = {
   /** Function that returns the dataset with input/expected pairs for evaluation */
-  data: () => Promise<CollectionRecord[]> | CollectionRecord[];
-  /** The name of the model */
-  model: string;
-  /** The {@Link Options} object to configure models */
-  params: ModelParams;
-  /** The {@Link PromptMessage[]} template */
-  prompt: PromptMessage[];
-  /** The {@link EvalTask} function to execute for each data item */
-  task: EvalTask<any, any>;
-  /** Array of scoring functions to evaluate the task output, producing {@link Score} results */
-  scorers: Array<Scorer>;
-  /** KeyValue map for extra metadata */
-  metadata?: Record<string, any>;
+  data: () =>
+    | readonly CollectionRecord<TInput, TExpected>[]
+    | Promise<readonly CollectionRecord<TInput, TExpected>[]>;
+  /** The task function to evaluate */
+  task: EvalTask<TInput, TExpected, TOutput>;
+  /** Array of scoring functions to evaluate the task output */
+  scorers: ReadonlyArray<Scorer<TInput, TExpected, TOutput>>;
+  /** Optional metadata for the evaluation */
+  metadata?: Record<string, unknown>;
   /** Optional timeout in milliseconds for task execution */
   timeout?: number;
+  /** Optional reduction of flag namespace */
+  configFlags?: string[];
 };

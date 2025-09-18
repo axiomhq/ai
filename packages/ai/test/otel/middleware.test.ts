@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { SpanStatusCode } from '@opentelemetry/api';
 import { wrapLanguageModel, streamText } from 'aiv4';
 import { wrapLanguageModel as wrapLanguageModelV5, streamText as streamTextV5 } from 'aiv5';
 import { generateText } from 'aiv4';
@@ -13,32 +11,20 @@ import {
 } from '../../src/otel/middleware';
 import { createMockProvider } from '../vercel/mock-provider-v1/mock-provider';
 import { createMockProvider as createMockProviderV2 } from '../vercel/mock-provider-v2/mock-provider-v2';
-import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
+import { createOtelTestSetup } from '../helpers/otel-test-setup';
 
-let memoryExporter: InMemorySpanExporter;
-let tracerProvider: NodeTracerProvider;
+const otelTestSetup = createOtelTestSetup();
 
 beforeAll(() => {
-  memoryExporter = new InMemorySpanExporter();
-  const spanProcessor = new SimpleSpanProcessor(memoryExporter);
-  tracerProvider = new NodeTracerProvider({
-    spanProcessors: [spanProcessor],
-  });
-  tracerProvider.register();
-
-  const tracer = trace.getTracer('axiom-ai-middleware-test');
-  initAxiomAI({ tracer });
+  otelTestSetup.setup();
 });
 
 beforeEach(() => {
-  memoryExporter.reset();
+  otelTestSetup.reset();
 });
 
 afterAll(async () => {
-  resetAxiomAI();
-
-  await tracerProvider.shutdown();
-  await memoryExporter.shutdown();
+  await otelTestSetup.cleanup();
 });
 
 describe('Axiom Telemetry Middleware', () => {
@@ -73,7 +59,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       expect(result.text).toBe('Hello from middleware test!');
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(1);
 
       const span = spans[0];
@@ -111,7 +97,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       expect(fullText).toBe('Hello streaming!');
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(2); // Parent span + child stream span
 
       const parentSpan = spans.find((s) => s.name === 'chat gpt-4-stream');
@@ -154,7 +140,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       expect(result.text).toBe('Hello from V2 middleware test!');
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(1);
 
       const span = spans[0];
@@ -193,7 +179,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       expect(fullText).toBe('Streaming response!');
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(2); // Parent span + child stream span
 
       const parentSpan = spans.find((s) => s.name === 'chat claude-3-stream');
@@ -228,7 +214,7 @@ describe('Axiom Telemetry Middleware', () => {
       ).rejects.toThrow('Test error');
 
       // Verify span was created with error status
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(1);
 
       const span = spans[0];
@@ -265,7 +251,7 @@ describe('Axiom Telemetry Middleware', () => {
       ).rejects.toThrow('Test V2 error');
 
       // Verify span was created with error status
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(1);
 
       const span = spans[0];
@@ -303,7 +289,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       expect(result.text).toBe('Hello from unified middleware test!');
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(1);
       expect(spans[0].name).toBe('chat gpt-4');
     });
@@ -329,7 +315,7 @@ describe('Axiom Telemetry Middleware', () => {
 
       expect(result.text).toBe('Hello from unified V2 test!');
 
-      const spans = memoryExporter.getFinishedSpans();
+      const spans = otelTestSetup.getSpans();
       expect(spans).toHaveLength(1);
       expect(spans[0].name).toBe('chat gpt-4');
     });

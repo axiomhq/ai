@@ -8,9 +8,14 @@ import { initAxiomAI, RedactionPolicy } from 'axiom/ai';
 import { tracer } from './tracer';
 
 const sdk = new NodeSDK({
-  resource: resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: 'nextjs-otel-example',
-  }) as Resource,
+  resource: resourceFromAttributes(
+    {
+      [ATTR_SERVICE_NAME]: 'nextjs-otel-example',
+    },
+    {
+      schemaUrl: 'https://opentelemetry.io/schemas/1.37.0',
+    },
+  ) as Resource,
   spanProcessor: new SimpleSpanProcessor(
     new OTLPTraceExporter({
       url: `${process.env.AXIOM_URL}/v1/traces`,

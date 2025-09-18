@@ -1,8 +1,10 @@
 import { Command, Argument } from 'commander';
 import { runVitest } from '../../evals/run-vitest';
 import { lstatSync } from 'node:fs';
+import { runEvalWithContext } from '../utils/eval-context-runner';
+import type { FlagOverrides } from '../utils/parse-flag-overrides';
 
-export const loadEvalCommand = (program: Command) => {
+export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
     new Command('eval')
       .description('run evals locally')
@@ -27,10 +29,12 @@ export const loadEvalCommand = (program: Command) => {
         const targetPath = isDir ? path : '.';
         const includedfiles = isDir ? ['**/*.eval.ts'] : [path];
 
-        await runVitest(targetPath, {
-          watch: options.watch,
-          baseline: options.baseline,
-          include: includedfiles,
+        await runEvalWithContext(flagOverrides, async () => {
+          return runVitest(targetPath, {
+            watch: options.watch,
+            baseline: options.baseline,
+            include: includedfiles,
+          });
         });
       }),
   );
