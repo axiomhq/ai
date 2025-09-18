@@ -12,7 +12,7 @@ const myFn = async (input: string, expected: string) => {
 };
 
 // an example of a custom scorer
-const exactMatchScorer = ({ output, expected }: { output: any; expected?: any }) => {
+const exactMatchScorer = ({ output, expected }: { output: string; expected?: string }) => {
   return {
     name: 'exact-match',
     score: output == expected ? 1 : 0,
