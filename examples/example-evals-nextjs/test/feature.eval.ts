@@ -32,7 +32,7 @@ Eval('feature-example', {
     // console.log('tktk context', getEvalContext());
     return r;
   },
-  scorers: [exactMatchScorer], // TODO: BEFORE MERGE - types idk
+  scorers: [exactMatchScorer],
   metadata: {
     description:
       'Demonstrates pickFlags functionality - only behavior namespace is available, ui namespace is excluded',
