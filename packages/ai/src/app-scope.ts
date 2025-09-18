@@ -372,7 +372,7 @@ function assertNoUnions(schema: any, path = 'schema'): void {
  * @example
  * import { z } from 'zod';
  *
- * const scope = createAppScope({
+ * const { flag, fact, withFlags, pickFlags, overrideFlags } = createAppScope({
  *   flagSchema: z.object({
  *     ui: z.object({
  *       darkMode: z.boolean().default(false),
@@ -389,14 +389,22 @@ function assertNoUnions(schema: any, path = 'schema'): void {
  * });
  *
  * // Typed flag access
- * const dark = scope.flag('ui.darkMode'); // inferred boolean
- * const theme = scope.flag('ui.theme'); // entire object
- * const primary = scope.flag('ui.theme.primary'); // '#00f'
- * const endpoint = scope.flag('api.endpoint', '/api'); // must provide default
+ * const dark = flag('ui.darkMode'); // inferred boolean
+ * const theme = flag('ui.theme'); // entire object
+ * const primary = flag('ui.theme.primary'); // '#00f'
+ * const endpoint = flag('api.endpoint', '/api'); // must provide default
  *
  * // Typed fact recording
- * scope.fact('userAction', 'clicked_button');
- * scope.fact('timing', 1250);
+ * fact('userAction', 'clicked_button');
+ * fact('timing', 1250);
+ *
+ * // Temporarily override flags for a block of code
+ * withFlags({ 'ui.darkMode': true }, () => {
+ *   // code here, `ui.darkMode` will be true in this block and reset after
+ * });
+ *
+ * // Override flags globally for the current evaluation run
+ * overrideFlags({ 'api.endpoint': '/custom' });
  */
 export function createAppScope<
   FlagSchema extends ZodObject<any> | undefined = undefined,
