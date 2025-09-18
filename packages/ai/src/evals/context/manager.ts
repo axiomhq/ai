@@ -1,28 +1,66 @@
-// Simplest approach: Node = AsyncLocalStorage, other = fallback
-
 interface ContextManager<T = any> {
   getStore(): T | undefined;
   run<R>(value: T, fn: () => R): R;
 }
 
-let contextManager: ContextManager;
+const CONTEXT_MANAGER_SYMBOL = Symbol.for('axiom.context_manager');
 
-// Detect Node.js environment
+function getGlobalContextManager(): ContextManager | undefined {
+  return (globalThis as any)[CONTEXT_MANAGER_SYMBOL];
+}
+
+function setGlobalContextManager(manager: ContextManager): void {
+  (globalThis as any)[CONTEXT_MANAGER_SYMBOL] = manager;
+}
+
 const isNodeJS = typeof process !== 'undefined' && process.versions && process.versions.node;
 
-if (isNodeJS) {
-  try {
-    // Node.js - use AsyncLocalStorage
-    const { AsyncLocalStorage } = require('async_hooks');
-    contextManager = new AsyncLocalStorage();
-  } catch (_error) {
-    // Fallback if async_hooks is not available
-    console.warn('AsyncLocalStorage not available, using fallback context manager');
-    contextManager = createFallbackManager();
+function getContextManager(): ContextManager {
+  // Check global Symbol registry cache first (shared across VM contexts)
+  const existing = getGlobalContextManager();
+  if (existing) {
+    return existing;
   }
-} else {
-  // Browser/CF Workers - simple fallback
-  contextManager = createFallbackManager();
+
+  let manager: ContextManager;
+
+  if (isNodeJS) {
+    try {
+      // Try dynamic require approaches to work in both Node.js and bundled environments
+      let AsyncLocalStorage;
+
+      try {
+        // Try direct require first (works in most Node.js contexts)
+        const requireFn = eval('require');
+        AsyncLocalStorage = requireFn('async_hooks').AsyncLocalStorage;
+      } catch (directError) {
+        try {
+          // Fallback: createRequire approach (works in VM contexts like Vitest)
+          const requireFn = eval('require');
+          const { createRequire } = requireFn('module');
+          const dynamicRequire = createRequire(import.meta.url);
+          AsyncLocalStorage = dynamicRequire('async_hooks').AsyncLocalStorage;
+        } catch (_createRequireError) {
+          // If both approaches fail, re-throw the original error for better debugging
+          throw directError;
+        }
+      }
+
+      manager = new AsyncLocalStorage();
+    } catch (error) {
+      // Fallback if async_hooks is not available
+      console.warn('AsyncLocalStorage not available, using fallback context manager:', error);
+      manager = createFallbackManager();
+    }
+  } else {
+    // Browser/CF Workers - simple fallback (no warning needed here)
+    manager = createFallbackManager();
+  }
+
+  // Cache using Symbol to share across VM contexts
+  setGlobalContextManager(manager);
+
+  return manager;
 }
 
 function createFallbackManager(): ContextManager {
@@ -44,13 +82,24 @@ function createFallbackManager(): ContextManager {
 export function createAsyncHook<T>(_name: string) {
   return {
     get(): T | undefined {
-      if (contextManager.getStore) {
-        return contextManager.getStore();
+      const manager = getContextManager();
+      if (manager.getStore) {
+        return manager.getStore();
       }
       return undefined;
     },
     run<R>(value: T, fn: () => R): R {
-      return contextManager.run(value, fn);
+      const manager = getContextManager();
+      return manager.run(value, fn);
     },
   };
+}
+
+/**
+ * Reset the context manager singleton for tests.
+ * This clears the global cache and forces a new AsyncLocalStorage instance to be created.
+ * Useful for test isolation when needed.
+ */
+export function __resetContextManagerForTests(): void {
+  delete (globalThis as any)[CONTEXT_MANAGER_SYMBOL];
 }
