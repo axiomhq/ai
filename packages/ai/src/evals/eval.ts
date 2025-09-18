@@ -102,7 +102,7 @@ async function registerEval<
   const datasetPromise = opts.data();
   const user = getGitUserInfo();
 
-  // TODO: BEFORE MERGE - we were creating `evalScope` here before
+  // TODO: EXPERIMENTS - we were creating `evalScope` here before
 
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
@@ -425,7 +425,7 @@ const runTask = async <
     input: TInput;
     expected: TExpected | undefined;
   } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
-  // TODO: BEFORE MERGE - we had `evalScope` here before... need to figure out what to do instead
+  // TODO: EXPERIMENTS - we had `evalScope` here before... need to figure out what to do instead
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
   // start task span
@@ -459,7 +459,7 @@ const runTask = async <
           duration: number;
           outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
         }> => {
-          // TODO: BEFORE MERGE - before we were setting config scope if provided here
+          // TODO: EXPERIMENTS - before we were setting config scope if provided here
 
           const start = performance.now();
           const output = await executeTask(opts.task, opts.input, opts.expected!);

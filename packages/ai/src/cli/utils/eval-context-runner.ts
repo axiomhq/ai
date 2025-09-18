@@ -18,7 +18,6 @@ export async function runEvalWithContext<T>(
   setGlobalFlagOverrides(overrides);
 
   // Establish eval context with flag overrides
-  // TODO: BEFORE MERGE - pickedFlags necessary here?
   return withEvalContext({ initialFlags: overrides }, async () => {
     // Apply overrides to global context state
     if (Object.keys(overrides).length > 0) {
