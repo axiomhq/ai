@@ -133,6 +133,8 @@ const GEN_AI_PROVIDER_NAME_VALUE_VERCEL = 'vercel';
  * @see: https://github.com/open-telemetry/opentelemetry-js/tree/c89cb38d0fec39d54cf3fcb35c429a8129e9c909/semantic-conventions#unstable-semconv
  */
 export const Attr = {
+  __EXPERIMENTAL_Flag: (flagName: string) => `flag.${flagName}`,
+  __EXPERIMENTAL_Fact: (factName: string) => `fact.${factName}`,
   Axiom: {
     GenAI: {
       SchemaURL: ATTR_AXIOM_GEN_AI_SCHEMA_URL,

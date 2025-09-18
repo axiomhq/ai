@@ -17,6 +17,7 @@ import {
 } from 'zod';
 import type { $ZodObject } from 'zod/v4/core';
 import { toOtelAttribute } from './util/to-otel-attribute';
+import { Attr } from './otel';
 
 type DefaultMaxDepth = 8;
 
@@ -796,7 +797,7 @@ export function createAppScope<
     if (span?.isRecording()) {
       const attr = toOtelAttribute(finalValue);
       if (attr) {
-        span.setAttribute(`flag.${path}`, attr);
+        span.setAttribute(Attr.__EXPERIMENTAL_Flag(path), attr);
       }
     }
 
@@ -841,7 +842,7 @@ export function createAppScope<
     if (span?.isRecording()) {
       const attr = toOtelAttribute(finalValue);
       if (attr) {
-        span.setAttribute(`fact.${name}`, attr);
+        span.setAttribute(Attr.__EXPERIMENTAL_Fact(name), attr);
       }
     }
   }
