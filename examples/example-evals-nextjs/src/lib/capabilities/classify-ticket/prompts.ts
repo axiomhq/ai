@@ -51,7 +51,7 @@ export const classifyTicketStep = async ({
     context: { subject, content },
   });
 
-  const model = flag('ticketClassification.model', 'gpt-4');
+  const model = flag('ticketClassification.model', 'gpt-4o-mini');
   const policy = flag('handleReturnRequest.policy', 'auto-approve');
   console.log('policy:', policy);
 
