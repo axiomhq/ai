@@ -1251,13 +1251,13 @@ describe('createAppScope', () => {
 
       it('should return function result with correct type inference', () => {
         withEvalContext({}, () => {
-          const schemas = z.object({
+          const flagSchema = z.object({
             ui: z.object({
               theme: z.string().default('light'),
             }),
           });
 
-          const scope = createAppScope({ flagSchema: schemas });
+          const scope = createAppScope({ flagSchema });
 
           const stringResult = scope.withFlags({ 'ui.theme': 'dark' }, () => 'string');
           const numberResult = scope.withFlags({ 'ui.theme': 'dark' }, () => 42);
