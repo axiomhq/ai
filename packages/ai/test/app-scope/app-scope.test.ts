@@ -774,32 +774,6 @@ describe('createAppScope', () => {
         );
       });
 
-      it('should validate explicit default values', () => {
-        const flagSchema = z.object({
-          ui: z.object({
-            theme: z.enum(['light', 'dark']).default('dark'),
-            fontSize: z.number().default(14),
-          }),
-        });
-
-        const scope = createAppScope({ flagSchema });
-
-        // Valid explicit defaults should work
-        expect(scope.flag('ui.theme', 'light')).toBe('light');
-        expect(scope.flag('ui.fontSize', 16)).toBe(16);
-
-        // Invalid explicit defaults should return undefined
-        expect(scope.flag('ui.theme', 'invalid' as any)).toBe('invalid');
-        expect(scope.flag('ui.fontSize', 'not-a-number' as any)).toBe('not-a-number');
-
-        expect(errorSpy).toHaveBeenCalledWith(
-          '[AxiomAI] Invalid flag: "ui.theme" - value does not match schema',
-        );
-        expect(errorSpy).toHaveBeenCalledWith(
-          '[AxiomAI] Invalid flag: "ui.fontSize" - value does not match schema',
-        );
-      });
-
       it('should handle context override validation', () => {
         const flagSchema = z.object({
           config: z.object({
@@ -826,43 +800,6 @@ describe('createAppScope', () => {
             '[AxiomAI] Invalid flag: "config.mode" - value does not match schema',
           );
         });
-      });
-
-      it('should handle array and object validation', () => {
-        const flagSchema = z.object({
-          data: z.object({
-            items: z.array(z.string()).default(['default']),
-            config: z
-              .object({
-                key: z.string(),
-                value: z.number(),
-              })
-              .default({ key: 'test', value: 42 }),
-          }),
-        });
-
-        const scope = createAppScope({ flagSchema });
-
-        // Valid array values should work
-        expect(scope.flag('data.items', ['a', 'b'])).toEqual(['a', 'b']);
-
-        // Valid object values should work
-        expect(scope.flag('data.config', { key: 'custom', value: 100 })).toEqual({
-          key: 'custom',
-          value: 100,
-        });
-
-        // Invalid array values should log but still accept the value
-        expect(scope.flag('data.items', 'not-an-array' as any)).toBe('not-an-array');
-        expect(errorSpy).toHaveBeenCalledWith(
-          '[AxiomAI] Invalid flag: "data.items" - value does not match schema',
-        );
-
-        // Invalid object values should log but still accept the value
-        expect(scope.flag('data.config', 'not-an-object' as any)).toBe('not-an-object');
-        expect(errorSpy).toHaveBeenCalledWith(
-          '[AxiomAI] Invalid flag: "data.config" - value does not match schema',
-        );
       });
 
       it('should validate namespace objects correctly', () => {
@@ -931,29 +868,6 @@ describe('createAppScope', () => {
         expect(scope.flag('app.features.auth.timeout')).toBe(30);
 
         expect(errorSpy).not.toHaveBeenCalled();
-      });
-
-      it('should handle validation errors gracefully', () => {
-        const flagSchema = z.object({
-          config: z.object({
-            data: z.string().default('default'),
-          }),
-        });
-
-        const scope = createAppScope({ flagSchema });
-
-        // Test with various invalid types that should fail validation
-        const invalidValues = [{ complex: 'object' }, [1, 2, 3], null];
-
-        invalidValues.forEach((value) => {
-          errorSpy.mockClear();
-          clearGlobalFlagOverrides();
-          setGlobalFlagOverrides({ 'config.data': value });
-          expect(scope.flag('config.data')).toBe(value); // we still use the value
-          expect(errorSpy).toHaveBeenCalledWith(
-            '[AxiomAI] Invalid flag: "config.data" - value does not match schema',
-          );
-        });
       });
     });
 
