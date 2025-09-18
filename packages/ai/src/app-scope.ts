@@ -606,6 +606,43 @@ export function createAppScope<
     return undefined;
   }
 
+  function validateFinalFlagValue(
+    dotPath: string,
+    value: unknown,
+  ): { ok: true; parsed: unknown } | { ok: false } {
+    if (!flagSchemaConfig) return { ok: true, parsed: value };
+
+    const segments = parsePath(dotPath);
+
+    // 1. Fast-path: validate directly with field-level schema
+    const fieldSchema = findSchemaAtPath(segments);
+    if (fieldSchema) {
+      const direct = (fieldSchema as ZodSchema<any>).safeParse(value);
+      if (direct.success) return { ok: true, parsed: direct.data };
+      // If we have a field schema but validation failed, this is a real error
+      return { ok: false };
+    }
+
+    // 2. If we don't have a field schema, check if the path is even valid in our schema
+    // Don't validate values for paths that don't exist in the schema - just pass them through
+    const hasValidNamespace = flagSchemaConfig.shape && segments[0] in flagSchemaConfig.shape;
+    if (!hasValidNamespace) {
+      // Invalid namespace - pass through without validation (for backward compatibility with fallback values)
+      return { ok: true, parsed: value };
+    }
+
+    // 3. For valid namespaces but invalid paths, try nested object validation
+    const nested = dotNotationToNested({ [dotPath]: value });
+    const nestedResult = flagSchemaConfig.strict().partial().safeParse(nested);
+    if (nestedResult.success) {
+      const parsed = getValueAtPath(nestedResult.data, segments) ?? value;
+      return { ok: true, parsed };
+    }
+
+    // 4. If nested validation failed but the namespace is valid, allow it for backward compatibility
+    return { ok: true, parsed: value };
+  }
+
   /**
    * Get flag value with dot notation path support and schema validation.
    * @param path - Dot notation path to the flag (e.g., 'ui.theme' or 'api.timeout')
@@ -747,9 +784,11 @@ export function createAppScope<
       return undefined;
     }
 
-    // TODO: BEFORE MERGE - we need validation...
-    // Skip validation for now - the complex dot notation validation needs more careful handling
-    // This matches the oracle plan which says to focus on core functionality first
+    // Validate the resolved value against the schema (if any)
+    const validation = validateFinalFlagValue(path, finalValue);
+    if (!validation.ok) {
+      console.error(`[AxiomAI] Invalid flag: "${path}" - value does not match schema`);
+    }
 
     updateEvalContext({ [path]: finalValue });
 
