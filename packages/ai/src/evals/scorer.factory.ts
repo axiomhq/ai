@@ -7,15 +7,13 @@ import type { Score, Scorer } from './scorers';
  * • If the callback returns a `number`, it is wrapped into { name, score }
  * • If it returns a full `Score`, we only ensure the `name` field is present
  */
-export function createScorer<
-  TInput = unknown,
-  TExpected = unknown,
-  TOutput = unknown
->(
+export function createScorer<TInput = unknown, TExpected = unknown, TOutput = unknown>(
   name: string,
-  fn: (
-    args: { input: TInput; expected: TExpected; output: TOutput }
-  ) => number | Score | Promise<number | Score>,
+  fn: (args: {
+    input: TInput;
+    expected: TExpected;
+    output: TOutput;
+  }) => number | Score | Promise<number | Score>,
 ): Scorer<TInput, TExpected, TOutput> {
   const scorer: Scorer<TInput, TExpected, TOutput> = async (args) => {
     const res = await fn(args);

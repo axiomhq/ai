@@ -12,7 +12,7 @@ const CONFIG_RE = /^--flags-config(?:=(.*))?$/;
 
 /**
  * Extract --flag.* arguments from argv and return cleaned argv + parsed overrides.
- * 
+ *
  * Supported forms:
  * - --flag.temperature=0.9
  * - --flag.dryRun=true | false
@@ -29,7 +29,7 @@ export function extractFlagOverrides(argv: string[]): {
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
     const match = token.match(FLAG_RE);
-    
+
     if (!match) {
       cleanedArgv.push(token);
       continue;
@@ -60,34 +60,34 @@ export function extractFlagOverrides(argv: string[]): {
  * Extract and validate flag overrides using a Zod schema
  */
 export function extractAndValidateFlagOverrides<S extends ZodObject<any>>(
-  argv: string[], 
-  flagSchema?: S
+  argv: string[],
+  flagSchema?: S,
 ): {
   cleanedArgv: string[];
   overrides: S extends ZodObject<any> ? z.output<S> : FlagOverrides;
 } {
   const { cleanedArgv, overrides } = extractOverrides(argv);
-  
+
   if (flagSchema && Object.keys(overrides).length > 0) {
     // Use strict partial schema - reject unknown keys
     const result = flagSchema.strict().partial().safeParse(overrides);
-    
+
     if (!result.success) {
       console.error('❌ Invalid flags:');
       console.error(formatZodErrors(result.error));
-      
+
       const examples = generateFlagExamples(result.error);
       if (examples.length > 0) {
         console.error('\n💡 Examples:');
-        examples.forEach(example => console.error(`  ${example}`));
+        examples.forEach((example) => console.error(`  ${example}`));
       }
-      
+
       process.exit(1);
     }
-    
+
     return { cleanedArgv, overrides: result.data as any };
   }
-  
+
   return { cleanedArgv, overrides: overrides as any };
 }
 
@@ -99,13 +99,13 @@ function coerceValue(raw: string): any {
   // Handle explicit boolean strings
   if (raw === 'true') return true;
   if (raw === 'false') return false;
-  
+
   // Try number conversion
   const num = Number(raw);
   if (!Number.isNaN(num) && raw.trim() === num.toString()) {
     return num;
   }
-  
+
   // Try JSON parsing (for objects/arrays)
   try {
     return JSON.parse(raw);
@@ -123,12 +123,14 @@ function loadConfigFile(path: string): any {
   try {
     const contents = readFileSync(abs, 'utf8');
     const parsed = JSON.parse(contents);
-    
+
     if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
-      console.error(`❌ Flags config must be a JSON object, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+      console.error(
+        `❌ Flags config must be a JSON object, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`,
+      );
       process.exit(1);
     }
-    
+
     return parsed;
   } catch (err: any) {
     console.error(`❌ Could not read or parse flags config "${path}": ${err.message}`);
@@ -163,7 +165,7 @@ export function extractOverrides(argv: string[]): {
       }
 
       const value = configMatch[1]; // undefined means no equals sign
-      
+
       // Check for deprecated space-separated syntax
       if (value === undefined && argv.length > i + 1) {
         const nextToken = argv[i + 1];

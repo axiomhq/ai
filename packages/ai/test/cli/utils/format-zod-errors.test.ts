@@ -12,7 +12,7 @@ describe('formatZodErrors', () => {
       schema.parse({ temperature: 'invalid' });
     } catch (error) {
       const formatted = formatZodErrors(error as ZodError);
-      expect(formatted).toContain('flag \'temperature\' expected number');
+      expect(formatted).toContain("flag 'temperature' expected number");
     }
   });
 
@@ -66,7 +66,7 @@ describe('formatZodErrors', () => {
       expect(formatted).toContain('extraFlag');
 
       // Should provide a clear message about unrecognized flag
-      expect(formatted).toContain('unrecognized flag \'extraFlag\'');
+      expect(formatted).toContain("unrecognized flag 'extraFlag'");
     }
   });
 
