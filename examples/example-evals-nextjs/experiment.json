@@ -1,3 +1,5 @@
 {
-    "strategy": "smart"
+    "behavior": {
+        "strategy": "smart"
+    }
 }
