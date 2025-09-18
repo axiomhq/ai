@@ -67,11 +67,11 @@ type ForbidUnionsDeep<T> =
     : T;
 
 interface AppScopeConfig<
-  FS extends ZodObject<any> | undefined = undefined,
-  SC extends ZodObject<any> | undefined = undefined,
+  FlagSchema extends ZodObject<any> | undefined = undefined,
+  FactSchema extends ZodObject<any> | undefined = undefined,
 > {
-  flagSchema: FS;
-  factSchema?: SC;
+  flagSchema: FlagSchema;
+  factSchema?: FactSchema;
 }
 
 /**
@@ -373,32 +373,32 @@ function assertNoUnions(schema: any, path = 'schema'): void {
  * TODO: BEFORE MERGE - jsdoc here
  */
 export function createAppScope<
-  FS extends ZodObject<any>,
-  SC extends ZodObject<any> | undefined = undefined,
+  FlagSchema extends ZodObject<any>,
+  FactSchema extends ZodObject<any> | undefined = undefined,
 >(
-  config: AppScopeConfig<FS, SC> & {
-    flagSchema: ForbidUnionsDeep<FS>;
+  config: AppScopeConfig<FlagSchema, FactSchema> & {
+    flagSchema: ForbidUnionsDeep<FlagSchema>;
   },
-): AppScope<FS, SC>;
+): AppScope<FlagSchema, FactSchema>;
 
 /**
  * TODO: BEFORE MERGE - jsdoc here also
  */
-export function createAppScope<SC extends ZodObject<any> | undefined = undefined>(
-  config: AppScopeConfig<undefined, SC>,
-): AppScope<undefined, SC>;
+export function createAppScope<FactSchema extends ZodObject<any> | undefined = undefined>(
+  config: AppScopeConfig<undefined, FactSchema>,
+): AppScope<undefined, FactSchema>;
 
 export function createAppScope<
-  FS extends ZodObject<any> | undefined = undefined,
-  SC extends ZodObject<any> | undefined = undefined,
+  FlagSchema extends ZodObject<any> | undefined = undefined,
+  FactSchema extends ZodObject<any> | undefined = undefined,
 >(
-  config: AppScopeConfig<FS, SC>,
+  config: AppScopeConfig<FlagSchema, FactSchema>,
 ): {
-  flag: DotNotationFlagFunction<FS>;
+  flag: DotNotationFlagFunction<FlagSchema>;
   fact: (name: string, value: unknown) => void;
   overrideFlags: (partial: Record<string, unknown>) => void;
   withFlags: <T>(overrides: Record<string, unknown>, fn: () => T) => T;
-  pickFlags: PickFlagsFunction<FS>;
+  pickFlags: PickFlagsFunction<FlagSchema>;
 } {
   // Store schemas for runtime validation
   const flagSchemaConfig = config?.flagSchema;
@@ -835,7 +835,7 @@ export function createAppScope<
   }) as PickFlagsFunction<typeof flagSchemaConfig>;
 
   return {
-    flag: flag as any as DotNotationFlagFunction<FS>,
+    flag: flag as any as DotNotationFlagFunction<FlagSchema>,
     fact,
     overrideFlags,
     withFlags,
