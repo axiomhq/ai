@@ -46,7 +46,6 @@ describe('formatZodErrors', () => {
     }
   });
 
-  // Test for the TODO issue: extra root flag with empty path
   it('handles unrecognized keys at root level with descriptive error message', () => {
     const schema = z
       .object({
@@ -55,18 +54,27 @@ describe('formatZodErrors', () => {
       .strict();
 
     try {
-      // This simulates the "extra root flag" scenario mentioned in the TODO
       schema.parse({ temperature: 0.7, extraFlag: 'value' });
     } catch (error) {
       const formatted = formatZodErrors(error as ZodError);
 
-      // The current behavior gives confusing "flag ''" message
-      // This test will fail if the TODO issue still exists
-      expect(formatted).not.toContain("flag '':");
-      expect(formatted).toContain('extraFlag');
-
-      // Should provide a clear message about unrecognized flag
       expect(formatted).toContain("unrecognized flag 'extraFlag'");
+    }
+  });
+
+  it('does not incorrectly find an issue at root', () => {
+    const schema = z
+      .object({
+        temperature: z.number(),
+      })
+      .strict();
+
+    try {
+      schema.parse({ temperature: 0.7, extraFlag: 'value' });
+    } catch (error) {
+      const formatted = formatZodErrors(error as ZodError);
+
+      expect(formatted).not.toContain("flag '':");
     }
   });
 
@@ -85,9 +93,6 @@ describe('formatZodErrors', () => {
       });
     } catch (error) {
       const formatted = formatZodErrors(error as ZodError);
-
-      // Should not have empty flag names
-      expect(formatted).not.toContain("flag '':");
 
       // Should mention both extra flags
       expect(formatted).toContain('extraFlag1');

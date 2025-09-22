@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { extractFlagOverrides, extractOverrides } from 'src/cli/utils/parse-flag-overrides';
 import { readFileSync } from 'node:fs';
 
-// Mock fs module
 vi.mock('node:fs', () => ({
   readFileSync: vi.fn(),
 }));
