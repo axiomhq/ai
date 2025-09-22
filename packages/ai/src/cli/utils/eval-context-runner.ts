@@ -14,17 +14,13 @@ export async function runEvalWithContext<T>(
   overrides: FlagOverrides,
   runFn: () => Promise<T>,
 ): Promise<T> {
-  // Store flag overrides globally so they persist across async contexts
   setGlobalFlagOverrides(overrides);
 
-  // Establish eval context with flag overrides
   return withEvalContext({ initialFlags: overrides }, async () => {
-    // Apply overrides to global context state
     if (Object.keys(overrides).length > 0) {
       overrideFlags(overrides);
     }
 
-    // Run the evaluation within this context
     return runFn();
   });
 }
