@@ -41,16 +41,12 @@ export function getEvalContext<
   };
 }
 
-// Internal helper - not exported
-// function setEvalContext(flags: Record<string, any>, facts: Record<string, any>) {
-//   // This would require adding 'set' method to createAsyncHook interface
-//   EVAL_CONTEXT.set({ flags: { ...flags }, facts: { ...facts } });
-// }
-
 export function updateEvalContext(flags?: Record<string, any>, facts?: Record<string, any>) {
   const current = EVAL_CONTEXT.get();
   if (!current) {
-    console.warn('updateEvalContext called outside of evaluation context');
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('updateEvalContext called outside of evaluation context');
+    }
     return;
   }
 
