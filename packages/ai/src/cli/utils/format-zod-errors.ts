@@ -24,7 +24,7 @@ function formatIssueMessage(issue: any, path: string): string {
       return `flag '${path}' expected ${issue.expected}, got ${JSON.stringify(issue.received)} (${typeof issue.received})`;
 
     case 'too_small':
-      if (issue.type === 'number') {
+      if (issue.type === 'number' || issue.origin === 'number') {
         return `flag '${path}' must be >= ${issue.minimum}, got ${issue.received}`;
       }
       return `flag '${path}' is too small: ${issue.message}`;
@@ -98,13 +98,13 @@ function generateExampleForIssue(issue: ZodIssue | $ZodIssue, path: string): str
       break;
 
     case 'too_small':
-      if (issue.minimum) {
+      if (typeof issue.minimum === 'number' || typeof issue.minimum === 'bigint') {
         return `--flag.${path}=${issue.minimum}`;
       }
       break;
 
     case 'too_big':
-      if (issue.maximum) {
+      if (typeof issue.maximum === 'number' || typeof issue.maximum === 'bigint') {
         return `--flag.${path}=${issue.maximum}`;
       }
       break;
