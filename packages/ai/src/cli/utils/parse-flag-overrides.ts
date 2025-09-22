@@ -17,10 +17,15 @@ function validateSpaceSeparatedSyntax(
   flagName: string,
   value: string | undefined,
   nextToken: string | undefined,
-  flagType: 'flag' | 'config'
+  flagType: 'flag' | 'config',
 ): void {
   if (value === undefined && nextToken !== undefined) {
-    if (flagType === 'flag' && !nextToken.startsWith('-') && nextToken !== 'true' && nextToken !== 'false') {
+    if (
+      flagType === 'flag' &&
+      !nextToken.startsWith('-') &&
+      nextToken !== 'true' &&
+      nextToken !== 'false'
+    ) {
       console.error(`❌ Invalid syntax: --flag.${flagName} ${nextToken}`);
       console.error(`💡 Use: --flag.${flagName}=${nextToken}`);
       process.exit(1);
@@ -116,16 +121,16 @@ function loadConfigFile(path: string): any {
 
 /**
  * Extract flag overrides with support for both CLI flags and config files.
- * 
+ *
  * Supports CLI flags:
  * - --flag.temperature=0.9
- * - --flag.dryRun=true | false  
+ * - --flag.dryRun=true | false
  * - --flag.foo={"bar":1} (JSON literal)
  * - --flag.bare (interpreted as true)
- * 
+ *
  * Or config file:
  * - --flags-config=path/to/config.json
- * 
+ *
  * Enforces exclusive mode - cannot use both --flags-config and --flag.* together.
  */
 export function extractOverrides(argv: string[]): {
@@ -167,9 +172,9 @@ export function extractOverrides(argv: string[]): {
       configPath = value;
       // Don't add to cleanedArgv
     } else if (flagMatch) {
-      // Handle --flag.* 
+      // Handle --flag.*
       hasCliFlags = true;
-      
+
       const key = flagMatch[1];
       const value = flagMatch[2]; // undefined means bare flag (boolean true)
       const nextToken = argv.length > i + 1 ? argv[i + 1] : undefined;
