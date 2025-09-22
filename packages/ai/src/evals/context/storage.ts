@@ -75,12 +75,11 @@ function parseStackTrace(stack: string): string[] {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Skip empty lines and the error message line
     if (!trimmed || !trimmed.startsWith('at ')) {
       continue;
     }
 
-    // Filter out internal Node.js, framework, and this file's frames
+    // filter out frames that users likely don't care about
     if (
       trimmed.includes('node_modules') ||
       trimmed.includes('node:internal') ||
@@ -93,7 +92,6 @@ function parseStackTrace(stack: string): string[] {
       continue;
     }
 
-    // Extract the meaningful part of the frame
     frames.push(trimmed.replace('at ', ''));
   }
 
@@ -107,16 +105,13 @@ export function addOutOfScopeFlag(flagPath: string) {
     return;
   }
 
-  // Initialize outOfScopeFlags array if not exists
   if (!current.outOfScopeFlags) {
     current.outOfScopeFlags = [];
   }
 
-  // Capture and parse stack trace
   const stack = new Error().stack || '';
   const stackTrace = parseStackTrace(stack);
 
-  // Add the out-of-scope flag access
   current.outOfScopeFlags.push({
     flagPath,
     accessedAt: Date.now(),
@@ -135,7 +130,11 @@ export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
 /**
  * Resolve a flag value by walking the parent chain, checking overrides first
  */
-export function resolveFlagValue<V>(ctx: any, key: string, defaultValue: V): V {
+export function resolveFlagValue<V>(
+  ctx: EvalContextData<any, any>,
+  key: string,
+  defaultValue: V,
+): V {
   // First check current context overrides
   if (ctx.overrides && key in ctx.overrides) {
     return ctx.overrides[key] as V;
