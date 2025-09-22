@@ -1,8 +1,18 @@
 import { experimental_Eval as Eval } from 'axiom/ai/evals';
-import type { Scorer } from 'axiom/ai';
+import { flag, fact, pickFlags } from '../src/lib/app-scope';
+
+const myFn = async (input: string, expected: string) => {
+  const strategy = flag('behavior.strategy');
+
+  const response = strategy === 'dumb' ? input : expected;
+
+  fact('demo.randomNumber', Math.random());
+
+  return response;
+};
 
 // an example of a custom scorer
-const exactMatchScorer: Scorer = ({ output, expected }) => {
+const exactMatchScorer = ({ output, expected }: { output: string; expected?: string }) => {
   return {
     name: 'exact-match',
     score: output == expected ? 1 : 0,
@@ -10,28 +20,21 @@ const exactMatchScorer: Scorer = ({ output, expected }) => {
 };
 
 Eval('feature-example', {
+  configFlags: pickFlags(['ui']),
   data: () => [
     {
       input: "['nginx-access-logs'] | where status >= 500",
       expected: 'Nginx 5xx Errors',
     },
   ],
-  model: 'o3',
-  params: {
-    temperature: 0.6,
-  },
-  prompt: [
-    {
-      role: 'system',
-      content: 'You are a customer support agent that answers questions',
-    },
-  ],
-  task: ({ input }) => {
-    // TOOD: invoke a prompt using input
-    return input;
+  task: async ({ input, expected }) => {
+    const r = await myFn(input, expected);
+    // console.log('tktk context', getEvalContext());
+    return r;
   },
   scorers: [exactMatchScorer],
   metadata: {
-    description: 'eval example',
+    description:
+      'Demonstrates pickFlags functionality - only behavior namespace is available, ui namespace is excluded',
   },
 });

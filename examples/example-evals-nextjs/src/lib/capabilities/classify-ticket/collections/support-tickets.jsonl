@@ -1,0 +1,159 @@
+{
+    "input": {
+      "subject":
+        "LTEN 2025 - Life Sciences Trainers & Educators Network - July 28-31,2025",
+      "content":
+        "Dear Exhibitor, Our hotel block for LTEN 2025 - Life Sciences Trainers & Educators Network - July 28-31,2025 is now open, and you can reserve your room at a discounted rate. Select your preferred hotel from our list of conveniently located options, tailored to fit your needs.",
+    },
+    "expected": {
+      "category": "spam",
+      "response":
+        "Thank you for reaching out. It appears this message is about hotel reservations for LTEN 2025, which is unrelated to Timbal support. I'll close this ticket, but if you have any questions about using Timbal services, please feel free to submit a new request.",
+    },
+    "metadata": {
+      "id": "th_01K0EXC5NSD2ZPR0SJ71F1Y672",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "subject": "Important: Your Revolut Card Has Been Temporarily Deactivated",
+      "content":
+        "Revolut - Card Reactivation  Important: Card Reactivation Required  Dear Customer,  As part of our latest security updates, your Revolut card has been temporarily deactivated to safeguard your account.  To restore full access, please complete the following steps:  Log in using your registered email address.  Verify your account credentials.  Authenticate your identity using the Revolut mobile app.",
+    },
+    "expected": {
+      "category": "spam",
+      "response":
+        "I'm sorry, but it looks like this inquiry relates to Revolut card reactivation rather than Timbal services. As we don't handle banking or card issues, I'll close this ticket. If you need help with Timbal products, please let us know.",
+    },
+    "metadata": {
+      "id": "th_01K0J5QZ17SYQBABJ0ZD32QQFP",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "subject": "Act Fast: New SBA Rate Drop Just Delivered for Timbal, Inc.",
+      "content":
+        "July PromotionsHey valued client,  Great news! Timbal, Inc. has been pre-selected for a line of credit or SBA funding of up to $4M. A line of credit offers flexible repayment terms of up to 60 months, while SBA funding provides extended terms of up to 25 years - helping you secure the capital you need with manageable payments.",
+    },
+    "expected": {
+      "category": "spam",
+      "response":
+        "Thank you for the information about SBA funding options. However, this appears to be a promotional announcement unrelated to Timbal support. I'll close this ticket, and if you have any technical questions about Timbal's platform, please reach out again.",
+    },
+    "metadata": {
+      "id": "th_01K0FQ80K4MBRZSJSD0F2Z3K6M",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "subject": "PCBA services - Build a successful business relationship",
+      "content":
+        "Dear Manager,  Nice day  This is Landy .We mainly provide one-stop service for PCB, Component Procurement, assembly patch and programming,and testing. We have ISO9001 system certification and ,also have Complete material supply chain in Shenzhen to reduce your costs and make your products more competitive.",
+    },
+    "expected": {
+      "category": "spam",
+      "response":
+        "Thank you for contacting us about PCB assembly services. This appears to be a business development inquiry outside of Timbal's support scope, so I'll close this ticket. Please let us know if you have any questions about using Timbal's platform.",
+    },
+    "metadata": {
+      "id": "th_01K0BSP64RKBXB8KXCEKGWG2EK",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "subject": "AKS Users",
+      "content":
+        "Hi there,    Looking to connect with AKS (Azure Kubernetes Service) users? We can help.    Our AI tracks over 7.4K companies and more than 43.5K+ verified contacts using AKS to orchestrate and manage containerized workloads at scale.",
+    },
+    "expected": {
+      "category": "spam",
+      "response":
+        "Thank you for your message. It seems you're offering AKS user data services, which is outside the scope of Timbal support. I'll close this ticket now. If you need assistance with Timbal features, please submit a new request.",
+    },
+    "metadata": {
+      "id": "th_01K0CZ8SWNQYX8C8E3RGTAJGVF",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "subject":
+        "Urgent - Security Incident: Exposed API Token - Request for Access Logs",
+      "content":
+        "Hi Timbal Security/Support Team,  I'm writing to report a security incident involving an accidentally exposed Timbal API token and request your assistance in checking for any unauthorized access to any enode assets  *Incident Details*   - Token: *xapt-f6246def-b720-41c8-a01a-bf993f885059*   - Organization: *enode-ioeu*   - Exposure Window: Today, January 19, 2025, from 13:00 to 15:15 CET (2 hours 15 minutes)",
+    },
+    "expected": {
+      "category": "bug_report",
+      "response":
+        "Thanks for reporting this security incident. I'm escalating this to our security team to investigate any unauthorized access during the exposure window (January 19, 2025, 13:00–15:15 CET). We'll review the access logs for organization enode-ioeu and get back to you as soon as possible. Please let me know if you have any additional details in the meantime.",
+    },
+    "metadata": {
+      "id": "th_01K0HGTC0QQT81VG3QM9EQQCX4",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "content":
+        "Hey Team I'm struggling at parsing and query my metric, any other tool they come in formatted correctly but in Timbal they are nested in some object like attributes.custom[\"http.url\"] and I'm not able to query them",
+    },
+    "expected": {
+      "category": "question",
+      "response":
+        "Thanks for reaching out. To query nested attributes like attributes.custom[\"http.url\"], you can use our JSON path support in the query language. For example:\n\n```\nSELECT *\nFROM metrics\nWHERE attributes.custom['http.url'] = 'your_value'\n```\n\nAlternatively, you can escape the dot in the key using backticks:\n\n```\nattributes.custom.`http.url`\n```\n\nGive that a try and let me know if you run into any issues.",
+    },
+    "metadata": {
+      "id": "th_01K0AATX3679DFGB1YJV00QHKT",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "content":
+        "Hi, hope you're well\n\nI was just looking at the Timbal docs on the subject of Regions, and it wasn't really clear on if we can use multiple regions or if we need to make a new Organization for a different region? If the latter is it possible to have them listed in the top right dropdown? or would they be two separate entities?",
+    },
+    "expected": {
+      "category": "question",
+      "response":
+        "Thanks for your question about Regions. Currently, each organization is tied to a single region. If you need to operate in a different region, you'll need to create a separate organization for it. We don't yet support switching regions within the same organization via a dropdown, so they'll appear as separate entities. I'll pass your feedback along to our product team for future enhancements.",
+    },
+    "metadata": {
+      "id": "th_01K0C2B7TJ3DCGBBKZK3EMJ89N",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "content":
+        "I would like to improve the automatic spacing of columns in a table. There is frequently lots of empty space in columns and sometimes there is one character on another line that doesn't need to be there.\n\nAttached is the default. And then a modified version where I slid the column sizes. It would also be great to be able to save that on a dashboard to not need to re-size the columns every time I visit.",
+    },
+    "expected": {
+      "category": "feature_request",
+      "response":
+        "Thank you for the suggestion to improve automatic column spacing and persist those settings on dashboards. I agree that would be a valuable enhancement. I've forwarded this request to our product team for consideration. In the meantime, you can manually resize the columns and save the dashboard to preserve your layout.",
+    },
+    "metadata": {
+      "id": "th_01K0F3H0DT1MGCZ05QHX207QD6",
+      "channel": "EMAIL",
+    },
+  }
+  {
+    "input": {
+      "subject": "Can't access timbal-audit",
+      "content":
+        "Hi, I have an Owner role by I get this error when trying to query the timbal-audit dataset: [image: CleanShot 2025-07-16 at 11.55.50@2x.png]  Trace "id": 5a637f2db958b77c7726c98b39577ae2  Also my user is yr@***.com  Account "id": yr-nwko",
+    },
+    "expected": {
+      "category": "bug_report",
+      "response":
+        "Thanks for letting us know about the access error when querying the timbal-audit dataset (Trace "id": 5a637f2db958b77c7726c98b39577ae2). Although you have an Owner role, it seems the dataset permissions may not be configured correctly. Could you please confirm your account ID and share the permission settings screenshot? I'll review your permissions and work to resolve this issue as quickly as possible.",
+    },
+    "metadata": {
+      "id": "th_01K097EFA39H9GTPQMNJ269QHM",
+      "channel": "SLACK",
+    },
+  }

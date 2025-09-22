@@ -55,15 +55,21 @@ vi.mock('@opentelemetry/api', async () => {
   };
 });
 
-vi.mock('../../../src/otel/initAxiomAI', () => ({
-  getGlobalTracer: vi.fn(() => mockTracer),
-}));
+vi.mock('../../../src/otel/initAxiomAI', async () => {
+  const actual = await vi.importActual('../../../src/otel/initAxiomAI');
+  return {
+    ...actual,
+    getGlobalTracer: vi.fn(() => mockTracer),
+  };
+});
 
 const mockContext = {};
 
 describe('wrapperUtils error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Suppress console warnings for clean test output
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   describe('classifyError function integration', () => {
