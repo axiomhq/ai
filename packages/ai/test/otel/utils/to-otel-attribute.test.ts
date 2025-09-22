@@ -8,9 +8,9 @@ describe('toOtelAttribute', () => {
 
   it('handles number', () => {
     expect(toOtelAttribute(42)).toBe(42);
-    expect(toOtelAttribute(NaN)).toBe('NaN');
-    expect(toOtelAttribute(Infinity)).toBe('Infinity');
-    expect(toOtelAttribute(-Infinity)).toBe('-Infinity');
+    expect(toOtelAttribute(NaN)).toBeUndefined();
+    expect(toOtelAttribute(Infinity)).toBeUndefined();
+    expect(toOtelAttribute(-Infinity)).toBeUndefined();
   });
 
   it('handles boolean', () => {
@@ -20,6 +20,7 @@ describe('toOtelAttribute', () => {
 
   it('handles bigint', () => {
     expect(toOtelAttribute(123n)).toBe(123);
+    expect(toOtelAttribute(9007199254740993n)).toBe('9007199254740993'); // unsafe integer → string
   });
 
   it('handles undefined/null/function/symbol', () => {
@@ -44,12 +45,16 @@ describe('toOtelAttribute', () => {
   });
 
   it('handles array of primitives', () => {
-    expect(toOtelAttribute([1, 'two', true])).toEqual([1, 'two', true]);
+    expect(toOtelAttribute([1, 2, 3])).toEqual([1, 2, 3]); // homogeneous numbers
+    expect(toOtelAttribute(['a', 'b', 'c'])).toEqual(['a', 'b', 'c']); // homogeneous strings
+    expect(toOtelAttribute([true, false])).toEqual([true, false]); // homogeneous booleans
+    expect(toOtelAttribute([1, 'two', true])).toEqual(['1', 'two', 'true']); // mixed → coerce all to strings
     expect(toOtelAttribute([undefined, null, NaN])).toBeUndefined(); // all filtered out
+    expect(toOtelAttribute([])).toBeUndefined(); // empty array
   });
 
   it('handles array of objects', () => {
     const arr = [{ a: 1 }, new Date('2023-01-01')];
-    expect(toOtelAttribute(arr)).toEqual(['{"a":1}', '2023-01-01T00:00:00.000Z']);
+    expect(toOtelAttribute(arr)).toEqual(['{"a":1}', '2023-01-01T00:00:00.000Z']); // both convert to strings
   });
 });

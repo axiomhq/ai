@@ -1,47 +1,29 @@
 import { type AttributeValue } from '@opentelemetry/api';
 
-export function toOtelAttribute(input: unknown): AttributeValue | undefined {
-  // primitives fast-path
-  switch (typeof input) {
-    case 'string':
-      return input;
-    case 'number':
-      if (Number.isFinite(input)) return input;
-      if (input === Infinity) return 'Infinity';
-      if (input === -Infinity) return '-Infinity';
-      if (isNaN(input)) return 'NaN';
-      return input;
-    case 'boolean':
-      return input;
-    case 'bigint':
-      return Number(input); // NOTE: precision may be lost
-    case 'function':
-    case 'symbol':
-    case 'undefined':
-      return undefined;
+function toHomogeneousArray(input: unknown[]): AttributeValue | undefined {
+  if (input.length === 0) return undefined;
+
+  const converted: (string | number | boolean)[] = [];
+  const types = new Set<string>();
+
+  for (const item of input) {
+    const converted_item = toOtelPrimitive(item);
+    if (converted_item !== undefined) {
+      converted.push(converted_item);
+      types.add(typeof converted_item);
+    }
   }
 
-  // arrays → array of primitives (filter out unsupported)
-  if (Array.isArray(input)) {
-    const arr = input
-      .map(toOtelPrimitiveOrString)
-      .filter((v): v is string | number | boolean => v !== undefined);
-    return arr.length ? (arr as AttributeValue) : undefined;
+  if (converted.length === 0) return undefined;
+
+  if (types.size > 1) {
+    return converted.map((item) => String(item)) as AttributeValue;
   }
 
-  // date → ISO string
-  if (input instanceof Date) {
-    return input.toISOString();
-  }
-
-  // null / objects → JSON string
-  if (input === null) return undefined;
-  return safeStringify(input);
+  return converted as AttributeValue;
 }
 
-// --- helpers ---
-
-function toOtelPrimitiveOrString(v: unknown): string | number | boolean | undefined {
+function toOtelPrimitive(v: unknown): string | number | boolean | undefined {
   switch (typeof v) {
     case 'string':
       return v;
@@ -50,7 +32,10 @@ function toOtelPrimitiveOrString(v: unknown): string | number | boolean | undefi
     case 'boolean':
       return v;
     case 'bigint':
-      return Number(v); // NOTE: precision may be lost
+      if (v >= Number.MIN_SAFE_INTEGER && v <= Number.MAX_SAFE_INTEGER) {
+        return Number(v);
+      }
+      return v.toString();
     case 'function':
     case 'symbol':
     case 'undefined':
@@ -66,7 +51,7 @@ function toOtelPrimitiveOrString(v: unknown): string | number | boolean | undefi
 
 function safeStringify(obj: unknown): string | undefined {
   try {
-    // Convert BigInt → Number inside objects so JSON.stringify won't throw.
+    // Convert BigInt -> Number inside objects so JSON.stringify won't throw.
     // Functions/undefined are dropped by JSON rules.
     const s = JSON.stringify(obj, (_k, val) =>
       typeof val === 'bigint' ? Number(val) : val instanceof Date ? val.toISOString() : val,
@@ -84,11 +69,45 @@ function safeStringify(obj: unknown): string | undefined {
   } catch {
     // As a last resort, use toString() if present
     try {
-      // @ts-ignore
       const t = (obj as any)?.toString?.();
       return typeof t === 'string' ? t : undefined;
     } catch {
       return undefined;
     }
   }
+}
+
+export function toOtelAttribute(input: unknown): AttributeValue | undefined {
+  // primitives fast-path
+  switch (typeof input) {
+    case 'string':
+      return input;
+    case 'number':
+      return Number.isFinite(input) ? input : undefined;
+    case 'boolean':
+      return input;
+    case 'bigint':
+      if (input >= Number.MIN_SAFE_INTEGER && input <= Number.MAX_SAFE_INTEGER) {
+        return Number(input);
+      }
+      return input.toString();
+    case 'function':
+    case 'symbol':
+    case 'undefined':
+      return undefined;
+  }
+
+  // arrays -> homogeneous array of primitives
+  if (Array.isArray(input)) {
+    return toHomogeneousArray(input);
+  }
+
+  // date -> ISO string
+  if (input instanceof Date) {
+    return input.toISOString();
+  }
+
+  // null / objects -> JSON string
+  if (input === null) return undefined;
+  return safeStringify(input);
 }
