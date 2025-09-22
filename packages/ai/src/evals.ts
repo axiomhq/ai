@@ -1,3 +1,4 @@
+// Eval functionality - marked as UNSAFE as these APIs are experimental
 export { Eval as experimental_Eval } from './evals/eval';
 export type {
   EvalTask as experimental_EvalTask,

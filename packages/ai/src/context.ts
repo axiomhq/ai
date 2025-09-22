@@ -30,10 +30,8 @@ export function flag<V>(key: string, defaultValue: V): V {
   const ctx = getEvalContext();
   const value = key in ctx.flags ? (ctx.flags[key] as V) : defaultValue;
 
-  // Update context with accessed flag (for storage consistency)
   updateEvalContext({ [key]: value });
 
-  // Store in span
   putOnSpan('flag', key, value);
 
   return value;
@@ -62,6 +60,7 @@ export function fact<V>(key: string, value: V): void {
 
   // Fallback to original behavior
   updateEvalContext(undefined, { [key]: value });
+
   putOnSpan('fact', key, value);
 }
 
