@@ -72,14 +72,12 @@
     "@sinclair/typebox": "^0.34.37",
     "commander": "^14.0.0",
     "console-table-printer": "^2.14.6",
-    "esbuild": "^0.25.8",
     "handlebars": "^4.7.8",
-    "nanoid": "^5.1.5",
-    "vitest": "catalog:",
-    "zod": "catalog:"
+    "nanoid": "^5.1.5"
   },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.9.0"
+    "@opentelemetry/api": "^1.9.0",
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
     "@ai-sdk/anthropicv1": "npm:@ai-sdk/anthropic@^1.2.12",
@@ -97,12 +95,14 @@
     "@vitest/coverage-v8": "^3.2.4",
     "aiv4": "npm:ai@^4.3.19",
     "aiv5": "npm:ai@^5.0.0",
+    "esbuild": "^0.25.8",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "tinyrainbow": "^2.0.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   },
   "files": [
     "dist"

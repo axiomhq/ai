@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractToolResultsFromRawPrompt } from '../src/util/promptUtils';
+import { extractToolResultsFromRawPrompt } from '../../src/util/promptUtils';
 
 describe('tool results extraction', () => {
   it('should extract tool results from Google AI format rawPrompt', () => {

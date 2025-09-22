@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { trace } from '@opentelemetry/api';
 import { wrapLanguageModel, generateText } from 'aiv5';
 import { createMockProvider, type MockProvider } from '../vercel/mock-provider-v2/mock-provider-v2';
@@ -9,21 +7,17 @@ import { initAxiomAI, resetAxiomAI } from '../../src/otel/initAxiomAI';
 import { withSpan } from '../../src/otel/withSpan';
 import { wrapTool } from '../../src/otel/wrapTool';
 import { RedactionPolicy } from '../../src/otel/utils/redaction';
+import { createOtelTestSetup } from '../helpers/otel-test-setup';
 
-let memoryExporter: InMemorySpanExporter;
-let tracerProvider: NodeTracerProvider;
 let mockProvider: MockProvider;
+const otelTestSetup = createOtelTestSetup();
 
 beforeAll(() => {
-  memoryExporter = new InMemorySpanExporter();
-  tracerProvider = new NodeTracerProvider({
-    spanProcessors: [new SimpleSpanProcessor(memoryExporter)],
-  });
-  tracerProvider.register();
+  otelTestSetup.setup();
 });
 
 beforeEach(() => {
-  memoryExporter.reset();
+  otelTestSetup.reset();
 
   mockProvider = createMockProvider();
   mockProvider.addLanguageModelResponse('gpt-4', {
@@ -36,7 +30,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  await tracerProvider.shutdown();
+  await otelTestSetup.cleanup();
 });
 
 describe('Redaction e2e tests', () => {
@@ -60,7 +54,7 @@ describe('Redaction e2e tests', () => {
       });
     });
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const chatSpan = spans.find((s) => s.attributes['gen_ai.operation.name'] === 'chat');
 
     expect(chatSpan).toBeDefined();
@@ -98,7 +92,7 @@ describe('Redaction e2e tests', () => {
       });
     });
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const chatSpan = spans.find((s) => s.attributes['gen_ai.operation.name'] === 'chat');
 
     expect(chatSpan).toBeDefined();
@@ -133,7 +127,7 @@ describe('Redaction e2e tests', () => {
       { redactionPolicy: RedactionPolicy.AxiomDefault },
     );
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const chatSpan = spans.find((s) => s.attributes['gen_ai.operation.name'] === 'chat');
 
     expect(chatSpan).toBeDefined();
@@ -172,7 +166,7 @@ describe('Redaction e2e tests', () => {
       { redactionPolicy: RedactionPolicy.OpenTelemetryDefault },
     );
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const chatSpan = spans.find((s) => s.attributes['gen_ai.operation.name'] === 'chat');
 
     expect(chatSpan).toBeDefined();
@@ -206,7 +200,7 @@ describe('Redaction e2e tests', () => {
       { redactionPolicy: RedactionPolicy.OpenTelemetryDefault },
     );
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const chatSpan = spans.find((s) => s.attributes['gen_ai.operation.name'] === 'chat');
 
     expect(chatSpan).toBeDefined();
@@ -234,7 +228,7 @@ describe('Redaction e2e tests', () => {
       return wrappedTool.execute({ input: 'sensitive data' });
     });
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const toolSpan = spans.find((s) => s.attributes['gen_ai.tool.name'] === 'testTool');
 
     expect(toolSpan).toBeDefined();
@@ -262,7 +256,7 @@ describe('Redaction e2e tests', () => {
       return wrappedTool.execute({ input: 'test data' });
     });
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const toolSpan = spans.find((s) => s.attributes['gen_ai.tool.name'] === 'mirrorTool');
 
     expect(toolSpan).toBeDefined();
@@ -304,7 +298,7 @@ describe('Redaction e2e tests', () => {
       return { aiResult, toolResult };
     });
 
-    const spans = memoryExporter.getFinishedSpans();
+    const spans = otelTestSetup.getSpans();
     const chatSpan = spans.find((s) => s.attributes['gen_ai.operation.name'] === 'chat');
     const toolSpan = spans.find((s) => s.attributes['gen_ai.tool.name'] === 'mixedTool');
 

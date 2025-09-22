@@ -98,7 +98,7 @@ export class MockProvider implements ProviderV2 {
       providerId: 'mock.completion',
       defaultDelay: 0,
       throwOnMissingResponse: false,
-      warnOnInfiniteRepeat: true,
+      warnOnInfiniteRepeat: false,
       ...config,
     };
   }
