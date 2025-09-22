@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.18.0](https://github.com/axiomhq/ai/compare/axiom-v0.17.0...axiom-v0.18.0) (2025-09-12)
+
+
+### Features
+
+* use semantic-conventions 1.37 package ([#74](https://github.com/axiomhq/ai/issues/74)) ([7de66b0](https://github.com/axiomhq/ai/commit/7de66b03a2a162e6ecc86ed476453f6eca0f722d))
+
+## [0.17.0](https://github.com/axiomhq/ai/compare/axiom-v0.16.0...axiom-v0.17.0) (2025-09-04)
+
+
+### Features
+
+* put capability and step name on tool calls ([#71](https://github.com/axiomhq/ai/issues/71)) ([8b9a06e](https://github.com/axiomhq/ai/commit/8b9a06e8f5fa791d0616da3c0b95e522d3feebf3))
+
 ## [0.16.0](https://github.com/axiomhq/ai/compare/axiom-v0.15.0...axiom-v0.16.0) (2025-09-03)
 
 
