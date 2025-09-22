@@ -23,7 +23,6 @@ export function createOtelTestSetup(): OtelTestSetup {
     });
     tracerProvider.register();
 
-    // Initialize AxiomAI with the tracer to prevent "No tracer found" warnings
     const tracer = trace.getTracer('axiom-ai-test');
     initAxiomAI({ tracer });
   };
@@ -35,7 +34,6 @@ export function createOtelTestSetup(): OtelTestSetup {
   };
 
   const cleanup = async () => {
-    // Reset AxiomAI configuration before shutting down
     resetAxiomAI();
 
     if (tracerProvider) {
