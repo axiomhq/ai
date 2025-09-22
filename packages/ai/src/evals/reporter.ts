@@ -81,29 +81,12 @@ export class AxiomReporter implements Reporter {
     }
     const cwd = process.cwd();
 
-    console.log(
-      ' ',
-      c.bgCyan(c.black(` ${_testSuite.project.name} `)),
-      c.bgBlue(c.black(` ${meta.evaluation.name}-${meta.evaluation.version} `)),
-      c.dim(`(${_testSuite.children.size} cases)`),
-    );
 
-    console.log(' ', c.dim(_testSuite.module.moduleId.replace(cwd, '')));
+    const cwd = process.cwd();
 
-    // print baseline name and version if found
-    if (meta.evaluation.baseline) {
-      console.log(
-        ' ',
-        ' baseline ',
-        c.bgMagenta(
-          c.black(` ${meta.evaluation.baseline.name}-${meta.evaluation.baseline.version} `),
-        ),
-      );
-    } else {
-      console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
     }
 
-    console.log('');
+    this.displayEvalInfo(_testSuite, meta.evaluation, cwd);
   }
 
   onTestCaseReady(test: TestCase) {
@@ -213,5 +196,29 @@ export class AxiomReporter implements Reporter {
         }
       });
     }
+  }
+
+  private displayEvalInfo(testSuite: TestSuite, evaluation: EvaluationReport, cwd: string) {
+    console.log(
+      ' ',
+      c.bgCyan(c.black(` ${testSuite.project.name} `)),
+      c.bgBlue(c.black(` ${evaluation.name}-${evaluation.version} `)),
+      c.dim(`(${testSuite.children.size} cases)`),
+    );
+
+    console.log(' ', c.dim(testSuite.module.moduleId.replace(cwd, '')));
+
+    // print baseline name and version if found
+    if (evaluation.baseline) {
+      console.log(
+        ' ',
+        ' baseline ',
+        c.bgMagenta(c.black(` ${evaluation.baseline.name}-${evaluation.baseline.version} `)),
+      );
+    } else {
+      console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
+    }
+
+    console.log('');
   }
 }
