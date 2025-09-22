@@ -16,7 +16,7 @@ import {
   type ZodSchema,
 } from 'zod';
 import type { $ZodObject } from 'zod/v4/core';
-import { toOtelAttribute } from './util/to-otel-attribute';
+import { toOtelAttribute } from './otel/utils/to-otel-attribute';
 import { Attr } from './otel';
 
 type DefaultMaxDepth = 8;
