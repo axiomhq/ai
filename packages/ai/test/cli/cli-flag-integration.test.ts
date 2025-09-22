@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { extractFlagOverrides } from 'src/cli/utils/parse-flag-overrides';
+import { extractOverrides } from 'src/cli/utils/parse-flag-overrides';
 import { runEvalWithContext } from 'src/cli/utils/eval-context-runner';
 import { flag } from 'src/context';
 
@@ -11,7 +11,7 @@ vi.mock('src/evals/run-vitest', () => ({
 describe('CLI flag integration', () => {
   it('should parse CLI flags and make them available in eval context', async () => {
     const argv = ['eval', 'test.eval.ts', '--flag.temperature=0.9', '--flag.model=gpt-4'];
-    const { cleanedArgv, overrides } = extractFlagOverrides(argv);
+    const { cleanedArgv, overrides } = extractOverrides(argv);
 
     expect(cleanedArgv).toEqual(['eval', 'test.eval.ts']);
     expect(overrides).toEqual({
