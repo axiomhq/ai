@@ -1,8 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { wrapTool, wrapTools } from '../../src/otel/wrapTool';
 import type { WrappedTool } from '../../src/otel/wrapTool.util';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { classifyToolError } from '../../src/otel/utils/wrapperUtils';
+import { createOtelTestSetup } from '../helpers/otel-test-setup';
+
+const otelTestSetup = createOtelTestSetup();
+
+beforeAll(() => {
+  otelTestSetup.setup();
+});
+
+beforeEach(() => {
+  otelTestSetup.reset();
+});
+
+afterAll(async () => {
+  await otelTestSetup.cleanup();
+});
 
 // Mock tools for testing
 const mockTool = {
