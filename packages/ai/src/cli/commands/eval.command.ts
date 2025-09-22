@@ -30,7 +30,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
         let testNamePattern: RegExp | undefined;
 
         const isGlobPattern = isGlob(target);
-        
+
         if (isGlobPattern) {
           // Handle glob patterns like "**/*.eval.ts" or "**/my-feature/*"
           include = [target];
