@@ -11,3 +11,4 @@ catalog:
   vitest: ^3.2.1
   vite-plugin-dts: ^4.5.4
   tsup: ^8.3.5
+minimumReleaseAge: 1440
