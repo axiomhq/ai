@@ -4,34 +4,40 @@ import { runEvalWithContext } from 'src/cli/utils/eval-context-runner';
 import { extractOverrides } from 'src/cli/utils/parse-flag-overrides';
 
 describe('CLI E2E Flag Override', () => {
-  it('should demonstrate the target validation: --flag.temperature=0.9 correctly overrides default', async () => {
-    const flagOverrides = { temperature: 0.9 }; // This would come from CLI parsing
+  it('should allow overriding defaults in runEvalWithContext', async () => {
+    const DEFAULT = 0.7;
+    const OVERRIDE = 0.9;
+
+    const flagOverrides = { temperature: OVERRIDE }; // This would come from CLI parsing
 
     let actualTemperature: number | undefined;
 
     await runEvalWithContext(flagOverrides, async () => {
-      actualTemperature = flag('temperature', 0.7); // Default is 0.7
+      actualTemperature = flag('temperature', DEFAULT); // Default is 0.7
       return Promise.resolve();
     });
 
-    expect(actualTemperature).toBe(0.9);
+    expect(actualTemperature).toBe(OVERRIDE);
   });
 
-  it('should work with the complete CLI argument parsing pipeline', async () => {
+  it('should work e2e (parse cli args)', async () => {
+    const DEFAULT = 0.7;
+    const OVERRIDE = 0.9;
+
     const argv = ['eval', 'some-test.eval.ts', '--flag.temperature=0.9'];
 
     const { cleanedArgv, overrides } = extractOverrides(argv);
 
     expect(cleanedArgv).toEqual(['eval', 'some-test.eval.ts']);
-    expect(overrides).toEqual({ temperature: 0.9 });
+    expect(overrides).toEqual({ temperature: OVERRIDE });
 
     let actualTemperature: number | undefined;
 
     await runEvalWithContext(overrides, async () => {
-      actualTemperature = flag('temperature', 0.7);
+      actualTemperature = flag('temperature', DEFAULT);
       return Promise.resolve();
     });
 
-    expect(actualTemperature).toBe(0.9);
+    expect(actualTemperature).toBe(OVERRIDE);
   });
 });
