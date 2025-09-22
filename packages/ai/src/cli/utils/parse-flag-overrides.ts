@@ -10,10 +10,7 @@ export interface FlagOverrides {
 const FLAG_RE = /^--flag\.([^=]+)(?:=(.*))?$/;
 const CONFIG_RE = /^--flags-config(?:=(.*))?$/;
 
-/**
- * Helper function for validating deprecated space-separated syntax
- */
-function validateSpaceSeparatedSyntax(
+function ensureNoSpaceSeparatedSyntax(
   flagName: string,
   value: string | undefined,
   nextToken: string | undefined,
@@ -143,7 +140,6 @@ export function extractOverrides(argv: string[]): {
   let hasCliFlags = false;
   let configPathCount = 0;
 
-  // Single pass through argv to detect mode and build cleanedArgv + overrides
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
     const configMatch = token.match(CONFIG_RE);
@@ -160,8 +156,7 @@ export function extractOverrides(argv: string[]): {
       const value = configMatch[1]; // undefined means no equals sign
       const nextToken = argv.length > i + 1 ? argv[i + 1] : undefined;
 
-      // Check for deprecated space-separated syntax
-      validateSpaceSeparatedSyntax('flags-config', value, nextToken, 'config');
+      ensureNoSpaceSeparatedSyntax('flags-config', value, nextToken, 'config');
 
       if (!value) {
         console.error('❌ --flags-config requires a file path');
@@ -170,6 +165,7 @@ export function extractOverrides(argv: string[]): {
       }
 
       configPath = value;
+
       // Don't add to cleanedArgv
     } else if (flagMatch) {
       // Handle --flag.*
@@ -179,20 +175,18 @@ export function extractOverrides(argv: string[]): {
       const value = flagMatch[2]; // undefined means bare flag (boolean true)
       const nextToken = argv.length > i + 1 ? argv[i + 1] : undefined;
 
-      // Check for deprecated space-separated syntax
-      validateSpaceSeparatedSyntax(key, value, nextToken, 'flag');
+      ensureNoSpaceSeparatedSyntax(key, value, nextToken, 'flag');
 
       // If no value, treat as boolean true
       const finalValue = value === undefined ? 'true' : value;
       overrides[key] = coerceValue(finalValue);
+
       // Don't add to cleanedArgv
     } else {
-      // Regular argument - add to cleanedArgv
       cleanedArgv.push(token);
     }
   }
 
-  // Validate exclusivity
   if (configPath && hasCliFlags) {
     console.error('❌ Cannot use both --flags-config and --flag.* arguments together.');
     console.error('Choose one approach:');
@@ -201,12 +195,10 @@ export function extractOverrides(argv: string[]): {
     process.exit(1);
   }
 
-  // Load config file if specified
   if (configPath) {
     const configOverrides = loadConfigFile(configPath);
     return { cleanedArgv, overrides: configOverrides };
   }
 
-  // Return CLI flag overrides (or empty if no flags)
   return { cleanedArgv, overrides };
 }
