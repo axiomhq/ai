@@ -8,6 +8,28 @@ import {
 } from '../../src/evals/context/global-flags';
 import { withEvalContext } from '../../src/evals/context/storage';
 
+// Helper function to suppress expected console errors in tests
+function withSuppressedErrors<T>(
+  fn: (errorSpy: ReturnType<typeof vi.spyOn>) => T,
+  expectedMessages?: string[],
+): T {
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const result = fn(errorSpy);
+
+    // If expected messages are provided, verify they were logged
+    if (expectedMessages) {
+      expectedMessages.forEach((message) => {
+        expect(errorSpy).toHaveBeenCalledWith(message);
+      });
+    }
+
+    return result;
+  } finally {
+    errorSpy.mockRestore();
+  }
+}
+
 describe('createAppScope', () => {
   // Shared setup/teardown
   beforeEach(() => {
@@ -194,10 +216,14 @@ describe('createAppScope', () => {
       expect(scope.flag('ui.theme')).toBe('dark');
       expect(scope.flag('ui.layout.sidebar')).toBe(true);
 
-      // @ts-expect-error - should not be allowed without default
-      expect(scope.flag('ui.fontSize')).toBe(undefined);
-      // @ts-expect-error - should not be allowed without default
-      expect(scope.flag('ui.layout.width')).toBe(undefined);
+      withSuppressedErrors(() => {
+        // @ts-expect-error - should not be allowed without default
+        expect(scope.flag('ui.fontSize')).toBe(undefined);
+      }, ['[AxiomAI] Invalid flag: "ui.fontSize"']);
+      withSuppressedErrors(() => {
+        // @ts-expect-error - should not be allowed without default
+        expect(scope.flag('ui.layout.width')).toBe(undefined);
+      }, ['[AxiomAI] Invalid flag: "ui.layout.width"']);
 
       // But explicit defaults should work
       expect(scope.flag('ui.fontSize', 14)).toBe(14);
@@ -290,9 +316,15 @@ describe('createAppScope', () => {
       expect(scope.flag('active', true)).toBe(true);
 
       // Without explicit fallback, should return undefined
-      expect((scope.flag as any)('title')).toBeUndefined();
-      expect((scope.flag as any)('count')).toBeUndefined();
-      expect((scope.flag as any)('active')).toBeUndefined();
+      withSuppressedErrors(() => {
+        expect((scope.flag as any)('title')).toBeUndefined();
+      }, ['[AxiomAI] Invalid flag: "title"']);
+      withSuppressedErrors(() => {
+        expect((scope.flag as any)('count')).toBeUndefined();
+      }, ['[AxiomAI] Invalid flag: "count"']);
+      withSuppressedErrors(() => {
+        expect((scope.flag as any)('active')).toBeUndefined();
+      }, ['[AxiomAI] Invalid flag: "active"']);
     });
 
     it('should provide correct dot paths for primitive schemas', () => {
@@ -384,10 +416,14 @@ describe('createAppScope', () => {
         };
       }>();
 
-      // @ts-expect-error - invalid paths should be caught
-      scope.flag('ui.layout.invalid');
-      // @ts-expect-error - invalid nested property
-      scope.flag('ui.layout.grid.invalid');
+      withSuppressedErrors(() => {
+        // @ts-expect-error - invalid paths should be caught
+        scope.flag('ui.layout.invalid');
+      }, ['[AxiomAI] Invalid flag: "ui.layout.invalid"']);
+      withSuppressedErrors(() => {
+        // @ts-expect-error - invalid nested property
+        scope.flag('ui.layout.grid.invalid');
+      }, ['[AxiomAI] Invalid flag: "ui.layout.grid.invalid"']);
     });
 
     it('should handle invalid paths gracefully at runtime', () => {
@@ -404,10 +440,14 @@ describe('createAppScope', () => {
       expect(() => scope.flag('ui.nonexistent', 'fallback')).not.toThrow();
       expect(scope.flag('ui.nonexistent', 'fallback')).toBe('fallback');
 
-      // @ts-expect-error - type system should catch invalid paths
-      scope.flag('ui.invalid');
-      // @ts-expect-error - type system should catch invalid root namespace
-      scope.flag('nonexistent.path');
+      withSuppressedErrors(() => {
+        // @ts-expect-error - type system should catch invalid paths
+        scope.flag('ui.invalid');
+      }, ['[AxiomAI] Invalid flag: "ui.invalid"']);
+      withSuppressedErrors(() => {
+        // @ts-expect-error - type system should catch invalid root namespace
+        scope.flag('nonexistent.path');
+      }, ['[AxiomAI] Invalid flag: "nonexistent.path"']);
     });
 
     it('should enforce correct default value types', () => {
@@ -543,10 +583,14 @@ describe('createAppScope', () => {
         field2: string;
       }>();
 
-      // @ts-expect-error - incomplete namespace without defaults should fail
-      scope.flag('incomplete');
-      // @ts-expect-error - mixed namespace without defaults should fail
-      scope.flag('mixed');
+      withSuppressedErrors(() => {
+        // @ts-expect-error - incomplete namespace without defaults should fail
+        scope.flag('incomplete');
+      }, ['[AxiomAI] Invalid flag: "incomplete"']);
+      withSuppressedErrors(() => {
+        // @ts-expect-error - mixed namespace without defaults should fail
+        scope.flag('mixed');
+      }, ['[AxiomAI] Invalid flag: "mixed"']);
     });
 
     it('should handle nested namespace access with proper type inference', () => {
@@ -621,8 +665,10 @@ describe('createAppScope', () => {
         provider: string;
       }>();
 
-      // @ts-expect-error - incomplete nested namespace without defaults
-      scope.flag('app.features.auth');
+      withSuppressedErrors(() => {
+        // @ts-expect-error - incomplete nested namespace without defaults
+        scope.flag('app.features.auth');
+      }, ['[AxiomAI] Invalid flag: "app.features.auth"']);
     });
 
     it('should handle object-level defaults correctly', () => {
@@ -1197,8 +1243,13 @@ describe('createAppScope', () => {
       scope.fact('userCount', 1000); // ok
       scope.fact('deploymentRegion', 'us-east-1'); // ok
 
-      // @ts-expect-error – invalid key
-      scope.fact('unknownKey', 'whatever');
+      withSuppressedErrors(
+        (_errorSpy) => {
+          // @ts-expect-error – invalid key
+          scope.fact('unknownKey', 'whatever');
+        },
+        ['[AxiomAI] Invalid fact: "unknownKey"'],
+      );
 
       // @ts-expect-error – wrong value type for key
       scope.fact('dbVersion', 42);

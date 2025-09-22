@@ -1,7 +1,13 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 import { getEvalContext, updateEvalContext, addOutOfScopeFlag } from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
-import { parsePath, dotNotationToNested, isValidPath, getValueAtPath } from './util/dot-path';
+import {
+  parsePath,
+  dotNotationToNested,
+  isValidPath,
+  getValueAtPath,
+  buildSchemaForPath,
+} from './util/dot-path';
 import { trace } from '@opentelemetry/api';
 import {
   type z,
@@ -820,14 +826,22 @@ export function createAppScope<
       if (!isValidPath(factSchemaConfig, segments)) {
         success = false;
       } else {
-        // Convert dot notation to nested object for validation
-        const nested = dotNotationToNested({ [name]: value });
-        const result = factSchemaConfig.strict().partial().safeParse(nested);
+        try {
+          // Build a schema specific to this path that makes sibling fields optional
+          const pathSchema = buildSchemaForPath(factSchemaConfig, segments);
 
-        if (!result.success) {
+          // Convert dot notation to nested object for validation
+          const nested = dotNotationToNested({ [name]: value });
+          const result = pathSchema.safeParse(nested);
+
+          if (!result.success) {
+            success = false;
+          } else {
+            finalValue = getValueAtPath(result.data, segments) ?? value;
+          }
+        } catch (_error) {
+          // buildSchemaForPath can throw if schema structure is invalid
           success = false;
-        } else {
-          finalValue = getValueAtPath(result.data, segments) ?? value;
         }
       }
 
