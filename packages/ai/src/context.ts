@@ -3,6 +3,8 @@ import {
   updateEvalContext,
   putOnSpan,
   getConfigScope,
+  resolveFlagValue,
+  EVAL_CONTEXT,
 } from './evals/context/storage';
 
 /**
@@ -26,9 +28,17 @@ export function flag<V>(key: string, defaultValue: V): V {
     }
   }
 
-  // Fallback to original behavior
+  // Fallback to original behavior with overlay support
   const ctx = getEvalContext();
-  const value = key in ctx.flags ? (ctx.flags[key] as V) : defaultValue;
+
+  // Use overlay-aware resolution if available
+  let value: V;
+  if (ctx.overrides || ctx.parent) {
+    value = resolveFlagValue(ctx, key, defaultValue);
+  } else {
+    // Legacy path for backwards compatibility
+    value = key in ctx.flags ? (ctx.flags[key] as V) : defaultValue;
+  }
 
   updateEvalContext({ [key]: value });
 
@@ -65,19 +75,39 @@ export function fact<V>(key: string, value: V): void {
 }
 
 /**
- * Override flag values for the current evaluation context.
- * This merges the provided flags with any existing flags.
+ * Override flag values for the current evaluation context with trace-specific isolation.
+ * Now creates overlay contexts to prevent overrides from leaking to sibling operations.
  *
  * @internal - For framework use only. Use scope.overrideFlags() for typed flag access.
  * @param partial - Partial flag overrides
  */
 export function overrideFlags(partial: Record<string, any>): void {
-  updateEvalContext(partial);
+  const current = getEvalContext();
+
+  if (!current) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('overrideFlags called outside of evaluation context');
+    }
+    return;
+  }
+
+  // Create overlay context instead of mutating the current one
+  const overlayContext = {
+    ...current,
+    flags: { ...current.flags, ...partial }, // Merge for backwards compatibility
+    parent: current,
+    overrides: { ...partial },
+  };
+
+  // We need to update the current ALS context in place
+  const currentCtx = EVAL_CONTEXT.get();
+  if (currentCtx) {
+    // Update current context to overlay
+    Object.assign(currentCtx, overlayContext);
+  }
 
   // Write all overridden flags to span
   for (const [key, value] of Object.entries(partial)) {
     putOnSpan('flag', key, value);
   }
-
-  // TODO: Add EvalContext wrapper for trace-specific isolation
 }

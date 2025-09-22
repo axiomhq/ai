@@ -3,12 +3,14 @@ import { createAsyncHook } from './manager';
 import { type createAppScope } from '../../app-scope';
 
 // Mini-context for in-process access
-const EVAL_CONTEXT = createAsyncHook<{
+export const EVAL_CONTEXT = createAsyncHook<{
   flags: Record<string, any>;
   facts: Record<string, any>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  parent?: EvalContextData<any, any>;
+  overrides?: Record<string, any>;
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
@@ -17,6 +19,8 @@ export interface EvalContextData<Flags = any, Facts = any> {
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  parent?: EvalContextData<Flags, Facts>;
+  overrides?: Record<string, any>;
 }
 
 export function getEvalContext<
@@ -38,6 +42,8 @@ export function getEvalContext<
     facts: ctx.facts as Partial<Facts>,
     pickedFlags: ctx.pickedFlags,
     outOfScopeFlags: ctx.outOfScopeFlags,
+    parent: ctx.parent,
+    overrides: ctx.overrides,
   };
 }
 
@@ -124,6 +130,75 @@ export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
   if (span?.isRecording()) {
     span.setAttributes({ [`${kind}.${key}`]: value });
   }
+}
+
+/**
+ * Resolve a flag value by walking the parent chain, checking overrides first
+ */
+export function resolveFlagValue<V>(ctx: any, key: string, defaultValue: V): V {
+  // First check current context overrides
+  if (ctx.overrides && key in ctx.overrides) {
+    return ctx.overrides[key] as V;
+  }
+
+  // Then check current context flags
+  if (key in ctx.flags) {
+    return ctx.flags[key] as V;
+  }
+
+  // Walk up the parent chain
+  if (ctx.parent) {
+    return resolveFlagValue(ctx.parent, key, defaultValue);
+  }
+
+  // Finally return default
+  return defaultValue;
+}
+
+/**
+ * Create an overlay context that inherits from the current context
+ * but isolates overrides to this specific execution context.
+ */
+function createOverlayContext(overrides: Record<string, any>): any {
+  const current = EVAL_CONTEXT.get();
+  if (!current) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('createOverlayContext called outside of evaluation context');
+    }
+    return {
+      flags: { ...overrides },
+      facts: {},
+      pickedFlags: [],
+      outOfScopeFlags: [],
+      overrides: { ...overrides },
+    };
+  }
+
+  // Create merged flags for backwards compatibility
+  const mergedFlags = { ...current.flags, ...overrides };
+
+  return {
+    ...current,
+    flags: mergedFlags,
+    parent: current,
+    overrides: { ...overrides },
+  };
+}
+
+/**
+ * Execute a function with flag overrides that are isolated to the execution context.
+ * This creates an overlay context that inherits from the current context but isolates
+ * the overrides to prevent them from leaking to sibling operations.
+ */
+export function withFlagOverrides<T>(overrides: Record<string, any>, fn: () => T): T {
+  const overlayContext = createOverlayContext(overrides);
+
+  // Write overridden flags to span for observability
+  for (const [key, value] of Object.entries(overrides)) {
+    putOnSpan('flag', key, value);
+  }
+
+  return EVAL_CONTEXT.run(overlayContext, fn);
 }
 
 export function withEvalContext<T>(
