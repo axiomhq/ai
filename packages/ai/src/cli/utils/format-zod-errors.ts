@@ -1,4 +1,6 @@
 import { type ZodError } from 'zod';
+import type { ZodIssue } from 'zod/v3';
+import type { $ZodIssue } from 'zod/v4/core';
 
 /**
  * Format ZodError issues into user-friendly CLI error messages
@@ -81,7 +83,7 @@ export function generateFlagExamples(error: ZodError): string[] {
   return examples.slice(0, 3); // Limit to 3 examples
 }
 
-function generateExampleForIssue(issue: any, path: string): string | null {
+function generateExampleForIssue(issue: ZodIssue | $ZodIssue, path: string): string | null {
   switch (issue.code) {
     case 'invalid_type':
       if (issue.expected === 'number') {
@@ -96,8 +98,14 @@ function generateExampleForIssue(issue: any, path: string): string | null {
       break;
 
     case 'too_small':
-      if (issue.origin === 'number' || issue.type === 'number') {
+      if (issue.minimum) {
         return `--flag.${path}=${issue.minimum}`;
+      }
+      break;
+
+    case 'too_big':
+      if (issue.maximum) {
+        return `--flag.${path}=${issue.maximum}`;
       }
       break;
 
@@ -109,7 +117,7 @@ function generateExampleForIssue(issue: any, path: string): string | null {
 
     case 'invalid_value':
       if (issue.values && Array.isArray(issue.values) && issue.values.length > 0) {
-        return `--flag.${path}=${issue.values[0]}`;
+        return `--flag.${path}=${String(issue.values[0])}`;
       }
       break;
   }
