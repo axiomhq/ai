@@ -8,7 +8,6 @@ import {
 } from '../../src/evals/context/global-flags';
 import { withEvalContext } from '../../src/evals/context/storage';
 
-// Helper function to suppress expected console errors in tests
 function withSuppressedErrors<T>(
   fn: (errorSpy: ReturnType<typeof vi.spyOn>) => T,
   expectedMessages?: string[],
@@ -17,7 +16,6 @@ function withSuppressedErrors<T>(
   try {
     const result = fn(errorSpy);
 
-    // If expected messages are provided, verify they were logged
     if (expectedMessages) {
       expectedMessages.forEach((message) => {
         expect(errorSpy).toHaveBeenCalledWith(message);
@@ -58,12 +56,10 @@ describe('createAppScope', () => {
         factSchema,
       });
 
-      // Runtime checks
       expect(scope).toBeDefined();
       expect(typeof scope.flag).toBe('function');
       expect(typeof scope.fact).toBe('function');
 
-      // Type checks
       expectTypeOf(scope).toHaveProperty('flag');
       expectTypeOf(scope).toHaveProperty('fact');
       expectTypeOf(scope.flag).toBeFunction();
@@ -131,16 +127,15 @@ describe('createAppScope', () => {
   });
 
   describe('Schema Defaults & Type System', () => {
-    it('should use schema defaults and require all defaults to be in schema', () => {
+    it('should use schema defaults', () => {
       const flagSchema = z.object({
         num: z.number().default(1),
         str: z.string().default('schema'),
-        required: z.string().default('required-default'), // All fields must have defaults in schema
+        required: z.string().default('required-default'),
       });
 
       const appScope = createAppScope({ flagSchema });
 
-      // Should get schema default values - no second parameter allowed with schemas
       const temp = appScope.flag('num');
       expect(temp).toBe(1);
 
@@ -170,7 +165,6 @@ describe('createAppScope', () => {
 
       const scope = createAppScope({ flagSchema: schemas });
 
-      // Should extract from schema defaults
       expect(scope.flag('ui.theme')).toBe('dark');
       expect(scope.flag('ui.fontSize')).toBe(12);
       expect(scope.flag('ui.layout.sidebar')).toBe(true);
