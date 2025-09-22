@@ -1,4 +1,4 @@
-import { type ZodObject, type ZodSchema } from 'zod';
+import { type ZodObject, type ZodSchema, z } from 'zod';
 
 /**
  * Parse a dot notation path into segments.
@@ -127,4 +127,42 @@ export function findSchemaAtPath(
   }
 
   return current;
+}
+
+/**
+ * Build a schema that validates only a specific path within a larger schema structure.
+ * This allows validation of partial nested objects where only the target field is required.
+ *
+ * For example, for path "ui.theme.colors.primary":
+ * - Creates: z.object({ ui: z.object({ theme: z.object({ colors: z.object({ primary: leafSchema }).partial() }).partial() }).partial() }).strict()
+ * - This allows recording just { ui: { theme: { colors: { primary: value } } } } without requiring siblings
+ *
+ * @param rootSchema - The root ZodObject schema
+ * @param segments - Path segments (e.g. ['ui', 'theme', 'colors', 'primary'])
+ * @returns A schema that validates the specific path with partial validation for siblings
+ */
+export function buildSchemaForPath(rootSchema: ZodObject<any>, segments: string[]): ZodSchema<any> {
+  const pathKey = segments.join('.');
+
+  // Find the leaf schema for the target field
+  const leafSchema = findSchemaAtPath(rootSchema, segments);
+  if (!leafSchema) {
+    throw new Error(`Cannot find schema for path: ${pathKey}`);
+  }
+
+  // Build the schema from leaf back to root, making siblings optional at each level
+  let currentSchema = leafSchema;
+
+  // Work backwards through the segments
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const segment = segments[i];
+
+    // Create an object schema with just this segment
+    const objectSchema = z.object({ [segment]: currentSchema });
+
+    // Make it partial (so siblings aren't required) and strict (so unknown keys are rejected)
+    currentSchema = objectSchema.partial().strict();
+  }
+
+  return currentSchema;
 }
