@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractFlagOverrides, extractOverrides } from 'src/cli/utils/parse-flag-overrides';
+import { extractOverrides } from 'src/cli/utils/parse-flag-overrides';
 import { readFileSync } from 'node:fs';
 
 vi.mock('node:fs', () => ({
@@ -8,10 +8,10 @@ vi.mock('node:fs', () => ({
 
 const mockReadFileSync = vi.mocked(readFileSync);
 
-describe('extractFlagOverrides', () => {
+describe('extractOverrides', () => {
   it('parses --flag.key=value syntax', () => {
     const argv = ['eval', '--flag.temperature=0.9', '--flag.model=gpt-4'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.cleanedArgv).toEqual(['eval']);
     expect(result.overrides).toEqual({
@@ -20,12 +20,12 @@ describe('extractFlagOverrides', () => {
     });
   });
 
-  it('errors on deprecated space-separated syntax', () => {
+  it('errors on space-separated syntax', () => {
     const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
     const argv = ['eval', '--flag.temperature', '0.7'];
-    extractFlagOverrides(argv);
+    extractOverrides(argv);
 
     expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid syntax: --flag.temperature 0.7');
     expect(mockConsoleError).toHaveBeenCalledWith('💡 Use: --flag.temperature=0.7');
@@ -37,7 +37,7 @@ describe('extractFlagOverrides', () => {
 
   it('treats bare flags as true', () => {
     const argv = ['--flag.enabled', '--flag.verbose'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.cleanedArgv).toEqual([]);
     expect(result.overrides).toEqual({
@@ -48,7 +48,7 @@ describe('extractFlagOverrides', () => {
 
   it('coerces boolean strings', () => {
     const argv = ['--flag.enabled=true', '--flag.disabled=false'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       enabled: true,
@@ -58,7 +58,7 @@ describe('extractFlagOverrides', () => {
 
   it('coerces numbers', () => {
     const argv = ['--flag.count=42', '--flag.rate=0.5', '--flag.negative=-10'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       count: 42,
@@ -69,7 +69,7 @@ describe('extractFlagOverrides', () => {
 
   it('parses JSON objects', () => {
     const argv = ['--flag.config={"max":100,"enabled":true}'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       config: { max: 100, enabled: true },
@@ -78,7 +78,7 @@ describe('extractFlagOverrides', () => {
 
   it('keeps non-flag arguments in cleanedArgv', () => {
     const argv = ['eval', 'test.eval.ts', '--flag.temp=0.9', '--watch', '--flag.model=gpt-4'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.cleanedArgv).toEqual(['eval', 'test.eval.ts', '--watch']);
     expect(result.overrides).toEqual({
@@ -89,7 +89,7 @@ describe('extractFlagOverrides', () => {
 
   it('handles last flag wins for duplicates', () => {
     const argv = ['--flag.temperature=0.7', '--flag.temperature=0.9'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       temperature: 0.9,
@@ -98,7 +98,7 @@ describe('extractFlagOverrides', () => {
 
   it('handles flag with no value followed by another flag', () => {
     const argv = ['--flag.enabled', '--flag.temperature=0.9'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       enabled: true,
@@ -108,7 +108,7 @@ describe('extractFlagOverrides', () => {
 
   it('handles complex flag keys with hyphens', () => {
     const argv = ['--flag.max-tokens=1024', '--flag.dry-run=true'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       'max-tokens': 1024,
@@ -118,7 +118,7 @@ describe('extractFlagOverrides', () => {
 
   it('leaves invalid JSON as string', () => {
     const argv = ['--flag.config={invalid:json}'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       config: '{invalid:json}',
@@ -127,7 +127,7 @@ describe('extractFlagOverrides', () => {
 
   it('handles negative numbers correctly', () => {
     const argv = ['--flag.threshold=-0.5', '--flag.offset=-10'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       threshold: -0.5,
@@ -137,7 +137,7 @@ describe('extractFlagOverrides', () => {
 
   it('handles values starting with dashes', () => {
     const argv = ['--flag.prefix=--something', '--flag.option=--verbose'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.overrides).toEqual({
       prefix: '--something',
@@ -147,7 +147,7 @@ describe('extractFlagOverrides', () => {
 
   it('allows bare flags with true/false values following them', () => {
     const argv = ['--flag.enabled', 'true', '--flag.disabled', 'false'];
-    const result = extractFlagOverrides(argv);
+    const result = extractOverrides(argv);
 
     expect(result.cleanedArgv).toEqual(['true', 'false']);
     expect(result.overrides).toEqual({

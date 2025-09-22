@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { flag } from 'src/context';
 import { runEvalWithContext } from 'src/cli/utils/eval-context-runner';
+import { extractOverrides } from 'src/cli/utils/parse-flag-overrides';
 
 describe('CLI E2E Flag Override', () => {
   it('should demonstrate the target validation: --flag.temperature=0.9 correctly overrides default', async () => {
@@ -19,8 +20,7 @@ describe('CLI E2E Flag Override', () => {
   it('should work with the complete CLI argument parsing pipeline', async () => {
     const argv = ['eval', 'some-test.eval.ts', '--flag.temperature=0.9'];
 
-    const { extractFlagOverrides } = await import('src/cli/utils/parse-flag-overrides');
-    const { cleanedArgv, overrides } = extractFlagOverrides(argv);
+    const { cleanedArgv, overrides } = extractOverrides(argv);
 
     expect(cleanedArgv).toEqual(['eval', 'some-test.eval.ts']);
     expect(overrides).toEqual({ temperature: 0.9 });

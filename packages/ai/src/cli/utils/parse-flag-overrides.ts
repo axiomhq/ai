@@ -11,49 +11,25 @@ const FLAG_RE = /^--flag\.([^=]+)(?:=(.*))?$/;
 const CONFIG_RE = /^--flags-config(?:=(.*))?$/;
 
 /**
- * Extract --flag.* arguments from argv and return cleaned argv + parsed overrides.
- *
- * Supported forms:
- * - --flag.temperature=0.9
- * - --flag.dryRun=true | false
- * - --flag.foo={"bar":1} (JSON literal)
- * - --flag.bare (interpreted as true)
+ * Helper function for validating deprecated space-separated syntax
  */
-export function extractFlagOverrides(argv: string[]): {
-  cleanedArgv: string[];
-  overrides: FlagOverrides;
-} {
-  const cleanedArgv: string[] = [];
-  const overrides: FlagOverrides = {};
-
-  for (let i = 0; i < argv.length; i++) {
-    const token = argv[i];
-    const match = token.match(FLAG_RE);
-
-    if (!match) {
-      cleanedArgv.push(token);
-      continue;
+function validateSpaceSeparatedSyntax(
+  flagName: string,
+  value: string | undefined,
+  nextToken: string | undefined,
+  flagType: 'flag' | 'config'
+): void {
+  if (value === undefined && nextToken !== undefined) {
+    if (flagType === 'flag' && !nextToken.startsWith('-') && nextToken !== 'true' && nextToken !== 'false') {
+      console.error(`❌ Invalid syntax: --flag.${flagName} ${nextToken}`);
+      console.error(`💡 Use: --flag.${flagName}=${nextToken}`);
+      process.exit(1);
+    } else if (flagType === 'config' && !nextToken.startsWith('-')) {
+      console.error(`❌ Invalid syntax: --flags-config ${nextToken}`);
+      console.error(`💡 Use: --flags-config=${nextToken}`);
+      process.exit(1);
     }
-
-    const key = match[1];
-    const value = match[2]; // undefined means bare flag (boolean true)
-
-    // Check for space-separated syntax (we don't want people to do this...)
-    if (value === undefined && argv.length > i + 1) {
-      const nextToken = argv[i + 1];
-      if (!nextToken.startsWith('-') && nextToken !== 'true' && nextToken !== 'false') {
-        console.error(`❌ Invalid syntax: --flag.${key} ${nextToken}`);
-        console.error(`💡 Use: --flag.${key}=${nextToken}`);
-        process.exit(1);
-      }
-    }
-
-    // If no value, treat as boolean true
-    const finalValue = value === undefined ? 'true' : value;
-    overrides[key] = coerceValue(finalValue);
   }
-
-  return { cleanedArgv, overrides };
 }
 
 /**
@@ -140,6 +116,16 @@ function loadConfigFile(path: string): any {
 
 /**
  * Extract flag overrides with support for both CLI flags and config files.
+ * 
+ * Supports CLI flags:
+ * - --flag.temperature=0.9
+ * - --flag.dryRun=true | false  
+ * - --flag.foo={"bar":1} (JSON literal)
+ * - --flag.bare (interpreted as true)
+ * 
+ * Or config file:
+ * - --flags-config=path/to/config.json
+ * 
  * Enforces exclusive mode - cannot use both --flags-config and --flag.* together.
  */
 export function extractOverrides(argv: string[]): {
@@ -147,17 +133,19 @@ export function extractOverrides(argv: string[]): {
   overrides: FlagOverrides;
 } {
   const cleanedArgv: string[] = [];
+  const overrides: FlagOverrides = {};
   let configPath: string | null = null;
   let hasCliFlags = false;
   let configPathCount = 0;
 
-  // First pass: detect both config and CLI flags, build cleaned argv
+  // Single pass through argv to detect mode and build cleanedArgv + overrides
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
     const configMatch = token.match(CONFIG_RE);
     const flagMatch = token.match(FLAG_RE);
 
     if (configMatch) {
+      // Handle --flags-config
       configPathCount++;
       if (configPathCount > 1) {
         console.error('❌ Only one --flags-config can be supplied.');
@@ -165,16 +153,10 @@ export function extractOverrides(argv: string[]): {
       }
 
       const value = configMatch[1]; // undefined means no equals sign
+      const nextToken = argv.length > i + 1 ? argv[i + 1] : undefined;
 
       // Check for deprecated space-separated syntax
-      if (value === undefined && argv.length > i + 1) {
-        const nextToken = argv[i + 1];
-        if (!nextToken.startsWith('-')) {
-          console.error(`❌ Invalid syntax: --flags-config ${nextToken}`);
-          console.error(`💡 Use: --flags-config=${nextToken}`);
-          process.exit(1);
-        }
-      }
+      validateSpaceSeparatedSyntax('flags-config', value, nextToken, 'config');
 
       if (!value) {
         console.error('❌ --flags-config requires a file path');
@@ -185,9 +167,22 @@ export function extractOverrides(argv: string[]): {
       configPath = value;
       // Don't add to cleanedArgv
     } else if (flagMatch) {
+      // Handle --flag.* 
       hasCliFlags = true;
-      // Don't add to cleanedArgv (existing logic will handle this)
+      
+      const key = flagMatch[1];
+      const value = flagMatch[2]; // undefined means bare flag (boolean true)
+      const nextToken = argv.length > i + 1 ? argv[i + 1] : undefined;
+
+      // Check for deprecated space-separated syntax
+      validateSpaceSeparatedSyntax(key, value, nextToken, 'flag');
+
+      // If no value, treat as boolean true
+      const finalValue = value === undefined ? 'true' : value;
+      overrides[key] = coerceValue(finalValue);
+      // Don't add to cleanedArgv
     } else {
+      // Regular argument - add to cleanedArgv
       cleanedArgv.push(token);
     }
   }
@@ -201,14 +196,12 @@ export function extractOverrides(argv: string[]): {
     process.exit(1);
   }
 
-  // Extract overrides based on mode
+  // Load config file if specified
   if (configPath) {
-    // Config mode
-    const overrides = loadConfigFile(configPath);
-    return { cleanedArgv, overrides };
-  } else {
-    // CLI mode (or no flags at all)
-    const { overrides } = extractFlagOverrides(argv);
-    return { cleanedArgv, overrides };
+    const configOverrides = loadConfigFile(configPath);
+    return { cleanedArgv, overrides: configOverrides };
   }
+
+  // Return CLI flag overrides (or empty if no flags)
+  return { cleanedArgv, overrides };
 }
