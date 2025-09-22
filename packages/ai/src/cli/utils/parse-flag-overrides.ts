@@ -16,7 +16,7 @@ const CONFIG_RE = /^--flags-config(?:=(.*))?$/;
  * Supported forms:
  * - --flag.temperature=0.9
  * - --flag.dryRun=true | false
- * - --flag.foo='{"bar":1}' (JSON literal)
+ * - --flag.foo={"bar":1} (JSON literal)
  * - --flag.bare (interpreted as true)
  */
 export function extractFlagOverrides(argv: string[]): {
@@ -38,7 +38,7 @@ export function extractFlagOverrides(argv: string[]): {
     const key = match[1];
     const value = match[2]; // undefined means bare flag (boolean true)
 
-    // Check for deprecated space-separated syntax
+    // Check for space-separated syntax (we don't want people to do this...)
     if (value === undefined && argv.length > i + 1) {
       const nextToken = argv[i + 1];
       if (!nextToken.startsWith('-') && nextToken !== 'true' && nextToken !== 'false') {
