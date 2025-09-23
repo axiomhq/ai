@@ -31,12 +31,12 @@ function getContextManager(): ContextManager {
 
       try {
         // Try direct require first (works in most Node.js contexts)
-        const requireFn = eval('require');
+        const requireFn = [eval][0]('require');
         AsyncLocalStorage = requireFn('async_hooks').AsyncLocalStorage;
       } catch (directError) {
         try {
           // Fallback: createRequire approach (works in VM contexts like Vitest)
-          const requireFn = eval('require');
+          const requireFn = [eval][0]('require');
           const { createRequire } = requireFn('module');
           const dynamicRequire = createRequire(import.meta.url);
           AsyncLocalStorage = dynamicRequire('async_hooks').AsyncLocalStorage;
