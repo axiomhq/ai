@@ -4,7 +4,7 @@ import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
 
 import type { Score } from './scorers';
-import { findEvaluationCases, type Evaluation } from './eval.service';
+import type { Evaluation } from './eval.service';
 
 /**
  * Complete report for a single evaluation case including results and metadata.
@@ -73,19 +73,20 @@ export class AxiomReporter implements Reporter {
   }
 
   async onTestSuiteReady(_testSuite: TestSuite) {
-    const meta = _testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
-    const baseline = meta.evaluation.baseline;
-    if (baseline) {
-      // load baseline data
-      this.baseline = await findEvaluationCases(baseline.id);
-    }
-    const cwd = process.cwd();
+    const meta = _testSuite.meta() as TaskMeta & { evaluation?: EvaluationReport };
 
-
-    const cwd = process.cwd();
-
+    // TODO: FUTURE - Consider caching baseline data
+    if (meta?.evaluation?.baseline) {
+      this.baseline = meta.evaluation.baseline;
     }
 
+    if (!meta?.evaluation) {
+      // This should never happen with our race condition fix, but graceful degradation
+      console.warn('Evaluation metadata not available in onTestSuiteReady');
+      return;
+    }
+
+    const cwd = process.cwd();
     this.displayEvalInfo(_testSuite, meta.evaluation, cwd);
   }
 
@@ -109,6 +110,12 @@ export class AxiomReporter implements Reporter {
     console.log(' ', c.dim('Duration'), `${duration}s`);
 
     const meta = testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
+
+    if (!meta?.evaluation) {
+      console.log(' ', c.red('Error: Evaluation metadata not available'));
+      return;
+    }
+
     const url = `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`;
 
     for (const test of testSuite.children) {
