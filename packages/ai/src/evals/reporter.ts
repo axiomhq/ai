@@ -74,6 +74,9 @@ export class AxiomReporter implements Reporter {
 
   async onTestSuiteReady(_testSuite: TestSuite) {
     const meta = _testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
+    if (_testSuite.state() === 'skipped') {
+      return;
+    }
     const baseline = meta.evaluation.baseline;
     if (baseline) {
       // load baseline data
@@ -117,6 +120,11 @@ export class AxiomReporter implements Reporter {
   }
 
   onTestSuiteResult(testSuite: TestSuite) {
+    // test suite won't have any meta because its skipped
+    if (testSuite.state() === 'skipped') {
+      return;
+    }
+
     // calculate test duration in seconds
     const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
 
