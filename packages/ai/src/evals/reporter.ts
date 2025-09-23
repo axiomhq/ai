@@ -73,25 +73,28 @@ export class AxiomReporter implements Reporter {
   }
 
   async onTestSuiteReady(_testSuite: TestSuite) {
-    const meta = _testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
-    const baseline = meta.evaluation.baseline;
+    const meta = _testSuite.meta() as TaskMeta & { evaluation?: EvaluationReport };
+    const baseline = meta.evaluation?.baseline;
     if (baseline) {
       // load baseline data
       this.baseline = await findEvaluationCases(baseline.id);
     }
     const cwd = process.cwd();
 
-    console.log(
-      ' ',
-      c.bgCyan(c.black(` ${_testSuite.project.name} `)),
-      c.bgBlue(c.black(` ${meta.evaluation.name}-${meta.evaluation.version} `)),
-      c.dim(`(${_testSuite.children.size} cases)`),
-    );
+    // Only show evaluation info if metadata is available (may not be set during collect phase)
+    if (meta.evaluation) {
+      console.log(
+        ' ',
+        c.bgCyan(c.black(` ${_testSuite.project.name} `)),
+        c.bgBlue(c.black(` ${meta.evaluation.name}-${meta.evaluation.version} `)),
+        c.dim(`(${_testSuite.children.size} cases)`),
+      );
+    }
 
     console.log(' ', c.dim(_testSuite.module.moduleId.replace(cwd, '')));
 
     // print baseline name and version if found
-    if (meta.evaluation.baseline) {
+    if (meta.evaluation?.baseline) {
       console.log(
         ' ',
         ' baseline ',
@@ -125,19 +128,23 @@ export class AxiomReporter implements Reporter {
     console.log(' ', c.dim('Start at'), new Date(this.startTime).toTimeString());
     console.log(' ', c.dim('Duration'), `${duration}s`);
 
-    const meta = testSuite.meta() as TaskMeta & { evaluation: EvaluationReport };
-    const url = `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`;
-
+    const meta = testSuite.meta() as TaskMeta & { evaluation?: EvaluationReport };
+    
     for (const test of testSuite.children) {
       if (test.type !== 'test') return;
       this.printCaseResult(test);
     }
 
     console.log('');
-    console.log(
-      ' ',
-      `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
-    );
+    
+    // Only show results URL if evaluation metadata is available
+    if (meta.evaluation) {
+      const url = `https://app.axiom.co/evaluations/${meta.evaluation.name}/${meta.evaluation.id}`;
+      console.log(
+        ' ',
+        `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
+      );
+    }
     console.log(
       ' ',
       c.cyanBright('=== === === === === === === === === === === === === === === ==='),
