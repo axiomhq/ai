@@ -45,7 +45,7 @@ function getContextManager(): ContextManager {
     }
   } else {
     // Browser/CF Workers - simple fallback (no warning needed here)
-    console.warn('AsyncLocalStorage not available, using fallback context manager:');
+    console.warn('AsyncLocalStorage not available, using fallback context manager');
     manager = createFallbackManager();
   }
 
