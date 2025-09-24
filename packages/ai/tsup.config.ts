@@ -11,6 +11,11 @@ export default defineConfig({
     'vitest/index.cjs',
     'esbuild',
     'fsevents',
+    // Ensure Node builtins used via createRequire stay external in ESM bundle
+    'async_hooks',
+    'node:async_hooks',
+    'module',
+    'node:module',
   ], // don't bundle these
   noExternal: ['handlebars'],
   dts: true, // generate .d.ts files
