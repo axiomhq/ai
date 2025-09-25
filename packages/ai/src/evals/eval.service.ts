@@ -1,6 +1,10 @@
-const datasetName = process.env.AXIOM_DATASET ?? '';
-const url = process.env.AXIOM_URL ?? 'https://api.axiom.co';
-const token = process.env.AXIOM_TOKEN;
+const getEnvVars = () => {
+  return {
+    datasetName: process.env.AXIOM_DATASET ?? '',
+    url: process.env.AXIOM_URL ?? 'https://api.axiom.co',
+    token: process.env.AXIOM_TOKEN,
+  };
+};
 
 export type Evaluation = {
   id: string;
@@ -81,6 +85,8 @@ export type Task = {
 
 /** Query axiom to find a baseline for en Eval */
 export const findBaseline = async (evalName: string) => {
+  const { datasetName, url, token } = getEnvVars();
+
   try {
     const apl = `['${datasetName}'] | where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval' | order by _time | limit 1`;
 
@@ -110,6 +116,8 @@ export const findBaseline = async (evalName: string) => {
 
 export const findEvaluationCases = async (evalId: string) => {
   try {
+    const { datasetName, url, token } = getEnvVars();
+
     const apl = `['${datasetName}'] | where trace_id == "${evalId}" | order by _time`;
 
     const headers = new Headers({
