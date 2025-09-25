@@ -26,6 +26,11 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           throw new Error('AXIOM_TOKEN, and AXIOM_DATASET must be set');
         }
 
+        // Propagate debug mode to processes that we can't reach otherwise (e.g., reporter, app instrumentation)
+        if (options.debug) {
+          process.env.AXIOM_DEBUG = 'true';
+        }
+
         let targetPath = '.';
         let include = ['**/*.eval.ts'];
         let testNamePattern: RegExp | undefined;
