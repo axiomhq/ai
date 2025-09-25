@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
-import { withEvalContext, getEvalContext } from './context/storage';
+import { withEvalContext, getEvalContext, getConfigScope } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
@@ -11,6 +11,47 @@ import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
+
+// Helper to prune/truncate flags for span attributes/console safety
+function pruneFlags(
+  obj: any,
+  options: { maxEntries?: number; maxStringLen?: number; maxDepth?: number } = {},
+): any {
+  const { maxEntries = 50, maxStringLen = 200, maxDepth = 2 } = options;
+  const seen = new WeakSet();
+
+  function helper(value: any, depth: number): any {
+    if (value == null) return value;
+    if (typeof value === 'string') {
+      return value.length > maxStringLen ? value.slice(0, maxStringLen) + '…' : value;
+    }
+    if (typeof value !== 'object') return value;
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      return depth >= maxDepth
+        ? `[Array(${value.length})]`
+        : value.slice(0, maxEntries).map((v) => helper(v, depth + 1));
+    }
+
+    if (depth >= maxDepth) return '[Object]';
+
+    const out: Record<string, any> = {};
+    let count = 0;
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = helper(v, depth + 1);
+      if (++count >= maxEntries) break;
+    }
+    return out;
+  }
+
+  try {
+    return helper(obj, 0);
+  } catch {
+    return '[Unserializable]';
+  }
+}
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -148,10 +189,15 @@ async function registerEval<
       suiteSpan.setAttribute(Attr.Eval.ID, evalId);
 
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
-
+      
       // Track out-of-scope flags across all cases for evaluation-level reporting
       const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
-        [];
+      [];
+
+      // Track final config snapshot from the last executed case for reporter printing
+      let lastConfigSnapshot:
+        | { flags: Record<string, any>; pickedFlags?: string[]; overrides?: Record<string, any> }
+        | undefined;
 
       beforeAll((suite) => {
         suite.meta.evaluation = {
@@ -195,6 +241,32 @@ async function registerEval<
               ...stats,
             }),
           );
+
+          // Attach end-of-suite config snapshot for reporter printing
+          {
+            // Prefer full schema defaults (all flags), independent of access
+            let allDefaults: Record<string, any> | undefined;
+            try {
+              const scope = getConfigScope() as any;
+              if (scope && typeof scope.getAllDefaultFlags === 'function') {
+                allDefaults = scope.getAllDefaultFlags();
+              }
+            } catch {}
+
+            const pickedFlags = lastConfigSnapshot?.pickedFlags;
+            // CLI/global overrides for transparency
+            let overrides: Record<string, any> | undefined;
+            try {
+              const { getGlobalFlagOverrides } = await import('./context/global-flags');
+              overrides = getGlobalFlagOverrides();
+            } catch {}
+
+            suite.meta.evaluation.configEnd = {
+              flags: pruneFlags(allDefaults ?? {}, { maxEntries: 200, maxStringLen: 200, maxDepth: 3 }),
+              pickedFlags,
+              overrides: overrides ? pruneFlags(overrides, { maxEntries: 100, maxStringLen: 200 }) : undefined,
+            } as any;
+          }
         }
 
         // end root span
@@ -251,6 +323,13 @@ async function registerEval<
             );
             const { output, duration } = result;
             outOfScopeFlags = result.outOfScopeFlags;
+
+            // Capture final config snapshot for this case
+            lastConfigSnapshot = {
+              flags: result.finalFlags || {},
+              pickedFlags: opts.configFlags,
+              overrides: result.overrides,
+            };
 
             // run scorers
             const scoreList: Score[] = await Promise.all(
@@ -361,6 +440,18 @@ async function registerEval<
             allOutOfScopeFlags.push(...outOfScopeFlags);
             throw e;
           } finally {
+            // Write case-level config flags attribute (non-debug only)
+            try {
+              const DEBUG = process.env.AXIOM_DEBUG === 'true';
+              if (!DEBUG && lastConfigSnapshot?.flags) {
+                const pruned = pruneFlags(lastConfigSnapshot.flags, {
+                  maxEntries: 100,
+                  maxStringLen: 200,
+                  maxDepth: 2,
+                });
+                caseSpan.setAttribute('eval.case.config.flags', JSON.stringify(pruned));
+              }
+            } catch {}
             caseSpan.end();
           }
         },
@@ -449,12 +540,14 @@ const runTask = async <
     caseContext,
   );
 
-  const { output, duration, outOfScopeFlags } = await context.with(
+  const { output, duration, outOfScopeFlags, finalFlags, overrides } = await context.with(
     trace.setSpan(context.active(), taskSpan),
     async (): Promise<{
       output: TOutput;
       duration: number;
       outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+      finalFlags: Record<string, any>;
+      overrides?: Record<string, any>;
     }> => {
       // Initialize evaluation context for flag/fact access
       return withEvalContext(
@@ -463,6 +556,8 @@ const runTask = async <
           output: TOutput;
           duration: number;
           outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+          finalFlags: Record<string, any>;
+          overrides?: Record<string, any>;
         }> => {
           // TODO: EXPERIMENTS - before we were setting config scope if provided here
 
@@ -481,7 +576,13 @@ const runTask = async <
           const ctx = getEvalContext();
           const outOfScopeFlags = ctx.outOfScopeFlags || [];
 
-          return { output, duration, outOfScopeFlags };
+          return {
+            output,
+            duration,
+            outOfScopeFlags,
+            finalFlags: ctx.flags || {},
+            overrides: ctx.overrides,
+          };
         },
       );
     },
@@ -491,5 +592,7 @@ const runTask = async <
     output,
     duration,
     outOfScopeFlags,
+    finalFlags,
+    overrides,
   };
 };

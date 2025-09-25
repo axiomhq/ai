@@ -26,6 +26,10 @@ Eval('feature-example', {
       input: "['nginx-access-logs'] | where status >= 500",
       expected: 'Nginx 5xx Errors',
     },
+    {
+      input: 'foo',
+      expected: 'bar',
+    },
   ],
   task: async ({ input, expected }) => {
     const r = await myFn(input, expected);
