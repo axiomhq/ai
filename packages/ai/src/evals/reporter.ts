@@ -142,10 +142,14 @@ export class AxiomReporter implements Reporter {
     }
 
     console.log('');
-    console.log(
-      ' ',
-      `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
-    );
+
+    const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    if (!DEBUG) {
+      console.log(
+        ' ',
+        `see results for ${meta.evaluation.name}-${meta.evaluation.version} at ${url}`,
+      );
+    }
     console.log(
       ' ',
       c.cyanBright('=== === === === === === === === === === === === === === === ==='),
