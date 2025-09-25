@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.19.0](https://github.com/axiomhq/ai/compare/axiom-v0.18.0...axiom-v0.19.0) (2025-09-23)
+
+
+### Features
+
+* eval flags ([#78](https://github.com/axiomhq/ai/issues/78)) ([a6a315e](https://github.com/axiomhq/ai/commit/a6a315e0be902d88bc30e6618b162fc48190cf7f))
+
+
+### Bug Fixes
+
+* don't print report for skipped test suites ([#85](https://github.com/axiomhq/ai/issues/85)) ([dfb11f9](https://github.com/axiomhq/ai/commit/dfb11f9ab1ba1f8e0556a7a5814aa51ebf93087a))
+* **format:** fix format errors ([#81](https://github.com/axiomhq/ai/issues/81)) ([602aee5](https://github.com/axiomhq/ai/commit/602aee53175c2db7d11f7f5b8bbdd01ccf74333a))
+
 ## [0.18.0](https://github.com/axiomhq/ai/compare/axiom-v0.17.0...axiom-v0.18.0) (2025-09-12)
 
 
