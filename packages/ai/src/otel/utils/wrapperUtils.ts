@@ -548,6 +548,8 @@ export function mapVercelSDKProviderToOTelProvider(vercelSDKProvider: string): s
     case 'deepgram':
     case 'deepgram.transcription':
       return Attr.GenAI.Provider.Name_Values.Deepgram;
+    case 'gateway': // `import { gateway } from 'ai'`
+      return Attr.GenAI.Provider.Name_Values.Vercel;
     case 'gladia':
     case 'gladia.transcription':
       return Attr.GenAI.Provider.Name_Values.Gladia;
