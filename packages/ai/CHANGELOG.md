@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.20.0](https://github.com/axiomhq/ai/compare/axiom-v0.19.0...axiom-v0.20.0) (2025-09-25)
+
+
+### Features
+
+* `gen_ai.provider.name` for ai gateway ([#89](https://github.com/axiomhq/ai/issues/89)) ([5f9d804](https://github.com/axiomhq/ai/commit/5f9d8043f92e4f758f0890f7ec85dbcf03d0ab4d))
+
+
+### Bug Fixes
+
+* environment variables don't load in findEvaluationCases ([#87](https://github.com/axiomhq/ai/issues/87)) ([59f7e95](https://github.com/axiomhq/ai/commit/59f7e95952ebc8cfae0e354223371a964093f256))
+
 ## [0.19.0](https://github.com/axiomhq/ai/compare/axiom-v0.18.0...axiom-v0.19.0) (2025-09-23)
 
 
