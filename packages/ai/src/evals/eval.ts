@@ -22,6 +22,7 @@ declare module 'vitest' {
   }
   export interface ProvidedContext {
     baseline?: string;
+    debug?: boolean;
   }
 }
 
@@ -106,15 +107,19 @@ async function registerEval<
 
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
+  const isDebug = inject('debug');
 
   const result = await describe(
     `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
-      // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
-      const baseline = baselineId
-        ? await findEvaluationCases(baselineId)
-        : await findBaseline(evalName);
+      // use CLI-provided baseline id or find latest
+      // unless in debug mode
+      const baseline = isDebug
+        ? undefined
+        : baselineId
+          ? await findEvaluationCases(baselineId)
+          : await findBaseline(evalName);
       // create a version code
       const evalVersion = nanoid();
       let evalId = ''; // get traceId
