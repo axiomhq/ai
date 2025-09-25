@@ -1,5 +1,10 @@
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
-import { getEvalContext, updateEvalContext, addOutOfScopeFlag } from './evals/context/storage';
+import {
+  getEvalContext,
+  updateEvalContext,
+  addOutOfScopeFlag,
+  setConfigScope,
+} from './evals/context/storage';
 import { validateCliFlags } from './validate-flags';
 import {
   parsePath,
@@ -290,6 +295,8 @@ export interface AppScope<
   overrideFlags: OverrideFlagsFunction<FS>;
   withFlags: WithFlagsFunction<FS>;
   pickFlags: PickFlagsFunction<FS>;
+  /** Return a dot-path map of all schema default flags */
+  getAllDefaultFlags: () => Record<string, any>;
 }
 
 /**
@@ -897,11 +904,39 @@ export function createAppScope<
     return args[0] && Array.isArray(args[0]) ? args[0] : args;
   }) as PickFlagsFunction<FlagSchema>;
 
-  return {
+  function flattenToDot(obj: any, prefix: string[] = [], out: Record<string, any> = {}) {
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      for (const [k, v] of Object.entries(obj)) {
+        flattenToDot(v, [...prefix, k], out);
+      }
+    } else {
+      if (prefix.length > 0) {
+        out[prefix.join('.')] = obj;
+      }
+    }
+    return out;
+  }
+
+  function getAllDefaultFlags(): Record<string, any> {
+    if (!flagSchemaConfig) return {};
+    const defaultsObj = buildObjectWithDefaults(flagSchemaConfig);
+    if (defaultsObj && typeof defaultsObj === 'object') {
+      return flattenToDot(defaultsObj as Record<string, any>);
+    }
+    return {};
+  }
+
+  const scope = {
     flag: flag as any as DotNotationFlagFunction<FlagSchema>,
     fact: fact as any as FactFunction<FactSchema>,
     overrideFlags: overrideFlags as any as OverrideFlagsFunction<FlagSchema>,
     withFlags: withFlags as any as WithFlagsFunction<FlagSchema>,
     pickFlags,
-  };
+    getAllDefaultFlags,
+  } as AppScope<FlagSchema, FactSchema>;
+
+  // Expose scope to current eval context for downstream collection (suite-end summaries)
+  setConfigScope(scope as any);
+
+  return scope;
 }

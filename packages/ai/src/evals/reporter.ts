@@ -6,6 +6,19 @@ import c from 'tinyrainbow';
 import type { Score } from './scorers';
 import { findEvaluationCases, type Evaluation } from './eval.service';
 
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+
+function stringify(value: any): string {
+  try {
+    if (typeof value === 'string') return value;
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /**
  * Complete report for a single evaluation case including results and metadata.
  *
@@ -53,6 +66,12 @@ export type EvaluationReport = {
     firstAccessedAt: number;
     lastAccessedAt: number;
   }[];
+  /** End-of-suite config snapshot for console printing only */
+  configEnd?: {
+    flags?: Record<string, any>;
+    pickedFlags?: string[];
+    overrides?: Record<string, any>;
+  };
 };
 
 /**
@@ -141,6 +160,8 @@ export class AxiomReporter implements Reporter {
       this.printCaseResult(test);
     }
 
+    this.printConfigEnd(meta.evaluation.configEnd);
+
     console.log('');
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
@@ -224,6 +245,45 @@ export class AxiomReporter implements Reporter {
           });
         }
       });
+    }
+  }
+
+  /**
+   * End-of-suite config summary (console only)
+   */
+  private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
+    if (configEnd) {
+      const { pickedFlags, overrides, flags } = configEnd;
+      console.log('');
+      console.log(' ', c.bgWhite(c.blackBright(' Config (end) ')));
+      if (pickedFlags && pickedFlags.length) {
+        console.log(
+          '   ',
+          c.dim('picked flags:'),
+          '[',
+          pickedFlags.map((f) => `'${f}'`).join(', '),
+          ']',
+        );
+      }
+      if (overrides && Object.keys(overrides).length) {
+        const entries = Object.entries(overrides).slice(0, 20);
+        const formatted = entries.map(([k, v]) => `${k}=${truncate(stringify(v), 80)}`).join(', ');
+        console.log('   ', c.dim('overrides'), formatted);
+        if (Object.keys(overrides).length > entries.length) {
+          console.log('   ', c.dim(`… +${Object.keys(overrides).length - entries.length} more`));
+        }
+      }
+      if (flags && Object.keys(flags).length) {
+        const formatted = JSON.stringify(flags, null, 2);
+        const indented = formatted.replace(/\n/g, '\n    ');
+        console.log(
+          '   ',
+          c.dim('flags at end of case:'),
+          '{',
+          indented.slice(1), // remove first `{`
+        );
+      }
+      console.log('');
     }
   }
 }
