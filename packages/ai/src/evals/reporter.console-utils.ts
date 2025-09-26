@@ -118,7 +118,7 @@ export function printTestCaseScores(
         c.magentaBright(blScoreText),
         '->',
         c.blueBright(scoreValue),
-        diff > 0 ? c.green('+' + diffText) : c.red(diffText),
+        diff > 0 ? c.green('+' + diffText) : diff < 0 ? c.red(diffText) : diffText,
       );
     } else {
       console.log('   ', k, c.blueBright(scoreValue));
