@@ -15,6 +15,7 @@ import {
   maybePrintFlagDefaults,
   maybePrintFlagOverrides,
   printBaselineNameAndVersion,
+  printConfigHeader,
   printDivider,
   printEvalNameAndFileName,
   printOutOfScopeFlags,
@@ -130,8 +131,8 @@ export class AxiomReporter implements Reporter {
    * End-of-suite config summary (console only)
    */
   private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
+    printConfigHeader();
     maybePrintFlagOverrides(configEnd);
-
     maybePrintFlagDefaults(configEnd);
   }
 }

@@ -149,12 +149,14 @@ export function printOutOfScopeFlags(testMeta: MetaWithCase) {
   }
 }
 
+export function printConfigHeader() {
+  console.log('');
+  console.log(' ', c.bgWhite(c.blackBright(' Config ')));
+}
+
 export function maybePrintFlagOverrides(configEnd: EvaluationReport['configEnd']) {
   const overrides = configEnd?.overrides;
 
-  if (!overrides) return;
-
-  console.log(' ', c.bgWhite(c.blackBright(' Config ')));
   if (overrides && Object.keys(overrides).length) {
     const entries = Object.entries(overrides).slice(0, 20);
     const formatted = entries.map(([k, v]) => `${k}=${truncate(stringify(v), 80)}`).join(', ');
@@ -162,6 +164,7 @@ export function maybePrintFlagOverrides(configEnd: EvaluationReport['configEnd']
     if (Object.keys(overrides).length > entries.length) {
       console.log('   ', c.dim(`… +${Object.keys(overrides).length - entries.length} more`));
     }
+    console.log('');
   }
 }
 
@@ -177,6 +180,7 @@ export function maybePrintFlagDefaults(configEnd: EvaluationReport['configEnd'])
       '{',
       indented.slice(1), // remove first `{`
     );
+    console.log('');
   }
 }
 
