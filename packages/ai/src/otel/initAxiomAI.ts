@@ -85,11 +85,14 @@ export function getGlobalTracer(): Tracer {
 
   // Warn if initAxiomAI was never called
   if (!scope) {
-    console.warn(
-      '[AxiomAI] AXIOM_AI_SCOPE_KEY is undefined. This probably means that ' +
-        'initAxiomAI() was never called. ' +
-        'Make sure to call initAxiomAI({ tracer }) in your instrumentation setup.',
-    );
+    const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    if (!DEBUG) {
+      console.warn(
+        '[AxiomAI] AXIOM_AI_SCOPE_KEY is undefined. This probably means that ' +
+          'initAxiomAI() was never called. ' +
+          'Make sure to call initAxiomAI({ tracer }) in your instrumentation setup.',
+      );
+    }
   }
 
   let { name, version } = scope || { name: packageJson.name, version: packageJson.version };

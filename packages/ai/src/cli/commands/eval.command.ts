@@ -20,9 +20,15 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
       .option('-d, --dataset <DATASET>', 'axiom dataset name', process.env.AXIOM_DATASET)
       .option('-u, --url <AXIOM URL>', 'axiom url', process.env.AXIOM_URL ?? 'https://api.axiom.co')
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
+      .option('--debug', 'run locally without sending to Axiom or loading baselines', false)
       .action(async (target: string, options) => {
-        if (!options.token || !options.dataset) {
+        if (!options.debug && (!options.token || !options.dataset)) {
           throw new Error('AXIOM_TOKEN, and AXIOM_DATASET must be set');
+        }
+
+        // Propagate debug mode to processes that we can't reach otherwise (e.g., reporter, app instrumentation)
+        if (options.debug) {
+          process.env.AXIOM_DEBUG = 'true';
         }
 
         let targetPath = '.';
@@ -57,6 +63,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             baseline: options.baseline,
             include,
             testNamePattern,
+            debug: options.debug,
+            overrides: flagOverrides,
           });
         });
       }),

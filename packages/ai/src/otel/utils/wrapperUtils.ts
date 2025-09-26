@@ -171,10 +171,13 @@ export function getTracer(): Tracer {
   const tracer = getGlobalTracer();
 
   if (isNoOpTracerProvider()) {
-    console.warn(
-      '[AxiomAI] No TracerProvider registered - spans will be no-op. ' +
-        'Make sure to call initAxiomAI() after your OpenTelemetry SDK has started (sdk.start()).',
-    );
+    const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    if (!DEBUG) {
+      console.warn(
+        '[AxiomAI] No TracerProvider registered - spans will be no-op. ' +
+          'Make sure to call initAxiomAI() after your OpenTelemetry SDK has started (sdk.start()).',
+      );
+    }
   }
 
   return tracer;

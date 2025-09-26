@@ -1,86 +1,11 @@
+import type { Case, Chat, Evaluation, Task } from './eval.types';
+
 const getEnvVars = () => {
   return {
     datasetName: process.env.AXIOM_DATASET ?? '',
     url: process.env.AXIOM_URL ?? 'https://api.axiom.co',
     token: process.env.AXIOM_TOKEN,
   };
-};
-
-export type Evaluation = {
-  id: string;
-  name: string;
-  type: string;
-  version: string;
-  baseline: {
-    id: string | undefined;
-    name: string | undefined;
-  };
-  collection: {
-    name: string;
-    size: number;
-  };
-  prompt: {
-    model: string;
-    params: Record<string, unknown>;
-  };
-  duration: number;
-  status: string;
-  traceId: string;
-  runAt: string;
-  tags: string[];
-  user: {
-    name: string | undefined;
-    email: string | undefined;
-  };
-  cases: Case[];
-};
-
-export type Case = {
-  index: number;
-  input: string;
-  output: string;
-  expected: string;
-  duration: string;
-  status: string;
-  scores: Record<
-    string,
-    {
-      name: string;
-      value: number;
-      metadata: Record<string, any>;
-    }
-  >;
-  runAt: string;
-  spanId: string;
-  traceId: string;
-  task?: Task;
-};
-
-export type Chat = {
-  operation: string;
-  capability: string;
-  step: string;
-  request: {
-    max_token: string;
-    model: string;
-    temperature: number;
-  };
-  response: {
-    finish_reasons: string;
-  };
-  usage: {
-    input_tokens: number;
-    output_tokens: number;
-  };
-};
-
-export type Task = {
-  name: string;
-  output: string;
-  trial: number;
-  type: string;
-  error?: string;
-  chat: Chat;
 };
 
 /** Query axiom to find a baseline for en Eval */
