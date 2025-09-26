@@ -1,4 +1,5 @@
-import type { Scorer } from './scorers';
+import type { TaskMeta } from 'vitest';
+import type { Score, Scorer } from './scorers';
 
 // Type utilities for automatic inference
 /** Extract the input type from CollectionRecord[] */
@@ -93,3 +94,146 @@ export type EvalParams<
   /** Optional reduction of flag namespace */
   configFlags?: string[];
 };
+
+// Discriminated-union type for per-case runtime flags (console/meta only)
+export type RuntimeFlagLog =
+  | { kind: 'introduced'; value: unknown }
+  | { kind: 'replaced'; value: unknown; default: unknown };
+
+export type RuntimeFlagMap = Record<string, RuntimeFlagLog>;
+
+export type Evaluation = {
+  id: string;
+  name: string;
+  type: string;
+  version: string;
+  baseline: {
+    id: string | undefined;
+    name: string | undefined;
+  };
+  collection: {
+    name: string;
+    size: number;
+  };
+  prompt: {
+    model: string;
+    params: Record<string, unknown>;
+  };
+  duration: number;
+  status: string;
+  traceId: string;
+  runAt: string;
+  tags: string[];
+  user: {
+    name: string | undefined;
+    email: string | undefined;
+  };
+  cases: Case[];
+};
+
+export type Case = {
+  index: number;
+  input: string;
+  output: string;
+  expected: string;
+  duration: string;
+  status: string;
+  scores: Record<
+    string,
+    {
+      name: string;
+      value: number;
+      metadata: Record<string, any>;
+    }
+  >;
+  runAt: string;
+  spanId: string;
+  traceId: string;
+  task?: Task;
+};
+
+export type Chat = {
+  operation: string;
+  capability: string;
+  step: string;
+  request: {
+    max_token: string;
+    model: string;
+    temperature: number;
+  };
+  response: {
+    finish_reasons: string;
+  };
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+};
+
+export type Task = {
+  name: string;
+  output: string;
+  trial: number;
+  type: string;
+  error?: string;
+  chat: Chat;
+};
+
+/**
+ * Complete report for a single evaluation case including results and metadata.
+ *
+ * Generated for each test case when running {@link Eval} with {@link EvalParams}.
+ * Contains all {@link Score} results and execution metadata.
+ *
+ * @experimental This API is experimental and may change in future versions.
+ */
+export type EvalCaseReport = {
+  /** Order/index of this case in the evaluation suite */
+  index: number;
+  /** Name of the evaluation */
+  name: string;
+  /** Input data that was provided to the {@link EvalTask} */
+  input: string | Record<string, any>;
+  /** Output produced by the {@link EvalTask} */
+  output: string | Record<string, any>;
+  /** Expected output for comparison */
+  expected: string | Record<string, any>;
+  /** Array of {@link Score} results from all scorers that were run */
+  scores: Record<string, Score>;
+  /** Any errors that occurred during evaluation */
+  errors: Error[] | null;
+  /** Status of the evaluation case */
+  status: 'success' | 'fail' | 'pending';
+  /** Duration in milliseconds for the entire case */
+  duration: number | undefined;
+  /** Timestamp when the case started */
+  startedAt: number | undefined;
+  /** Flags accessed outside of the picked flags scope for this case */
+  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  /** Flags that are in scope for this evaluation */
+  pickedFlags?: string[];
+  /** Runtime flags actually used during this case */
+  runtimeFlags?: RuntimeFlagMap;
+};
+
+export type EvaluationReport = {
+  id: string;
+  name: string;
+  version: string;
+  baseline: Evaluation | undefined;
+  /** Summary of all flags accessed outside of picked flags scope across all cases */
+  outOfScopeFlags?: {
+    flagPath: string;
+    count: number;
+    firstAccessedAt: number;
+    lastAccessedAt: number;
+  }[];
+  /** End-of-suite config snapshot for console printing only */
+  configEnd?: {
+    flags?: Record<string, any>;
+    pickedFlags?: string[];
+    overrides?: Record<string, any>;
+  };
+};
+
+export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };
