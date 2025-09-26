@@ -21,47 +21,6 @@ import { findBaseline, findEvaluationCases } from './eval.service';
 import { DEFAULT_TIMEOUT } from './run-vitest';
 import { getGlobalFlagOverrides } from './context/global-flags';
 
-// Helper to prune/truncate flags for span attributes/console safety
-function pruneFlags(
-  obj: any,
-  options: { maxEntries?: number; maxStringLen?: number; maxDepth?: number } = {},
-): any {
-  const { maxEntries = 50, maxStringLen = 200, maxDepth = 2 } = options;
-  const seen = new WeakSet();
-
-  function helper(value: any, depth: number): any {
-    if (value == null) return value;
-    if (typeof value === 'string') {
-      return value.length > maxStringLen ? value.slice(0, maxStringLen) + '…' : value;
-    }
-    if (typeof value !== 'object') return value;
-    if (seen.has(value)) return '[Circular]';
-    seen.add(value);
-
-    if (Array.isArray(value)) {
-      return depth >= maxDepth
-        ? `[Array(${value.length})]`
-        : value.slice(0, maxEntries).map((v) => helper(v, depth + 1));
-    }
-
-    if (depth >= maxDepth) return '[Object]';
-
-    const out: Record<string, any> = {};
-    let count = 0;
-    for (const [k, v] of Object.entries(value)) {
-      out[k] = helper(v, depth + 1);
-      if (++count >= maxEntries) break;
-    }
-    return out;
-  }
-
-  try {
-    return helper(obj, 0);
-  } catch {
-    return '[Unserializable]';
-  }
-}
-
 declare module 'vitest' {
   interface TestSuiteMeta {
     evaluation: EvaluationReport;
