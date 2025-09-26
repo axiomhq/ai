@@ -31,11 +31,11 @@ declare module 'vitest' {
     evaluation: EvaluationReport;
   }
   export interface ProvidedContext {
-  baseline?: string;
-  debug?: boolean;
+    baseline?: string;
+    debug?: boolean;
     overrides?: Record<string, any>;
-   }
- }
+  }
+}
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 
