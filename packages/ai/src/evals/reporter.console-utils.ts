@@ -155,20 +155,6 @@ export function printConfigHeader() {
   console.log(' ', c.bgWhite(c.blackBright(' Config ')));
 }
 
-// export function maybePrintFlagOverrides(configEnd: EvaluationReport['configEnd']) {
-//   const overrides = configEnd?.overrides;
-
-//   if (overrides && Object.keys(overrides).length) {
-//     const entries = Object.entries(overrides).slice(0, 20);
-//     const formatted = entries.map(([k, v]) => `${k}=${truncate(stringify(v), 80)}`).join(', ');
-//     console.log('   ', c.dim('overrides'), formatted);
-//     if (Object.keys(overrides).length > entries.length) {
-//       console.log('   ', c.dim(`… +${Object.keys(overrides).length - entries.length} more`));
-//     }
-//     console.log('');
-//   }
-// }
-
 export function maybePrintFlags(configEnd: EvaluationReport['configEnd']) {
   const defaults = configEnd?.flags ?? {};
   const overrides = configEnd?.overrides ?? {};
@@ -211,8 +197,8 @@ export function maybePrintFlags(configEnd: EvaluationReport['configEnd']) {
   console.log('');
 }
 
-export function printResultLink(testMeta: MetaWithCase) {
-  const url = `https://app.axiom.co/evaluations/${testMeta.evaluation.name}/${testMeta.evaluation.id}`;
+export function printResultLink(testMeta: MetaWithCase, axiomUrl: string) {
+  const url = `${axiomUrl}/evaluations/${testMeta.evaluation.name}/${testMeta.evaluation.id}`;
   console.log(
     ' ',
     `see results for ${testMeta.evaluation.name}-${testMeta.evaluation.version} at ${url}`,

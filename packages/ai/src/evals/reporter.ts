@@ -1,16 +1,9 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
-import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
 
 import { findEvaluationCases } from './eval.service';
-import type {
-  EvalCaseReport,
-  Evaluation,
-  EvaluationReport,
-  MetaWithCase,
-  MetaWithEval,
-} from './eval.types';
+import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,
@@ -18,6 +11,7 @@ import {
   printDivider,
   printEvalNameAndFileName,
   printOutOfScopeFlags,
+  printResultLink,
   printRuntimeFlags,
   printTestCaseCountStartDuration,
   printTestCaseScores,
@@ -64,7 +58,7 @@ export class AxiomReporter implements Reporter {
   }
 
   onTestCaseReady(test: TestCase) {
-    const meta = test.meta() as TaskMeta & { case: EvalCaseReport };
+    const meta = test.meta() as MetaWithCase;
 
     // TODO: there seem to be some cases where `meta` is undefined
     // maybe we get here to early?
@@ -74,6 +68,7 @@ export class AxiomReporter implements Reporter {
   }
 
   onTestSuiteResult(testSuite: TestSuite) {
+    const meta = testSuite.meta() as MetaWithCase;
     // test suite won't have any meta because its skipped
     if (testSuite.state() === 'skipped') {
       return;
@@ -92,8 +87,11 @@ export class AxiomReporter implements Reporter {
     console.log('');
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    const AXIOM_URL = (process.env.AXIOM_URL ?? 'https://api.axiom.co').replace('api', 'app');
     if (!DEBUG) {
+      printResultLink(meta, AXIOM_URL);
     }
+
     printDivider();
   }
 

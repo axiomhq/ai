@@ -17,6 +17,7 @@ export async function runEvalWithContext<T>(
   setGlobalFlagOverrides(overrides);
 
   return withEvalContext({ initialFlags: overrides }, async () => {
+    // TODO: is this necessary? given the `setGlobalFlagOverrides` call above?
     if (Object.keys(overrides).length > 0) {
       overrideFlags(overrides);
     }
