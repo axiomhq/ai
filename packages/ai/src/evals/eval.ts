@@ -20,6 +20,7 @@ import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { DEFAULT_TIMEOUT } from './run-vitest';
 import { getGlobalFlagOverrides } from './context/global-flags';
+import { deepEqual } from 'src/util/deep-equal';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -122,13 +123,13 @@ async function registerEval<
     `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
-      // use CLI-provided baseline id or find latest
-      // unless in debug mode
+
       const baseline = isDebug
         ? undefined
         : baselineId
           ? await findEvaluationCases(baselineId)
           : await findBaseline(evalName);
+
       // create a version code
       const evalVersion = nanoid();
       let evalId = ''; // get traceId
@@ -399,20 +400,10 @@ async function registerEval<
               const DEBUG = process.env.AXIOM_DEBUG === 'true';
 
               // Prefer the flags captured from the case execution (contain only accessed keys)
-              const accessedFlags: Record<string, any> =
-                (lastConfigSnapshot && lastConfigSnapshot.flags) || {};
+              const accessedFlags: Record<string, any> = lastConfigSnapshot?.flags || {};
 
               const accessed = Object.keys(accessedFlags);
               const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
-
-              // Simple deep equal via JSON stringify
-              const deepEqual = (a: any, b: any): boolean => {
-                try {
-                  return JSON.stringify(a) === JSON.stringify(b);
-                } catch {
-                  return a === b;
-                }
-              };
 
               const runtimeFlags: Record<
                 string,
