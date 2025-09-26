@@ -1,3 +1,5 @@
+import c from 'tinyrainbow';
+
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
@@ -18,7 +20,7 @@ export const runVitest = async (
   initInstrumentation({ enabled: !opts.debug });
 
   if (opts.debug) {
-    console.log('Debug mode enabled');
+    console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
   }
 
   const vi = await createVitest('test', {
