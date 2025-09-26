@@ -12,9 +12,9 @@ import type {
   EvalTask,
   InputOf,
   ExpectedOf,
-  RuntimeFlagMap,
   EvaluationReport,
   EvalCaseReport,
+  RuntimeFlagLog,
 } from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
@@ -405,21 +405,16 @@ async function registerEval<
               const accessed = Object.keys(accessedFlags);
               const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
 
-              const runtimeFlags: Record<
-                string,
-                { value: any; replaced?: boolean; introduced?: boolean; defaultValue?: any }
-              > = {};
+              const runtimeFlags: Record<string, RuntimeFlagLog> = {};
               for (const key of accessed) {
                 const value = accessedFlags[key];
                 if (key in allDefaults) {
                   const replaced = !deepEqual(value, allDefaults[key]);
-                  runtimeFlags[key] = {
-                    value,
-                    ...(replaced ? { replaced: true } : {}),
-                    defaultValue: allDefaults[key],
-                  };
+                  if (replaced) {
+                    runtimeFlags[key] = { kind: 'replaced', value, default: allDefaults[key] };
+                  }
                 } else {
-                  runtimeFlags[key] = { value, introduced: true };
+                  runtimeFlags[key] = { kind: 'introduced', value };
                 }
               }
 
@@ -430,19 +425,8 @@ async function registerEval<
                 );
               }
 
-              // Attach compact version to task meta for reporter printing (union type)
-              const compact: RuntimeFlagMap = {};
-              for (const [k, v] of Object.entries(runtimeFlags)) {
-                if (v.replaced) {
-                  compact[k] = { kind: 'replaced', value: v.value, default: v.defaultValue };
-                } else if (v.introduced) {
-                  compact[k] = { kind: 'introduced', value: v.value };
-                }
-                // Note: unchanged flags are omitted from compact map to reduce noise
-              }
-
               if (task.meta.case) {
-                task.meta.case.runtimeFlags = compact;
+                task.meta.case.runtimeFlags = runtimeFlags;
               }
             } catch {}
             caseSpan.end();

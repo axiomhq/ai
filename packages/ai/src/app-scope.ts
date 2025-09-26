@@ -295,7 +295,6 @@ export interface AppScope<
   overrideFlags: OverrideFlagsFunction<FS>;
   withFlags: WithFlagsFunction<FS>;
   pickFlags: PickFlagsFunction<FS>;
-  /** Return a dot-path map of all schema default flags */
   getAllDefaultFlags: () => Record<string, any>;
 }
 
