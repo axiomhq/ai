@@ -20,6 +20,7 @@ export const EVAL_CONTEXT = createAsyncHook<{
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
   parent?: EvalContextData<any, any>;
   overrides?: Record<string, any>;
+  accessedFlagKeys?: string[];
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
@@ -30,6 +31,7 @@ export interface EvalContextData<Flags = any, Facts = any> {
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
   parent?: EvalContextData<Flags, Facts>;
   overrides?: Record<string, any>;
+  accessedFlagKeys?: string[];
 }
 
 export function getEvalContext<
@@ -53,6 +55,7 @@ export function getEvalContext<
     outOfScopeFlags: ctx.outOfScopeFlags,
     parent: ctx.parent,
     overrides: ctx.overrides,
+    accessedFlagKeys: ctx.accessedFlagKeys,
   };
 }
 
@@ -68,6 +71,13 @@ export function updateEvalContext(flags?: Record<string, any>, facts?: Record<st
   // Mutate the existing context (safe within the same async context)
   if (flags) {
     Object.assign(current.flags, flags);
+    // Track accessed flag keys for runtime reporting
+    if (!current.accessedFlagKeys) current.accessedFlagKeys = [];
+    for (const key of Object.keys(flags)) {
+      if (!current.accessedFlagKeys.includes(key)) {
+        current.accessedFlagKeys.push(key);
+      }
+    }
   }
   if (facts) {
     Object.assign(current.facts, facts);
@@ -218,7 +228,13 @@ export function withEvalContext<T>(
 ): T {
   const { initialFlags = {}, pickedFlags = [] } = options;
   return EVAL_CONTEXT.run(
-    { flags: { ...initialFlags }, facts: {}, pickedFlags, outOfScopeFlags: [] },
+    {
+      flags: { ...initialFlags },
+      facts: {},
+      pickedFlags,
+      outOfScopeFlags: [],
+      accessedFlagKeys: [],
+    },
     fn,
   );
 }

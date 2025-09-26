@@ -6,10 +6,18 @@ import { withEvalContext, getEvalContext, getConfigScope } from './context/stora
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type { CollectionRecord, EvalParams, EvalTask, InputOf, ExpectedOf } from './eval.types';
+import type {
+  CollectionRecord,
+  EvalParams,
+  EvalTask,
+  InputOf,
+  ExpectedOf,
+  RuntimeFlagMap,
+  EvaluationReport,
+  EvalCaseReport,
+} from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
-import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
 
 // Helper to prune/truncate flags for span attributes/console safety
@@ -189,10 +197,10 @@ async function registerEval<
       suiteSpan.setAttribute(Attr.Eval.ID, evalId);
 
       const suiteContext = trace.setSpan(context.active(), suiteSpan);
-      
+
       // Track out-of-scope flags across all cases for evaluation-level reporting
       const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
-      [];
+        [];
 
       // Track final config snapshot from the last executed case for reporter printing
       let lastConfigSnapshot:
@@ -262,9 +270,15 @@ async function registerEval<
             } catch {}
 
             suite.meta.evaluation.configEnd = {
-              flags: pruneFlags(allDefaults ?? {}, { maxEntries: 200, maxStringLen: 200, maxDepth: 3 }),
+              flags: pruneFlags(allDefaults ?? {}, {
+                maxEntries: 200,
+                maxStringLen: 200,
+                maxDepth: 3,
+              }),
               pickedFlags,
-              overrides: overrides ? pruneFlags(overrides, { maxEntries: 100, maxStringLen: 200 }) : undefined,
+              overrides: overrides
+                ? pruneFlags(overrides, { maxEntries: 100, maxStringLen: 200 })
+                : undefined,
             } as any;
           }
         }
@@ -440,16 +454,65 @@ async function registerEval<
             allOutOfScopeFlags.push(...outOfScopeFlags);
             throw e;
           } finally {
-            // Write case-level config flags attribute (non-debug only)
+            // Compute per-case runtime flags report and attach to span/meta
             try {
+              // Build runtime flags report based on actually accessed flags during this case
               const DEBUG = process.env.AXIOM_DEBUG === 'true';
-              if (!DEBUG && lastConfigSnapshot?.flags) {
-                const pruned = pruneFlags(lastConfigSnapshot.flags, {
-                  maxEntries: 100,
-                  maxStringLen: 200,
-                  maxDepth: 2,
-                });
-                caseSpan.setAttribute('eval.case.config.flags', JSON.stringify(pruned));
+
+              // Prefer the flags captured from the case execution (contain only accessed keys)
+              const accessedFlags: Record<string, any> =
+                (lastConfigSnapshot && lastConfigSnapshot.flags) || {};
+
+              const accessed = Object.keys(accessedFlags);
+              const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
+
+              // Simple deep equal via JSON stringify
+              const deepEqual = (a: any, b: any): boolean => {
+                try {
+                  return JSON.stringify(a) === JSON.stringify(b);
+                } catch {
+                  return a === b;
+                }
+              };
+
+              const runtimeFlags: Record<
+                string,
+                { value: any; replaced?: boolean; introduced?: boolean; defaultValue?: any }
+              > = {};
+              for (const key of accessed) {
+                const value = accessedFlags[key];
+                if (key in allDefaults) {
+                  const replaced = !deepEqual(value, allDefaults[key]);
+                  runtimeFlags[key] = {
+                    value,
+                    ...(replaced ? { replaced: true } : {}),
+                    defaultValue: allDefaults[key],
+                  };
+                } else {
+                  runtimeFlags[key] = { value, introduced: true };
+                }
+              }
+
+              if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
+                caseSpan.setAttribute(
+                  'eval.case.config.runtime_flags',
+                  JSON.stringify(runtimeFlags),
+                );
+              }
+
+              // Attach compact version to task meta for reporter printing (union type)
+              const compact: RuntimeFlagMap = {};
+              for (const [k, v] of Object.entries(runtimeFlags)) {
+                if (v.replaced) {
+                  compact[k] = { kind: 'replaced', value: v.value, default: v.defaultValue };
+                } else if (v.introduced) {
+                  compact[k] = { kind: 'introduced', value: v.value };
+                }
+                // Note: unchanged flags are omitted from compact map to reduce noise
+              }
+
+              if (task.meta.case) {
+                task.meta.case.runtimeFlags = compact;
               }
             } catch {}
             caseSpan.end();

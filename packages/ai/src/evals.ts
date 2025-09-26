@@ -17,4 +17,4 @@ export { validateCliFlags } from './validate-flags';
 export { type Score } from './evals/scorers';
 export { createScorer as Scorer } from './evals/scorer.factory';
 
-export type { Evaluation, Case, Chat, Task } from './evals/eval.service';
+export type { Evaluation, Case, Chat, Task } from './evals/eval.types';

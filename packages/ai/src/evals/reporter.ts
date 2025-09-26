@@ -3,8 +3,8 @@ import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from
 import type { TaskMeta } from 'vitest/index.cjs';
 import c from 'tinyrainbow';
 
-import type { Score } from './scorers';
-import { findEvaluationCases, type Evaluation } from './eval.service';
+import { findEvaluationCases } from './eval.service';
+import type { EvalCaseReport, Evaluation, EvaluationReport, MetaWithEval } from './eval.types';
 
 function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max) + '…' : str;
@@ -20,61 +20,6 @@ function stringify(value: any): string {
 }
 
 /**
- * Complete report for a single evaluation case including results and metadata.
- *
- * Generated for each test case when running {@link Eval} with {@link EvalParams}.
- * Contains all {@link Score} results and execution metadata.
- *
- * @experimental This API is experimental and may change in future versions.
- */
-export type EvalCaseReport = {
-  /** Order/index of this case in the evaluation suite */
-  index: number;
-  /** Name of the evaluation */
-  name: string;
-  /** Input data that was provided to the {@link EvalTask} */
-  input: string | Record<string, any>;
-  /** Output produced by the {@link EvalTask} */
-  output: string | Record<string, any>;
-  /** Expected output for comparison */
-  expected: string | Record<string, any>;
-  /** Array of {@link Score} results from all scorers that were run */
-  scores: Record<string, Score>;
-  /** Any errors that occurred during evaluation */
-  errors: Error[] | null;
-  /** Status of the evaluation case */
-  status: 'success' | 'fail' | 'pending';
-  /** Duration in milliseconds for the entire case */
-  duration: number | undefined;
-  /** Timestamp when the case started */
-  startedAt: number | undefined;
-  /** Flags accessed outside of the picked flags scope for this case */
-  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
-  /** Flags that are in scope for this evaluation */
-  pickedFlags?: string[];
-};
-
-export type EvaluationReport = {
-  id: string;
-  name: string;
-  version: string;
-  baseline: Evaluation | undefined;
-  /** Summary of all flags accessed outside of picked flags scope across all cases */
-  outOfScopeFlags?: {
-    flagPath: string;
-    count: number;
-    firstAccessedAt: number;
-    lastAccessedAt: number;
-  }[];
-  /** End-of-suite config snapshot for console printing only */
-  configEnd?: {
-    flags?: Record<string, any>;
-    pickedFlags?: string[];
-    overrides?: Record<string, any>;
-  };
-};
-
-/**
  * Custom Vitest reporter for Axiom AI evaluations.
  *
  * This reporter collects evaluation results and scores from tests
@@ -85,6 +30,7 @@ export class AxiomReporter implements Reporter {
   baseline: Evaluation | undefined | null;
   startTime: number = 0;
   start: number = 0;
+  private _endOfRunConfigEnd: EvaluationReport['configEnd'] | undefined;
 
   onTestRunStart() {
     this.start = performance.now();
@@ -125,6 +71,11 @@ export class AxiomReporter implements Reporter {
       console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
     }
 
+    // capture end-of-run config snapshot (first non-empty wins)
+    if (meta.evaluation.configEnd && !this._endOfRunConfigEnd) {
+      this._endOfRunConfigEnd = meta.evaluation.configEnd;
+    }
+
     console.log('');
   }
 
@@ -160,8 +111,6 @@ export class AxiomReporter implements Reporter {
       this.printCaseResult(test);
     }
 
-    this.printConfigEnd(meta.evaluation.configEnd);
-
     console.log('');
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
@@ -182,11 +131,17 @@ export class AxiomReporter implements Reporter {
     _testModules: ReadonlyArray<TestModule>,
     _errors: ReadonlyArray<SerializedError>,
     _reason: TestRunEndReason,
-  ) {}
+  ) {
+    // Print end-of-run config once
+    const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    if (DEBUG && this._endOfRunConfigEnd) {
+      this.printConfigEnd(this._endOfRunConfigEnd);
+    }
+  }
 
   private printCaseResult(test: TestCase) {
     const ok = test.ok();
-    const testMeta = test.meta() as TaskMeta & { case: EvalCaseReport };
+    const testMeta = test.meta() as MetaWithEval;
 
     if (!testMeta || !testMeta.case) {
       return;
@@ -227,6 +182,31 @@ export class AxiomReporter implements Reporter {
       return [k, scoreValue];
     });
 
+    // Print runtime flags actually used for this case (up to 20 entries)
+    if (testMeta.case.runtimeFlags && Object.keys(testMeta.case.runtimeFlags).length > 0) {
+      const entries = Object.entries(testMeta.case.runtimeFlags);
+      const shown = entries.slice(0, 20);
+      console.log('   ', c.dim('runtime flags'));
+      for (const [k, v] of shown) {
+        switch (v.kind) {
+          case 'replaced': {
+            const valText = truncate(stringify(v.value), 80);
+            const defText = truncate(stringify(v.default), 80);
+            console.log('     ', `${k}: ${valText} (default: ${defText})`);
+            break;
+          }
+          case 'introduced': {
+            const valText = truncate(stringify(v.value), 80);
+            console.log('     ', `${k}: ${valText} (no default)`);
+            break;
+          }
+        }
+      }
+      if (entries.length > shown.length) {
+        console.log('     ', c.dim(`… +${entries.length - shown.length} more`));
+      }
+    }
+
     // Print out-of-scope flags for this case
     if (testMeta.case.outOfScopeFlags && testMeta.case.outOfScopeFlags.length > 0) {
       const pickedFlagsText = testMeta.case.pickedFlags
@@ -253,18 +233,9 @@ export class AxiomReporter implements Reporter {
    */
   private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
     if (configEnd) {
-      const { pickedFlags, overrides, flags } = configEnd;
+      const { overrides, flags } = configEnd;
       console.log('');
-      console.log(' ', c.bgWhite(c.blackBright(' Config (end) ')));
-      if (pickedFlags && pickedFlags.length) {
-        console.log(
-          '   ',
-          c.dim('picked flags:'),
-          '[',
-          pickedFlags.map((f) => `'${f}'`).join(', '),
-          ']',
-        );
-      }
+      console.log(' ', c.bgWhite(c.blackBright(' Config ')));
       if (overrides && Object.keys(overrides).length) {
         const entries = Object.entries(overrides).slice(0, 20);
         const formatted = entries.map(([k, v]) => `${k}=${truncate(stringify(v), 80)}`).join(', ');
@@ -278,7 +249,7 @@ export class AxiomReporter implements Reporter {
         const indented = formatted.replace(/\n/g, '\n    ');
         console.log(
           '   ',
-          c.dim('flags at end of case:'),
+          c.dim('flag defaults:'),
           '{',
           indented.slice(1), // remove first `{`
         );
