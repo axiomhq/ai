@@ -14,6 +14,7 @@ export const runVitest = async (
     include: string[];
     testNamePattern?: RegExp;
     debug?: boolean;
+    overrides?: Record<string, any>;
   },
 ) => {
   // Initialize instrumentation explicitly based on debug flag
@@ -41,6 +42,7 @@ export const runVitest = async (
     provide: {
       baseline: opts.baseline,
       debug: opts.debug,
+      overrides: opts.overrides,
     },
   });
 

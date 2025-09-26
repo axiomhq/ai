@@ -2,6 +2,7 @@ import c from 'tinyrainbow';
 
 import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
+import { deepEqual } from 'src/util/deep-equal';
 
 export function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max) + '…' : str;
@@ -154,34 +155,60 @@ export function printConfigHeader() {
   console.log(' ', c.bgWhite(c.blackBright(' Config ')));
 }
 
-export function maybePrintFlagOverrides(configEnd: EvaluationReport['configEnd']) {
-  const overrides = configEnd?.overrides;
+// export function maybePrintFlagOverrides(configEnd: EvaluationReport['configEnd']) {
+//   const overrides = configEnd?.overrides;
 
-  if (overrides && Object.keys(overrides).length) {
-    const entries = Object.entries(overrides).slice(0, 20);
-    const formatted = entries.map(([k, v]) => `${k}=${truncate(stringify(v), 80)}`).join(', ');
-    console.log('   ', c.dim('overrides'), formatted);
-    if (Object.keys(overrides).length > entries.length) {
-      console.log('   ', c.dim(`… +${Object.keys(overrides).length - entries.length} more`));
+//   if (overrides && Object.keys(overrides).length) {
+//     const entries = Object.entries(overrides).slice(0, 20);
+//     const formatted = entries.map(([k, v]) => `${k}=${truncate(stringify(v), 80)}`).join(', ');
+//     console.log('   ', c.dim('overrides'), formatted);
+//     if (Object.keys(overrides).length > entries.length) {
+//       console.log('   ', c.dim(`… +${Object.keys(overrides).length - entries.length} more`));
+//     }
+//     console.log('');
+//   }
+// }
+
+export function maybePrintFlags(configEnd: EvaluationReport['configEnd']) {
+  const defaults = configEnd?.flags ?? {};
+  const overrides = configEnd?.overrides ?? {};
+
+  const defaultKeys = Object.keys(defaults);
+  const overrideKeys = Object.keys(overrides);
+
+  const allKeys = Array.from(new Set([...defaultKeys, ...overrideKeys])).sort();
+  if (allKeys.length === 0) {
+    return;
+  }
+
+  for (const key of allKeys) {
+    const hasDefault = key in defaults;
+    const hasOverride = key in overrides;
+
+    if (hasDefault && hasOverride) {
+      const defVal = defaults[key];
+      const ovVal = overrides[key];
+      const changed = !deepEqual(ovVal, defVal);
+      const ovText = truncate(stringify(ovVal), 80);
+      const defText = truncate(stringify(defVal), 80);
+      if (changed) {
+        console.log(
+          '   ',
+          `${key}: ${ovText} ${c.dim(`(overridden by CLI, original: ${defText})`)}`,
+        );
+      } else {
+        console.log('   ', `${key}: ${defText}`);
+      }
+    } else if (hasOverride) {
+      const ovText = truncate(stringify(overrides[key]), 80);
+      console.log('   ', `${key}: ${ovText} ${c.dim('(added by CLI)')}`);
+    } else if (hasDefault) {
+      const defText = truncate(stringify(defaults[key]), 80);
+      console.log('   ', `${key}: ${defText}`);
     }
-    console.log('');
   }
-}
 
-export function maybePrintFlagDefaults(configEnd: EvaluationReport['configEnd']) {
-  const flags = configEnd?.flags;
-
-  if (flags && Object.keys(flags).length) {
-    const formatted = JSON.stringify(flags, null, 2);
-    const indented = formatted.replace(/\n/g, '\n    ');
-    console.log(
-      '   ',
-      c.dim('flag defaults:'),
-      '{',
-      indented.slice(1), // remove first `{`
-    );
-    console.log('');
-  }
+  console.log('');
 }
 
 export function printResultLink(testMeta: MetaWithCase) {

@@ -64,6 +64,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             include,
             testNamePattern,
             debug: options.debug,
+            overrides: flagOverrides,
           });
         });
       }),

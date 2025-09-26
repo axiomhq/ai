@@ -19,7 +19,7 @@ import type {
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { DEFAULT_TIMEOUT } from './run-vitest';
-import { getGlobalFlagOverrides } from './context/global-flags';
+import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from 'src/util/deep-equal';
 
 declare module 'vitest' {
@@ -31,10 +31,11 @@ declare module 'vitest' {
     evaluation: EvaluationReport;
   }
   export interface ProvidedContext {
-    baseline?: string;
-    debug?: boolean;
-  }
-}
+  baseline?: string;
+  debug?: boolean;
+    overrides?: Record<string, any>;
+   }
+ }
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 
@@ -118,6 +119,7 @@ async function registerEval<
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
   const isDebug = inject('debug');
+  const injectedOverrides = inject('overrides') as Record<string, any> | undefined;
 
   const result = await describe(
     `evaluate: ${evalName}`,
@@ -169,6 +171,13 @@ async function registerEval<
         | undefined;
 
       beforeAll((suite) => {
+        // Ensure worker process knows CLI overrides
+        if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
+          try {
+            setGlobalFlagOverrides(injectedOverrides);
+          } catch {}
+        }
+
         suite.meta.evaluation = {
           id: evalId,
           name: evalName,
@@ -214,7 +223,7 @@ async function registerEval<
           // Attach end-of-suite config snapshot for reporter printing
           const allDefaults = getConfigScope()?.getAllDefaultFlags();
           const pickedFlags = lastConfigSnapshot?.pickedFlags;
-          const overrides = getGlobalFlagOverrides();
+          const overrides = injectedOverrides ?? getGlobalFlagOverrides();
 
           suite.meta.evaluation.configEnd = {
             flags: allDefaults,

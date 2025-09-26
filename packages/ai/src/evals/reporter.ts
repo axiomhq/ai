@@ -12,8 +12,7 @@ import type {
   MetaWithEval,
 } from './eval.types';
 import {
-  maybePrintFlagDefaults,
-  maybePrintFlagOverrides,
+  maybePrintFlags,
   printBaselineNameAndVersion,
   printConfigHeader,
   printDivider,
@@ -132,7 +131,6 @@ export class AxiomReporter implements Reporter {
    */
   private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
     printConfigHeader();
-    maybePrintFlagOverrides(configEnd);
-    maybePrintFlagDefaults(configEnd);
+    maybePrintFlags(configEnd);
   }
 }
