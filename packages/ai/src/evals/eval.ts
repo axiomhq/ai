@@ -19,6 +19,7 @@ import type {
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { DEFAULT_TIMEOUT } from './run-vitest';
+import { getGlobalFlagOverrides } from './context/global-flags';
 
 // Helper to prune/truncate flags for span attributes/console safety
 function pruneFlags(
@@ -251,36 +252,15 @@ async function registerEval<
           );
 
           // Attach end-of-suite config snapshot for reporter printing
-          {
-            // Prefer full schema defaults (all flags), independent of access
-            let allDefaults: Record<string, any> | undefined;
-            try {
-              const scope = getConfigScope() as any;
-              if (scope && typeof scope.getAllDefaultFlags === 'function') {
-                allDefaults = scope.getAllDefaultFlags();
-              }
-            } catch {}
+          const allDefaults = getConfigScope()?.getAllDefaultFlags();
+          const pickedFlags = lastConfigSnapshot?.pickedFlags;
+          const overrides = getGlobalFlagOverrides();
 
-            const pickedFlags = lastConfigSnapshot?.pickedFlags;
-            // CLI/global overrides for transparency
-            let overrides: Record<string, any> | undefined;
-            try {
-              const { getGlobalFlagOverrides } = await import('./context/global-flags');
-              overrides = getGlobalFlagOverrides();
-            } catch {}
-
-            suite.meta.evaluation.configEnd = {
-              flags: pruneFlags(allDefaults ?? {}, {
-                maxEntries: 200,
-                maxStringLen: 200,
-                maxDepth: 3,
-              }),
-              pickedFlags,
-              overrides: overrides
-                ? pruneFlags(overrides, { maxEntries: 100, maxStringLen: 200 })
-                : undefined,
-            } as any;
-          }
+          suite.meta.evaluation.configEnd = {
+            flags: allDefaults,
+            pickedFlags,
+            overrides,
+          };
         }
 
         // end root span
