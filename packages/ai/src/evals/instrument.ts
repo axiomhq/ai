@@ -4,46 +4,61 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, type Context, type SpanOptions } from '@opentelemetry/api';
 import { initAxiomAI } from 'src/otel/initAxiomAI';
 
-const collectorOptions = {
-  url: process.env.AXIOM_URL
-    ? `${process.env.AXIOM_URL}/v1/traces`
-    : 'https://api.axiom.co/v1/traces', // Axiom API endpoint for trace data
-  headers: {
-    Authorization: `Bearer ${process.env.AXIOM_TOKEN}`, // Replace API_TOKEN with your actual API token
-    'X-Axiom-Dataset': process.env.AXIOM_DATASET || '', // Replace DATASET_NAME with your dataset
-  },
-  concurrencyLimit: 10, // an optional limit on pending requests
-};
+// Lazily initialized tracer provider and exporter
+let provider: NodeTracerProvider | undefined;
+let initialized = false;
 
-// export const consoleExporter = new ConsoleSpanExporter()
-export const exporter = new OTLPTraceExporter(collectorOptions);
-
-const processor = new BatchSpanProcessor(exporter, {
-  maxQueueSize: 2048,
-  maxExportBatchSize: 512,
-  scheduledDelayMillis: 5000,
-  exportTimeoutMillis: 30000,
-});
-
-const provider = new NodeTracerProvider({
-  resource: resourceFromAttributes({
-    ['service.name']: 'axiom',
-    ['service.version']: __SDK_VERSION__,
-  }),
-  spanProcessors: [processor],
-});
-
-provider.register();
-
-// Create a shared tracer instance
+// Create a shared tracer instance (no-op if no provider registered)
 export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
+export function initInstrumentation(config: { enabled: boolean }): void {
+  if (initialized) return;
+
+  if (!config.enabled) {
+    initialized = true; // Mark initialized to avoid later accidental enablement
+    return;
+  }
+
+  const collectorOptions = {
+    url: process.env.AXIOM_URL
+      ? `${process.env.AXIOM_URL}/v1/traces`
+      : 'https://api.axiom.co/v1/traces', // Axiom API endpoint for trace data
+    headers: {
+      Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
+      'X-Axiom-Dataset': process.env.AXIOM_DATASET || '',
+    },
+    concurrencyLimit: 10,
+  };
+
+  const exporter = new OTLPTraceExporter(collectorOptions);
+
+  const processor = new BatchSpanProcessor(exporter, {
+    maxQueueSize: 2048,
+    maxExportBatchSize: 512,
+    scheduledDelayMillis: 5000,
+    exportTimeoutMillis: 30000,
+  });
+
+  provider = new NodeTracerProvider({
+    resource: resourceFromAttributes({
+      ['service.name']: 'axiom',
+      ['service.version']: __SDK_VERSION__,
+    }),
+    spanProcessors: [processor],
+  });
+
+  provider.register();
+
+  // Initialize Axiom AI SDK bindings (safe when provider is registered)
+  initAxiomAI({ tracer });
+
+  initialized = true;
+}
+
 export const flush = async () => {
-  await provider.forceFlush();
+  await provider?.forceFlush();
 };
 
 export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
   return tracer.startSpan(name, opts, context);
 };
-
-initAxiomAI({ tracer: tracer });
