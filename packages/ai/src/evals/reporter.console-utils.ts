@@ -205,6 +205,7 @@ export function printResultLink(testMeta: MetaWithCase, axiomUrl: string) {
   );
 }
 
+// TODO: BEFORE MERGE - not using this now...
 export function printDivider() {
   console.log(' ', c.cyanBright('=== === === === === === === === === === === === === === === ==='));
   console.log('');
