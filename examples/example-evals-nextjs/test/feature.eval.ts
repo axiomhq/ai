@@ -2,7 +2,7 @@ import { experimental_Eval as Eval } from 'axiom/ai/evals';
 import { flag, fact, pickFlags } from '../src/lib/app-scope';
 
 const myFn = async (input: string, expected: string) => {
-  const strategy = flag('behavior.strategy');
+  const strategy = flag('behavior.strategy', 'smart');
 
   const response = strategy === 'dumb' ? input : expected;
 
@@ -20,11 +20,15 @@ const exactMatchScorer = ({ output, expected }: { output: string; expected?: str
 };
 
 Eval('feature-example', {
-  configFlags: pickFlags(['ui']),
+  configFlags: pickFlags('behavior'),
   data: () => [
     {
       input: "['nginx-access-logs'] | where status >= 500",
       expected: 'Nginx 5xx Errors',
+    },
+    {
+      input: 'foo',
+      expected: 'bar',
     },
   ],
   task: async ({ input, expected }) => {

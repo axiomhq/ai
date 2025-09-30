@@ -1,16 +1,26 @@
 import { afterAll, beforeAll, describe, inject, it } from 'vitest';
 import { context, SpanStatusCode, trace, type Context } from '@opentelemetry/api';
 import { customAlphabet } from 'nanoid';
-import { withEvalContext, getEvalContext } from './context/storage';
+import { withEvalContext, getEvalContext, getConfigScope } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
-import type { CollectionRecord, EvalParams, EvalTask, InputOf, ExpectedOf } from './eval.types';
+import type {
+  CollectionRecord,
+  EvalParams,
+  EvalTask,
+  InputOf,
+  ExpectedOf,
+  EvaluationReport,
+  EvalCaseReport,
+  RuntimeFlagLog,
+} from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
-import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
+import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
+import { deepEqual } from 'src/util/deep-equal';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -22,6 +32,8 @@ declare module 'vitest' {
   }
   export interface ProvidedContext {
     baseline?: string;
+    debug?: boolean;
+    overrides?: Record<string, any>;
   }
 }
 
@@ -106,15 +118,20 @@ async function registerEval<
 
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
+  const isDebug = inject('debug');
+  const injectedOverrides = inject('overrides') as Record<string, any> | undefined;
 
   const result = await describe(
     `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
-      // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
-      const baseline = baselineId
-        ? await findEvaluationCases(baselineId)
-        : await findBaseline(evalName);
+
+      const baseline = isDebug
+        ? undefined
+        : baselineId
+          ? await findEvaluationCases(baselineId)
+          : await findBaseline(evalName);
+
       // create a version code
       const evalVersion = nanoid();
       let evalId = ''; // get traceId
@@ -148,7 +165,19 @@ async function registerEval<
       const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
         [];
 
+      // Track final config snapshot from the last executed case for reporter printing
+      let lastConfigSnapshot:
+        | { flags: Record<string, any>; pickedFlags?: string[]; overrides?: Record<string, any> }
+        | undefined;
+
       beforeAll((suite) => {
+        // Ensure worker process knows CLI overrides
+        if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
+          try {
+            setGlobalFlagOverrides(injectedOverrides);
+          } catch {}
+        }
+
         suite.meta.evaluation = {
           id: evalId,
           name: evalName,
@@ -190,6 +219,17 @@ async function registerEval<
               ...stats,
             }),
           );
+
+          // Attach end-of-suite config snapshot for reporter printing
+          const allDefaults = getConfigScope()?.getAllDefaultFlags();
+          const pickedFlags = lastConfigSnapshot?.pickedFlags;
+          const overrides = injectedOverrides ?? getGlobalFlagOverrides();
+
+          suite.meta.evaluation.configEnd = {
+            flags: allDefaults,
+            pickedFlags,
+            overrides,
+          };
         }
 
         // end root span
@@ -246,6 +286,13 @@ async function registerEval<
             );
             const { output, duration } = result;
             outOfScopeFlags = result.outOfScopeFlags;
+
+            // Capture final config snapshot for this case
+            lastConfigSnapshot = {
+              flags: result.finalFlags || {},
+              pickedFlags: opts.configFlags,
+              overrides: result.overrides,
+            };
 
             // run scorers
             const scoreList: Score[] = await Promise.all(
@@ -356,6 +403,41 @@ async function registerEval<
             allOutOfScopeFlags.push(...outOfScopeFlags);
             throw e;
           } finally {
+            // Compute per-case runtime flags report and attach to span/meta
+            try {
+              // Build runtime flags report based on actually accessed flags during this case
+              const DEBUG = process.env.AXIOM_DEBUG === 'true';
+
+              // Prefer the flags captured from the case execution (contain only accessed keys)
+              const accessedFlags: Record<string, any> = lastConfigSnapshot?.flags || {};
+
+              const accessed = Object.keys(accessedFlags);
+              const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
+
+              const runtimeFlags: Record<string, RuntimeFlagLog> = {};
+              for (const key of accessed) {
+                const value = accessedFlags[key];
+                if (key in allDefaults) {
+                  const replaced = !deepEqual(value, allDefaults[key]);
+                  if (replaced) {
+                    runtimeFlags[key] = { kind: 'replaced', value, default: allDefaults[key] };
+                  }
+                } else {
+                  runtimeFlags[key] = { kind: 'introduced', value };
+                }
+              }
+
+              if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
+                caseSpan.setAttribute(
+                  'eval.case.config.runtime_flags',
+                  JSON.stringify(runtimeFlags),
+                );
+              }
+
+              if (task.meta.case) {
+                task.meta.case.runtimeFlags = runtimeFlags;
+              }
+            } catch {}
             caseSpan.end();
           }
         },
@@ -444,12 +526,14 @@ const runTask = async <
     caseContext,
   );
 
-  const { output, duration, outOfScopeFlags } = await context.with(
+  const { output, duration, outOfScopeFlags, finalFlags, overrides } = await context.with(
     trace.setSpan(context.active(), taskSpan),
     async (): Promise<{
       output: TOutput;
       duration: number;
       outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+      finalFlags: Record<string, any>;
+      overrides?: Record<string, any>;
     }> => {
       // Initialize evaluation context for flag/fact access
       return withEvalContext(
@@ -458,6 +542,8 @@ const runTask = async <
           output: TOutput;
           duration: number;
           outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+          finalFlags: Record<string, any>;
+          overrides?: Record<string, any>;
         }> => {
           // TODO: EXPERIMENTS - before we were setting config scope if provided here
 
@@ -476,7 +562,13 @@ const runTask = async <
           const ctx = getEvalContext();
           const outOfScopeFlags = ctx.outOfScopeFlags || [];
 
-          return { output, duration, outOfScopeFlags };
+          return {
+            output,
+            duration,
+            outOfScopeFlags,
+            finalFlags: ctx.flags || {},
+            overrides: ctx.overrides,
+          };
         },
       );
     },
@@ -486,5 +578,7 @@ const runTask = async <
     output,
     duration,
     outOfScopeFlags,
+    finalFlags,
+    overrides,
   };
 };

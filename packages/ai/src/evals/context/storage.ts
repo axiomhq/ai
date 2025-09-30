@@ -2,6 +2,15 @@ import { trace } from '@opentelemetry/api';
 import { createAsyncHook } from './manager';
 import { type createAppScope } from '../../app-scope';
 
+// Global fallback for config scope when called outside of eval context (e.g., module import time)
+const CONFIG_SCOPE_SYMBOL = Symbol.for('axiom.eval.configScope');
+function getGlobalConfigScope(): ReturnType<typeof createAppScope> | undefined {
+  return (globalThis as any)[CONFIG_SCOPE_SYMBOL];
+}
+function setGlobalConfigScope(scope: ReturnType<typeof createAppScope>) {
+  (globalThis as any)[CONFIG_SCOPE_SYMBOL] = scope;
+}
+
 // Mini-context for in-process access
 export const EVAL_CONTEXT = createAsyncHook<{
   flags: Record<string, any>;
@@ -11,6 +20,7 @@ export const EVAL_CONTEXT = createAsyncHook<{
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
   parent?: EvalContextData<any, any>;
   overrides?: Record<string, any>;
+  accessedFlagKeys?: string[];
 }>('eval-context');
 
 export interface EvalContextData<Flags = any, Facts = any> {
@@ -21,6 +31,7 @@ export interface EvalContextData<Flags = any, Facts = any> {
   outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
   parent?: EvalContextData<Flags, Facts>;
   overrides?: Record<string, any>;
+  accessedFlagKeys?: string[];
 }
 
 export function getEvalContext<
@@ -44,6 +55,7 @@ export function getEvalContext<
     outOfScopeFlags: ctx.outOfScopeFlags,
     parent: ctx.parent,
     overrides: ctx.overrides,
+    accessedFlagKeys: ctx.accessedFlagKeys,
   };
 }
 
@@ -59,6 +71,13 @@ export function updateEvalContext(flags?: Record<string, any>, facts?: Record<st
   // Mutate the existing context (safe within the same async context)
   if (flags) {
     Object.assign(current.flags, flags);
+    // Track accessed flag keys for runtime reporting
+    if (!current.accessedFlagKeys) current.accessedFlagKeys = [];
+    for (const key of Object.keys(flags)) {
+      if (!current.accessedFlagKeys.includes(key)) {
+        current.accessedFlagKeys.push(key);
+      }
+    }
   }
   if (facts) {
     Object.assign(current.facts, facts);
@@ -209,7 +228,13 @@ export function withEvalContext<T>(
 ): T {
   const { initialFlags = {}, pickedFlags = [] } = options;
   return EVAL_CONTEXT.run(
-    { flags: { ...initialFlags }, facts: {}, pickedFlags, outOfScopeFlags: [] },
+    {
+      flags: { ...initialFlags },
+      facts: {},
+      pickedFlags,
+      outOfScopeFlags: [],
+      accessedFlagKeys: [],
+    },
     fn,
   );
 }
@@ -217,23 +242,26 @@ export function withEvalContext<T>(
 /**
  * Set the config scope for the current evaluation context.
  * This makes the scope available for global flag/fact access.
+ *
+ * Also stores a global fallback so suite-end summary can access schema defaults
+ * even if createAppScope ran outside the active async context.
  */
 export function setConfigScope(scope: ReturnType<typeof createAppScope>) {
   const current = EVAL_CONTEXT.get();
-  if (!current) {
-    console.warn('setConfigScope called outside of evaluation context');
-    return;
+  if (current) {
+    current.configScope = scope;
   }
-  current.configScope = scope;
+  // Always set global fallback
+  setGlobalConfigScope(scope);
 }
 
 /**
  * Get the config scope from the current evaluation context.
- * Returns undefined if no scope is set or if called outside eval context.
+ * Falls back to global scope when no context is active.
  */
 export function getConfigScope(): ReturnType<typeof createAppScope> | undefined {
   const current = EVAL_CONTEXT.get();
-  return current?.configScope;
+  return current?.configScope ?? getGlobalConfigScope();
 }
 
 /**

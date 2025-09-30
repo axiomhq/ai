@@ -1,6 +1,8 @@
+import c from 'tinyrainbow';
+
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
-import { flush } from './instrument';
+import { flush, initInstrumentation } from './instrument';
 
 export const DEFAULT_TIMEOUT = 10000;
 
@@ -11,8 +13,17 @@ export const runVitest = async (
     baseline?: string;
     include: string[];
     testNamePattern?: RegExp;
+    debug?: boolean;
+    overrides?: Record<string, any>;
   },
 ) => {
+  // Initialize instrumentation explicitly based on debug flag
+  initInstrumentation({ enabled: !opts.debug });
+
+  if (opts.debug) {
+    console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
+  }
+
   const vi = await createVitest('test', {
     root: dir ? dir : process.cwd(),
     mode: 'test',
@@ -30,6 +41,8 @@ export const runVitest = async (
     globals: true,
     provide: {
       baseline: opts.baseline,
+      debug: opts.debug,
+      overrides: opts.overrides,
     },
   });
 
