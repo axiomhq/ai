@@ -27,6 +27,87 @@ declare module 'vitest' {
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
 
+// Evaluation API reporting helpers
+const getEnvVar = (name: string): string | undefined => {
+  try {
+    if (typeof process !== 'undefined' && process?.env) {
+      const value = process.env[name];
+      return typeof value === 'string' && value.length > 0 ? value : undefined;
+    }
+  } catch {
+    // ignore
+  }
+  return undefined;
+};
+
+interface CreateEvaluationPayload {
+  readonly id: string;
+  readonly name: string;
+  readonly dataset: string;
+  readonly region: string;
+  readonly totalCases?: number;
+  readonly scorers?: readonly string[];
+  readonly config?: Readonly<Record<string, unknown>>;
+}
+
+type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled';
+
+const postCreateEvaluation = async (payload: CreateEvaluationPayload): Promise<Response | null> => {
+  const baseUrl = getEnvVar('AXIOM_API_URL');
+  const token = getEnvVar('AXIOM_TOKEN');
+  if (!baseUrl || !token) return null;
+
+  const url = new URL('/api/v1/evaluations', baseUrl);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+      'x-axiom-check': 'good',
+    },
+    body: JSON.stringify(payload),
+  }).catch((e) => {
+    console.error('Error creating evaluation', e);
+    return null;
+  });
+
+  if (!res) {
+    return null;
+  }
+
+  return res;
+};
+
+const patchEvaluation = async (
+  id: string,
+  data: Record<string, unknown>,
+): Promise<Response | null> => {
+  const baseUrl = getEnvVar('AXIOM_API_URL');
+  const token = getEnvVar('AXIOM_TOKEN');
+  if (!baseUrl || !token) return null;
+
+  const url = new URL(`/api/v1/evaluations/${id}`, baseUrl);
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+      'x-axiom-check': 'good',
+    },
+    body: JSON.stringify(data),
+  }).catch((e) => {
+    console.error('Error upserting evaluation', e);
+    return null;
+  });
+
+  if (!res) return null;
+  if (!res.ok) {
+    console.error('Upsert evaluation failed', res);
+    return null;
+  }
+  return res;
+};
+
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
  *
@@ -118,6 +199,11 @@ async function registerEval<
       // create a version code
       const evalVersion = nanoid();
       let evalId = ''; // get traceId
+      let anyCaseFailed = false;
+      const suiteStart = performance.now();
+      let successCases = 0;
+      let erroredCases = 0;
+      const scorerAggregates = new Map<string, { sum: number; count: number }>();
 
       const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
         attributes: {
@@ -148,6 +234,31 @@ async function registerEval<
       const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
         [];
 
+      if (!getEnvVar('AXIOM_DATASET')) {
+        console.warn('AXIOM_DATASET is not set, skipping evaluation creation');
+        return;
+      }
+      // Report evaluation creation to API
+      const res = await postCreateEvaluation({
+        id: evalId,
+        name: evalName,
+        dataset: getEnvVar('AXIOM_DATASET')!,
+        region: getEnvVar('AXIOM_REGION') ?? 'US',
+        totalCases: dataset.length,
+        scorers: opts.scorers?.map((s) => s.name) ?? [],
+        config: {
+          metadata: opts.metadata ?? {},
+          configFlags: opts.configFlags ?? [],
+          baselineId: baseline ? baseline.id : undefined,
+        },
+      });
+
+      if (!res) {
+        // TODO: Remove from release @gabrielelpidio
+        console.error('Error creating evaluation, skipping');
+        return;
+      }
+
       beforeAll((suite) => {
         suite.meta.evaluation = {
           id: evalId,
@@ -158,6 +269,7 @@ async function registerEval<
       });
 
       afterAll(async (suite) => {
+        console.log('afterAll');
         const tags: string[] = ['offline'];
         suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
 
@@ -196,6 +308,29 @@ async function registerEval<
         suiteSpan.setStatus({ code: SpanStatusCode.OK });
         suiteSpan.end();
         await flush();
+
+        // Update evaluation in API with summary
+        const status: EvaluationStatus = anyCaseFailed ? 'errored' : 'completed';
+        const durationMs = Math.round(performance.now() - suiteStart);
+        const scorerNames = opts.scorers?.map((s) => s.name) ?? [];
+        const scorerAvgs = scorerNames.map((name) => {
+          const agg = (scorerAggregates as Map<string, { sum: number; count: number }>).get(name);
+          return agg && agg.count > 0 ? agg.sum / agg.count : 0;
+        });
+
+        const res = await patchEvaluation(evalId, {
+          status,
+          totalCases: dataset.length,
+          successCases,
+          erroredCases,
+          durationMs,
+          scorers: scorerNames,
+          scorerAvgs,
+        });
+        if (!res) {
+          // TODO: Remove from release @gabrielelpidio
+          console.error('Error upserting evaluation summary, skipping');
+        }
       });
 
       await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
@@ -298,6 +433,17 @@ async function registerEval<
             });
             caseSpan.setStatus({ code: SpanStatusCode.OK });
 
+            // aggregate success and scores
+            successCases++;
+            for (const s of scoreList) {
+              const value = Number((s as unknown as { score: number }).score);
+              if (!Number.isFinite(value)) continue;
+              const agg = scorerAggregates.get(s.name) ?? { sum: 0, count: 0 };
+              agg.sum += value;
+              agg.count += 1;
+              scorerAggregates.set(s.name, agg);
+            }
+
             // set task meta for showing result in vitest report
             task.meta.case = {
               index: data.index,
@@ -321,6 +467,8 @@ async function registerEval<
             const error = e as Error;
             caseSpan.recordException(error);
             caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+            anyCaseFailed = true;
+            erroredCases++;
 
             // Try to get out-of-scope flags even in error case
             try {
