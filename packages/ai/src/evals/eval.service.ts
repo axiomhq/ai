@@ -1,10 +1,18 @@
-const getEnvVars = () => {
-  return {
-    datasetName: process.env.AXIOM_DATASET ?? '',
-    url: process.env.AXIOM_URL ?? 'https://api.axiom.co',
-    token: process.env.AXIOM_TOKEN,
-  };
+import { createFetcher, type Fetcher } from '../utils/fetcher';
+
+const normalizeEnvValue = (value: string | undefined): string | undefined => {
+  return value && value.length > 0 ? value : undefined;
 };
+
+export interface EvaluationApiConfig {
+  readonly dataset?: string;
+  readonly region?: string;
+  readonly baseUrl?: string;
+  readonly apiUrl?: string;
+  readonly token?: string;
+}
+
+export type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled';
 
 export type Evaluation = {
   id: string;
@@ -34,6 +42,73 @@ export type Evaluation = {
   };
   cases: Case[];
 };
+
+export interface EvaluationApiPayloadBase {
+  readonly id: string;
+  readonly name: string;
+  readonly dataset: string;
+  readonly region: string;
+  readonly totalCases?: number;
+  readonly scorers?: readonly string[];
+  readonly config?: Readonly<Record<string, unknown>>;
+  readonly status: EvaluationStatus;
+  readonly successCases?: number;
+  readonly erroredCases?: number;
+  readonly durationMs?: number;
+  readonly scorerAvgs?: readonly number[];
+}
+
+export const getEvaluationApiConfig = (): EvaluationApiConfig => {
+  const dataset = normalizeEnvValue(process.env.AXIOM_DATASET);
+  const region = normalizeEnvValue(process.env.AXIOM_REGION);
+  const apiUrl = normalizeEnvValue(process.env.AXIOM_API_URL);
+  const baseUrl = normalizeEnvValue(process.env.AXIOM_URL);
+
+  const token = normalizeEnvValue(process.env.AXIOM_TOKEN);
+
+  return {
+    dataset,
+    region,
+    apiUrl,
+    baseUrl,
+    token,
+  };
+};
+
+const getEnvVars = () => {
+  const config = getEvaluationApiConfig();
+  return {
+    datasetName: config.dataset ?? '',
+    url: config.baseUrl,
+    apiUrl: config.apiUrl,
+    token: config.token,
+  };
+};
+
+export class EvaluationApiClient {
+  private readonly fetcher: Fetcher;
+  constructor(config: Required<Pick<EvaluationApiConfig, 'apiUrl' | 'token'>>) {
+    this.fetcher = createFetcher(config.apiUrl, config.token ?? '');
+  }
+
+  async createEvaluation(evaluation: EvaluationApiPayloadBase) {
+    const resp = await this.fetcher(`/api/v1/evaluations`, {
+      method: 'POST',
+      body: JSON.stringify(evaluation),
+    });
+
+    return resp.json();
+  }
+
+  async updateEvaluation(evaluation: Partial<EvaluationApiPayloadBase>) {
+    const resp = await this.fetcher(`/api/v1/evaluations/${evaluation.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(evaluation),
+    });
+
+    return resp.json();
+  }
+}
 
 export type Case = {
   index: number;

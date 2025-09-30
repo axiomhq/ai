@@ -8,7 +8,13 @@ import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
 import type { CollectionRecord, EvalParams, EvalTask, InputOf, ExpectedOf } from './eval.types';
 import type { Score, Scorer } from './scorers';
-import { findBaseline, findEvaluationCases } from './eval.service';
+import {
+  EvaluationApiClient,
+  findBaseline,
+  findEvaluationCases,
+  getEvaluationApiConfig,
+  type EvaluationStatus,
+} from './eval.service';
 import type { EvalCaseReport, EvaluationReport } from './reporter';
 import { DEFAULT_TIMEOUT } from './run-vitest';
 
@@ -26,87 +32,6 @@ declare module 'vitest' {
 }
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
-
-// Evaluation API reporting helpers
-const getEnvVar = (name: string): string | undefined => {
-  try {
-    if (typeof process !== 'undefined' && process?.env) {
-      const value = process.env[name];
-      return typeof value === 'string' && value.length > 0 ? value : undefined;
-    }
-  } catch {
-    // ignore
-  }
-  return undefined;
-};
-
-interface CreateEvaluationPayload {
-  readonly id: string;
-  readonly name: string;
-  readonly dataset: string;
-  readonly region: string;
-  readonly totalCases?: number;
-  readonly scorers?: readonly string[];
-  readonly config?: Readonly<Record<string, unknown>>;
-}
-
-type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled';
-
-const postCreateEvaluation = async (payload: CreateEvaluationPayload): Promise<Response | null> => {
-  const baseUrl = getEnvVar('AXIOM_API_URL');
-  const token = getEnvVar('AXIOM_TOKEN');
-  if (!baseUrl || !token) return null;
-
-  const url = new URL('/api/v1/evaluations', baseUrl);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-      'x-axiom-check': 'good',
-    },
-    body: JSON.stringify(payload),
-  }).catch((e) => {
-    console.error('Error creating evaluation', e);
-    return null;
-  });
-
-  if (!res) {
-    return null;
-  }
-
-  return res;
-};
-
-const patchEvaluation = async (
-  id: string,
-  data: Record<string, unknown>,
-): Promise<Response | null> => {
-  const baseUrl = getEnvVar('AXIOM_API_URL');
-  const token = getEnvVar('AXIOM_TOKEN');
-  if (!baseUrl || !token) return null;
-
-  const url = new URL(`/api/v1/evaluations/${id}`, baseUrl);
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-      'x-axiom-check': 'good',
-    },
-    body: JSON.stringify(data),
-  }).catch((e) => {
-    console.error('Error upserting evaluation', e);
-    return null;
-  });
-
-  if (!res) return null;
-  if (!res.ok) {
-    console.error('Upsert evaluation failed', res);
-    return null;
-  }
-  return res;
-};
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -188,10 +113,11 @@ async function registerEval<
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
 
-  const result = await describe(
+  const result = describe(
     `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
+      const { dataset: datasetName, region, apiUrl, token } = getEvaluationApiConfig();
       // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
       const baseline = baselineId
         ? await findEvaluationCases(baselineId)
@@ -204,6 +130,16 @@ async function registerEval<
       let successCases = 0;
       let erroredCases = 0;
       const scorerAggregates = new Map<string, { sum: number; count: number }>();
+
+      if (!apiUrl || !token) {
+        console.warn('AXIOM_API_URL or AXIOM_TOKEN is not set, skipping evaluation creation');
+        return;
+      }
+
+      const evaluationApiClient = new EvaluationApiClient({
+        apiUrl,
+        token,
+      });
 
       const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
         attributes: {
@@ -234,16 +170,16 @@ async function registerEval<
       const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
         [];
 
-      if (!getEnvVar('AXIOM_DATASET')) {
+      if (!datasetName) {
         console.warn('AXIOM_DATASET is not set, skipping evaluation creation');
         return;
       }
       // Report evaluation creation to API
-      const res = await postCreateEvaluation({
+      const res = await evaluationApiClient.createEvaluation({
         id: evalId,
         name: evalName,
-        dataset: getEnvVar('AXIOM_DATASET')!,
-        region: getEnvVar('AXIOM_REGION') ?? 'US',
+        dataset: datasetName,
+        region: region ?? 'US',
         totalCases: dataset.length,
         scorers: opts.scorers?.map((s) => s.name) ?? [],
         config: {
@@ -251,6 +187,7 @@ async function registerEval<
           configFlags: opts.configFlags ?? [],
           baselineId: baseline ? baseline.id : undefined,
         },
+        status: 'running',
       });
 
       if (!res) {
@@ -269,7 +206,6 @@ async function registerEval<
       });
 
       afterAll(async (suite) => {
-        console.log('afterAll');
         const tags: string[] = ['offline'];
         suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
 
@@ -312,21 +248,24 @@ async function registerEval<
         // Update evaluation in API with summary
         const status: EvaluationStatus = anyCaseFailed ? 'errored' : 'completed';
         const durationMs = Math.round(performance.now() - suiteStart);
-        const scorerNames = opts.scorers?.map((s) => s.name) ?? [];
-        const scorerAvgs = scorerNames.map((name) => {
-          const agg = (scorerAggregates as Map<string, { sum: number; count: number }>).get(name);
-          return agg && agg.count > 0 ? agg.sum / agg.count : 0;
-        });
+        const scorerAvgs =
+          opts.scorers?.map((scorer) => {
+            const agg = (scorerAggregates as Map<string, { sum: number; count: number }>).get(
+              scorer.name,
+            );
+            return agg && agg.count > 0 ? agg.sum / agg.count : 0;
+          }) ?? [];
 
-        const res = await patchEvaluation(evalId, {
+        const res = await evaluationApiClient.updateEvaluation({
+          id: evalId,
           status,
           totalCases: dataset.length,
           successCases,
           erroredCases,
           durationMs,
-          scorers: scorerNames,
           scorerAvgs,
         });
+
         if (!res) {
           // TODO: Remove from release @gabrielelpidio
           console.error('Error upserting evaluation summary, skipping');
