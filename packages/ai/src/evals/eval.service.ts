@@ -8,7 +8,7 @@ const getEnvVars = () => {
   };
 };
 
-/** Query axiom to find a baseline for en Eval */
+/** Query axiom to find a baseline for an Eval */
 export const findBaseline = async (evalName: string) => {
   const { datasetName, url, token } = getEnvVars();
 
