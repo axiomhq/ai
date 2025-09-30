@@ -8,7 +8,6 @@ import {
   maybePrintFlags,
   printBaselineNameAndVersion,
   printConfigHeader,
-  printDivider,
   printEvalNameAndFileName,
   printOutOfScopeFlags,
   printResultLink,
@@ -91,8 +90,6 @@ export class AxiomReporter implements Reporter {
     if (!DEBUG) {
       printResultLink(meta, AXIOM_URL);
     }
-
-    printDivider();
   }
 
   async onTestRunEnd(
@@ -100,7 +97,18 @@ export class AxiomReporter implements Reporter {
     _errors: ReadonlyArray<SerializedError>,
     _reason: TestRunEndReason,
   ) {
-    // Print end-of-run config once
+    // Clear screen before final report (but not in CI environments)
+    const shouldClear =
+      !process.env.CI && !process.env.AXIOM_NO_CLEAR && process.stdout.isTTY !== false; // Allow clearing even if isTTY is undefined
+
+    if (shouldClear) {
+      process.stdout.write('\x1b[2J\x1b[0f'); // Clear screen and move cursor to top
+    }
+
+    // Print final report
+    this.printFinalReport();
+
+    // Print end-of-run config once (only in debug mode for now)
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
     if (DEBUG && this._endOfRunConfigEnd) {
       this.printConfigEnd(this._endOfRunConfigEnd);
@@ -122,6 +130,22 @@ export class AxiomReporter implements Reporter {
     printRuntimeFlags(testMeta);
 
     printOutOfScopeFlags(testMeta);
+  }
+
+  /**
+   * Print the final consolidated report
+   */
+  private printFinalReport() {
+    console.log('');
+    console.log(c.bgGreen(c.black(' FINAL EVALUATION REPORT ')));
+    console.log('');
+    console.log('<final report goes here>');
+    console.log('');
+    console.log('This will contain:');
+    console.log('• Config changes');
+    console.log('• Detailed suite results with baseline deltas');
+    console.log('• Summary with cross-suite averages');
+    console.log('• Link hub');
   }
 
   /**
