@@ -4,18 +4,35 @@ import c from 'tinyrainbow';
 
 import { findEvaluationCases } from './eval.service';
 import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
+import type { Score } from './scorers';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,
   printConfigHeader,
   printEvalNameAndFileName,
   printOutOfScopeFlags,
-  printResultLink,
   printRuntimeFlags,
   printTestCaseCountStartDuration,
   printTestCaseScores,
   printTestCaseSuccessOrFailed,
 } from './reporter.console-utils';
+
+/**
+ * Data structure for collected suite information
+ */
+type SuiteData = {
+  name: string;
+  file: string;
+  duration: string;
+  // TODO: BEFORE MERGE - pick undefined or null
+  baseline: Evaluation | undefined | null;
+  cases: Array<{
+    index: number;
+    scores: Record<string, Score>;
+    outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+    errors?: Error[] | null;
+  }>;
+};
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -25,10 +42,11 @@ import {
  *
  */
 export class AxiomReporter implements Reporter {
-  baseline: Evaluation | undefined | null;
   startTime: number = 0;
   start: number = 0;
   private _endOfRunConfigEnd: EvaluationReport['configEnd'] | undefined;
+  private _suiteData: SuiteData[] = [];
+  private _baselines: Map<string, Evaluation | null> = new Map();
 
   onTestRunStart() {
     this.start = performance.now();
@@ -42,8 +60,11 @@ export class AxiomReporter implements Reporter {
     }
     const baseline = meta.evaluation.baseline;
     if (baseline) {
-      // load baseline data
-      this.baseline = await findEvaluationCases(baseline.id);
+      // load baseline data per suite
+      const baselineData = await findEvaluationCases(baseline.id);
+      this._baselines.set(meta.evaluation.name, baselineData || null);
+    } else {
+      this._baselines.set(meta.evaluation.name, null);
     }
 
     printEvalNameAndFileName(_testSuite, meta);
@@ -67,7 +88,7 @@ export class AxiomReporter implements Reporter {
   }
 
   onTestSuiteResult(testSuite: TestSuite) {
-    const meta = testSuite.meta() as MetaWithCase;
+    const meta = testSuite.meta() as MetaWithEval;
     // test suite won't have any meta because its skipped
     if (testSuite.state() === 'skipped') {
       return;
@@ -76,6 +97,37 @@ export class AxiomReporter implements Reporter {
     // calculate test duration in seconds
     const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
 
+    // Collect cases data
+    const cases: SuiteData['cases'] = [];
+    for (const test of testSuite.children) {
+      if (test.type !== 'test') continue;
+
+      const testMeta = test.meta() as MetaWithCase;
+      if (!testMeta?.case) continue;
+
+      cases.push({
+        index: testMeta.case.index,
+        scores: testMeta.case.scores,
+        outOfScopeFlags: testMeta.case.outOfScopeFlags,
+        errors: testMeta.case.errors,
+      });
+    }
+
+    // Get relative file path
+    const cwd = process.cwd();
+    const relativePath = testSuite.module.moduleId.replace(cwd, '').replace(/^\//, '');
+
+    // Collect suite data for final report
+    const suiteBaseline = this._baselines.get(meta.evaluation.name);
+    this._suiteData.push({
+      name: meta.evaluation.name,
+      file: relativePath,
+      duration: duration + 's',
+      baseline: suiteBaseline || null,
+      cases,
+    });
+
+    // Still print progress during execution (will be cleared later)
     printTestCaseCountStartDuration(testSuite, this.startTime, duration);
 
     for (const test of testSuite.children) {
@@ -85,11 +137,22 @@ export class AxiomReporter implements Reporter {
 
     console.log('');
 
-    const DEBUG = process.env.AXIOM_DEBUG === 'true';
-    const AXIOM_URL = (process.env.AXIOM_URL ?? 'https://api.axiom.co').replace('api', 'app');
-    if (!DEBUG) {
-      printResultLink(meta, AXIOM_URL);
-    }
+    // TODO: BEFORE MERGE - decide if we need it or not
+    // Skip printResultLink during progress - it will be shown in final report
+    // const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    // const AXIOM_URL = (process.env.AXIOM_URL ?? 'https://api.axiom.co').replace('api', 'app');
+    // if (!DEBUG && cases.length > 0) {
+    //   // Need a MetaWithCase for printResultLink - iterate to find first test
+    //   for (const test of testSuite.children) {
+    //     if (test.type === 'test') {
+    //       const testMeta = test.meta() as MetaWithCase;
+    //       if (testMeta?.case) {
+    //         printResultLink(testMeta, AXIOM_URL);
+    //         break;
+    //       }
+    //     }
+    //   }
+    // }
   }
 
   async onTestRunEnd(
@@ -125,7 +188,8 @@ export class AxiomReporter implements Reporter {
 
     printTestCaseSuccessOrFailed(testMeta, ok);
 
-    printTestCaseScores(testMeta, this.baseline);
+    // TODO: BEFORE MERGE - correct?
+    printTestCaseScores(testMeta, null); // Baseline comparison shown in final report
 
     printRuntimeFlags(testMeta);
 
@@ -139,13 +203,85 @@ export class AxiomReporter implements Reporter {
     console.log('');
     console.log(c.bgGreen(c.black(' FINAL EVALUATION REPORT ')));
     console.log('');
-    console.log('<final report goes here>');
-    console.log('');
-    console.log('This will contain:');
-    console.log('• Config changes');
-    console.log('• Detailed suite results with baseline deltas');
-    console.log('• Summary with cross-suite averages');
-    console.log('• Link hub');
+
+    // Print each suite's detailed results
+    for (const suite of this._suiteData) {
+      this.printSuiteSection(suite);
+      console.log('');
+    }
+  }
+
+  /**
+   * Print a single suite section
+   */
+  private printSuiteSection(suite: SuiteData) {
+    // Suite header
+    console.log(suite.name);
+    console.log(`├─ File: ${suite.file}`);
+    console.log(`├─ Duration: ${suite.duration}`);
+
+    // Baseline info
+    if (suite.baseline) {
+      const baselineTimestamp = suite.baseline.runAt
+        ? new Date(suite.baseline.runAt).toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'UTC',
+            timeZoneName: 'short',
+          })
+        : 'unknown time';
+      console.log(
+        `├─ Baseline: ${suite.baseline.name}-${suite.baseline.version} (${baselineTimestamp})`,
+      );
+    } else {
+      console.log(`├─ Baseline: (none)`);
+    }
+
+    console.log(`└─ Results:`);
+
+    // Print cases
+    for (const caseData of suite.cases) {
+      console.log(`   • C-${caseData.index.toString().padStart(2, '0')}:`);
+
+      // Show out-of-scope flags if present
+      if (caseData.outOfScopeFlags && caseData.outOfScopeFlags.length > 0) {
+        // For now, show just the first flag
+        const flag = caseData.outOfScopeFlags[0];
+        console.log(`     ⚠ Out-of-scope flag: ${flag.flagPath}`);
+        if (flag.stackTrace && flag.stackTrace.length > 0) {
+          console.log(`       at: ${flag.stackTrace[0]}`);
+        }
+      }
+
+      // Print scores with baseline comparison if available
+      const scoreNames = Object.keys(caseData.scores);
+      for (let i = 0; i < scoreNames.length; i++) {
+        const scoreName = scoreNames[i];
+        const score = caseData.scores[scoreName];
+        const isLast = i === scoreNames.length - 1;
+        const prefix = isLast ? '     └─' : '     ├─';
+
+        const currentValue = (score.score || 0).toFixed(4);
+
+        // Check if baseline has this case and score
+        const baselineScore = suite.baseline?.cases[caseData.index]?.scores[scoreName];
+        if (baselineScore) {
+          const baselineValue = baselineScore.value.toFixed(4);
+          const diff = (score.score || 0) - baselineScore.value;
+          const diffText = (diff >= 0 ? '+' : '') + diff.toFixed(4);
+          const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+
+          console.log(
+            `${prefix} ${scoreName}: ${baselineValue} → ${currentValue} (${diffColor(diffText)})`,
+          );
+        } else {
+          console.log(`${prefix} ${scoreName}: ${currentValue}`);
+        }
+      }
+    }
   }
 
   /**
