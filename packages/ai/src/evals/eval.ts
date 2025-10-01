@@ -10,7 +10,6 @@ import type { CollectionRecord, EvalParams, EvalTask, InputOf, ExpectedOf } from
 import type { Score, Scorer } from './scorers';
 import {
   EvaluationApiClient,
-  findBaseline,
   findEvaluationCases,
   getEvaluationApiConfig,
   type EvaluationStatus,
@@ -111,17 +110,13 @@ async function registerEval<
   // TODO: EXPERIMENTS - we were creating `evalScope` here before
 
   // check if user passed a specific baseline id to the CLI
-  const baselineId = inject('baseline');
+  const providedBaselineId = inject('baseline');
 
   const result = describe(
     `evaluate: ${evalName}`,
     async () => {
       const dataset = await datasetPromise;
       const { dataset: datasetName, region, apiUrl, token } = getEvaluationApiConfig();
-      // if user passed a baseline id, if not, find the latest evaluation and use it as a baseline
-      const baseline = baselineId
-        ? await findEvaluationCases(baselineId)
-        : await findBaseline(evalName);
       // create a version code
       const evalVersion = nanoid();
       let evalId = ''; // get traceId
@@ -133,6 +128,11 @@ async function registerEval<
 
       if (!apiUrl || !token) {
         console.warn('AXIOM_API_URL or AXIOM_TOKEN is not set, skipping evaluation creation');
+        return;
+      }
+
+      if (!datasetName) {
+        console.warn('AXIOM_DATASET is not set, skipping evaluation creation');
         return;
       }
 
@@ -153,9 +153,6 @@ async function registerEval<
           [Attr.Eval.Collection.Size]: dataset.length,
           // metadata
           'eval.metadata': JSON.stringify(opts.metadata),
-          // baseline
-          [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
-          [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
           // user info
           [Attr.Eval.User.Name]: user?.name,
           [Attr.Eval.User.Email]: user?.email,
@@ -164,28 +161,17 @@ async function registerEval<
       evalId = suiteSpan.spanContext().traceId;
       suiteSpan.setAttribute(Attr.Eval.ID, evalId);
 
-      const suiteContext = trace.setSpan(context.active(), suiteSpan);
-
-      // Track out-of-scope flags across all cases for evaluation-level reporting
-      const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
-        [];
-
-      if (!datasetName) {
-        console.warn('AXIOM_DATASET is not set, skipping evaluation creation');
-        return;
-      }
       // Report evaluation creation to API
       const res = await evaluationApiClient.createEvaluation({
         id: evalId,
         name: evalName,
         dataset: datasetName,
         region: region ?? 'US',
+        baselineId: providedBaselineId ?? undefined,
         totalCases: dataset.length,
         scorers: opts.scorers?.map((s) => s.name) ?? [],
         config: {
-          metadata: opts.metadata ?? {},
-          configFlags: opts.configFlags ?? [],
-          baselineId: baseline ? baseline.id : undefined,
+          flags: opts.configFlags ?? [],
         },
         status: 'running',
       });
@@ -195,6 +181,18 @@ async function registerEval<
         console.error('Error creating evaluation, skipping');
         return;
       }
+
+      const baselineId = res.data?.baselineId ?? undefined;
+      const baseline = baselineId ? await findEvaluationCases(baselineId) : undefined;
+
+      suiteSpan.setAttribute(Attr.Eval.BaselineID, baselineId ?? '');
+      suiteSpan.setAttribute(Attr.Eval.BaselineName, baseline?.name ?? '');
+
+      const suiteContext = trace.setSpan(context.active(), suiteSpan);
+
+      // Track out-of-scope flags across all cases for evaluation-level reporting
+      const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
+        [];
 
       beforeAll((suite) => {
         suite.meta.evaluation = {
