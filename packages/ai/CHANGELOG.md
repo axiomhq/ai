@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/axiomhq/ai/compare/axiom-v0.20.0...axiom-v0.21.0) (2025-10-01)
+
+
+### Features
+
+* debug mode ([#90](https://github.com/axiomhq/ai/issues/90)) ([1ce1df8](https://github.com/axiomhq/ai/commit/1ce1df82cb8c4f51b82441119d210725a74f77d4))
+* update otel setup ([#94](https://github.com/axiomhq/ai/issues/94)) ([5b4ae1f](https://github.com/axiomhq/ai/commit/5b4ae1ff0bbc0aaa2d495df736c3a471861e943b))
+
 ## [0.20.0](https://github.com/axiomhq/ai/compare/axiom-v0.19.0...axiom-v0.20.0) (2025-09-25)
 
 
