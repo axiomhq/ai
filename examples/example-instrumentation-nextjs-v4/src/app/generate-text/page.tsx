@@ -1,7 +1,7 @@
 import { generateText, tool } from 'ai';
 import { z } from 'zod';
 import { gpt4oMini } from '@/shared/openai';
-import { withSpan, wrapTool } from 'axiom/ai';
+import { withSpan, wrapTools } from 'axiom/ai';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,29 +25,26 @@ export default async function Page() {
           content: 'How do I get from Paris to Berlin?',
         },
       ],
-      tools: {
-        findDirections: wrapTool(
-          'findDirections',
-          tool({
-            description: 'Find directions to a location',
-            parameters: z.object({
-              from: z.string().describe('The location to start from'),
-              to: z.string().describe('The location to find directions to'),
-            }),
-            execute: async ({ from, to }, _opts) => {
-              // Simulate API call delay
-              await new Promise((resolve) => setTimeout(resolve, 500));
-
-              // Return mock directions data
-              return {
-                from,
-                to,
-                directions: `To get from ${from} to ${to}, use a teleporter.`,
-              };
-            },
+      tools: wrapTools({
+        findDirections: tool({
+          description: 'Find directions to a location',
+          parameters: z.object({
+            from: z.string().describe('The location to start from'),
+            to: z.string().describe('The location to find directions to'),
           }),
-        ),
-      },
+          execute: async ({ from, to }, _opts) => {
+            // Simulate API call delay
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Return mock directions data
+            return {
+              from,
+              to,
+              directions: `To get from ${from} to ${to}, use a teleporter.`,
+            };
+          },
+        }),
+      }),
     });
   });
 
