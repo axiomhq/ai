@@ -2,7 +2,7 @@
 
 This is a reference example for using Axiom with the Vercel AI SDK v4 with Express. The example shows steps for:
 
-- Setting up a NodeSDK tracer under `src/instrumentation.ts` that points to Axiom
+- Setting up an OpenTelemetry tracer under `src/instrumentation.ts` that points to Axiom
 - Wrapping AI SDK model under `src/model.ts`
 - Utilizing `withSpan()` to generate text using Vercel's AI SDK under `src/index.ts`
 
