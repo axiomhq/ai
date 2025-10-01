@@ -4,7 +4,7 @@ This is a reference example for using Axiom with the Vercel AI SDK v4 with Next.
 
 - Setting up an OpenTelemetry tracer under `src/instrumentation.ts` that points to Axiom
 - Wrapping AI SDK model under `src/shared/openai.ts`
-- Utilizing `withSpan()` and wrapping a tool with `wrapTool()` to generate text using Vercel's AI SDK under `app/page.tsx`
+- Utilizing `withSpan()` and wrapping tools with `wrapTools()` to generate text using Vercel's AI SDK under `app/page.tsx`
 
 ## How to use
 
