@@ -238,210 +238,208 @@ async function registerEval<
         await flush();
       });
 
-      await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
-        'case',
-        async (data: { index: number } & CollectionRecord<TInput, TExpected>, { task }) => {
-          const start = performance.now();
-          const caseSpan = startSpan(
-            `case ${data.index}`,
-            {
-              attributes: {
-                [Attr.GenAI.Operation.Name]: 'eval.case',
-                [Attr.Eval.ID]: evalId,
-                [Attr.Eval.Name]: evalName,
-                [Attr.Eval.Version]: evalName,
-                [Attr.Eval.Case.Index]: data.index,
-                [Attr.Eval.Case.Input]:
-                  typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
-                [Attr.Eval.Case.Expected]:
-                  typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
-                // user info
-                [Attr.Eval.User.Name]: user?.name,
-                [Attr.Eval.User.Email]: user?.email,
-              },
+      // TODO: BEFORE MERGE - there's probably a better place to define this...
+      type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
+
+      await it.concurrent.for(
+        dataset.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
+      )('case', async (data: CollectionRecordWithIndex, { task }) => {
+        const start = performance.now();
+        const caseSpan = startSpan(
+          `case ${data.index}`,
+          {
+            attributes: {
+              [Attr.GenAI.Operation.Name]: 'eval.case',
+              [Attr.Eval.ID]: evalId,
+              [Attr.Eval.Name]: evalName,
+              [Attr.Eval.Version]: evalName,
+              [Attr.Eval.Case.Index]: data.index,
+              [Attr.Eval.Case.Input]:
+                typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
+              [Attr.Eval.Case.Expected]:
+                typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
+              // user info
+              [Attr.Eval.User.Name]: user?.name,
+              [Attr.Eval.User.Email]: user?.email,
             },
-            suiteContext,
-          );
-          const caseContext = trace.setSpan(context.active(), caseSpan);
+          },
+          suiteContext,
+        );
+        const caseContext = trace.setSpan(context.active(), caseSpan);
 
-          let outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
-            [];
-          try {
-            const result = await runTask(
-              caseContext,
-              {
-                id: evalId,
-                version: evalVersion,
-                name: evalName,
-              },
-              {
-                index: data.index,
-                expected: data.expected,
-                input: data.input,
-                scorers: opts.scorers,
-                task: opts.task,
-                metadata: opts.metadata,
-                configFlags: opts.configFlags,
-              },
-            );
-            const { output, duration } = result;
-            outOfScopeFlags = result.outOfScopeFlags;
-
-            // Capture final config snapshot for this case
-            lastConfigSnapshot = {
-              flags: result.finalFlags || {},
-              pickedFlags: opts.configFlags,
-              overrides: result.overrides,
-            };
-
-            // run scorers
-            const scoreList: Score[] = await Promise.all(
-              opts.scorers.map(async (scorer) => {
-                const scorerSpan = startSpan(
-                  `score ${scorer.name}`,
-                  {
-                    attributes: {
-                      [Attr.GenAI.Operation.Name]: 'eval.score',
-                      [Attr.Eval.ID]: evalId,
-                      [Attr.Eval.Name]: evalName,
-                      [Attr.Eval.Version]: evalName,
-                    },
-                  },
-                  caseContext,
-                );
-
-                const start = performance.now();
-                const result = await scorer({
-                  input: data.input,
-                  output,
-                  expected: data.expected,
-                });
-
-                const duration = Math.round(performance.now() - start);
-                const scoreValue = result.score as number;
-
-                // set score value to the score span
-                scorerSpan.setAttributes({
-                  [Attr.Eval.Score.Name]: result.name, // make sure to use name returned by result not the name of scorer function
-                  [Attr.Eval.Score.Value]: scoreValue,
-                });
-
-                scorerSpan.setStatus({ code: SpanStatusCode.OK });
-                scorerSpan.end();
-
-                return {
-                  ...result,
-                  metadata: { duration, startedAt: start, error: null },
-                };
-              }),
-            );
-
-            const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
-
-            // set case output
-            caseSpan.setAttributes({
-              [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
-              [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
-            });
-            caseSpan.setStatus({ code: SpanStatusCode.OK });
-
-            // set task meta for showing result in vitest report
-            task.meta.case = {
-              index: data.index,
+        let outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] = [];
+        try {
+          const result = await runTask(
+            caseContext,
+            {
+              id: evalId,
+              version: evalVersion,
               name: evalName,
+            },
+            {
+              index: data.index,
               expected: data.expected,
               input: data.input,
-              output: output,
-              scores,
-              status: 'success',
-              errors: [],
-              duration,
-              startedAt: start,
-              outOfScopeFlags,
-              pickedFlags: opts.configFlags,
-            };
+              scorers: opts.scorers,
+              task: opts.task,
+              metadata: opts.metadata,
+              configFlags: opts.configFlags,
+            },
+          );
+          const { output, duration } = result;
+          outOfScopeFlags = result.outOfScopeFlags;
 
-            // Collect out-of-scope flags for evaluation-level aggregation
-            allOutOfScopeFlags.push(...outOfScopeFlags);
-          } catch (e) {
-            console.log(e);
-            const error = e as Error;
-            caseSpan.recordException(error);
-            caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+          // Capture final config snapshot for this case
+          lastConfigSnapshot = {
+            flags: result.finalFlags || {},
+            pickedFlags: opts.configFlags,
+            overrides: result.overrides,
+          };
 
-            // Try to get out-of-scope flags even in error case
-            try {
-              const ctx = getEvalContext();
-              outOfScopeFlags =
-                ctx.outOfScopeFlags ||
-                ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
-            } catch {
-              // If we can't get context, use empty array
-              outOfScopeFlags = [] as {
-                flagPath: string;
-                accessedAt: number;
-                stackTrace: string[];
-              }[];
+          // run scorers
+          const scoreList: Score[] = await Promise.all(
+            opts.scorers.map(async (scorer) => {
+              const scorerSpan = startSpan(
+                `score ${scorer.name}`,
+                {
+                  attributes: {
+                    [Attr.GenAI.Operation.Name]: 'eval.score',
+                    [Attr.Eval.ID]: evalId,
+                    [Attr.Eval.Name]: evalName,
+                    [Attr.Eval.Version]: evalName,
+                  },
+                },
+                caseContext,
+              );
+
+              const start = performance.now();
+              const result = await scorer({
+                input: data.input,
+                output,
+                expected: data.expected,
+              });
+
+              const duration = Math.round(performance.now() - start);
+              const scoreValue = result.score as number;
+
+              // set score value to the score span
+              scorerSpan.setAttributes({
+                [Attr.Eval.Score.Name]: result.name, // make sure to use name returned by result not the name of scorer function
+                [Attr.Eval.Score.Value]: scoreValue,
+              });
+
+              scorerSpan.setStatus({ code: SpanStatusCode.OK });
+              scorerSpan.end();
+
+              return {
+                ...result,
+                metadata: { duration, startedAt: start, error: null },
+              };
+            }),
+          );
+
+          const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
+
+          // set case output
+          caseSpan.setAttributes({
+            [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
+            [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
+          });
+          caseSpan.setStatus({ code: SpanStatusCode.OK });
+
+          // set task meta for showing result in vitest report
+          task.meta.case = {
+            index: data.index,
+            name: evalName,
+            expected: data.expected,
+            input: data.input,
+            output: output,
+            scores,
+            status: 'success',
+            errors: [],
+            duration,
+            startedAt: start,
+            outOfScopeFlags,
+            pickedFlags: opts.configFlags,
+          };
+
+          // Collect out-of-scope flags for evaluation-level aggregation
+          allOutOfScopeFlags.push(...outOfScopeFlags);
+        } catch (e) {
+          console.log(e);
+          const error = e as Error;
+          caseSpan.recordException(error);
+          caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+          // Try to get out-of-scope flags even in error case
+          try {
+            const ctx = getEvalContext();
+            outOfScopeFlags =
+              ctx.outOfScopeFlags ||
+              ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
+          } catch {
+            // If we can't get context, use empty array
+            outOfScopeFlags = [] as {
+              flagPath: string;
+              accessedAt: number;
+              stackTrace: string[];
+            }[];
+          }
+
+          task.meta.case = {
+            name: evalName,
+            index: data.index,
+            expected: data.expected,
+            input: data.input,
+            output: String(e),
+            scores: {},
+            status: 'fail',
+            errors: [error],
+            startedAt: start,
+            duration: Math.round(performance.now() - start),
+            outOfScopeFlags,
+            pickedFlags: opts.configFlags,
+          };
+
+          // Collect out-of-scope flags for evaluation-level aggregation even in error case
+          allOutOfScopeFlags.push(...outOfScopeFlags);
+          throw e;
+        } finally {
+          // Compute per-case runtime flags report and attach to span/meta
+          try {
+            // Build runtime flags report based on actually accessed flags during this case
+            const DEBUG = process.env.AXIOM_DEBUG === 'true';
+
+            // Prefer the flags captured from the case execution (contain only accessed keys)
+            const accessedFlags: Record<string, any> = lastConfigSnapshot?.flags || {};
+
+            const accessed = Object.keys(accessedFlags);
+            const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
+
+            const runtimeFlags: Record<string, RuntimeFlagLog> = {};
+            for (const key of accessed) {
+              const value = accessedFlags[key];
+              if (key in allDefaults) {
+                const replaced = !deepEqual(value, allDefaults[key]);
+                if (replaced) {
+                  runtimeFlags[key] = { kind: 'replaced', value, default: allDefaults[key] };
+                }
+              } else {
+                runtimeFlags[key] = { kind: 'introduced', value };
+              }
             }
 
-            task.meta.case = {
-              name: evalName,
-              index: data.index,
-              expected: data.expected,
-              input: data.input,
-              output: String(e),
-              scores: {},
-              status: 'fail',
-              errors: [error],
-              startedAt: start,
-              duration: Math.round(performance.now() - start),
-              outOfScopeFlags,
-              pickedFlags: opts.configFlags,
-            };
+            if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
+              caseSpan.setAttribute('eval.case.config.runtime_flags', JSON.stringify(runtimeFlags));
+            }
 
-            // Collect out-of-scope flags for evaluation-level aggregation even in error case
-            allOutOfScopeFlags.push(...outOfScopeFlags);
-            throw e;
-          } finally {
-            // Compute per-case runtime flags report and attach to span/meta
-            try {
-              // Build runtime flags report based on actually accessed flags during this case
-              const DEBUG = process.env.AXIOM_DEBUG === 'true';
-
-              // Prefer the flags captured from the case execution (contain only accessed keys)
-              const accessedFlags: Record<string, any> = lastConfigSnapshot?.flags || {};
-
-              const accessed = Object.keys(accessedFlags);
-              const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
-
-              const runtimeFlags: Record<string, RuntimeFlagLog> = {};
-              for (const key of accessed) {
-                const value = accessedFlags[key];
-                if (key in allDefaults) {
-                  const replaced = !deepEqual(value, allDefaults[key]);
-                  if (replaced) {
-                    runtimeFlags[key] = { kind: 'replaced', value, default: allDefaults[key] };
-                  }
-                } else {
-                  runtimeFlags[key] = { kind: 'introduced', value };
-                }
-              }
-
-              if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
-                caseSpan.setAttribute(
-                  'eval.case.config.runtime_flags',
-                  JSON.stringify(runtimeFlags),
-                );
-              }
-
-              if (task.meta.case) {
-                task.meta.case.runtimeFlags = runtimeFlags;
-              }
-            } catch {}
-            caseSpan.end();
-          }
-        },
-      );
+            if (task.meta.case) {
+              task.meta.case.runtimeFlags = runtimeFlags;
+            }
+          } catch {}
+          caseSpan.end();
+        }
+      });
     },
     DEFAULT_TIMEOUT,
   );
