@@ -4,7 +4,7 @@ import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
 
-export const DEFAULT_TIMEOUT = 10000;
+export const DEFAULT_TIMEOUT = parseInt(process.env.AXIOM_TIMEOUT || '60000');
 
 export const runVitest = async (
   dir: string,
