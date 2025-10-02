@@ -272,14 +272,14 @@ export class AxiomReporter implements Reporter {
         const firstChar = _isLast ? ' ' : '│';
         const prefix = isLast ? `   ${firstChar}  └─` : `   ${firstChar}  ├─`;
 
-        const currentValue = (score.score || 0).toFixed(4);
+        const currentValue = ((score.score || 0) * 100).toFixed(2) + '%';
 
         // Check if baseline has this case and score
         const baselineScore = suite.baseline?.cases[caseData.index]?.scores[scoreName];
         if (baselineScore) {
-          const baselineValue = baselineScore.value.toFixed(4);
+          const baselineValue = (baselineScore.value * 100).toFixed(2) + '%';
           const diff = (score.score || 0) - baselineScore.value;
-          const diffText = (diff >= 0 ? '+' : '') + diff.toFixed(4);
+          const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
           const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
 
           console.log(
@@ -338,17 +338,17 @@ export class AxiomReporter implements Reporter {
           const baselineAvg = this.calculateBaselineScorerAverage(suite.baseline, scorerName);
           if (baselineAvg !== null) {
             const diff = avg - baselineAvg;
-            const diffText = (diff >= 0 ? '+' : '') + diff.toFixed(4);
+            const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
             const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
 
             console.log(
-              `${scorerPrefix} ${scorerName}: ${baselineAvg.toFixed(4)} → ${avg.toFixed(4)} (${diffColor(diffText)})`,
+              `${scorerPrefix} ${scorerName}: ${(baselineAvg * 100).toFixed(2)}% → ${(avg * 100).toFixed(2)}% (${diffColor(diffText)})`,
             );
           } else {
-            console.log(`${scorerPrefix} ${scorerName}: ${avg.toFixed(4)}`);
+            console.log(`${scorerPrefix} ${scorerName}: ${(avg * 100).toFixed(2)}%`);
           }
         } else {
-          console.log(`${scorerPrefix} ${scorerName}: ${avg.toFixed(4)}`);
+          console.log(`${scorerPrefix} ${scorerName}: ${(avg * 100).toFixed(2)}%`);
         }
       });
 
