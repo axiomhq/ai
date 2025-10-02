@@ -216,7 +216,7 @@ export class AxiomReporter implements Reporter {
    */
   private printSuiteSection(suite: SuiteData) {
     // Suite header
-    console.log(suite.name);
+    console.log(c.bgGreen(c.black(' ' + suite.name + ' ')));
     console.log(`├─ File: ${suite.file}`);
     console.log(`├─ Duration: ${suite.duration}`);
 
@@ -244,7 +244,7 @@ export class AxiomReporter implements Reporter {
 
     // Print cases
     for (const caseData of suite.cases) {
-      console.log(`   • C-${caseData.index.toString().padStart(2, '0')}:`);
+      console.log(`   • CS-${caseData.index.toString().padStart(2, '0')}:`);
 
       // Show out-of-scope flags if present
       if (caseData.outOfScopeFlags && caseData.outOfScopeFlags.length > 0) {
