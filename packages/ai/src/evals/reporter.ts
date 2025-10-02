@@ -209,6 +209,9 @@ export class AxiomReporter implements Reporter {
       this.printSuiteSection(suite);
       console.log('');
     }
+
+    // Print summary
+    this.printSummary();
   }
 
   /**
@@ -243,26 +246,31 @@ export class AxiomReporter implements Reporter {
     console.log(`└─ Results:`);
 
     // Print cases
-    for (const caseData of suite.cases) {
-      console.log(`   • CS-${caseData.index.toString().padStart(2, '0')}:`);
+    // for (const caseData of suite.cases) {
+    for (let i = 0; i < suite.cases.length; i++) {
+      const _isLast = i === suite.cases.length - 1;
+
+      const caseData = suite.cases[i];
+      console.log(`   └─ CS-${caseData.index.toString().padStart(2, '0')}`);
 
       // Show out-of-scope flags if present
       if (caseData.outOfScopeFlags && caseData.outOfScopeFlags.length > 0) {
         // For now, show just the first flag
         const flag = caseData.outOfScopeFlags[0];
-        console.log(`     ⚠ Out-of-scope flag: ${flag.flagPath}`);
+        console.log(`      ⚠ Out-of-scope flag: ${flag.flagPath}`);
         if (flag.stackTrace && flag.stackTrace.length > 0) {
-          console.log(`       at: ${flag.stackTrace[0]}`);
+          console.log(`        at: ${flag.stackTrace[0]}`);
         }
       }
 
       // Print scores with baseline comparison if available
       const scoreNames = Object.keys(caseData.scores);
-      for (let i = 0; i < scoreNames.length; i++) {
-        const scoreName = scoreNames[i];
+      for (let j = 0; j < scoreNames.length; j++) {
+        const scoreName = scoreNames[j];
         const score = caseData.scores[scoreName];
-        const isLast = i === scoreNames.length - 1;
-        const prefix = isLast ? '     └─' : '     ├─';
+        const isLast = j === scoreNames.length - 1;
+        const firstChar = _isLast ? ' ' : '│';
+        const prefix = isLast ? `   ${firstChar}  └─` : `   ${firstChar}  ├─`;
 
         const currentValue = (score.score || 0).toFixed(4);
 
@@ -282,6 +290,118 @@ export class AxiomReporter implements Reporter {
         }
       }
     }
+  }
+
+  /**
+   * Print summary section with cross-suite statistics
+   */
+  private printSummary() {
+    console.log(c.bgGreen(c.black(' Summary ')));
+
+    // Calculate totals
+    const totalSuites = this._suiteData.length;
+    const totalCases = this._suiteData.reduce((sum, suite) => sum + suite.cases.length, 0);
+    const totalScores = this._suiteData.reduce((sum, suite) => {
+      return sum + suite.cases.reduce((caseSum, c) => caseSum + Object.keys(c.scores).length, 0);
+    }, 0);
+
+    console.log(
+      `├─ ${totalSuites} suite${totalSuites !== 1 ? 's' : ''} | ${totalCases} case${totalCases !== 1 ? 's' : ''} | ${totalScores} score${totalScores !== 1 ? 's' : ''} evaluated`,
+    );
+    console.log('│');
+
+    // Print per-suite averages
+    this._suiteData.forEach((suite, index) => {
+      const isLast = index === this._suiteData.length - 1;
+      const prefix = isLast ? '└─' : '├─';
+
+      console.log(`${prefix} ${suite.name}`);
+
+      // Calculate per-scorer averages for this suite
+      const scorerAverages = this.calculateScorerAverages(suite);
+      const scorerNames = Object.keys(scorerAverages);
+
+      scorerNames.forEach((scorerName, scorerIndex) => {
+        const avg = scorerAverages[scorerName];
+        const isLastScorer = scorerIndex === scorerNames.length - 1;
+        // If suite is not last, use │ to continue the vertical line
+        const scorerPrefix = isLast
+          ? isLastScorer
+            ? '   └─'
+            : '   ├─'
+          : isLastScorer
+            ? '│  └─'
+            : '│  ├─';
+
+        // Check if baseline has this scorer
+        if (suite.baseline) {
+          const baselineAvg = this.calculateBaselineScorerAverage(suite.baseline, scorerName);
+          if (baselineAvg !== null) {
+            const diff = avg - baselineAvg;
+            const diffText = (diff >= 0 ? '+' : '') + diff.toFixed(4);
+            const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+
+            console.log(
+              `${scorerPrefix} ${scorerName}: ${baselineAvg.toFixed(4)} → ${avg.toFixed(4)} (${diffColor(diffText)})`,
+            );
+          } else {
+            console.log(`${scorerPrefix} ${scorerName}: ${avg.toFixed(4)}`);
+          }
+        } else {
+          console.log(`${scorerPrefix} ${scorerName}: ${avg.toFixed(4)}`);
+        }
+      });
+
+      if (!isLast) {
+        console.log('│');
+      }
+    });
+
+    console.log('');
+    console.log('View full report:');
+    console.log('https://app.axiom.co/evaluations/run/<run-id>');
+  }
+
+  /**
+   * Calculate average scores per scorer for a suite
+   */
+  private calculateScorerAverages(suite: SuiteData): Record<string, number> {
+    const scorerTotals: Record<string, { sum: number; count: number }> = {};
+
+    for (const caseData of suite.cases) {
+      for (const [scorerName, score] of Object.entries(caseData.scores)) {
+        if (!scorerTotals[scorerName]) {
+          scorerTotals[scorerName] = { sum: 0, count: 0 };
+        }
+        scorerTotals[scorerName].sum += score.score || 0;
+        scorerTotals[scorerName].count += 1;
+      }
+    }
+
+    const averages: Record<string, number> = {};
+    for (const [scorerName, totals] of Object.entries(scorerTotals)) {
+      averages[scorerName] = totals.count > 0 ? totals.sum / totals.count : 0;
+    }
+
+    return averages;
+  }
+
+  /**
+   * Calculate average score for a specific scorer from baseline data
+   */
+  private calculateBaselineScorerAverage(baseline: Evaluation, scorerName: string): number | null {
+    const scores: number[] = [];
+
+    for (const caseData of baseline.cases) {
+      if (caseData.scores[scorerName]) {
+        scores.push(caseData.scores[scorerName].value);
+      }
+    }
+
+    if (scores.length === 0) return null;
+
+    const sum = scores.reduce((acc, val) => acc + val, 0);
+    return sum / scores.length;
   }
 
   /**
