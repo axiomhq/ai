@@ -314,8 +314,33 @@ export class AxiomReporter implements Reporter {
     this._suiteData.forEach((suite, index) => {
       const isLast = index === this._suiteData.length - 1;
       const prefix = isLast ? '└─' : '├─';
+      const lineChar = isLast ? ' ' : '│';
 
       console.log(`${prefix} ${suite.name}`);
+      console.log(`${lineChar}  ├─ File: ${suite.file}`);
+      console.log(`${lineChar}  ├─ Duration: ${suite.duration}`);
+
+      // Baseline info
+      if (suite.baseline) {
+        const baselineTimestamp = suite.baseline.runAt
+          ? new Date(suite.baseline.runAt).toLocaleString('en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'UTC',
+              timeZoneName: 'short',
+            })
+          : 'unknown time';
+        console.log(
+          `${lineChar}  ├─ Baseline: ${suite.baseline.name}-${suite.baseline.version} (${baselineTimestamp})`,
+        );
+      } else {
+        console.log(`${lineChar}  ├─ Baseline: (none)`);
+      }
+
+      console.log(`${lineChar}  └─ Results:`);
 
       // Calculate per-scorer averages for this suite
       const scorerAverages = this.calculateScorerAverages(suite);
@@ -327,11 +352,11 @@ export class AxiomReporter implements Reporter {
         // If suite is not last, use │ to continue the vertical line
         const scorerPrefix = isLast
           ? isLastScorer
-            ? '   └─'
-            : '   ├─'
+            ? '      └─'
+            : '      ├─'
           : isLastScorer
-            ? '│  └─'
-            : '│  ├─';
+            ? '│     └─'
+            : '│     ├─';
 
         // Check if baseline has this scorer
         if (suite.baseline) {
