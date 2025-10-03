@@ -56,7 +56,6 @@ export function printEvalNameAndFileName(testSuite: TestSuite, meta: MetaWithEva
 }
 
 export function printBaselineNameAndVersion(testMeta: MetaWithEval) {
-  // print baseline name and version if found
   if (testMeta.evaluation.baseline) {
     console.log(
       ' ',
@@ -72,13 +71,11 @@ export function printBaselineNameAndVersion(testMeta: MetaWithEval) {
   console.log('');
 }
 
-// Print runtime flags actually used for this case (up to 20 entries)
 export function printRuntimeFlags(testMeta: MetaWithCase) {
   if (testMeta.case.runtimeFlags && Object.keys(testMeta.case.runtimeFlags).length > 0) {
     const entries = Object.entries(testMeta.case.runtimeFlags);
-    const shown = entries.slice(0, 20);
     console.log('   ', c.dim('runtime flags'));
-    for (const [k, v] of shown) {
+    for (const [k, v] of entries) {
       switch (v.kind) {
         case 'replaced': {
           const valText = truncate(stringify(v.value), 80);
@@ -92,9 +89,6 @@ export function printRuntimeFlags(testMeta: MetaWithCase) {
           break;
         }
       }
-    }
-    if (entries.length > shown.length) {
-      console.log('     ', c.dim(`… +${entries.length - shown.length} more`));
     }
   }
 }
