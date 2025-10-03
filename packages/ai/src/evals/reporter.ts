@@ -236,22 +236,18 @@ export class AxiomReporter implements Reporter {
     const currentConfig = suite.flagConfig || {};
     const baselineConfig = suite.baseline.flagConfig || {};
 
-    // Flatten both configs to dot notation for comparison
     const currentFlat = flattenObject(currentConfig);
     const baselineFlat = flattenObject(baselineConfig);
 
-    // Get all keys from both configs
     const allKeys = new Set([...Object.keys(currentFlat), ...Object.keys(baselineFlat)]);
 
     for (const key of allKeys) {
-      // Check if this flag is in scope
       const isInScope = suite.configFlags.some((pattern) => key.startsWith(pattern));
       if (!isInScope) continue;
 
       const currentValue = currentFlat[key];
       const baselineValue = baselineFlat[key];
 
-      // Only show if values differ
       if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
         diffs.push({
           flag: key,
