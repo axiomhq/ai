@@ -65,10 +65,6 @@ export class AxiomReporter implements Reporter {
       this._baselines.set(meta.evaluation.name, null);
     }
 
-    printEvalNameAndFileName(_testSuite, meta);
-
-    printBaselineNameAndVersion(meta);
-
     // capture end-of-run config snapshot (first non-empty wins)
     if (meta.evaluation.configEnd && !this._endOfRunConfigEnd) {
       this._endOfRunConfigEnd = meta.evaluation.configEnd;
@@ -134,11 +130,13 @@ export class AxiomReporter implements Reporter {
       outOfScopeFlags: meta.evaluation.outOfScopeFlags,
     });
 
-    // Still print progress during execution (will be cleared later)
+    printEvalNameAndFileName(testSuite, meta);
+    printBaselineNameAndVersion(meta);
+
     printTestCaseCountStartDuration(testSuite, this.startTime, duration);
 
     for (const test of testSuite.children) {
-      if (test.type !== 'test') return;
+      if (test.type !== 'test') continue;
       this.printCaseResult(test);
     }
 
