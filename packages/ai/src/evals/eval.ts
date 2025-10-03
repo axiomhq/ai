@@ -273,7 +273,6 @@ async function registerEval<
         await flush();
       });
 
-      // TODO: BEFORE MERGE - there's probably a better place to define this...
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
 
       await it.concurrent.for(

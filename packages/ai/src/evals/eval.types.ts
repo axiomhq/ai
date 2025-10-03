@@ -251,6 +251,5 @@ export type EvaluationReport = {
   };
 };
 
-// TODO: BEFORE MERGE - why are these two separate things? Very confusing....
 export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };
 export type MetaWithCase = TaskMeta & { case: EvalCaseReport };

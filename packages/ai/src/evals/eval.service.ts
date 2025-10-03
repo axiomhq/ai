@@ -15,7 +15,6 @@ export const findBaseline = async (evalName: string) => {
   try {
     const apl = [
       `['${datasetName}']`,
-      // TODO: BEFORE MERGE - look in non-custom as well
       `| where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
       `| order by _time desc`,
       `| limit 1`,

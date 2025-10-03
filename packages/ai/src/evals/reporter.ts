@@ -36,7 +36,6 @@ type SuiteData = {
   name: string;
   file: string;
   duration: string;
-  // TODO: BEFORE MERGE - pick undefined or null
   baseline: Evaluation | undefined | null;
   configFlags?: string[];
   flagConfig?: Record<string, any>;
@@ -166,23 +165,6 @@ export class AxiomReporter implements Reporter {
     }
 
     console.log('');
-
-    // TODO: BEFORE MERGE - decide if we need it or not
-    // Skip printResultLink during progress - it will be shown in final report
-    // const DEBUG = process.env.AXIOM_DEBUG === 'true';
-    // const AXIOM_URL = (process.env.AXIOM_URL ?? 'https://api.axiom.co').replace('api', 'app');
-    // if (!DEBUG && cases.length > 0) {
-    //   // Need a MetaWithCase for printResultLink - iterate to find first test
-    //   for (const test of testSuite.children) {
-    //     if (test.type === 'test') {
-    //       const testMeta = test.meta() as MetaWithCase;
-    //       if (testMeta?.case) {
-    //         printResultLink(testMeta, AXIOM_URL);
-    //         break;
-    //       }
-    //     }
-    //   }
-    // }
   }
 
   async onTestRunEnd(
@@ -218,7 +200,6 @@ export class AxiomReporter implements Reporter {
 
     printTestCaseSuccessOrFailed(testMeta, ok);
 
-    // TODO: BEFORE MERGE - correct?
     printTestCaseScores(testMeta, null); // Baseline comparison shown in final report
 
     printRuntimeFlags(testMeta);
