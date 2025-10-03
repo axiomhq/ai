@@ -201,129 +201,37 @@ export class AxiomReporter implements Reporter {
    */
   private printFinalReport() {
     console.log('');
-    console.log(c.bgGreen(c.black(' FINAL EVALUATION REPORT ')));
+    console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
     console.log('');
 
-    // Print each suite's detailed results
+    // Print each suite in box format
     for (const suite of this._suiteData) {
-      this.printSuiteSection(suite);
+      this.printSuiteBox(suite);
       console.log('');
     }
 
-    // Print summary
-    this.printSummary();
+    console.log('');
+    console.log('View full report:');
+    console.log('https://app.axiom.co/evaluations/run/<run-id>');
   }
 
   /**
-   * Print a single suite section
+   * Print a single suite in box format
    */
-  private printSuiteSection(suite: SuiteData) {
-    // Suite header
-    console.log(c.bgGreen(c.black(' ' + suite.name + ' ')));
-    console.log(`├─ File: ${suite.file}`);
-    console.log(`├─ Duration: ${suite.duration}`);
+  private printSuiteBox(suite: SuiteData) {
+    console.log('┌─');
+    console.log(`│  ${c.blue(suite.name)}`);
+    console.log('├─');
+
+    // Metadata with aligned labels
+    console.log(`│  File:      ${suite.file}`);
+    console.log(`│  Duration:  ${suite.duration}`);
 
     // Baseline info
     if (suite.baseline) {
       const baselineTimestamp = suite.baseline.runAt
-        ? new Date(suite.baseline.runAt).toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'UTC',
-            timeZoneName: 'short',
-          })
-        : 'unknown time';
-      console.log(
-        `├─ Baseline: ${suite.baseline.name}-${suite.baseline.version} (${baselineTimestamp})`,
-      );
-    } else {
-      console.log(`├─ Baseline: (none)`);
-    }
-
-    console.log(`└─ Results:`);
-
-    // Print cases
-    // for (const caseData of suite.cases) {
-    for (let i = 0; i < suite.cases.length; i++) {
-      const _isLast = i === suite.cases.length - 1;
-
-      const caseData = suite.cases[i];
-      console.log(`   └─ CS-${caseData.index.toString().padStart(2, '0')}`);
-
-      // Show out-of-scope flags if present
-      if (caseData.outOfScopeFlags && caseData.outOfScopeFlags.length > 0) {
-        // For now, show just the first flag
-        const flag = caseData.outOfScopeFlags[0];
-        console.log(`      ⚠ Out-of-scope flag: ${flag.flagPath}`);
-        if (flag.stackTrace && flag.stackTrace.length > 0) {
-          console.log(`        at: ${flag.stackTrace[0]}`);
-        }
-      }
-
-      // Print scores with baseline comparison if available
-      const scoreNames = Object.keys(caseData.scores);
-      for (let j = 0; j < scoreNames.length; j++) {
-        const scoreName = scoreNames[j];
-        const score = caseData.scores[scoreName];
-        const isLast = j === scoreNames.length - 1;
-        const firstChar = _isLast ? ' ' : '│';
-        const prefix = isLast ? `   ${firstChar}  └─` : `   ${firstChar}  ├─`;
-
-        const currentValue = ((score.score || 0) * 100).toFixed(2) + '%';
-
-        // Check if baseline has this case and score
-        const baselineScore = suite.baseline?.cases[caseData.index]?.scores[scoreName];
-        if (baselineScore) {
-          const baselineValue = (baselineScore.value * 100).toFixed(2) + '%';
-          const diff = (score.score || 0) - baselineScore.value;
-          const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
-          const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
-
-          console.log(
-            `${prefix} ${scoreName}: ${baselineValue} → ${currentValue} (${diffColor(diffText)})`,
-          );
-        } else {
-          console.log(`${prefix} ${scoreName}: ${currentValue}`);
-        }
-      }
-    }
-  }
-
-  /**
-   * Print summary section with cross-suite statistics
-   */
-  private printSummary() {
-    console.log(c.bgGreen(c.black(' Summary ')));
-
-    // Calculate totals
-    const totalSuites = this._suiteData.length;
-    const totalCases = this._suiteData.reduce((sum, suite) => sum + suite.cases.length, 0);
-    const totalScores = this._suiteData.reduce((sum, suite) => {
-      return sum + suite.cases.reduce((caseSum, c) => caseSum + Object.keys(c.scores).length, 0);
-    }, 0);
-
-    console.log(
-      `├─ ${totalSuites} suite${totalSuites !== 1 ? 's' : ''} | ${totalCases} case${totalCases !== 1 ? 's' : ''} | ${totalScores} score${totalScores !== 1 ? 's' : ''} evaluated`,
-    );
-    console.log('│');
-
-    // Print per-suite averages
-    this._suiteData.forEach((suite, index) => {
-      const isLast = index === this._suiteData.length - 1;
-      const prefix = isLast ? '└─' : '├─';
-      const lineChar = isLast ? ' ' : '│';
-
-      console.log(`${prefix} ${suite.name}`);
-      console.log(`${lineChar}  ├─ File: ${suite.file}`);
-      console.log(`${lineChar}  ├─ Duration: ${suite.duration}`);
-
-      // Baseline info
-      if (suite.baseline) {
-        const baselineTimestamp = suite.baseline.runAt
-          ? new Date(suite.baseline.runAt).toLocaleString('en-US', {
+        ? new Date(suite.baseline.runAt)
+            .toLocaleString('en-US', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
@@ -332,59 +240,53 @@ export class AxiomReporter implements Reporter {
               timeZone: 'UTC',
               timeZoneName: 'short',
             })
-          : 'unknown time';
-        console.log(
-          `${lineChar}  ├─ Baseline: ${suite.baseline.name}-${suite.baseline.version} (${baselineTimestamp})`,
-        );
-      } else {
-        console.log(`${lineChar}  ├─ Baseline: (none)`);
-      }
+            .replace(', ', ' ')
+        : 'unknown time';
+      console.log(
+        `│  Baseline:  ${suite.baseline.name}-${suite.baseline.version} (${baselineTimestamp})`,
+      );
+    } else {
+      console.log(`│  Baseline:  (none)`);
+    }
 
-      console.log(`${lineChar}  └─ Results:`);
+    console.log('│');
+    console.log('│  Results:');
 
-      // Calculate per-scorer averages for this suite
-      const scorerAverages = this.calculateScorerAverages(suite);
-      const scorerNames = Object.keys(scorerAverages);
+    // Calculate per-scorer averages
+    const scorerAverages = this.calculateScorerAverages(suite);
+    const scorerNames = Object.keys(scorerAverages);
 
-      scorerNames.forEach((scorerName, scorerIndex) => {
-        const avg = scorerAverages[scorerName];
-        const isLastScorer = scorerIndex === scorerNames.length - 1;
-        // If suite is not last, use │ to continue the vertical line
-        const scorerPrefix = isLast
-          ? isLastScorer
-            ? '      └─'
-            : '      ├─'
-          : isLastScorer
-            ? '│     └─'
-            : '│     ├─';
+    // Find max scorer name length for alignment
+    const maxNameLength = Math.max(...scorerNames.map((name) => name.length));
 
-        // Check if baseline has this scorer
-        if (suite.baseline) {
-          const baselineAvg = this.calculateBaselineScorerAverage(suite.baseline, scorerName);
-          if (baselineAvg !== null) {
-            const diff = avg - baselineAvg;
-            const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
-            const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+    for (const scorerName of scorerNames) {
+      const avg = scorerAverages[scorerName];
+      const paddedName = scorerName.padEnd(maxNameLength);
 
-            console.log(
-              `${scorerPrefix} ${scorerName}: ${(baselineAvg * 100).toFixed(2)}% → ${(avg * 100).toFixed(2)}% (${diffColor(diffText)})`,
-            );
-          } else {
-            console.log(`${scorerPrefix} ${scorerName}: ${(avg * 100).toFixed(2)}%`);
-          }
+      // Check if baseline has this scorer
+      if (suite.baseline) {
+        const baselineAvg = this.calculateBaselineScorerAverage(suite.baseline, scorerName);
+        if (baselineAvg !== null) {
+          const currentPercent = (avg * 100).toFixed(2) + '%';
+          const baselinePercent = (baselineAvg * 100).toFixed(2) + '%';
+          const diff = avg - baselineAvg;
+          const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
+          const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+
+          console.log(
+            `│   • ${paddedName}  ${c.blueBright(baselinePercent).padStart(7)} → ${c.magentaBright(currentPercent).padStart(7)}  (${diffColor(diffText)})`,
+          );
         } else {
-          console.log(`${scorerPrefix} ${scorerName}: ${(avg * 100).toFixed(2)}%`);
+          const currentPercent = (avg * 100).toFixed(2) + '%';
+          console.log(`│   • ${paddedName}  ${currentPercent}`);
         }
-      });
-
-      if (!isLast) {
-        console.log('│');
+      } else {
+        const currentPercent = (avg * 100).toFixed(2) + '%';
+        console.log(`│   • ${paddedName}  ${currentPercent}`);
       }
-    });
+    }
 
-    console.log('');
-    console.log('View full report:');
-    console.log('https://app.axiom.co/evaluations/run/<run-id>');
+    console.log('└─');
   }
 
   /**
