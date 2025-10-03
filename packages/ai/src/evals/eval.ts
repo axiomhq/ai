@@ -239,7 +239,7 @@ async function registerEval<
       });
 
       await it.concurrent.for(dataset.map((d, index) => ({ ...d, index })))(
-        'case',
+        (data: {index: number}) => `case ${data.index}`,
         async (data: { index: number } & CollectionRecord<TInput, TExpected>, { task }) => {
           const start = performance.now();
           const caseSpan = startSpan(
