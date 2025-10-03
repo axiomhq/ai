@@ -122,10 +122,7 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     duration = d;
   }
 
-  // Check both custom and non-custom attributes for runtime_flags (migration support)
-  const runtimeFlagsRaw =
-    data.attributes['eval.case.config.runtime_flags'] ??
-    data.attributes.custom['eval.case.config.runtime_flags'];
+  const runtimeFlagsRaw = data.attributes.custom['eval.case.config.runtime_flags'];
 
   return {
     index: data.attributes.custom['eval.case.index'],

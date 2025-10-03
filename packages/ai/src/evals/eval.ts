@@ -120,7 +120,6 @@ function captureFlagConfig(configFlags?: string[]): Record<string, any> {
   const allDefaults = scope?.getAllDefaultFlags?.() ?? {};
   const overrides = getGlobalFlagOverrides();
 
-  // Merge defaults + overrides
   const merged = { ...allDefaults, ...overrides };
 
   // Filter to only flags in configFlags scope
@@ -132,7 +131,6 @@ function captureFlagConfig(configFlags?: string[]): Record<string, any> {
     }
   }
 
-  // Convert dot notation to nested object
   return dotNotationToNested(filtered);
 }
 
@@ -196,7 +194,7 @@ async function registerEval<
         [];
 
       // Track final config snapshot from the last executed case for reporter printing
-      let lastConfigSnapshot:
+      let finalConfigSnapshot:
         | { flags: Record<string, any>; pickedFlags?: string[]; overrides?: Record<string, any> }
         | undefined;
 
@@ -216,11 +214,8 @@ async function registerEval<
           configFlags: opts.configFlags,
         };
 
-        // Capture full flag config
         const flagConfig = captureFlagConfig(opts.configFlags);
         suite.meta.evaluation.flagConfig = flagConfig;
-
-        // Store on eval span
         const flagConfigJson = JSON.stringify(flagConfig);
         suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
       });
@@ -257,7 +252,7 @@ async function registerEval<
 
           // Attach end-of-suite config snapshot for reporter printing
           const allDefaults = getConfigScope()?.getAllDefaultFlags();
-          const pickedFlags = lastConfigSnapshot?.pickedFlags;
+          const pickedFlags = finalConfigSnapshot?.pickedFlags;
           const overrides = injectedOverrides ?? getGlobalFlagOverrides();
 
           suite.meta.evaluation.configEnd = {
@@ -323,14 +318,12 @@ async function registerEval<
           const { output, duration } = result;
           outOfScopeFlags = result.outOfScopeFlags;
 
-          // Capture final config snapshot for this case
-          lastConfigSnapshot = {
+          finalConfigSnapshot = {
             flags: result.finalFlags || {},
             pickedFlags: opts.configFlags,
             overrides: result.overrides,
           };
 
-          // run scorers
           const scoreList: Score[] = await Promise.all(
             opts.scorers.map(async (scorer) => {
               const scorerSpan = startSpan(
@@ -356,9 +349,8 @@ async function registerEval<
               const duration = Math.round(performance.now() - start);
               const scoreValue = result.score as number;
 
-              // set score value to the score span
               scorerSpan.setAttributes({
-                [Attr.Eval.Score.Name]: result.name, // make sure to use name returned by result not the name of scorer function
+                [Attr.Eval.Score.Name]: result.name,
                 [Attr.Eval.Score.Value]: scoreValue,
               });
 
@@ -374,7 +366,6 @@ async function registerEval<
 
           const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
 
-          // set case output
           caseSpan.setAttributes({
             [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
             [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
@@ -405,20 +396,10 @@ async function registerEval<
           caseSpan.recordException(error);
           caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
 
-          // Try to get out-of-scope flags even in error case
-          try {
-            const ctx = getEvalContext();
-            outOfScopeFlags =
-              ctx.outOfScopeFlags ||
-              ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
-          } catch {
-            // If we can't get context, use empty array
-            outOfScopeFlags = [] as {
-              flagPath: string;
-              accessedAt: number;
-              stackTrace: string[];
-            }[];
-          }
+          const ctx = getEvalContext();
+          outOfScopeFlags =
+            ctx.outOfScopeFlags ||
+            ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
 
           task.meta.case = {
             name: evalName,
@@ -435,17 +416,14 @@ async function registerEval<
             pickedFlags: opts.configFlags,
           };
 
-          // Collect out-of-scope flags for evaluation-level aggregation even in error case
           allOutOfScopeFlags.push(...outOfScopeFlags);
           throw e;
         } finally {
           // Compute per-case runtime flags report and attach to span/meta
           try {
-            // Build runtime flags report based on actually accessed flags during this case
             const DEBUG = process.env.AXIOM_DEBUG === 'true';
 
-            // Prefer the flags captured from the case execution (contain only accessed keys)
-            const accessedFlags: Record<string, any> = lastConfigSnapshot?.flags || {};
+            const accessedFlags: Record<string, any> = finalConfigSnapshot?.flags || {};
 
             const accessed = Object.keys(accessedFlags);
             const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
@@ -465,7 +443,6 @@ async function registerEval<
 
             if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
               const serialized = JSON.stringify(runtimeFlags);
-              // Set in both custom and non-custom for migration support
               caseSpan.setAttribute('eval.case.config.runtime_flags', serialized);
             }
 
