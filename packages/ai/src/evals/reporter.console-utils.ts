@@ -205,12 +205,6 @@ export function printResultLink(testMeta: MetaWithCase, axiomUrl: string) {
   );
 }
 
-// TODO: BEFORE MERGE - not using this now...
-export function printDivider() {
-  console.log(' ', c.cyanBright('=== === === === === === === === === === === === === === === ==='));
-  console.log('');
-}
-
 export const reporterDate = (d: Date) => {
   const date = d.toISOString().slice(0, 10); // "2025-10-03"
   const hours = d.getUTCHours().toString().padStart(2, '0');
