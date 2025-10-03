@@ -11,43 +11,22 @@ import type {
   FlagDiff,
   MetaWithCase,
   MetaWithEval,
-  OutOfScopeFlag,
-  RuntimeFlagMap,
 } from './eval.types';
-import type { Score } from './scorers';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,
   printConfigHeader,
   printEvalNameAndFileName,
+  printFinalReport,
+  printGlobalFlagOverrides,
   printOutOfScopeFlags,
   printRuntimeFlags,
   printTestCaseCountStartDuration,
   printTestCaseScores,
   printTestCaseSuccessOrFailed,
-  reporterDate,
+  type SuiteData,
 } from './reporter.console-utils';
 import { flattenObject } from 'src/util/dot-path';
-
-/**
- * Data structure for collected suite information
- */
-type SuiteData = {
-  name: string;
-  file: string;
-  duration: string;
-  baseline: Evaluation | undefined | null;
-  configFlags?: string[];
-  flagConfig?: Record<string, any>;
-  cases: Array<{
-    index: number;
-    scores: Record<string, Score>;
-    outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
-    errors?: Error[] | null;
-    runtimeFlags?: RuntimeFlagMap;
-  }>;
-  outOfScopeFlags?: OutOfScopeFlag[];
-};
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -68,7 +47,9 @@ export class AxiomReporter implements Reporter {
     this.startTime = new Date().getTime();
 
     // Print global flag overrides at start
-    this.printGlobalFlagOverrides();
+    const overrides = getGlobalFlagOverrides();
+    const defaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
+    printGlobalFlagOverrides(overrides, defaults);
   }
 
   async onTestSuiteReady(_testSuite: TestSuite) {
@@ -181,7 +162,12 @@ export class AxiomReporter implements Reporter {
     }
 
     // Print final report
-    this.printFinalReport();
+    printFinalReport({
+      suiteData: this._suiteData,
+      calculateScorerAverages: this.calculateScorerAverages.bind(this),
+      calculateBaselineScorerAverage: this.calculateBaselineScorerAverage.bind(this),
+      calculateFlagDiff: this.calculateFlagDiff.bind(this),
+    });
 
     // Print end-of-run config once (only in debug mode for now)
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
@@ -205,125 +191,6 @@ export class AxiomReporter implements Reporter {
     printRuntimeFlags(testMeta);
 
     printOutOfScopeFlags(testMeta);
-  }
-
-  /**
-   * Print the final consolidated report
-   */
-  private printFinalReport() {
-    console.log('');
-    console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
-    console.log('');
-
-    // Print each suite in box format
-    for (const suite of this._suiteData) {
-      this.printSuiteBox(suite);
-      console.log('');
-    }
-
-    console.log('View full report:');
-    console.log('https://app.axiom.co/evaluations/run/<run-id>');
-  }
-
-  /**
-   * Print a single suite in box format
-   */
-  private printSuiteBox(suite: SuiteData) {
-    const filename = suite.file.split('/').pop();
-
-    console.log('┌─');
-    console.log(`│  ${c.blue(suite.name)} ${c.gray(`(${filename})`)}`);
-    console.log('├─');
-
-    // Calculate per-scorer averages
-    const scorerAverages = this.calculateScorerAverages(suite);
-    const scorerNames = Object.keys(scorerAverages);
-
-    // Find max scorer name length for alignment
-    const maxNameLength = Math.max(...scorerNames.map((name) => name.length));
-
-    for (const scorerName of scorerNames) {
-      const avg = scorerAverages[scorerName];
-      const paddedName = scorerName.padEnd(maxNameLength);
-
-      // Check if baseline has this scorer
-      if (suite.baseline) {
-        const baselineAvg = this.calculateBaselineScorerAverage(suite.baseline, scorerName);
-        if (baselineAvg !== null) {
-          const currentPercent = (avg * 100).toFixed(2) + '%';
-          const baselinePercent = (baselineAvg * 100).toFixed(2) + '%';
-          const diff = avg - baselineAvg;
-          const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
-          const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
-
-          // Pad before coloring to avoid ANSI code interference
-          const paddedBaseline = baselinePercent.padStart(7);
-          const paddedCurrent = currentPercent.padStart(7);
-          const paddedDiff = diffText.padStart(8); // +/-XX.XX%
-
-          console.log(
-            `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${c.magentaBright(paddedCurrent)}  (${diffColor(paddedDiff)})`,
-          );
-        } else {
-          const currentPercent = (avg * 100).toFixed(2) + '%';
-          console.log(`│   • ${paddedName}  ${currentPercent}`);
-        }
-      } else {
-        const currentPercent = (avg * 100).toFixed(2) + '%';
-        console.log(`│   • ${paddedName}  ${currentPercent}`);
-      }
-    }
-
-    console.log('├─');
-
-    // Baseline info
-    if (suite.baseline) {
-      const baselineTimestamp = suite.baseline.runAt
-        ? reporterDate(new Date(suite.baseline.runAt))
-        : 'unknown time';
-      console.log(
-        `│  Baseline: ${suite.baseline.name}-${suite.baseline.version} ${c.gray(`(${baselineTimestamp})`)}`,
-      );
-    } else {
-      console.log(`│  Baseline: ${c.gray('(none)')}`);
-    }
-
-    // Flag diff section
-    if (suite.baseline) {
-      const configDiff = this.calculateFlagDiff(suite);
-      const hasConfigChanges = configDiff.length > 0;
-
-      console.log('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
-      if (hasConfigChanges) {
-        for (const { flag, current, baseline } of configDiff) {
-          console.log(
-            `│   • ${flag}: ${current ?? '<not set>'} ${c.gray(`(baseline: ${baseline ?? '<not set>'})`)}`,
-          );
-        }
-      }
-    }
-
-    // Out-of-scope flags section
-    if (suite.outOfScopeFlags && suite.outOfScopeFlags.length > 0) {
-      const pickedFlagsText =
-        suite.configFlags && suite.configFlags.length > 0
-          ? suite.configFlags.map((f) => `'${f}'`).join(', ')
-          : 'none';
-      console.log('│');
-      console.log(
-        `│  ${c.yellow('⚠ Out-of-scope flags')} ${c.gray(`(picked: ${pickedFlagsText})`)}:`,
-      );
-      for (const flag of suite.outOfScopeFlags) {
-        const lastStackTraceFrame = flag.stackTrace[0];
-        const lastStackTraceFnName = lastStackTraceFrame.split(' ').shift();
-        const lastStackTraceFile = lastStackTraceFrame.split('/').pop()?.slice(0, -1);
-        console.log(
-          `│   • ${flag.flagPath} ${c.gray(`at ${lastStackTraceFnName} (${lastStackTraceFile}`)})`,
-        );
-      }
-    }
-
-    console.log('└─');
   }
 
   /**
@@ -415,30 +282,5 @@ export class AxiomReporter implements Reporter {
   private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
     printConfigHeader();
     maybePrintFlags(configEnd);
-  }
-
-  /**
-   * Print global flag overrides at the start of the run
-   */
-  private printGlobalFlagOverrides() {
-    const overrides = getGlobalFlagOverrides();
-    const defaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
-
-    if (Object.keys(overrides).length === 0) {
-      console.log('');
-      console.log(c.dim('Flag overrides: (none)'));
-      console.log('');
-      return;
-    }
-
-    console.log('');
-    console.log('Flag overrides:');
-    for (const [key, value] of Object.entries(overrides)) {
-      const defaultValue = defaults[key];
-      const valueStr = JSON.stringify(value);
-      const defaultStr = defaultValue !== undefined ? JSON.stringify(defaultValue) : 'none';
-      console.log(`  • ${key}: ${valueStr} ${c.dim(`(default: ${defaultStr})`)}`);
-    }
-    console.log('');
   }
 }
