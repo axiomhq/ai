@@ -3,6 +3,7 @@ import { flag, fact, pickFlags } from '../src/lib/app-scope';
 
 const myFn = async (input: string, expected: string) => {
   const strategy = flag('behavior.strategy', 'smart');
+  const _f = flag('ui.theme');
 
   const response = strategy === 'dumb' ? input : expected;
 
@@ -14,12 +15,12 @@ const myFn = async (input: string, expected: string) => {
 // an example of a custom scorer
 const exactMatchScorer = ({ output, expected }: { output: string; expected?: string }) => {
   return {
-    name: 'exact-match',
+    name: 'Exact match',
     score: output == expected ? 1 : 0,
   };
 };
 
-Eval('feature-example', {
+Eval('Basic demo', {
   configFlags: pickFlags('behavior'),
   data: () => [
     {
