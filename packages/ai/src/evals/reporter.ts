@@ -1,6 +1,5 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
-import c from 'tinyrainbow';
 
 import { getGlobalFlagOverrides } from './context/global-flags';
 import { getConfigScope } from './context/storage';
@@ -82,8 +81,6 @@ export class AxiomReporter implements Reporter {
     // TODO: there seem to be some cases where `meta` is undefined
     // maybe we get here to early?
     if (!meta.case) return;
-
-    console.log(c.blue(` \u2713 evaluating case ${meta.case.index}`));
   }
 
   async onTestSuiteResult(testSuite: TestSuite) {
