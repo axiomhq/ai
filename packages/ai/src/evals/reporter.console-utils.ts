@@ -343,7 +343,7 @@ export function printSuiteBox({
       const lastStackTraceFnName = lastStackTraceFrame.split(' ').shift();
       const lastStackTraceFile = lastStackTraceFrame.split('/').pop()?.slice(0, -1);
       console.log(
-        `│   • ${flag.flagPath} ${c.gray(`at ${lastStackTraceFnName} (${lastStackTraceFile}`)})`,
+        `│   • ${flag.flagPath} ${c.gray(`at ${lastStackTraceFnName} (${lastStackTraceFile})`)}`,
       );
     }
   }
