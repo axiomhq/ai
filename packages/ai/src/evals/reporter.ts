@@ -86,10 +86,8 @@ export class AxiomReporter implements Reporter {
       return;
     }
 
-    // calculate test duration in seconds
-    const duration = Number((performance.now() - this.start) / 1000).toFixed(2);
+    const durationSeconds = Number((performance.now() - this.start) / 1000).toFixed(2);
 
-    // Collect cases data
     const cases: SuiteData['cases'] = [];
     for (const test of testSuite.children) {
       if (test.type !== 'test') continue;
@@ -106,12 +104,11 @@ export class AxiomReporter implements Reporter {
       });
     }
 
-    // Get relative file path
     const cwd = process.cwd();
     const relativePath = testSuite.module.moduleId.replace(cwd, '').replace(/^\//, '');
 
     // Collect suite data for final report
-    // Ensure baseline is loaded (in case onTestSuiteReady hasn't been called yet due to race condition)
+    // Ensure baseline is loaded
     let suiteBaseline = this._baselines.get(meta.evaluation.name);
     if (suiteBaseline === undefined && meta.evaluation.baseline) {
       // Baseline wasn't loaded yet, load it now
@@ -122,7 +119,7 @@ export class AxiomReporter implements Reporter {
     this._suiteData.push({
       name: meta.evaluation.name,
       file: relativePath,
-      duration: duration + 's',
+      duration: durationSeconds + 's',
       baseline: suiteBaseline || null,
       configFlags: meta.evaluation.configFlags,
       flagConfig: meta.evaluation.flagConfig,
@@ -133,7 +130,7 @@ export class AxiomReporter implements Reporter {
     printEvalNameAndFileName(testSuite, meta);
     printBaselineNameAndVersion(meta);
 
-    printTestCaseCountStartDuration(testSuite, this.startTime, duration);
+    printTestCaseCountStartDuration(testSuite, this.startTime, durationSeconds);
 
     for (const test of testSuite.children) {
       if (test.type !== 'test') continue;
