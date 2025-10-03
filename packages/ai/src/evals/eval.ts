@@ -15,6 +15,7 @@ import type {
   EvaluationReport,
   EvalCaseReport,
   RuntimeFlagLog,
+  OutOfScopeFlag,
 } from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
@@ -220,7 +221,8 @@ async function registerEval<
         suite.meta.evaluation.flagConfig = flagConfig;
 
         // Store on eval span
-        suiteSpan.setAttribute('eval.config.flags', JSON.stringify(flagConfig));
+        const flagConfigJson = JSON.stringify(flagConfig);
+        suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
       });
 
       afterAll(async (suite) => {
@@ -228,10 +230,7 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
 
         // Aggregate out-of-scope flags for evaluation-level reporting
-        const flagSummary = new Map<
-          string,
-          { count: number; firstAccessedAt: number; lastAccessedAt: number }
-        >();
+        const flagSummary = new Map<string, OutOfScopeFlag>();
 
         for (const flag of allOutOfScopeFlags) {
           if (flagSummary.has(flag.flagPath)) {
@@ -241,9 +240,11 @@ async function registerEval<
             existing.lastAccessedAt = Math.max(existing.lastAccessedAt, flag.accessedAt);
           } else {
             flagSummary.set(flag.flagPath, {
+              flagPath: flag.flagPath,
               count: 1,
               firstAccessedAt: flag.accessedAt,
               lastAccessedAt: flag.accessedAt,
+              stackTrace: flag.stackTrace,
             });
           }
         }
@@ -251,10 +252,7 @@ async function registerEval<
         // Update evaluation report with aggregated out-of-scope flags
         if (suite.meta.evaluation) {
           suite.meta.evaluation.outOfScopeFlags = Array.from(flagSummary.entries()).map(
-            ([flagPath, stats]) => ({
-              flagPath,
-              ...stats,
-            }),
+            ([_flagPath, stats]) => stats,
           );
 
           // Attach end-of-suite config snapshot for reporter printing

@@ -8,8 +8,10 @@ import { findEvaluationCases } from './eval.service';
 import type {
   Evaluation,
   EvaluationReport,
+  FlagDiff,
   MetaWithCase,
   MetaWithEval,
+  OutOfScopeFlag,
   RuntimeFlagMap,
 } from './eval.types';
 import type { Score } from './scorers';
@@ -23,6 +25,7 @@ import {
   printTestCaseCountStartDuration,
   printTestCaseScores,
   printTestCaseSuccessOrFailed,
+  reporterDate,
 } from './reporter.console-utils';
 import { flattenObject } from 'src/util/dot-path';
 
@@ -44,12 +47,7 @@ type SuiteData = {
     errors?: Error[] | null;
     runtimeFlags?: RuntimeFlagMap;
   }>;
-  outOfScopeFlags?: {
-    flagPath: string;
-    count: number;
-    firstAccessedAt: number;
-    lastAccessedAt: number;
-  }[];
+  outOfScopeFlags?: OutOfScopeFlag[];
 };
 
 /**
@@ -108,7 +106,7 @@ export class AxiomReporter implements Reporter {
     console.log(c.blue(` \u2713 evaluating case ${meta.case.index}`));
   }
 
-  onTestSuiteResult(testSuite: TestSuite) {
+  async onTestSuiteResult(testSuite: TestSuite) {
     const meta = testSuite.meta() as MetaWithEval;
     // test suite won't have any meta because its skipped
     if (testSuite.state() === 'skipped') {
@@ -140,7 +138,14 @@ export class AxiomReporter implements Reporter {
     const relativePath = testSuite.module.moduleId.replace(cwd, '').replace(/^\//, '');
 
     // Collect suite data for final report
-    const suiteBaseline = this._baselines.get(meta.evaluation.name);
+    // Ensure baseline is loaded (in case onTestSuiteReady hasn't been called yet due to race condition)
+    let suiteBaseline = this._baselines.get(meta.evaluation.name);
+    if (suiteBaseline === undefined && meta.evaluation.baseline) {
+      // Baseline wasn't loaded yet, load it now
+      const baselineData = await findEvaluationCases(meta.evaluation.baseline.id);
+      suiteBaseline = baselineData || null;
+      this._baselines.set(meta.evaluation.name, suiteBaseline);
+    }
     this._suiteData.push({
       name: meta.evaluation.name,
       file: relativePath,
@@ -235,7 +240,6 @@ export class AxiomReporter implements Reporter {
       console.log('');
     }
 
-    console.log('');
     console.log('View full report:');
     console.log('https://app.axiom.co/evaluations/run/<run-id>');
   }
@@ -244,65 +248,11 @@ export class AxiomReporter implements Reporter {
    * Print a single suite in box format
    */
   private printSuiteBox(suite: SuiteData) {
+    const filename = suite.file.split('/').pop();
+
     console.log('┌─');
-    console.log(`│  ${c.blue(suite.name)}`);
+    console.log(`│  ${c.blue(suite.name)} ${c.gray(`(${filename})`)}`);
     console.log('├─');
-
-    // Metadata with aligned labels
-    console.log(`│  File:      ${suite.file}`);
-    console.log(`│  Duration:  ${suite.duration}`);
-
-    // Baseline info
-    if (suite.baseline) {
-      const baselineTimestamp = suite.baseline.runAt
-        ? new Date(suite.baseline.runAt)
-            .toLocaleString('en-US', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZone: 'UTC',
-              timeZoneName: 'short',
-            })
-            .replace(', ', ' ')
-        : 'unknown time';
-      console.log(
-        `│  Baseline:  ${suite.baseline.name}-${suite.baseline.version} (${baselineTimestamp})`,
-      );
-    } else {
-      console.log(`│  Baseline:  (none)`);
-    }
-
-    // Flag diff section
-    if (suite.baseline) {
-      const flagDiff = this.calculateFlagDiff(suite);
-      if (flagDiff.length > 0) {
-        console.log('│');
-        console.log('│  Flag diff:');
-        for (const { flag, current, baseline } of flagDiff) {
-          console.log(`│   • ${flag}: ${current} (baseline: ${baseline})`);
-        }
-      }
-    }
-
-    // Out-of-scope flags section
-    if (suite.outOfScopeFlags && suite.outOfScopeFlags.length > 0) {
-      const pickedFlagsText =
-        suite.configFlags && suite.configFlags.length > 0
-          ? suite.configFlags.map((f) => `'${f}'`).join(', ')
-          : 'none';
-      console.log('│');
-      console.log(`│  Out-of-scope flags (picked: ${pickedFlagsText}):`);
-      for (const flag of suite.outOfScopeFlags) {
-        console.log(
-          `│   • ${flag.flagPath} (accessed ${flag.count} time${flag.count > 1 ? 's' : ''})`,
-        );
-      }
-    }
-
-    console.log('│');
-    console.log('│  Results:');
 
     // Calculate per-scorer averages
     const scorerAverages = this.calculateScorerAverages(suite);
@@ -325,8 +275,13 @@ export class AxiomReporter implements Reporter {
           const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
           const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
 
+          // Pad before coloring to avoid ANSI code interference
+          const paddedBaseline = baselinePercent.padStart(7);
+          const paddedCurrent = currentPercent.padStart(7);
+          const paddedDiff = diffText.padStart(8); // +/-XX.XX%
+
           console.log(
-            `│   • ${paddedName}  ${c.blueBright(baselinePercent).padStart(7)} → ${c.magentaBright(currentPercent).padStart(7)}  (${diffColor(diffText)})`,
+            `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${c.magentaBright(paddedCurrent)}  (${diffColor(paddedDiff)})`,
           );
         } else {
           const currentPercent = (avg * 100).toFixed(2) + '%';
@@ -335,6 +290,55 @@ export class AxiomReporter implements Reporter {
       } else {
         const currentPercent = (avg * 100).toFixed(2) + '%';
         console.log(`│   • ${paddedName}  ${currentPercent}`);
+      }
+    }
+
+    console.log('├─');
+
+    // Baseline info
+    if (suite.baseline) {
+      const baselineTimestamp = suite.baseline.runAt
+        ? reporterDate(new Date(suite.baseline.runAt))
+        : 'unknown time';
+      console.log(
+        `│  Baseline: ${suite.baseline.name}-${suite.baseline.version} ${c.gray(`(${baselineTimestamp})`)}`,
+      );
+    } else {
+      console.log(`│  Baseline: ${c.gray('(none)')}`);
+    }
+
+    // Flag diff section
+    if (suite.baseline) {
+      const configDiff = this.calculateFlagDiff(suite);
+      const hasConfigChanges = configDiff.length > 0;
+
+      console.log('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
+      if (hasConfigChanges) {
+        for (const { flag, current, baseline } of configDiff) {
+          console.log(
+            `│   • ${flag}: ${current ?? '<not set>'} ${c.gray(`(baseline: ${baseline ?? '<not set>'})`)}`,
+          );
+        }
+      }
+    }
+
+    // Out-of-scope flags section
+    if (suite.outOfScopeFlags && suite.outOfScopeFlags.length > 0) {
+      const pickedFlagsText =
+        suite.configFlags && suite.configFlags.length > 0
+          ? suite.configFlags.map((f) => `'${f}'`).join(', ')
+          : 'none';
+      console.log('│');
+      console.log(
+        `│  ${c.yellow('⚠ Out-of-scope flags')} ${c.gray(`(picked: ${pickedFlagsText})`)}:`,
+      );
+      for (const flag of suite.outOfScopeFlags) {
+        const lastStackTraceFrame = flag.stackTrace[0];
+        const lastStackTraceFnName = lastStackTraceFrame.split(' ').shift();
+        const lastStackTraceFile = lastStackTraceFrame.split('/').pop()?.slice(0, -1);
+        console.log(
+          `│   • ${flag.flagPath} ${c.gray(`at ${lastStackTraceFnName} (${lastStackTraceFile}`)})`,
+        );
       }
     }
 
@@ -386,14 +390,12 @@ export class AxiomReporter implements Reporter {
   /**
    * Calculate flag diff between current run and baseline (filtered by configFlags)
    */
-  private calculateFlagDiff(
-    suite: SuiteData,
-  ): Array<{ flag: string; current: string; baseline: string }> {
+  private calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
     if (!suite.baseline || !suite.configFlags || suite.configFlags.length === 0) {
       return [];
     }
 
-    const diffs: Array<{ flag: string; current: string; baseline: string }> = [];
+    const diffs: Array<FlagDiff> = [];
 
     const currentConfig = suite.flagConfig || {};
     const baselineConfig = suite.baseline.flagConfig || {};
@@ -417,8 +419,8 @@ export class AxiomReporter implements Reporter {
       if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
         diffs.push({
           flag: key,
-          current: JSON.stringify(currentValue ?? '(not set)'),
-          baseline: JSON.stringify(baselineValue ?? '(not set)'),
+          current: currentValue ? JSON.stringify(currentValue) : undefined,
+          baseline: baselineValue ? JSON.stringify(baselineValue) : undefined,
         });
       }
     }

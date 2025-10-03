@@ -218,6 +218,20 @@ export type EvalCaseReport = {
   runtimeFlags?: RuntimeFlagMap;
 };
 
+export type FlagDiff = {
+  flag: string;
+  current: string | undefined;
+  baseline: string | undefined;
+};
+
+export type OutOfScopeFlag = {
+  flagPath: string;
+  count: number;
+  firstAccessedAt: number;
+  lastAccessedAt: number;
+  stackTrace: string[];
+};
+
 export type EvaluationReport = {
   id: string;
   name: string;
@@ -228,12 +242,7 @@ export type EvaluationReport = {
   /** Full flag configuration for this evaluation run */
   flagConfig?: Record<string, any>;
   /** Summary of all flags accessed outside of picked flags scope across all cases */
-  outOfScopeFlags?: {
-    flagPath: string;
-    count: number;
-    firstAccessedAt: number;
-    lastAccessedAt: number;
-  }[];
+  outOfScopeFlags?: OutOfScopeFlag[];
   /** End-of-suite config snapshot for console printing only */
   configEnd?: {
     flags?: Record<string, any>;
