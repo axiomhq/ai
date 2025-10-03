@@ -129,6 +129,7 @@ export type Evaluation = {
     email: string | undefined;
   };
   cases: Case[];
+  flagConfig?: Record<string, any>;
 };
 
 export type Case = {
@@ -150,6 +151,7 @@ export type Case = {
   spanId: string;
   traceId: string;
   task?: Task;
+  runtimeFlags?: RuntimeFlagMap;
 };
 
 export type Chat = {
@@ -221,6 +223,10 @@ export type EvaluationReport = {
   name: string;
   version: string;
   baseline: Evaluation | undefined;
+  /** Flags that are in scope for this evaluation */
+  configFlags?: string[];
+  /** Full flag configuration for this evaluation run */
+  flagConfig?: Record<string, any>;
   /** Summary of all flags accessed outside of picked flags scope across all cases */
   outOfScopeFlags?: {
     flagPath: string;

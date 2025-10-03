@@ -2,8 +2,16 @@ import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 import c from 'tinyrainbow';
 
+import { getGlobalFlagOverrides } from './context/global-flags';
+import { getConfigScope } from './context/storage';
 import { findEvaluationCases } from './eval.service';
-import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
+import type {
+  Evaluation,
+  EvaluationReport,
+  MetaWithCase,
+  MetaWithEval,
+  RuntimeFlagMap,
+} from './eval.types';
 import type { Score } from './scorers';
 import {
   maybePrintFlags,
@@ -16,6 +24,7 @@ import {
   printTestCaseScores,
   printTestCaseSuccessOrFailed,
 } from './reporter.console-utils';
+import { flattenObject } from 'src/util/dot-path';
 
 /**
  * Data structure for collected suite information
@@ -26,12 +35,21 @@ type SuiteData = {
   duration: string;
   // TODO: BEFORE MERGE - pick undefined or null
   baseline: Evaluation | undefined | null;
+  configFlags?: string[];
+  flagConfig?: Record<string, any>;
   cases: Array<{
     index: number;
     scores: Record<string, Score>;
     outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
     errors?: Error[] | null;
+    runtimeFlags?: RuntimeFlagMap;
   }>;
+  outOfScopeFlags?: {
+    flagPath: string;
+    count: number;
+    firstAccessedAt: number;
+    lastAccessedAt: number;
+  }[];
 };
 
 /**
@@ -51,6 +69,9 @@ export class AxiomReporter implements Reporter {
   onTestRunStart() {
     this.start = performance.now();
     this.startTime = new Date().getTime();
+
+    // Print global flag overrides at start
+    this.printGlobalFlagOverrides();
   }
 
   async onTestSuiteReady(_testSuite: TestSuite) {
@@ -110,6 +131,7 @@ export class AxiomReporter implements Reporter {
         scores: testMeta.case.scores,
         outOfScopeFlags: testMeta.case.outOfScopeFlags,
         errors: testMeta.case.errors,
+        runtimeFlags: testMeta.case.runtimeFlags,
       });
     }
 
@@ -124,7 +146,10 @@ export class AxiomReporter implements Reporter {
       file: relativePath,
       duration: duration + 's',
       baseline: suiteBaseline || null,
+      configFlags: meta.evaluation.configFlags,
+      flagConfig: meta.evaluation.flagConfig,
       cases,
+      outOfScopeFlags: meta.evaluation.outOfScopeFlags,
     });
 
     // Still print progress during execution (will be cleared later)
@@ -249,6 +274,33 @@ export class AxiomReporter implements Reporter {
       console.log(`│  Baseline:  (none)`);
     }
 
+    // Flag diff section
+    if (suite.baseline) {
+      const flagDiff = this.calculateFlagDiff(suite);
+      if (flagDiff.length > 0) {
+        console.log('│');
+        console.log('│  Flag diff:');
+        for (const { flag, current, baseline } of flagDiff) {
+          console.log(`│   • ${flag}: ${current} (baseline: ${baseline})`);
+        }
+      }
+    }
+
+    // Out-of-scope flags section
+    if (suite.outOfScopeFlags && suite.outOfScopeFlags.length > 0) {
+      const pickedFlagsText =
+        suite.configFlags && suite.configFlags.length > 0
+          ? suite.configFlags.map((f) => `'${f}'`).join(', ')
+          : 'none';
+      console.log('│');
+      console.log(`│  Out-of-scope flags (picked: ${pickedFlagsText}):`);
+      for (const flag of suite.outOfScopeFlags) {
+        console.log(
+          `│   • ${flag.flagPath} (accessed ${flag.count} time${flag.count > 1 ? 's' : ''})`,
+        );
+      }
+    }
+
     console.log('│');
     console.log('│  Results:');
 
@@ -332,10 +384,78 @@ export class AxiomReporter implements Reporter {
   }
 
   /**
+   * Calculate flag diff between current run and baseline (filtered by configFlags)
+   */
+  private calculateFlagDiff(
+    suite: SuiteData,
+  ): Array<{ flag: string; current: string; baseline: string }> {
+    if (!suite.baseline || !suite.configFlags || suite.configFlags.length === 0) {
+      return [];
+    }
+
+    const diffs: Array<{ flag: string; current: string; baseline: string }> = [];
+
+    const currentConfig = suite.flagConfig || {};
+    const baselineConfig = suite.baseline.flagConfig || {};
+
+    // Flatten both configs to dot notation for comparison
+    const currentFlat = flattenObject(currentConfig);
+    const baselineFlat = flattenObject(baselineConfig);
+
+    // Get all keys from both configs
+    const allKeys = new Set([...Object.keys(currentFlat), ...Object.keys(baselineFlat)]);
+
+    for (const key of allKeys) {
+      // Check if this flag is in scope
+      const isInScope = suite.configFlags.some((pattern) => key.startsWith(pattern));
+      if (!isInScope) continue;
+
+      const currentValue = currentFlat[key];
+      const baselineValue = baselineFlat[key];
+
+      // Only show if values differ
+      if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
+        diffs.push({
+          flag: key,
+          current: JSON.stringify(currentValue ?? '(not set)'),
+          baseline: JSON.stringify(baselineValue ?? '(not set)'),
+        });
+      }
+    }
+
+    return diffs;
+  }
+
+  /**
    * End-of-suite config summary (console only)
    */
   private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
     printConfigHeader();
     maybePrintFlags(configEnd);
+  }
+
+  /**
+   * Print global flag overrides at the start of the run
+   */
+  private printGlobalFlagOverrides() {
+    const overrides = getGlobalFlagOverrides();
+    const defaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
+
+    if (Object.keys(overrides).length === 0) {
+      console.log('');
+      console.log(c.dim('Flag overrides: (none)'));
+      console.log('');
+      return;
+    }
+
+    console.log('');
+    console.log('Flag overrides:');
+    for (const [key, value] of Object.entries(overrides)) {
+      const defaultValue = defaults[key];
+      const valueStr = JSON.stringify(value);
+      const defaultStr = defaultValue !== undefined ? JSON.stringify(defaultValue) : 'none';
+      console.log(`  • ${key}: ${valueStr} ${c.dim(`(default: ${defaultStr})`)}`);
+    }
+    console.log('');
   }
 }

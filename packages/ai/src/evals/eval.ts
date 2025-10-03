@@ -21,6 +21,7 @@ import { findBaseline, findEvaluationCases } from './eval.service';
 import { DEFAULT_TIMEOUT } from './run-vitest';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from 'src/util/deep-equal';
+import { dotNotationToNested } from 'src/util/dot-path';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -106,6 +107,34 @@ export function Eval(name: string, params: any): void {
   registerEval(name, params as EvalParams<any, any, any>).catch(console.error);
 }
 
+/**
+ * Capture full flag configuration filtered by configFlags scope
+ */
+function captureFlagConfig(configFlags?: string[]): Record<string, any> {
+  if (!configFlags || configFlags.length === 0) {
+    return {};
+  }
+
+  const scope = getConfigScope();
+  const allDefaults = scope?.getAllDefaultFlags?.() ?? {};
+  const overrides = getGlobalFlagOverrides();
+
+  // Merge defaults + overrides
+  const merged = { ...allDefaults, ...overrides };
+
+  // Filter to only flags in configFlags scope
+  const filtered: Record<string, any> = {};
+  for (const [key, value] of Object.entries(merged)) {
+    const isInScope = configFlags.some((pattern) => key.startsWith(pattern));
+    if (isInScope) {
+      filtered[key] = value;
+    }
+  }
+
+  // Convert dot notation to nested object
+  return dotNotationToNested(filtered);
+}
+
 async function registerEval<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
@@ -183,7 +212,15 @@ async function registerEval<
           name: evalName,
           version: evalVersion,
           baseline: baseline ?? undefined,
+          configFlags: opts.configFlags,
         };
+
+        // Capture full flag config
+        const flagConfig = captureFlagConfig(opts.configFlags);
+        suite.meta.evaluation.flagConfig = flagConfig;
+
+        // Store on eval span
+        suiteSpan.setAttribute('eval.config.flags', JSON.stringify(flagConfig));
       });
 
       afterAll(async (suite) => {
@@ -430,7 +467,9 @@ async function registerEval<
             }
 
             if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
-              caseSpan.setAttribute('eval.case.config.runtime_flags', JSON.stringify(runtimeFlags));
+              const serialized = JSON.stringify(runtimeFlags);
+              // Set in both custom and non-custom for migration support
+              caseSpan.setAttribute('eval.case.config.runtime_flags', serialized);
             }
 
             if (task.meta.case) {
