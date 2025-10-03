@@ -137,7 +137,7 @@ export class AxiomReporter implements Reporter {
 
     for (const test of testSuite.children) {
       if (test.type !== 'test') continue;
-      this.printCaseResult(test);
+      this.printCaseResult(test, suiteBaseline || null);
     }
 
     console.log('');
@@ -148,15 +148,12 @@ export class AxiomReporter implements Reporter {
     _errors: ReadonlyArray<SerializedError>,
     _reason: TestRunEndReason,
   ) {
-    // Clear screen before final report (but not in CI environments)
-    const shouldClear =
-      !process.env.CI && !process.env.AXIOM_NO_CLEAR && process.stdout.isTTY !== false; // Allow clearing even if isTTY is undefined
+    const shouldClear = !process.env.CI && process.stdout.isTTY !== false;
 
     if (shouldClear) {
       process.stdout.write('\x1b[2J\x1b[0f'); // Clear screen and move cursor to top
     }
 
-    // Print final report
     printFinalReport({
       suiteData: this._suiteData,
       calculateScorerAverages: this.calculateScorerAverages.bind(this),
@@ -164,14 +161,13 @@ export class AxiomReporter implements Reporter {
       calculateFlagDiff: this.calculateFlagDiff.bind(this),
     });
 
-    // Print end-of-run config once (only in debug mode for now)
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
     if (DEBUG && this._endOfRunConfigEnd) {
       this.printConfigEnd(this._endOfRunConfigEnd);
     }
   }
 
-  private printCaseResult(test: TestCase) {
+  private printCaseResult(test: TestCase, baseline: Evaluation | null) {
     const ok = test.ok();
     const testMeta = test.meta() as MetaWithCase;
 
@@ -181,7 +177,7 @@ export class AxiomReporter implements Reporter {
 
     printTestCaseSuccessOrFailed(testMeta, ok);
 
-    printTestCaseScores(testMeta, null); // Baseline comparison shown in final report
+    printTestCaseScores(testMeta, baseline);
 
     printRuntimeFlags(testMeta);
 
