@@ -13,7 +13,7 @@
     "eval": "node ../../packages/ai/dist/bin.js eval .",
     "eval:by-file": "axiom eval src/lib/capabilities/classify-ticket/evaluations/ticket-classification.eval.ts",
     "eval:by-glob": "axiom eval **/ticket*.ts",
-    "eval:by-name": "../../packages/ai/dist/bin.js eval \"example\""
+    "eval:by-name": "axiom eval \"Spam\""
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.0-beta.11",
