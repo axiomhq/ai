@@ -25,7 +25,7 @@ import {
   printTestCaseSuccessOrFailed,
   type SuiteData,
 } from './reporter.console-utils';
-import { flattenObject } from 'src/util/dot-path';
+import { flattenObject } from '../util/dot-path';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
