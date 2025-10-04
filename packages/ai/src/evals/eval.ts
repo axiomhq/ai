@@ -281,7 +281,7 @@ async function registerEval<
               [Attr.GenAI.Operation.Name]: 'eval.case',
               [Attr.Eval.ID]: evalId,
               [Attr.Eval.Name]: evalName,
-              [Attr.Eval.Version]: evalName,
+              [Attr.Eval.Version]: evalVersion,
               [Attr.Eval.Case.Index]: data.index,
               [Attr.Eval.Case.Input]:
                 typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
@@ -333,7 +333,7 @@ async function registerEval<
                     [Attr.GenAI.Operation.Name]: 'eval.score',
                     [Attr.Eval.ID]: evalId,
                     [Attr.Eval.Name]: evalName,
-                    [Attr.Eval.Version]: evalName,
+                    [Attr.Eval.Version]: evalVersion,
                   },
                 },
                 caseContext,
