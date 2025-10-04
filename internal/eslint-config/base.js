@@ -33,13 +33,20 @@ export const config = [
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { 
+        {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_'
-        }
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
       'no-unused-vars': 'off',
+      'no-restricted-imports': [
+        'error',
+        {
+          // this usually means the user auto-accepted an absolute import
+          patterns: ['src/*', 'src/**'],
+        },
+      ],
     },
   },
 ];

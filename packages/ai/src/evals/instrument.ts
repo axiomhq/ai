@@ -12,8 +12,6 @@ let initialized = false;
 export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
 export function initInstrumentation(config: { enabled: boolean }): void {
-  if (initialized) return;
-
   if (!config.enabled) {
     initialized = true; // Mark initialized to avoid later accidental enablement
     return;
@@ -60,5 +58,9 @@ export const flush = async () => {
 };
 
 export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
+  // need to re-init instrumentation in vitest worker processes
+  if (!initialized) {
+    initInstrumentation({ enabled: true });
+  }
   return tracer.startSpan(name, opts, context);
 };

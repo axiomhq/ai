@@ -16,6 +16,16 @@ Eval('Spam classification', {
         response: "We're sorry, but your message has been automatically closed.",
       },
     },
+    {
+      input: {
+        subject: 'FREE V1AGRA C1ALIS',
+        content: 'BUY V1AGRA C1ALIS NOW ON WWW.BEST-V1AGRA-C1ALIS.COM!',
+      },
+      expected: {
+        category: 'spam',
+        response: "We're sorry, but your message has been automatically closed.",
+      },
+    },
   ],
   task: async ({ input }) => {
     return await classifyTicketStep(input);

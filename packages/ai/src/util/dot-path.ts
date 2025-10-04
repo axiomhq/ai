@@ -41,6 +41,27 @@ export function dotNotationToNested(dotNotationObject: Record<string, any>): Rec
 }
 
 /**
+ * Flatten nested object to dot notation.
+ * Example: {ui: {theme: "dark"}, config: {name: "test"}}
+ * -> {"ui.theme": "dark", "config.name": "test"}
+ */
+export function flattenObject(obj: Record<string, any>, prefix = ''): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    const newKey = prefix ? `${prefix}.${key}` : key;
+
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(result, flattenObject(value, newKey));
+    } else {
+      result[newKey] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
  * Check if a dot notation path exists in the schema.
  */
 export function isValidPath(schema: ZodObject<any>, segments: string[]): boolean {
