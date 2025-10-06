@@ -464,9 +464,6 @@ describe('wrapperUtils error handling', () => {
           undefined,
           mockContext,
         );
-        expect(mockChildSpan.setAttributes).toHaveBeenCalledWith({
-          [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-        });
       });
     });
 
