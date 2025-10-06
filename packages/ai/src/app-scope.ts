@@ -116,14 +116,12 @@ type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer 
     : never;
 
 type DotNotationFlagFunction<FS extends ZodObject<any> | undefined> =
-  FS extends ZodObject<any>
-    ? <P extends DotPaths<FS>>(path: P) => PathValue<FS, P>
-    : (path: string) => any;
+  FS extends ZodObject<any> ? <P extends DotPaths<FS>>(path: P) => PathValue<FS, P> : never;
 
 type FactFunction<SC extends ZodObject<any> | undefined> =
   SC extends ZodObject<any>
     ? <P extends DotPaths<SC> & string>(name: P, value: PathValue<SC, P>) => void
-    : (name: string, value: any) => void;
+    : never;
 
 type OverrideFlagsFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
