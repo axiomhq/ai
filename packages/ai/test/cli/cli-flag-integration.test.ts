@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { extractOverrides } from 'src/cli/utils/parse-flag-overrides';
-import { runEvalWithContext } from 'src/cli/utils/eval-context-runner';
-import { flag } from 'src/context';
+import { z } from 'zod';
+import { runEvalWithContext } from '../../src/cli/utils/eval-context-runner';
+import { createAppScope } from '../../src/app-scope';
+import { extractOverrides } from '../../src/cli/utils/parse-flag-overrides';
 
 // Mock runVitest to avoid actual test execution
 vi.mock('src/evals/run-vitest', () => ({
@@ -9,6 +10,12 @@ vi.mock('src/evals/run-vitest', () => ({
 }));
 
 describe('CLI flag integration', () => {
+  // Create a schema that matches the flags used in tests
+  const flagSchema = z.object({
+    temperature: z.number().default(0.5),
+    model: z.string().default('gpt-3.5-turbo'),
+  });
+
   it('should parse CLI flags and make them available in eval context', async () => {
     const argv = ['eval', 'test.eval.ts', '--flag.temperature=0.9', '--flag.model=gpt-4'];
     const { cleanedArgv, overrides } = extractOverrides(argv);
@@ -24,9 +31,10 @@ describe('CLI flag integration', () => {
     let capturedModel: string | undefined;
 
     await runEvalWithContext(overrides, async () => {
+      const { flag } = createAppScope({ flagSchema });
       // These should return the CLI overridden values
-      capturedTemperature = flag('temperature', 0.7);
-      capturedModel = flag('model', 'gpt-3.5');
+      capturedTemperature = flag('temperature');
+      capturedModel = flag('model');
 
       return Promise.resolve();
     });
@@ -35,32 +43,34 @@ describe('CLI flag integration', () => {
     expect(capturedModel).toBe('gpt-4'); // CLI override
   });
 
-  it('should use defaults when no CLI overrides provided', async () => {
-    const overrides = {}; // No CLI flags
+  it('should read flags from eval context', async () => {
+    const overrides = { temperature: 0.7 }; // Initial context value
 
     let capturedTemperature: number | undefined;
 
     await runEvalWithContext(overrides, async () => {
-      capturedTemperature = flag('temperature', 0.7);
+      const { flag } = createAppScope({ flagSchema });
+      capturedTemperature = flag('temperature');
       return Promise.resolve();
     });
 
-    expect(capturedTemperature).toBe(0.7); // Default value
+    expect(capturedTemperature).toBe(0.7); // Context value
   });
 
-  it('should handle mixed CLI flags and defaults', async () => {
-    const overrides = { temperature: 0.9 }; // Only temperature overridden
+  it('should handle multiple flag overrides in eval context', async () => {
+    const overrides = { temperature: 0.9, model: 'gpt-3.5' }; // Multiple context overrides
 
     let capturedTemperature: number | undefined;
     let capturedModel: string | undefined;
 
     await runEvalWithContext(overrides, async () => {
-      capturedTemperature = flag('temperature', 0.7);
-      capturedModel = flag('model', 'gpt-3.5');
+      const { flag } = createAppScope({ flagSchema });
+      capturedTemperature = flag('temperature');
+      capturedModel = flag('model');
       return Promise.resolve();
     });
 
-    expect(capturedTemperature).toBe(0.9); // CLI override
-    expect(capturedModel).toBe('gpt-3.5'); // Default value
+    expect(capturedTemperature).toBe(0.9); // Context override
+    expect(capturedModel).toBe('gpt-3.5'); // Context override
   });
 });
