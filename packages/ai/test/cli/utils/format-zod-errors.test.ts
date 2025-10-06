@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatZodErrors, generateFlagExamples } from 'src/cli/utils/format-zod-errors';
+import { formatZodErrors, generateFlagExamples } from '../../../src/cli/utils/format-zod-errors';
 import { z, type ZodError } from 'zod';
 
 describe('formatZodErrors', () => {

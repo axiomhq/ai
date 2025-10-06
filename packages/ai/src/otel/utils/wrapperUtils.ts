@@ -310,12 +310,6 @@ export function createStreamChildSpan(parentSpan: Span, operationName: string): 
   const spanContext = trace.setSpan(context.active(), parentSpan);
   const childSpan = tracer.startSpan(operationName, undefined, spanContext);
 
-  // Set basic attributes for the child span - use same operation as parent (chat)
-  // The span name indicates this is the streaming phase
-  childSpan.setAttributes({
-    [Attr.GenAI.Operation.Name]: Attr.GenAI.Operation.Name_Values.Chat,
-  });
-
   return childSpan;
 }
 

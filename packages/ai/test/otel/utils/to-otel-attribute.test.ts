@@ -1,4 +1,4 @@
-import { toOtelAttribute } from 'src/otel/utils/to-otel-attribute';
+import { toOtelAttribute } from '../../../src/otel/utils/to-otel-attribute';
 import { describe, it, expect } from 'vitest';
 
 describe('toOtelAttribute', () => {
