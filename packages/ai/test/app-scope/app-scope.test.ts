@@ -1445,6 +1445,41 @@ describe('createAppScope', () => {
         });
       });
     });
+
+    describe('Context Isolation & Async', () => {
+      it('should isolate flag overrides between parallel async operations', async () => {
+        const flagSchema = z.object({
+          ui: z.object({
+            theme: z.string().default('default'),
+          }),
+        });
+
+        const scope = createAppScope({ flagSchema });
+
+        const [result1, result2, result3] = await Promise.all([
+          withEvalContext({}, async () => {
+            scope.overrideFlags({ 'ui.theme': 'dark' });
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return scope.flag('ui.theme');
+          }),
+          withEvalContext({}, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            return scope.flag('ui.theme');
+          }),
+          withEvalContext({}, async () => {
+            // No override - should get schema default
+            scope.overrideFlags({ 'ui.theme': 'light' });
+            await new Promise((resolve) => setTimeout(resolve, 15));
+            return scope.flag('ui.theme');
+          }),
+        ]);
+
+        expect(result1).toBe('dark');
+        expect(result2).toBe('default');
+        expect(result3).toBe('light');
+        expect(scope.flag('ui.theme')).toBe('default');
+      });
+    });
   });
 
   describe('isPickedFlag', () => {
