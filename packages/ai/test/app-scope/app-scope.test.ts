@@ -522,6 +522,87 @@ describe('createAppScope', () => {
         width: 300,
       });
     });
+
+    it('should handle default at outermost level (default outside)', () => {
+      const schemas = z.object({
+        deep: z
+          .object({
+            key1: z.object({
+              key2: z.object({
+                key3: z.object({
+                  key4: z.string(),
+                }),
+              }),
+            }),
+          })
+          .default({
+            key1: {
+              key2: {
+                key3: {
+                  key4: 'foo',
+                },
+              },
+            },
+          }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Should extract deeply nested value from outermost default
+      expect(scope.flag('deep')).toEqual({ key1: { key2: { key3: { key4: 'foo' } } } });
+      expect(scope.flag('deep.key1')).toEqual({ key2: { key3: { key4: 'foo' } } });
+      expect(scope.flag('deep.key1.key2')).toEqual({ key3: { key4: 'foo' } });
+      expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
+      expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
+    });
+
+    it('should handle default at innermost level (default inside)', () => {
+      const schemas = z.object({
+        deep: z.object({
+          key1: z.object({
+            key2: z.object({
+              key3: z.object({
+                key4: z.string().default('foo'),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Should extract leaf default from deeply nested structure
+      expect(scope.flag('deep')).toEqual({ key1: { key2: { key3: { key4: 'foo' } } } });
+      expect(scope.flag('deep.key1')).toEqual({ key2: { key3: { key4: 'foo' } } });
+      expect(scope.flag('deep.key1.key2')).toEqual({ key3: { key4: 'foo' } });
+      expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
+      expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
+    });
+
+    it('should handle default at middle level (default in the middle)', () => {
+      const schemas = z.object({
+        deep: z.object({
+          key1: z.object({
+            key2: z
+              .object({
+                key3: z.object({
+                  key4: z.string(),
+                }),
+              })
+              .default({ key3: { key4: 'foo' } }),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Should extract from middle-level object default
+      expect(scope.flag('deep')).toEqual({ key1: { key2: { key3: { key4: 'foo' } } } });
+      expect(scope.flag('deep.key1')).toEqual({ key2: { key3: { key4: 'foo' } } });
+      expect(scope.flag('deep.key1.key2')).toEqual({ key3: { key4: 'foo' } });
+      expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
+      expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
+    });
   });
 
   describe('Validation & Error Handling', () => {

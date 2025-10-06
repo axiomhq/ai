@@ -334,7 +334,9 @@ function ensureAllDefaults(schema: any, path = ''): void {
  *         primary: z.string().default('#00f'),
  *       }),
  *     }),
- *     api: z.object({ endpoint: z.string() }),
+ *     api: z.object({ 
+       endpoint: z.string().default('/api') 
+     }),
  *   }),
  *   factSchema: z.object({
  *     userAction: z.string(),
@@ -346,7 +348,7 @@ function ensureAllDefaults(schema: any, path = ''): void {
  * const dark = flag('ui.darkMode'); // inferred boolean
  * const theme = flag('ui.theme'); // entire object
  * const primary = flag('ui.theme.primary'); // '#00f'
- * const endpoint = flag('api.endpoint', '/api'); // must provide default
+ * const endpoint = flag('api.endpoint'); // uses schema default
  *
  * // Typed fact recording
  * fact('userAction', 'clicked_button');
@@ -448,30 +450,6 @@ export function createAppScope<
     return Boolean(schema?._def?.type === 'object');
   }
 
-  // Helper to traverse nested default objects and extract values
-  function extractFromDefaultValue(
-    defaultValue: unknown,
-    segments: string[],
-    startIndex: number,
-  ): unknown {
-    if (startIndex >= segments.length) return defaultValue;
-
-    let current = defaultValue;
-    for (let i = startIndex; i < segments.length; i++) {
-      if (
-        current != null &&
-        typeof current === 'object' &&
-        segments[i] in (current as Record<string, unknown>)
-      ) {
-        current = (current as Record<string, unknown>)[segments[i]];
-      } else {
-        return undefined;
-      }
-    }
-
-    return current;
-  }
-
   // Helper function to check if a schema has complete defaults at runtime
   // This mirrors the compile-time AllFieldsHaveDefaults<> type
 
@@ -508,18 +486,6 @@ export function createAppScope<
     }
 
     // No direct default, and it's not an object
-    return undefined;
-  }
-
-  function getValueFromParentDefaults(segments: string[]): unknown | undefined {
-    for (let i = segments.length - 1; i > 0; i--) {
-      const parentSchema = findSchemaAtPath(segments.slice(0, i));
-      const val = parentSchema && extractDefault(parentSchema);
-      if (val !== undefined) {
-        const extractedValue = extractFromDefaultValue(val, segments, i);
-        if (extractedValue !== undefined) return extractedValue;
-      }
-    }
     return undefined;
   }
 
@@ -592,8 +558,12 @@ export function createAppScope<
 
   /**
    * Get flag value with dot notation path support and schema validation.
+   * 
+   * All flag fields must have .default() values in the schema.
+   * Precedence: CLI overrides → Context overrides → Schema defaults → Error
+   * 
    * @param path - Dot notation path to the flag (e.g., 'ui.theme' or 'api.timeout')
-   * @returns The flag value or undefined if not found
+   * @returns The flag value or undefined if path is invalid
    */
   function flag<P extends string>(path: P): unknown {
     const segments = parsePath(path);
@@ -603,12 +573,10 @@ export function createAppScope<
 
     if (!isPickedFlag(path, ctx.pickedFlags)) {
       addOutOfScopeFlag(path);
-
-      // Continue with normal flag logic - still return the value
     }
 
     let finalValue: any;
-    let hasValue = false;
+    let source: 'cli' | 'ctx' | 'schema' | undefined;
 
     // Flag precedence order:
     // 1. CLI overrides (getGlobalFlagOverrides)
@@ -619,91 +587,82 @@ export function createAppScope<
     // 1. Check CLI overrides first (highest priority)
     if (path in globalOverrides) {
       finalValue = globalOverrides[path];
-      hasValue = true;
+      source = 'cli';
     }
     // 2. Check context overrides (from withFlags() or overrideFlags)
     else if (path in ctx.flags) {
       finalValue = ctx.flags[path];
-      hasValue = true;
+      source = 'ctx';
     }
-
-    // 3. If we don't have a value yet, try to get from schema/object defaults
-    if (!hasValue) {
-      // Invalid namespace check
+    // 3. Resolve from schema
+    else {
       if (!flagSchemaConfig) {
         console.error(`[AxiomAI] Invalid flag: "${path}"`);
         return undefined;
       }
 
+      // Check valid namespace
       const hasValidNamespace = flagSchemaConfig.shape && segments[0] in flagSchemaConfig.shape;
-
       if (!hasValidNamespace) {
         console.error(`[AxiomAI] Invalid flag: "${path}"`);
         return undefined;
       }
 
-      // Invalid flag key check - but only if we can't extract from parent object defaults
       const schemaForPath = findSchemaAtPath(segments);
-      if (schemaForPath === undefined) {
-        // Before erroring, check if we can extract this value from parent object-level defaults
-        const extractedValue = getValueFromParentDefaults(segments);
-        if (extractedValue !== undefined) {
-          finalValue = extractedValue;
-          hasValue = true;
-        } else {
+
+      // If schema path doesn't exist, try extracting from parent object-level defaults
+      if (!schemaForPath) {
+        const namespaceSchema = findSchemaAtPath([segments[0]]);
+        if (namespaceSchema) {
+          const namespaceObject = buildObjectWithDefaults(namespaceSchema);
+          if (namespaceObject && typeof namespaceObject === 'object') {
+            finalValue = getValueAtPath(namespaceObject, segments.slice(1));
+          }
+        }
+
+        if (finalValue === undefined) {
           console.error(`[AxiomAI] Invalid flag: "${path}"`);
           return undefined;
         }
       }
-
       // Check if this is a namespace access (returning whole objects)
-      if (!hasValue && isNamespaceAccess(segments)) {
-        const schema = findSchemaAtPath(segments);
-        if (schema) {
-          const namespaceObject = buildObjectWithDefaults(schema);
-          if (namespaceObject !== undefined) {
-            finalValue = namespaceObject;
-            hasValue = true;
-          }
+      else if (isNamespaceAccess(segments)) {
+        finalValue = buildObjectWithDefaults(schemaForPath);
+        if (finalValue === undefined) {
+          console.error(`[AxiomAI] Invalid flag: "${path}"`);
+          return undefined;
         }
       }
+      // Leaf access: try field-level default first
+      else {
+        finalValue = extractDefault(schemaForPath);
 
-      // Check if we're accessing a nested property within an object that has an object-level default
-      if (!hasValue) {
-        const extractedValue = getValueFromParentDefaults(segments);
-        if (extractedValue !== undefined) {
-          finalValue = extractedValue;
-          hasValue = true;
-        }
-      }
-
-      // Try to extract default from schema for individual fields
-      if (!hasValue) {
-        try {
-          const fieldSchema = findSchemaAtPath(segments);
-          if (fieldSchema) {
-            const schemaDefault = extractDefault(fieldSchema);
-            if (schemaDefault !== undefined) {
-              finalValue = schemaDefault;
-              hasValue = true;
+        // If no field-level default, try extracting from parent object-level default
+        if (finalValue === undefined) {
+          const nsSchema = findSchemaAtPath([segments[0]]);
+          if (nsSchema) {
+            const nsObj = buildObjectWithDefaults(nsSchema);
+            if (nsObj && typeof nsObj === 'object') {
+              finalValue = getValueAtPath(nsObj, segments.slice(1));
             }
           }
-        } catch {
-          // Schema inspection failed, continue to undefined
+
+          if (finalValue === undefined) {
+            console.error(`[AxiomAI] Invalid flag: "${path}"`);
+            return undefined;
+          }
         }
       }
+
+      source = 'schema';
     }
 
-    // 5. If we still don't have a value, log error and return undefined
-    if (!hasValue) {
-      console.error(`[AxiomAI] Invalid flag: "${path}"`);
-      return undefined;
-    }
-
-    // Validate the resolved value against the schema (if any)
-    const validation = validateFinalFlagValue(path, finalValue);
-    if (!validation.ok) {
-      console.error(`[AxiomAI] Invalid flag: "${path}" - value does not match schema`);
+    // Validate only overrides (schema values are pre-validated)
+    if (source !== 'schema') {
+      const validation = validateFinalFlagValue(path, finalValue);
+      if (!validation.ok) {
+        console.error(`[AxiomAI] Invalid flag: "${path}" - value does not match schema`);
+      }
     }
 
     updateEvalContext({ [path]: finalValue });
