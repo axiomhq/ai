@@ -3,27 +3,34 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, type Context, type SpanOptions } from '@opentelemetry/api';
 import { initAxiomAI } from '../../src/otel/initAxiomAI';
+import type { AxiomConfig } from '../config';
+import { resolveAxiomConnection } from '../config/resolver';
 
 // Lazily initialized tracer provider and exporter
 let provider: NodeTracerProvider | undefined;
 let initialized = false;
+let globalConfig: AxiomConfig | undefined;
 
 // Create a shared tracer instance (no-op if no provider registered)
 export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
-export function initInstrumentation(config: { enabled: boolean }): void {
+export function initInstrumentation(config: { enabled: boolean; config?: AxiomConfig }): void {
+  // Store config globally for use in startSpan
+  globalConfig = config.config;
+
   if (!config.enabled) {
     initialized = true; // Mark initialized to avoid later accidental enablement
     return;
   }
 
+  // Resolve Axiom connection settings from config and env vars
+  const connection = resolveAxiomConnection(config.config);
+
   const collectorOptions = {
-    url: process.env.AXIOM_URL
-      ? `${process.env.AXIOM_URL}/v1/traces`
-      : 'https://api.axiom.co/v1/traces', // Axiom API endpoint for trace data
+    url: `${connection.url}/v1/traces`,
     headers: {
-      Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
-      'X-Axiom-Dataset': process.env.AXIOM_DATASET || '',
+      Authorization: `Bearer ${connection.token}`,
+      'X-Axiom-Dataset': connection.dataset,
     },
     concurrencyLimit: 10,
   };
@@ -60,7 +67,7 @@ export const flush = async () => {
 export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
   // need to re-init instrumentation in vitest worker processes
   if (!initialized) {
-    initInstrumentation({ enabled: true });
+    initInstrumentation({ enabled: true, config: globalConfig });
   }
   return tracer.startSpan(name, opts, context);
 };

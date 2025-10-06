@@ -1,20 +1,14 @@
 import type { Case, Chat, Evaluation, Task } from './eval.types';
-
-const getEnvVars = () => {
-  return {
-    datasetName: process.env.AXIOM_DATASET ?? '',
-    url: process.env.AXIOM_URL ?? 'https://api.axiom.co',
-    token: process.env.AXIOM_TOKEN,
-  };
-};
+import type { AxiomConfig } from '../config';
+import { resolveAxiomConnection } from '../config/resolver';
 
 /** Query axiom to find a baseline for an Eval */
-export const findBaseline = async (evalName: string) => {
-  const { datasetName, url, token } = getEnvVars();
+export const findBaseline = async (evalName: string, config?: AxiomConfig) => {
+  const { dataset, url, token } = resolveAxiomConnection(config);
 
   try {
     const apl = [
-      `['${datasetName}']`,
+      `['${dataset}']`,
       `| where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
       `| order by _time desc`,
       `| limit 1`,
@@ -44,11 +38,11 @@ export const findBaseline = async (evalName: string) => {
   }
 };
 
-export const findEvaluationCases = async (evalId: string) => {
+export const findEvaluationCases = async (evalId: string, config?: AxiomConfig) => {
   try {
-    const { datasetName, url, token } = getEnvVars();
+    const { dataset, url, token } = resolveAxiomConnection(config);
 
-    const apl = `['${datasetName}'] | where trace_id == "${evalId}" | order by _time`;
+    const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
     const headers = new Headers({
       Authorization: `Bearer ${token}`,

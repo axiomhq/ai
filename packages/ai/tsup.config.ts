@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import pkg from './package.json';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/bin.ts', 'src/evals.ts'],
+  entry: ['src/index.ts', 'src/bin.ts', 'src/evals.ts', 'src/config.ts'],
   format: ['esm', 'cjs'],
   external: [
     '@opentelemetry/api',
