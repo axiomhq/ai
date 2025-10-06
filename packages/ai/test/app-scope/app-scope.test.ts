@@ -132,7 +132,6 @@ describe('createAppScope', () => {
       }).not.toThrow();
     });
 
-    // TODO: BEFORE MERGE - true?
     it('should not be allowed to call without flagSchema', () => {
       // @ts-expect-error
       const _appScope = createAppScope();
