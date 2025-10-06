@@ -51,7 +51,7 @@ export const classifyTicketStep = async ({
     context: { subject, content },
   });
 
-  const model = flag('ticketClassification.model', 'gpt-5-nano');
+  const model = flag('ticketClassification.model');
 
   const result = await withSpan(
     { capability: 'classify-ticket', step: 'classification' },
