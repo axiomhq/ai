@@ -603,6 +603,70 @@ describe('createAppScope', () => {
       expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
       expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
     });
+
+    it('should handle empty objects with no fields', () => {
+      const schemas = z.object({
+        config: z.object({
+          empty: z.object({}),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Empty object should return empty object (not undefined)
+      expect(scope.flag('config.empty')).toEqual({});
+      expect(scope.flag('config')).toEqual({ empty: {} });
+    });
+
+    it('should handle nested empty objects', () => {
+      const schemas = z.object({
+        app: z.object({
+          level1: z.object({
+            level2: z.object({
+              empty: z.object({}),
+            }),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      expect(scope.flag('app.level1.level2.empty')).toEqual({});
+      expect(scope.flag('app.level1.level2')).toEqual({ empty: {} });
+      expect(scope.flag('app.level1')).toEqual({ level2: { empty: {} } });
+    });
+
+    it('should handle mixed empty and non-empty objects', () => {
+      const schemas = z.object({
+        mixed: z.object({
+          empty: z.object({}),
+          nonEmpty: z.object({
+            value: z.string().default('test'),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      expect(scope.flag('mixed.empty')).toEqual({});
+      expect(scope.flag('mixed.nonEmpty')).toEqual({ value: 'test' });
+      expect(scope.flag('mixed')).toEqual({
+        empty: {},
+        nonEmpty: { value: 'test' },
+      });
+    });
+
+    it('should handle empty object with default', () => {
+      const schemas = z.object({
+        config: z.object({
+          emptyWithDefault: z.object({}).default({}),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      expect(scope.flag('config.emptyWithDefault')).toEqual({});
+    });
   });
 
   describe('Validation & Error Handling', () => {

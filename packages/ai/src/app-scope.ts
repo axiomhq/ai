@@ -476,12 +476,10 @@ export function createAppScope<
 
         for (const [key, fieldSchema] of Object.entries(shape)) {
           const fieldValue = buildObjectWithDefaults(fieldSchema);
-          if (fieldValue !== undefined) {
-            result[key] = fieldValue;
-          }
+          result[key] = fieldValue;
         }
 
-        return Object.keys(result).length > 0 ? result : undefined;
+        return result;
       }
     }
 
@@ -558,10 +556,9 @@ export function createAppScope<
 
   /**
    * Get flag value with dot notation path support and schema validation.
-   * 
    * All flag fields must have .default() values in the schema.
-   * Precedence: CLI overrides → Context overrides → Schema defaults → Error
-   * 
+   * Precedence: CLI overrides -> Context overrides -> Schema defaults → Error
+   *
    * @param path - Dot notation path to the flag (e.g., 'ui.theme' or 'api.timeout')
    * @returns The flag value or undefined if path is invalid
    */
