@@ -10,7 +10,7 @@ import type {
 } from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
 import type { Score } from './scorers';
-import { deepEqual } from 'src/util/deep-equal';
+import { deepEqual } from '../util/deep-equal';
 
 export type SuiteData = {
   name: string;
