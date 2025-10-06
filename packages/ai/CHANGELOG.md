@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.21.0](https://github.com/axiomhq/ai/compare/axiom-v0.20.0...axiom-v0.21.0) (2025-10-06)
+
+
+### Features
+
+* better eval reporting ([#93](https://github.com/axiomhq/ai/issues/93)) ([190fd6b](https://github.com/axiomhq/ai/commit/190fd6b6fb3f2c129c593a1600953db659bc01e2))
+* debug mode ([#90](https://github.com/axiomhq/ai/issues/90)) ([1ce1df8](https://github.com/axiomhq/ai/commit/1ce1df82cb8c4f51b82441119d210725a74f77d4))
+* make full schema defaults required, simplify `flag` ([#96](https://github.com/axiomhq/ai/issues/96)) ([96830f3](https://github.com/axiomhq/ai/commit/96830f300bc63d90b35b4028c5e1533f501bcbaa))
+* update otel setup ([#94](https://github.com/axiomhq/ai/issues/94)) ([5b4ae1f](https://github.com/axiomhq/ai/commit/5b4ae1ff0bbc0aaa2d495df736c3a471861e943b))
+
+
+### Bug Fixes
+
+* `chat <model> stream` span has `gen_ai.operation.name`, which it should not ([#97](https://github.com/axiomhq/ai/issues/97)) ([b768ffc](https://github.com/axiomhq/ai/commit/b768ffc57d992e998caac7de040ea4749350ae7c))
+
 ## [0.20.0](https://github.com/axiomhq/ai/compare/axiom-v0.19.0...axiom-v0.20.0) (2025-09-25)
 
 
