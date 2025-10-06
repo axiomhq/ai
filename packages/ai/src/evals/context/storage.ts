@@ -149,11 +149,7 @@ export function putOnSpan(kind: 'flag' | 'fact', key: string, value: any) {
 /**
  * Resolve a flag value by walking the parent chain, checking overrides first
  */
-export function resolveFlagValue<V>(
-  ctx: EvalContextData<any, any>,
-  key: string,
-  defaultValue: V,
-): V {
+export function resolveFlagValue<V>(ctx: EvalContextData<any, any>, key: string): V {
   // First check current context overrides
   if (ctx.overrides && key in ctx.overrides) {
     return ctx.overrides[key] as V;
@@ -166,11 +162,13 @@ export function resolveFlagValue<V>(
 
   // Walk up the parent chain
   if (ctx.parent) {
-    return resolveFlagValue(ctx.parent, key, defaultValue);
+    return resolveFlagValue(ctx.parent, key);
   }
 
-  // Finally return default
-  return defaultValue;
+  // This should not happen
+  // Return undefined as a fallback
+  console.error(`[AxiomAI] Flag "${key}" not found in context, returning undefined`);
+  return undefined as V;
 }
 
 /**
