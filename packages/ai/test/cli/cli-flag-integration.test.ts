@@ -43,8 +43,8 @@ describe('CLI flag integration', () => {
     expect(capturedModel).toBe('gpt-4'); // CLI override
   });
 
-  it('should read flags from eval context', async () => {
-    const overrides = { temperature: 0.7 }; // Initial context value
+  it('should use schema defaults when no CLI overrides provided', async () => {
+    const overrides = {};
 
     let capturedTemperature: number | undefined;
 
@@ -54,11 +54,11 @@ describe('CLI flag integration', () => {
       return Promise.resolve();
     });
 
-    expect(capturedTemperature).toBe(0.7); // Context value
+    expect(capturedTemperature).toBe(0.5); // Schema default
   });
 
-  it('should handle multiple flag overrides in eval context', async () => {
-    const overrides = { temperature: 0.9, model: 'gpt-3.5' }; // Multiple context overrides
+  it('should handle partial CLI overrides and fall back to schema defaults', async () => {
+    const overrides = { temperature: 0.9 }; // Only temperature overridden via CLI
 
     let capturedTemperature: number | undefined;
     let capturedModel: string | undefined;
@@ -70,7 +70,7 @@ describe('CLI flag integration', () => {
       return Promise.resolve();
     });
 
-    expect(capturedTemperature).toBe(0.9); // Context override
-    expect(capturedModel).toBe('gpt-3.5'); // Context override
+    expect(capturedTemperature).toBe(0.9); // CLI override
+    expect(capturedModel).toBe('gpt-3.5-turbo'); // Schema default
   });
 });
