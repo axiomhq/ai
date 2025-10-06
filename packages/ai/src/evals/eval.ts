@@ -21,8 +21,8 @@ import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { DEFAULT_TIMEOUT } from './run-vitest';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
-import { deepEqual } from 'src/util/deep-equal';
-import { dotNotationToNested } from 'src/util/dot-path';
+import { deepEqual } from '../util/deep-equal';
+import { dotNotationToNested } from '../util/dot-path';
 
 declare module 'vitest' {
   interface TestSuiteMeta {

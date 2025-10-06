@@ -2,7 +2,7 @@ import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, type Context, type SpanOptions } from '@opentelemetry/api';
-import { initAxiomAI } from 'src/otel/initAxiomAI';
+import { initAxiomAI } from '../../src/otel/initAxiomAI';
 
 // Lazily initialized tracer provider and exporter
 let provider: NodeTracerProvider | undefined;
