@@ -35,6 +35,7 @@ export function flag<V>(key: string, defaultValue: V): V {
   let value: V;
   if (ctx.overrides || ctx.parent) {
     value = resolveFlagValue(ctx, key, defaultValue);
+    value = resolveFlagValue(ctx, key) as V;
   } else {
     // Legacy path for backwards compatibility
     value = key in ctx.flags ? (ctx.flags[key] as V) : defaultValue;
