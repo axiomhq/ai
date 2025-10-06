@@ -76,7 +76,21 @@ describe('createAppScope', () => {
       const scope = createAppScope({ flagSchema: schemas });
 
       expect(() => scope.flag('ui.theme')).not.toThrow();
-      expect(() => scope.flag('ui.theme', 'dark')).not.toThrow();
+    });
+
+    it('should expect an object with full defaults', () => {
+      const flagSchema = z.object({
+        ui: z.object({
+          theme: z.string().default('dark'),
+          fontSize: z.number(),
+        }),
+      });
+
+      // it should error at compile-time because flagSchema doesn't have deep defaults
+      // @ts-expect-error - Missing .default() on fontSize
+      expect(() => createAppScope({ flagSchema })).toThrow(
+        '[AxiomAI] All flag fields must have defaults',
+      );
     });
 
     it('should handle fact recording without crashing', () => {
@@ -127,25 +141,6 @@ describe('createAppScope', () => {
   });
 
   describe('Schema Defaults & Type System', () => {
-    it('should use schema defaults', () => {
-      const flagSchema = z.object({
-        num: z.number().default(1),
-        str: z.string().default('schema'),
-        required: z.string().default('required-default'),
-      });
-
-      const appScope = createAppScope({ flagSchema });
-
-      const temp = appScope.flag('num');
-      expect(temp).toBe(1);
-
-      const str = appScope.flag('str');
-      expect(str).toBe('schema');
-
-      const req = appScope.flag('required');
-      expect(req).toBe('required-default');
-    });
-
     it('should extract and use schema defaults for individual flags', () => {
       const schemas = z.object({
         ui: z.object({
@@ -172,56 +167,6 @@ describe('createAppScope', () => {
       expect(scope.flag('config.version')).toBe(1);
       expect(scope.flag('config.enabled')).toBe(false);
       expect(scope.flag('config.mode')).toBe('dev');
-    });
-
-    it('should prefer explicit defaults over schema defaults', () => {
-      const schemas = z.object({
-        ui: z.object({
-          theme: z.string().default('dark'),
-          fontSize: z.number().default(12),
-        }),
-      });
-
-      const scope = createAppScope({ flagSchema: schemas });
-
-      // Explicit defaults should override schema defaults
-      expect(scope.flag('ui.theme', 'light')).toBe('light');
-      expect(scope.flag('ui.fontSize', 16)).toBe(16);
-
-      // But schema defaults should still work when no explicit default
-      expect(scope.flag('ui.theme')).toBe('dark');
-      expect(scope.flag('ui.fontSize')).toBe(12);
-    });
-
-    it('should handle fields without schema defaults', () => {
-      const schemas = z.object({
-        ui: z.object({
-          theme: z.string().default('dark'),
-          fontSize: z.number(), // no default
-          layout: z.object({
-            sidebar: z.boolean().default(true),
-            width: z.number(), // no default
-          }),
-        }),
-      });
-
-      const scope = createAppScope({ flagSchema: schemas });
-
-      expect(scope.flag('ui.theme')).toBe('dark');
-      expect(scope.flag('ui.layout.sidebar')).toBe(true);
-
-      withSuppressedErrors(() => {
-        // @ts-expect-error - should not be allowed without default
-        expect(scope.flag('ui.fontSize')).toBe(undefined);
-      }, ['[AxiomAI] Invalid flag: "ui.fontSize"']);
-      withSuppressedErrors(() => {
-        // @ts-expect-error - should not be allowed without default
-        expect(scope.flag('ui.layout.width')).toBe(undefined);
-      }, ['[AxiomAI] Invalid flag: "ui.layout.width"']);
-
-      // But explicit defaults should work
-      expect(scope.flag('ui.fontSize', 14)).toBe(14);
-      expect(scope.flag('ui.layout.width', 300)).toBe(300);
     });
 
     it('should handle deeply nested schema defaults up to depth 8', () => {
@@ -282,43 +227,11 @@ describe('createAppScope', () => {
       expect(scope.flag('isEnabled')).toBe(false);
       expect(scope.flag('mode')).toBe('dev');
 
-      // With explicit defaults
-      expect(scope.flag('appName', 'CustomApp')).toBe('CustomApp');
-      expect(scope.flag('version', 2)).toBe(2);
-      expect(scope.flag('isEnabled', true)).toBe(true);
-      expect(scope.flag('mode', 'prod')).toBe('prod');
-
       // Type inference
       expectTypeOf(scope.flag('appName')).toEqualTypeOf<string>();
       expectTypeOf(scope.flag('version')).toEqualTypeOf<number>();
       expectTypeOf(scope.flag('isEnabled')).toEqualTypeOf<boolean>();
       expectTypeOf(scope.flag('mode')).toEqualTypeOf<'dev' | 'prod'>();
-    });
-
-    it('should handle primitive schemas without defaults', () => {
-      const schemas = z.object({
-        title: z.string(),
-        count: z.number(),
-        active: z.boolean(),
-      });
-
-      const scope = createAppScope({ flagSchema: schemas });
-
-      // Without defaults, should require explicit fallback
-      expect(scope.flag('title', 'Default Title')).toBe('Default Title');
-      expect(scope.flag('count', 42)).toBe(42);
-      expect(scope.flag('active', true)).toBe(true);
-
-      // Without explicit fallback, should return undefined
-      withSuppressedErrors(() => {
-        expect((scope.flag as any)('title')).toBeUndefined();
-      }, ['[AxiomAI] Invalid flag: "title"']);
-      withSuppressedErrors(() => {
-        expect((scope.flag as any)('count')).toBeUndefined();
-      }, ['[AxiomAI] Invalid flag: "count"']);
-      withSuppressedErrors(() => {
-        expect((scope.flag as any)('active')).toBeUndefined();
-      }, ['[AxiomAI] Invalid flag: "active"']);
     });
 
     it('should provide correct dot paths for primitive schemas', () => {
@@ -351,13 +264,13 @@ describe('createAppScope', () => {
       // Runtime behavior
       expect(() => scope.flag('ui')).not.toThrow();
       expect(() => scope.flag('ui.theme')).not.toThrow();
-      expect(() => scope.flag('ui.fontSize', 16)).not.toThrow();
+      expect(() => scope.flag('ui.fontSize')).not.toThrow();
       expect(scope.flag('ui')).toEqual({
         theme: 'light',
         fontSize: 14,
       });
-      expect(scope.flag('ui.theme', 'dark')).toBe('dark');
-      expect(scope.flag('ui.fontSize', 16)).toBe(16);
+      expect(scope.flag('ui.theme')).toBe('light');
+      expect(scope.flag('ui.fontSize')).toBe(14);
 
       // Type inference
       expectTypeOf(scope.flag('ui')).toEqualTypeOf<{
@@ -389,9 +302,9 @@ describe('createAppScope', () => {
 
       // Runtime behavior
       expect(() => scope.flag('ui.layout.sidebar')).not.toThrow();
-      expect(() => scope.flag('ui.layout.grid.columns', 8)).not.toThrow();
-      expect(scope.flag('ui.layout.sidebar', false)).toBe(false);
-      expect(scope.flag('ui.layout.grid.columns', 8)).toBe(8);
+      expect(() => scope.flag('ui.layout.grid.columns')).not.toThrow();
+      expect(scope.flag('ui.layout.sidebar')).toBe(true);
+      expect(scope.flag('ui.layout.grid.columns')).toBe(12);
 
       // Type inference for nested paths
       expectTypeOf(scope.flag('ui.layout.sidebar')).toEqualTypeOf<boolean>();
@@ -429,11 +342,6 @@ describe('createAppScope', () => {
 
       const scope = createAppScope({ flagSchema: schemas });
 
-      expect(() => scope.flag('nonexistent.path', 'fallback')).not.toThrow();
-      expect(scope.flag('nonexistent.path', 'fallback')).toBe('fallback');
-      expect(() => scope.flag('ui.nonexistent', 'fallback')).not.toThrow();
-      expect(scope.flag('ui.nonexistent', 'fallback')).toBe('fallback');
-
       withSuppressedErrors(() => {
         // @ts-expect-error - type system should catch invalid paths
         scope.flag('ui.invalid');
@@ -444,7 +352,7 @@ describe('createAppScope', () => {
       }, ['[AxiomAI] Invalid flag: "nonexistent.path"']);
     });
 
-    it('should enforce correct default value types', () => {
+    it('should enforce correct type inference', () => {
       const schemas = z.object({
         ui: z.object({
           theme: z.enum(['light', 'dark']).default('light'),
@@ -454,25 +362,8 @@ describe('createAppScope', () => {
 
       const scope = createAppScope({ flagSchema: schemas });
 
-      expectTypeOf(scope.flag('ui.theme', 'dark')).toEqualTypeOf<'light' | 'dark'>();
-      expectTypeOf(scope.flag('ui.fontSize', 16)).toEqualTypeOf<number>();
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      // These should log an error at runtime for type mismatches
-      // @ts-expect-error - number instead of string enum
-      scope.flag('ui.theme', 123);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
-
-      // @ts-expect-error - string instead of number
-      scope.flag('ui.fontSize', 'large');
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
-
-      // @ts-expect-error - invalid enum value
-      scope.flag('ui.theme', 'invalid');
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid flag'));
-
-      consoleSpy.mockRestore();
+      expectTypeOf(scope.flag('ui.theme')).toEqualTypeOf<'light' | 'dark'>();
+      expectTypeOf(scope.flag('ui.fontSize')).toEqualTypeOf<number>();
     });
 
     it('should return complete namespace objects with schema defaults', () => {
@@ -522,25 +413,11 @@ describe('createAppScope', () => {
       }>();
     });
 
-    it('should handle namespaces requiring explicit defaults due to incomplete schema defaults', () => {
+    it('should handle complete namespace objects', () => {
       const schemas = z.object({
         complete: z.object({
           field1: z.string().default('default1'),
           field2: z.number().default(42),
-        }),
-        incomplete: z.object({
-          field1: z.string().default('default1'),
-          field2: z.string(), // no default
-        }),
-        mixed: z.object({
-          ui: z.object({
-            theme: z.string().default('dark'),
-            fontSize: z.number().default(14),
-          }),
-          api: z.object({
-            baseUrl: z.string().default('https://api.example.com'),
-            timeout: z.number(), // no default
-          }),
         }),
       });
 
@@ -556,35 +433,6 @@ describe('createAppScope', () => {
         field1: string;
         field2: number;
       }>();
-
-      // Incomplete namespace should require explicit defaults
-      const incompleteWithDefaults = scope.flag('incomplete', {
-        field1: 'value1',
-        field2: 'value2',
-      });
-      expect(incompleteWithDefaults).toEqual({
-        field1: 'value1',
-        field2: 'value2',
-      });
-
-      expectTypeOf(
-        scope.flag('incomplete', {
-          field1: 'value1',
-          field2: 'value2',
-        }),
-      ).toEqualTypeOf<{
-        field1: string;
-        field2: string;
-      }>();
-
-      withSuppressedErrors(() => {
-        // @ts-expect-error - incomplete namespace without defaults should fail
-        scope.flag('incomplete');
-      }, ['[AxiomAI] Invalid flag: "incomplete"']);
-      withSuppressedErrors(() => {
-        // @ts-expect-error - mixed namespace without defaults should fail
-        scope.flag('mixed');
-      }, ['[AxiomAI] Invalid flag: "mixed"']);
     });
 
     it('should handle nested namespace access with proper type inference', () => {
@@ -601,10 +449,6 @@ describe('createAppScope', () => {
             }),
           }),
           features: z.object({
-            auth: z.object({
-              enabled: z.boolean().default(true),
-              provider: z.string(), // no default
-            }),
             cache: z.object({
               ttl: z.number().default(3600),
               maxSize: z.number().default(1000),
@@ -647,22 +491,6 @@ describe('createAppScope', () => {
         ttl: number;
         maxSize: number;
       }>();
-
-      // Incomplete nested namespace should require explicit defaults
-      expectTypeOf(
-        scope.flag('app.features.auth', {
-          enabled: true,
-          provider: 'oauth',
-        }),
-      ).toEqualTypeOf<{
-        enabled: boolean;
-        provider: string;
-      }>();
-
-      withSuppressedErrors(() => {
-        // @ts-expect-error - incomplete nested namespace without defaults
-        scope.flag('app.features.auth');
-      }, ['[AxiomAI] Invalid flag: "app.features.auth"']);
     });
 
     it('should handle object-level defaults correctly', () => {
@@ -692,6 +520,151 @@ describe('createAppScope', () => {
         sidebar: true,
         width: 300,
       });
+    });
+
+    it('should handle default at outermost level (default outside)', () => {
+      const schemas = z.object({
+        deep: z
+          .object({
+            key1: z.object({
+              key2: z.object({
+                key3: z.object({
+                  key4: z.string(),
+                }),
+              }),
+            }),
+          })
+          .default({
+            key1: {
+              key2: {
+                key3: {
+                  key4: 'foo',
+                },
+              },
+            },
+          }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Should extract deeply nested value from outermost default
+      expect(scope.flag('deep')).toEqual({ key1: { key2: { key3: { key4: 'foo' } } } });
+      expect(scope.flag('deep.key1')).toEqual({ key2: { key3: { key4: 'foo' } } });
+      expect(scope.flag('deep.key1.key2')).toEqual({ key3: { key4: 'foo' } });
+      expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
+      expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
+    });
+
+    it('should handle default at innermost level (default inside)', () => {
+      const schemas = z.object({
+        deep: z.object({
+          key1: z.object({
+            key2: z.object({
+              key3: z.object({
+                key4: z.string().default('foo'),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Should extract leaf default from deeply nested structure
+      expect(scope.flag('deep')).toEqual({ key1: { key2: { key3: { key4: 'foo' } } } });
+      expect(scope.flag('deep.key1')).toEqual({ key2: { key3: { key4: 'foo' } } });
+      expect(scope.flag('deep.key1.key2')).toEqual({ key3: { key4: 'foo' } });
+      expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
+      expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
+    });
+
+    it('should handle default at middle level (default in the middle)', () => {
+      const schemas = z.object({
+        deep: z.object({
+          key1: z.object({
+            key2: z
+              .object({
+                key3: z.object({
+                  key4: z.string(),
+                }),
+              })
+              .default({ key3: { key4: 'foo' } }),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Should extract from middle-level object default
+      expect(scope.flag('deep')).toEqual({ key1: { key2: { key3: { key4: 'foo' } } } });
+      expect(scope.flag('deep.key1')).toEqual({ key2: { key3: { key4: 'foo' } } });
+      expect(scope.flag('deep.key1.key2')).toEqual({ key3: { key4: 'foo' } });
+      expect(scope.flag('deep.key1.key2.key3')).toEqual({ key4: 'foo' });
+      expect(scope.flag('deep.key1.key2.key3.key4')).toBe('foo');
+    });
+
+    it('should handle empty objects with no fields', () => {
+      const schemas = z.object({
+        config: z.object({
+          empty: z.object({}),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      // Empty object should return empty object (not undefined)
+      expect(scope.flag('config.empty')).toEqual({});
+      expect(scope.flag('config')).toEqual({ empty: {} });
+    });
+
+    it('should handle nested empty objects', () => {
+      const schemas = z.object({
+        app: z.object({
+          level1: z.object({
+            level2: z.object({
+              empty: z.object({}),
+            }),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      expect(scope.flag('app.level1.level2.empty')).toEqual({});
+      expect(scope.flag('app.level1.level2')).toEqual({ empty: {} });
+      expect(scope.flag('app.level1')).toEqual({ level2: { empty: {} } });
+    });
+
+    it('should handle mixed empty and non-empty objects', () => {
+      const schemas = z.object({
+        mixed: z.object({
+          empty: z.object({}),
+          nonEmpty: z.object({
+            value: z.string().default('test'),
+          }),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      expect(scope.flag('mixed.empty')).toEqual({});
+      expect(scope.flag('mixed.nonEmpty')).toEqual({ value: 'test' });
+      expect(scope.flag('mixed')).toEqual({
+        empty: {},
+        nonEmpty: { value: 'test' },
+      });
+    });
+
+    it('should handle empty object with default', () => {
+      const schemas = z.object({
+        config: z.object({
+          emptyWithDefault: z.object({}).default({}),
+        }),
+      });
+
+      const scope = createAppScope({ flagSchema: schemas });
+
+      expect(scope.flag('config.emptyWithDefault')).toEqual({});
     });
   });
 
@@ -926,7 +899,7 @@ describe('createAppScope', () => {
 
       it('should call validateCliFlags when flagSchema provided', () => {
         const flagSchema = z.object({
-          foo: z.string(),
+          foo: z.string().default('test'),
           bar: z.number().default(42),
         });
 
@@ -937,7 +910,7 @@ describe('createAppScope', () => {
       });
 
       it('should call validateCliFlags only once even with factSchema', () => {
-        const flagSchema = z.object({ test: z.string() });
+        const flagSchema = z.object({ test: z.string().default('test') });
         const factSchema = z.object({ metric: z.number() });
 
         createAppScope({ flagSchema, factSchema });
@@ -1472,6 +1445,41 @@ describe('createAppScope', () => {
         });
       });
     });
+
+    describe('Context Isolation & Async', () => {
+      it('should isolate flag overrides between parallel async operations', async () => {
+        const flagSchema = z.object({
+          ui: z.object({
+            theme: z.string().default('default'),
+          }),
+        });
+
+        const scope = createAppScope({ flagSchema });
+
+        const [result1, result2, result3] = await Promise.all([
+          withEvalContext({}, async () => {
+            scope.overrideFlags({ 'ui.theme': 'dark' });
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return scope.flag('ui.theme');
+          }),
+          withEvalContext({}, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            return scope.flag('ui.theme');
+          }),
+          withEvalContext({}, async () => {
+            // No override - should get schema default
+            scope.overrideFlags({ 'ui.theme': 'light' });
+            await new Promise((resolve) => setTimeout(resolve, 15));
+            return scope.flag('ui.theme');
+          }),
+        ]);
+
+        expect(result1).toBe('dark');
+        expect(result2).toBe('default');
+        expect(result3).toBe('light');
+        expect(scope.flag('ui.theme')).toBe('default');
+      });
+    });
   });
 
   describe('isPickedFlag', () => {
@@ -1511,26 +1519,7 @@ describe('createAppScope', () => {
   });
 
   describe('Type-Level Tests', () => {
-    it('basic type', () => {
-      const flagSchema = z.object({ foo: z.string() });
-      const { flag } = createAppScope({ flagSchema });
-
-      const f = flag('foo', 'foo-value');
-
-      expectTypeOf(f).toEqualTypeOf<string>();
-    });
-
-    it('should require flag value if the schema does not have one', () => {
-      const flagSchema = z.object({ foo: z.string() });
-      const { flag } = createAppScope({ flagSchema });
-
-      // This should be valid with v2 - it will return the value with a required default parameter
-      const f = flag('foo', 'default-value');
-
-      expectTypeOf(f).toEqualTypeOf<string>();
-    });
-
-    it('flags with defaults in schema should work with or without a value', () => {
+    it('flags with defaults in schema should work', () => {
       const flagSchema = z.object({
         foo: z.string().default('foo'),
         bar: z.string().default('bar'),
@@ -1538,17 +1527,21 @@ describe('createAppScope', () => {
       const { flag } = createAppScope({ flagSchema });
 
       const foo = flag('foo');
-      const bar = flag('bar', 'bar-value');
+      const bar = flag('bar');
 
       expectTypeOf(foo).toEqualTypeOf<string>();
       expectTypeOf(bar).toEqualTypeOf<string>();
     });
 
-    it('should work for object types', () => {
-      const flagSchema = z.object({ obj: z.object({ foo: z.string() }) });
+    it('should work for object types with defaults', () => {
+      const flagSchema = z.object({
+        obj: z.object({
+          foo: z.string().default('default-foo'),
+        }),
+      });
       const { flag } = createAppScope({ flagSchema });
 
-      const obj = flag('obj', { foo: 'foo-value' });
+      const obj = flag('obj');
 
       expectTypeOf(obj).toEqualTypeOf<{ foo: string }>();
     });
