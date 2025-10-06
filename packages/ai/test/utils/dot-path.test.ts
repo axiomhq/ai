@@ -1,4 +1,4 @@
-import { isValidPath } from 'src/util/dot-path';
+import { isValidPath } from '../../src/util/dot-path';
 import { describe, expect, it } from 'vitest';
 import z from 'zod';
 

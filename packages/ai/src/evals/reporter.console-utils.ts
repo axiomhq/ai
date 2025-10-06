@@ -1,8 +1,33 @@
 import c from 'tinyrainbow';
 
-import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
+import type {
+  Evaluation,
+  EvaluationReport,
+  FlagDiff,
+  MetaWithCase,
+  MetaWithEval,
+  OutOfScopeFlag,
+} from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
-import { deepEqual } from 'src/util/deep-equal';
+import type { Score } from './scorers';
+import { deepEqual } from '../util/deep-equal';
+
+export type SuiteData = {
+  name: string;
+  file: string;
+  duration: string;
+  baseline: Evaluation | undefined | null;
+  configFlags?: string[];
+  flagConfig?: Record<string, any>;
+  cases: Array<{
+    index: number;
+    scores: Record<string, Score>;
+    outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+    errors?: Error[] | null;
+    runtimeFlags?: any;
+  }>;
+  outOfScopeFlags?: OutOfScopeFlag[];
+};
 
 export function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max) + '…' : str;
@@ -31,7 +56,6 @@ export function printEvalNameAndFileName(testSuite: TestSuite, meta: MetaWithEva
 }
 
 export function printBaselineNameAndVersion(testMeta: MetaWithEval) {
-  // print baseline name and version if found
   if (testMeta.evaluation.baseline) {
     console.log(
       ' ',
@@ -47,13 +71,11 @@ export function printBaselineNameAndVersion(testMeta: MetaWithEval) {
   console.log('');
 }
 
-// Print runtime flags actually used for this case (up to 20 entries)
 export function printRuntimeFlags(testMeta: MetaWithCase) {
   if (testMeta.case.runtimeFlags && Object.keys(testMeta.case.runtimeFlags).length > 0) {
     const entries = Object.entries(testMeta.case.runtimeFlags);
-    const shown = entries.slice(0, 20);
     console.log('   ', c.dim('runtime flags'));
-    for (const [k, v] of shown) {
+    for (const [k, v] of entries) {
       switch (v.kind) {
         case 'replaced': {
           const valText = truncate(stringify(v.value), 80);
@@ -67,9 +89,6 @@ export function printRuntimeFlags(testMeta: MetaWithCase) {
           break;
         }
       }
-    }
-    if (entries.length > shown.length) {
-      console.log('     ', c.dim(`… +${entries.length - shown.length} more`));
     }
   }
 }
@@ -205,7 +224,155 @@ export function printResultLink(testMeta: MetaWithCase, axiomUrl: string) {
   );
 }
 
-export function printDivider() {
-  console.log(' ', c.cyanBright('=== === === === === === === === === === === === === === === ==='));
+export const reporterDate = (d: Date) => {
+  const date = d.toISOString().slice(0, 10); // "2025-10-03"
+  const hours = d.getUTCHours().toString().padStart(2, '0');
+  const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+  return `${date}, ${hours}:${minutes} UTC`;
+};
+
+export function printGlobalFlagOverrides(
+  overrides: Record<string, any>,
+  defaults: Record<string, any>,
+) {
+  if (Object.keys(overrides).length === 0) {
+    console.log('');
+    console.log(c.dim('Flag overrides: (none)'));
+    console.log('');
+    return;
+  }
+
   console.log('');
+  console.log('Flag overrides:');
+  for (const [key, value] of Object.entries(overrides)) {
+    const defaultValue = defaults[key];
+    const valueStr = JSON.stringify(value);
+    const defaultStr = defaultValue !== undefined ? JSON.stringify(defaultValue) : 'none';
+    console.log(`  • ${key}: ${valueStr} ${c.dim(`(default: ${defaultStr})`)}`);
+  }
+  console.log('');
+}
+
+export function printSuiteBox({
+  suite,
+  scorerAverages,
+  calculateBaselineScorerAverage,
+  flagDiff,
+}: {
+  suite: SuiteData;
+  scorerAverages: Record<string, number>;
+  calculateBaselineScorerAverage: (baseline: Evaluation, scorerName: string) => number | null;
+  flagDiff: Array<FlagDiff>;
+}) {
+  const filename = suite.file.split('/').pop();
+
+  console.log('┌─');
+  console.log(`│  ${c.blue(suite.name)} ${c.gray(`(${filename})`)}`);
+  console.log('├─');
+
+  const scorerNames = Object.keys(scorerAverages);
+  const maxNameLength = Math.max(...scorerNames.map((name) => name.length));
+
+  for (const scorerName of scorerNames) {
+    const avg = scorerAverages[scorerName];
+    const paddedName = scorerName.padEnd(maxNameLength);
+
+    if (suite.baseline) {
+      const baselineAvg = calculateBaselineScorerAverage(suite.baseline, scorerName);
+      if (baselineAvg !== null) {
+        const currentPercent = (avg * 100).toFixed(2) + '%';
+        const baselinePercent = (baselineAvg * 100).toFixed(2) + '%';
+        const diff = avg - baselineAvg;
+        const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
+        const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+
+        const paddedBaseline = baselinePercent.padStart(7);
+        const paddedCurrent = currentPercent.padStart(7);
+        const paddedDiff = diffText.padStart(8);
+
+        console.log(
+          `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${c.magentaBright(paddedCurrent)}  (${diffColor(paddedDiff)})`,
+        );
+      } else {
+        const currentPercent = (avg * 100).toFixed(2) + '%';
+        console.log(`│   • ${paddedName}  ${currentPercent}`);
+      }
+    } else {
+      const currentPercent = (avg * 100).toFixed(2) + '%';
+      console.log(`│   • ${paddedName}  ${currentPercent}`);
+    }
+  }
+
+  console.log('├─');
+
+  if (suite.baseline) {
+    const baselineTimestamp = suite.baseline.runAt
+      ? reporterDate(new Date(suite.baseline.runAt))
+      : 'unknown time';
+    console.log(
+      `│  Baseline: ${suite.baseline.name}-${suite.baseline.version} ${c.gray(`(${baselineTimestamp})`)}`,
+    );
+  } else {
+    console.log(`│  Baseline: ${c.gray('(none)')}`);
+  }
+
+  if (suite.baseline) {
+    const hasConfigChanges = flagDiff.length > 0;
+
+    console.log('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
+    if (hasConfigChanges) {
+      for (const { flag, current, baseline } of flagDiff) {
+        console.log(
+          `│   • ${flag}: ${current ?? '<not set>'} ${c.gray(`(baseline: ${baseline ?? '<not set>'})`)}`,
+        );
+      }
+    }
+  }
+
+  if (suite.outOfScopeFlags && suite.outOfScopeFlags.length > 0) {
+    const pickedFlagsText =
+      suite.configFlags && suite.configFlags.length > 0
+        ? suite.configFlags.map((f) => `'${f}'`).join(', ')
+        : 'none';
+    console.log('│');
+    console.log(
+      `│  ${c.yellow('⚠ Out-of-scope flags')} ${c.gray(`(picked: ${pickedFlagsText})`)}:`,
+    );
+    for (const flag of suite.outOfScopeFlags) {
+      const lastStackTraceFrame = flag.stackTrace[0];
+      const lastStackTraceFnName = lastStackTraceFrame.split(' ').shift();
+      const lastStackTraceFile = lastStackTraceFrame.split('/').pop()?.slice(0, -1);
+      console.log(
+        `│   • ${flag.flagPath} ${c.gray(`at ${lastStackTraceFnName} (${lastStackTraceFile})`)}`,
+      );
+    }
+  }
+
+  console.log('└─');
+}
+
+export function printFinalReport({
+  suiteData,
+  calculateScorerAverages,
+  calculateBaselineScorerAverage,
+  calculateFlagDiff,
+}: {
+  suiteData: SuiteData[];
+  calculateScorerAverages: (suite: SuiteData) => Record<string, number>;
+  calculateBaselineScorerAverage: (baseline: Evaluation, scorerName: string) => number | null;
+  calculateFlagDiff: (suite: SuiteData) => Array<FlagDiff>;
+}) {
+  console.log('');
+  console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
+  console.log('');
+
+  for (const suite of suiteData) {
+    const scorerAverages = calculateScorerAverages(suite);
+    const flagDiff = suite.baseline ? calculateFlagDiff(suite) : [];
+    printSuiteBox({ suite, scorerAverages, calculateBaselineScorerAverage, flagDiff });
+    console.log('');
+  }
+
+  console.log('View full report:');
+  console.log('https://app.axiom.co/evaluations/run/<run-id>');
 }
