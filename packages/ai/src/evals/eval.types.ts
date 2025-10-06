@@ -129,6 +129,7 @@ export type Evaluation = {
     email: string | undefined;
   };
   cases: Case[];
+  flagConfig?: Record<string, any>;
 };
 
 export type Case = {
@@ -150,6 +151,7 @@ export type Case = {
   spanId: string;
   traceId: string;
   task?: Task;
+  runtimeFlags?: RuntimeFlagMap;
 };
 
 export type Chat = {
@@ -216,18 +218,31 @@ export type EvalCaseReport = {
   runtimeFlags?: RuntimeFlagMap;
 };
 
+export type FlagDiff = {
+  flag: string;
+  current: string | undefined;
+  baseline: string | undefined;
+};
+
+export type OutOfScopeFlag = {
+  flagPath: string;
+  count: number;
+  firstAccessedAt: number;
+  lastAccessedAt: number;
+  stackTrace: string[];
+};
+
 export type EvaluationReport = {
   id: string;
   name: string;
   version: string;
   baseline: Evaluation | undefined;
+  /** Flags that are in scope for this evaluation */
+  configFlags?: string[];
+  /** Full flag configuration for this evaluation run */
+  flagConfig?: Record<string, any>;
   /** Summary of all flags accessed outside of picked flags scope across all cases */
-  outOfScopeFlags?: {
-    flagPath: string;
-    count: number;
-    firstAccessedAt: number;
-    lastAccessedAt: number;
-  }[];
+  outOfScopeFlags?: OutOfScopeFlag[];
   /** End-of-suite config snapshot for console printing only */
   configEnd?: {
     flags?: Record<string, any>;
@@ -236,6 +251,5 @@ export type EvaluationReport = {
   };
 };
 
-// TODO: BEFORE MERGE - why are these two separate things? Very confusing....
 export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };
 export type MetaWithCase = TaskMeta & { case: EvalCaseReport };

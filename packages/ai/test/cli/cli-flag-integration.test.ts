@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { extractOverrides } from 'src/cli/utils/parse-flag-overrides';
-import { runEvalWithContext } from 'src/cli/utils/eval-context-runner';
-import { flag } from 'src/context';
+import { extractOverrides } from '../../src/cli/utils/parse-flag-overrides';
+import { runEvalWithContext } from '../../src/cli/utils/eval-context-runner';
+import { flag } from '../../src/context';
 
 // Mock runVitest to avoid actual test execution
 vi.mock('src/evals/run-vitest', () => ({
