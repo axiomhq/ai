@@ -636,7 +636,7 @@ export function createAppScope<
    * @param defaultValue - Optional default value if flag not found
    * @returns The flag value or undefined if not found
    */
-  function flag<P extends string>(path: P, defaultValue?: unknown): unknown {
+  function flag<P extends string>(path: P): unknown {
     const segments = parsePath(path);
 
     const ctx = getEvalContext();
@@ -654,9 +654,8 @@ export function createAppScope<
     // Flag precedence order:
     // 1. CLI overrides (getGlobalFlagOverrides)
     // 2. Eval context overrides (getEvalContext().flags)
-    // 3. Explicit defaultValue passed by caller
-    // 4. Schema/object defaults
-    // 5. undefined + console.error
+    // 3. Schema/object defaults
+    // 4. undefined + console.error
 
     // 1. Check CLI overrides first (highest priority)
     if (path in globalOverrides) {
@@ -668,34 +667,8 @@ export function createAppScope<
       finalValue = ctx.flags[path];
       hasValue = true;
     }
-    // 3. Use explicit default if provided (overrides schema default)
-    else if (defaultValue !== undefined) {
-      // Validate explicit default value against schema if available
-      if (flagSchemaConfig) {
-        const segments = parsePath(path);
-        const schemaForPath = findSchemaAtPath(segments);
 
-        if (schemaForPath) {
-          try {
-            const result = schemaForPath.safeParse(defaultValue);
-            if (!result.success) {
-              console.error(
-                `[AxiomAI] Invalid flag: "${path}" - provided default value does not match schema`,
-              );
-              // Continue with the invalid value for backward compatibility, but warn
-            }
-          } catch {
-            // Schema validation failed, log error but continue
-            console.error(`[AxiomAI] Invalid flag: "${path}" - validation failed`);
-          }
-        }
-      }
-
-      finalValue = defaultValue;
-      hasValue = true;
-    }
-
-    // 4. If we don't have a value yet, try to get from schema/object defaults
+    // 3. If we don't have a value yet, try to get from schema/object defaults
     if (!hasValue) {
       // Invalid namespace check
       if (!flagSchemaConfig) {
