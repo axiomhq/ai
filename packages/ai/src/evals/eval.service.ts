@@ -8,12 +8,17 @@ const getEnvVars = () => {
   };
 };
 
-/** Query axiom to find a baseline for en Eval */
+/** Query axiom to find a baseline for an Eval */
 export const findBaseline = async (evalName: string) => {
   const { datasetName, url, token } = getEnvVars();
 
   try {
-    const apl = `['${datasetName}'] | where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval' | order by _time | limit 1`;
+    const apl = [
+      `['${datasetName}']`,
+      `| where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
+      `| order by _time desc`,
+      `| limit 1`,
+    ].join('\n');
 
     const headers = new Headers({
       Authorization: `Bearer ${token}`,
@@ -70,6 +75,9 @@ export const findEvaluationCases = async (evalId: string) => {
 };
 
 export const mapSpanToEval = (span: any): Evaluation => {
+  const flagConfigRaw =
+    span.data.attributes['eval.config.flags'] ?? span.data.attributes.custom['eval.config.flags'];
+
   return {
     id: span.data.attributes.custom['eval.id'],
     name: span.data.attributes.custom['eval.name'],
@@ -99,6 +107,7 @@ export const mapSpanToEval = (span: any): Evaluation => {
       email: span.data.attributes.custom['eval.user.email'],
     },
     cases: [],
+    flagConfig: flagConfigRaw ? JSON.parse(flagConfigRaw) : undefined,
   };
 };
 
@@ -113,6 +122,8 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     duration = d;
   }
 
+  const runtimeFlagsRaw = data.attributes.custom['eval.case.config.runtime_flags'];
+
   return {
     index: data.attributes.custom['eval.case.index'],
     input: data.attributes.custom['eval.case.input'],
@@ -126,6 +137,7 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     runAt: item._time,
     spanId: data.span_id,
     traceId: data.trace_id,
+    runtimeFlags: runtimeFlagsRaw ? JSON.parse(runtimeFlagsRaw) : undefined,
   };
 };
 
