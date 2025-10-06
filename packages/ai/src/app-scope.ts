@@ -14,63 +14,35 @@ import {
   buildSchemaForPath,
 } from './util/dot-path';
 import { trace } from '@opentelemetry/api';
-import {
-  type z,
-  type ZodObject,
-  type ZodDefault,
-  type ZodUnion,
-  type ZodDiscriminatedUnion,
-  type ZodOptional,
-  type ZodNullable,
-  type ZodArray,
-  type ZodRecord,
-  type ZodSchema,
-} from 'zod';
+import { type z, type ZodObject, type ZodDefault, type ZodSchema } from 'zod';
 import type { $ZodObject } from 'zod/v4/core';
 import { toOtelAttribute } from './otel/utils/to-otel-attribute';
 import { Attr } from './otel';
 
 type DefaultMaxDepth = 8;
 
-// Strip wrapper types to get to the core schema
-type StripWrappers<T> =
-  T extends ZodDefault<infer U>
-    ? StripWrappers<U>
-    : T extends ZodOptional<infer U>
-      ? StripWrappers<U>
-      : T extends ZodNullable<infer U>
-        ? StripWrappers<U>
-        : T;
+// Helper to recursively check if a schema has defaults (including nested objects)
+type HasDefaults<S> = S extends { _zod: { def: { defaultValue: unknown } } }
+  ? true
+  : // v4 | v3
+    S extends $ZodObject<infer Shape> | ZodObject<infer Shape>
+    ? {
+        [K in keyof Shape]: HasDefaults<Shape[K]>;
+      } extends Record<keyof Shape, true>
+      ? true
+      : false
+    : false;
 
-// Main recursive union detector
-type _ContainsUnion<
-  T,
-  Stack extends unknown[] = [],
-  MaxDepth extends number = DefaultMaxDepth,
-> = Stack['length'] extends MaxDepth
-  ? false
-  : StripWrappers<T> extends ZodUnion<any> | ZodDiscriminatedUnion<any, any>
+// Helper type to extract the underlying ZodObject from ZodDefault wrapper
+type UnwrapSchema<T> = T extends ZodDefault<infer U> ? U : T;
+
+// Helper to check if ALL fields in a schema have defaults
+type AllFieldsHaveDefaults<Schema> =
+  // First check if the schema itself has an object-level default
+  Schema extends { _zod: { def: { defaultValue: unknown } } }
     ? true
-    : StripWrappers<T> extends ZodObject<infer Shape>
-      ? _ContainsUnionInShape<Shape, [1, ...Stack], MaxDepth>
-      : StripWrappers<T> extends ZodArray<infer Item>
-        ? _ContainsUnion<Item, [1, ...Stack], MaxDepth>
-        : StripWrappers<T> extends ZodRecord<any, infer Value>
-          ? _ContainsUnion<Value, [1, ...Stack], MaxDepth>
-          : false;
-
-// Helper for ZodObject shapes
-type _ContainsUnionInShape<
-  Shape,
-  Stack extends unknown[] = [],
-  MaxDepth extends number = DefaultMaxDepth,
-> = Stack['length'] extends MaxDepth
-  ? false
-  : {
-        [K in keyof Shape]: _ContainsUnion<Shape[K], Stack, MaxDepth>;
-      }[keyof Shape] extends false
-    ? false
-    : true;
+    : // Otherwise recursively check if all fields have defaults
+      HasDefaults<UnwrapSchema<Schema>>;
 
 interface AppScopeConfig<
   FlagSchema extends ZodObject<any> | undefined = undefined,
@@ -111,9 +83,6 @@ type ObjectPathValue<T, P extends string> = P extends keyof T
       : never
     : never;
 
-// Helper type to extract the underlying ZodObject from ZodDefault wrapper
-type UnwrapSchema<T> = T extends ZodDefault<infer U> ? U : T;
-
 /**
  * Generate deep nested paths from flag schema.
  *
@@ -146,120 +115,10 @@ type PathValue<T extends ZodObject<any>, P extends string> = P extends `${infer 
     ? z.output<UnwrapSchema<T['shape'][P]>>
     : never;
 
-// Helper to check if a path is a namespace-only path (like 'ui') vs field path (like 'ui.foo')
-type IsNamespaceOnly<T extends ZodObject<any>, P extends string> = P extends keyof T['shape']
-  ? true
-  : false;
-
-// Helper to recursively check if a schema has defaults (including nested objects)
-type HasDefaults<S> = S extends { _zod: { def: { defaultValue: unknown } } }
-  ? true
-  : // v4 | v3
-    S extends $ZodObject<infer Shape> | ZodObject<infer Shape>
-    ? {
-        [K in keyof Shape]: HasDefaults<Shape[K]>;
-      } extends Record<keyof Shape, true>
-      ? true
-      : false
-    : false;
-
-// Helper to check if ALL fields in a namespace schema have defaults
-type AllFieldsHaveDefaults<Schema> =
-  // First check if the schema itself has an object-level default
-  Schema extends { _zod: { def: { defaultValue: unknown } } }
-    ? true
-    : // Otherwise recursively check if all fields have defaults
-      HasDefaults<UnwrapSchema<Schema>>;
-
-// Helper to check if a namespace has complete defaults (all fields have defaults)
-type NamespaceHasCompleteDefaults<
-  T extends ZodObject<any>,
-  P extends string,
-> = P extends keyof T['shape'] ? AllFieldsHaveDefaults<T['shape'][P]> : false;
-
-// Helper to find the source Zod schema at a path (not the output type)
-// Uses recursive approach with stack-based depth limiting to match ObjectPaths depth (8 levels)
-type ZodSchemaAtPath<
-  T extends ZodObject<any>,
-  P extends string,
-  Stack extends unknown[] = [],
-  MaxDepth extends number = DefaultMaxDepth,
-> = Stack['length'] extends MaxDepth
-  ? never
-  : P extends `${infer NS}.${infer Rest}`
-    ? NS extends keyof T['shape']
-      ? UnwrapSchema<T['shape'][NS]> extends ZodObject<infer Shape>
-        ? ZodSchemaAtPathRecursive<Shape, Rest, [1, ...Stack], MaxDepth>
-        : never
-      : never
-    : never;
-
-// Recursive helper type to traverse Zod schema shapes at arbitrary depth
-type ZodSchemaAtPathRecursive<
-  Shape extends Record<string, any>,
-  P extends string,
-  Stack extends unknown[] = [],
-  MaxDepth extends number = DefaultMaxDepth,
-> = Stack['length'] extends MaxDepth
-  ? never
-  : P extends keyof Shape
-    ? Shape[P] // Direct field access
-    : P extends `${infer Field}.${infer Rest}`
-      ? Field extends keyof Shape
-        ? Shape[Field] extends ZodObject<infer NestedShape>
-          ? ZodSchemaAtPathRecursive<NestedShape, Rest, [1, ...Stack], MaxDepth>
-          : never
-        : never
-      : never;
-
-// Check if a nested object field has complete defaults
-type NestedObjectHasCompleteDefaults<T extends ZodObject<any>, P extends string> = HasDefaults<
-  ZodSchemaAtPath<T, P>
->;
-
 type DotNotationFlagFunction<FS extends ZodObject<any> | undefined> =
   FS extends ZodObject<any>
-    ? {
-        // For nested object paths WITHOUT complete defaults (like 'ui.foo' where foo has incomplete defaults), require explicit default
-        <P extends DotPaths<FS> & string>(
-          path: IsNamespaceOnly<FS, P> extends false
-            ? NestedObjectHasCompleteDefaults<FS, P> extends false
-              ? P
-              : never
-            : never,
-          defaultValue: PathValue<FS, P>,
-        ): PathValue<FS, P>;
-        // For field paths WITH complete defaults OR primitive paths, allow single argument
-        <P extends DotPaths<FS> & string>(
-          path: IsNamespaceOnly<FS, P> extends false
-            ? NestedObjectHasCompleteDefaults<FS, P> extends true
-              ? P
-              : never
-            : never,
-        ): PathValue<FS, P>;
-        // For namespace paths WITH complete defaults (all fields have defaults), allow single argument
-        <P extends DotPaths<FS> & string>(
-          path: IsNamespaceOnly<FS, P> extends true
-            ? NamespaceHasCompleteDefaults<FS, P> extends true
-              ? P
-              : never
-            : never,
-        ): PathValue<FS, P>;
-        // For namespace paths WITHOUT complete defaults, require explicit default
-        <P extends DotPaths<FS> & string>(
-          path: IsNamespaceOnly<FS, P> extends true
-            ? NamespaceHasCompleteDefaults<FS, P> extends false
-              ? P
-              : never
-            : never,
-          defaultValue: PathValue<FS, P>,
-        ): PathValue<FS, P>;
-        // For any valid path, allow explicit default (override)
-        <P extends DotPaths<FS>>(path: P, defaultValue: PathValue<FS, P>): PathValue<FS, P>;
-        // Fallback overload only for string paths that don't match valid paths, with required defaultValue
-        <P extends string>(path: P extends DotPaths<FS> ? never : P, defaultValue: any): any;
-      }
-    : (path: string, defaultValue?: any) => any;
+    ? <P extends DotPaths<FS>>(path: P) => PathValue<FS, P>
+    : (path: string) => any;
 
 type FactFunction<SC extends ZodObject<any> | undefined> =
   SC extends ZodObject<any>
@@ -377,6 +236,88 @@ function assertNoUnions(schema: any, path = 'schema'): void {
 }
 
 /**
+ * Recursively verify that all leaf fields in the schema have defaults.
+ * Throws with a detailed error message listing all paths missing defaults.
+ * TODO: this should probably be in an adapter, not the core lib...
+ */
+function ensureAllDefaults(schema: any, path = ''): void {
+  const missingDefaults: string[] = [];
+
+  function checkDefaults(current: any, currentPath: string): void {
+    if (!current) return;
+
+    const def = current.def || current._def;
+    if (!def) return;
+
+    const { type: typeName, innerType, defaultValue } = def;
+
+    // Check if this schema has a default at this level
+    const hasDefault = defaultValue !== undefined;
+
+    // Unwrap transparent containers and check their inner type
+    if (typeName === 'default') {
+      // This has a default, we're done - no need to check inner type
+      return;
+    }
+
+    if (typeName === 'optional' || typeName === 'nullable') {
+      // Transparent wrappers - check inner type
+      return checkDefaults(innerType, currentPath);
+    }
+
+    // ZodRecord is not allowed
+    if (typeName === 'record') {
+      throw new Error(
+        `[AxiomAI] ZodRecord is not supported in flag schemas (found at "${currentPath || 'root'}")\n` +
+          `All flag fields must have known keys and defaults. Consider using z.object() instead.`,
+      );
+    }
+
+    // For objects: if there's an object-level default, we're good
+    // Otherwise, recursively check all fields
+    if (typeName === 'object') {
+      if (hasDefault) {
+        // Object-level default covers all nested fields
+        return;
+      }
+
+      const shape = def.shape || current.shape;
+      if (shape) {
+        for (const [k, v] of Object.entries(shape)) {
+          const nextPath = currentPath ? `${currentPath}.${k}` : k;
+          checkDefaults(v, nextPath);
+        }
+      }
+      return;
+    }
+
+    // For arrays: arrays are leaf types (no per-index access)
+    // Just check if the array schema itself has a default
+    if (typeName === 'array') {
+      if (!hasDefault) {
+        missingDefaults.push(currentPath || 'root');
+      }
+      return;
+    }
+
+    // For all other types (primitives, etc): must have a default
+    if (!hasDefault) {
+      missingDefaults.push(currentPath || 'root');
+    }
+  }
+
+  checkDefaults(schema, path);
+
+  if (missingDefaults.length > 0) {
+    throw new Error(
+      `[AxiomAI] All flag fields must have defaults. Missing defaults for:\n` +
+        missingDefaults.map((p) => `  - ${p}`).join('\n') +
+        `\n\nAdd .default(value) to these fields or to their parent objects.`,
+    );
+  }
+}
+
+/**
  * Create a new application-level evaluation scope.
  *
  * @param config.flagSchema A zod object describing the schema for flags **(required)**
@@ -419,6 +360,21 @@ function assertNoUnions(schema: any, path = 'schema'): void {
  * // Override flags globally for the current evaluation run
  * overrideFlags({ 'api.endpoint': '/custom' });
  */
+// Overload: Require all fields to have defaults (compile-time check)
+export function createAppScope<
+  FlagSchema extends ZodObject<any>,
+  FactSchema extends ZodObject<any> | undefined = undefined,
+>(
+  config: AllFieldsHaveDefaults<FlagSchema> extends true
+    ? AppScopeConfig<FlagSchema, FactSchema>
+    : {
+        flagSchema: FlagSchema;
+        factSchema?: FactSchema;
+        __error__: 'createAppScope: flagSchema must have .default() for all leaf fields';
+      },
+): AppScope<FlagSchema, FactSchema>;
+
+// Implementation signature: Keep broad for internal use
 export function createAppScope<
   FlagSchema extends ZodObject<any> | undefined = undefined,
   FactSchema extends ZodObject<any> | undefined = undefined,
@@ -430,6 +386,11 @@ export function createAppScope<
   // reject union types
   if (flagSchemaConfig) {
     assertNoUnions(flagSchemaConfig, 'flagSchema');
+  }
+
+  // Ensure all fields have defaults
+  if (flagSchemaConfig) {
+    ensureAllDefaults(flagSchemaConfig);
   }
 
   // CLI validation with dot notation support
@@ -513,7 +474,6 @@ export function createAppScope<
 
   // Helper function to check if a schema has complete defaults at runtime
   // This mirrors the compile-time AllFieldsHaveDefaults<> type
-
 
   // Recursively build object with all defaults from a Zod schema
   function buildObjectWithDefaults(schema: any): unknown {
@@ -633,7 +593,6 @@ export function createAppScope<
   /**
    * Get flag value with dot notation path support and schema validation.
    * @param path - Dot notation path to the flag (e.g., 'ui.theme' or 'api.timeout')
-   * @param defaultValue - Optional default value if flag not found
    * @returns The flag value or undefined if not found
    */
   function flag<P extends string>(path: P): unknown {

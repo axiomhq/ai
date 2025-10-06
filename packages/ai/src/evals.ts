@@ -6,7 +6,6 @@ export type {
 } from './evals/eval.types';
 export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
 
-export { flag, fact } from './context';
 export { withEvalContext, getEvalContext } from './evals/context/storage';
 export type { EvalContextData } from './evals/context/storage';
 
