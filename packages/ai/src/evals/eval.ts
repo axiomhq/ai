@@ -20,10 +20,10 @@ import type {
 } from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
-import { DEFAULT_TIMEOUT } from './run-vitest';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
+import { AxiomCLIError } from '../cli/errors';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -151,6 +151,10 @@ async function registerEval<
   const isDebug = inject('debug');
   const injectedOverrides = inject('overrides') as Record<string, any> | undefined;
   const axiomConfig = inject('axiomConfig') as ResolvedAxiomConfig | undefined;
+
+  if (!axiomConfig) {
+    throw new AxiomCLIError('Axiom config not found');
+  }
 
   const result = await describe(
     `evaluate: ${evalName}`,
@@ -457,7 +461,7 @@ async function registerEval<
         }
       });
     },
-    DEFAULT_TIMEOUT,
+    axiomConfig?.eval.timeoutMs,
   );
 
   return result;

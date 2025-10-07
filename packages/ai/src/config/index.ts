@@ -1,3 +1,5 @@
+import { AxiomCLIError as AxiomCLIError } from '../cli/errors';
+
 /**
  * Utility type to make all properties in T required recursively.
  * Keeps the types as-is but removes the optionality.
@@ -140,13 +142,13 @@ export function createDefaultConfig(): ResolvedAxiomConfig {
   const dataset = process.env.AXIOM_DATASET;
 
   if (!token) {
-    throw new Error(
-      '[AxiomAI] Missing Axiom eval token. Please either set in `axiom.config.ts` or `process.env.AXIOM_TOKEN`.',
+    throw new AxiomCLIError(
+      'Missing eval API token. Please set either eval.toen in axiom.config.ts, or process.env.AXIOM_TOKEN',
     );
   }
   if (!dataset) {
-    throw new Error(
-      '[AxiomAI] Missing Axiom eval dataset. Please either set in `axiom.config.ts` or `process.env.AXIOM_DATASET`.',
+    throw new AxiomCLIError(
+      'Missing eval dataset. Please set either eval.dataset in axiom.config.ts, or process.env.AXIOM_DATASET',
     );
   }
 

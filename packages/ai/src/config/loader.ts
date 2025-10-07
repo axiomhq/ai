@@ -1,5 +1,6 @@
 import { loadConfig as c12LoadConfig } from 'c12';
 import { createDefaultConfig, type AxiomConfig, type ResolvedAxiomConfig } from './index';
+import { AxiomCLIError, errorToString } from '../cli/errors';
 
 /**
  * Result of loading a config file
@@ -53,9 +54,10 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
       configPath: result.configFile || null,
     };
   } catch (error) {
+    if (error instanceof AxiomCLIError) {
+      throw error;
+    }
     // c12 throws if config file has errors
-    throw new Error(
-      `Failed to load Axiom config: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new AxiomCLIError(`Failed to load config file: ${errorToString(error)}`);
   }
 }

@@ -2,7 +2,7 @@ import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
 import { getGlobalFlagOverrides } from './context/global-flags';
-import { getConfigScope } from './context/storage';
+import { getAxiomConfig, getConfigScope } from './context/storage';
 import { findEvaluationCases } from './eval.service';
 import type {
   Evaluation,
@@ -26,6 +26,7 @@ import {
   type SuiteData,
 } from './reporter.console-utils';
 import { flattenObject } from '../util/dot-path';
+import { AxiomCLIError } from '../cli/errors';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -59,7 +60,11 @@ export class AxiomReporter implements Reporter {
     const baseline = meta.evaluation.baseline;
     if (baseline) {
       // load baseline data per suite
-      const baselineData = await findEvaluationCases(baseline.id);
+      const config = getAxiomConfig();
+      if (!config) {
+        throw new AxiomCLIError('Axiom config not available in reporter');
+      }
+      const baselineData = await findEvaluationCases(baseline.id, config);
       this._baselines.set(meta.evaluation.name, baselineData || null);
     } else {
       this._baselines.set(meta.evaluation.name, null);
@@ -112,7 +117,11 @@ export class AxiomReporter implements Reporter {
     let suiteBaseline = this._baselines.get(meta.evaluation.name);
     if (suiteBaseline === undefined && meta.evaluation.baseline) {
       // Baseline wasn't loaded yet, load it now
-      const baselineData = await findEvaluationCases(meta.evaluation.baseline.id);
+      const config = getAxiomConfig();
+      if (!config) {
+        throw new AxiomCLIError('Axiom config not available in reporter');
+      }
+      const baselineData = await findEvaluationCases(meta.evaluation.baseline.id, config);
       suiteBaseline = baselineData || null;
       this._baselines.set(meta.evaluation.name, suiteBaseline);
     }

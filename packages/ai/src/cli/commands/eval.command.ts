@@ -5,6 +5,7 @@ import { runEvalWithContext } from '../utils/eval-context-runner';
 import type { FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
+import { AxiomCLIError } from '../errors';
 
 export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
@@ -23,60 +24,64 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
       .option('--debug', 'run locally without sending to Axiom or loading baselines', false)
       .action(async (target: string, options) => {
-        if (!options.debug && (!options.token || !options.dataset)) {
-          throw new Error('AXIOM_TOKEN, and AXIOM_DATASET must be set');
-        }
-
-        // Propagate debug mode to processes that we can't reach otherwise (e.g., reporter, app instrumentation)
-        if (options.debug) {
-          process.env.AXIOM_DEBUG = 'true';
-        }
-
-        let targetPath = '.';
-        let include = ['**/*.eval.ts'];
-        let testNamePattern: RegExp | undefined;
-
-        const isGlobPattern = isGlob(target);
-
-        if (isGlobPattern) {
-          // Handle glob patterns like "**/*.eval.ts" or "**/my-feature/*"
-          include = [target];
-        } else {
-          try {
-            // Try to treat as file/directory path
-            const stat = lstatSync(target);
-            if (stat.isDirectory()) {
-              targetPath = target;
-              include = ['**/*.eval.ts'];
-            } else {
-              // Single file
-              include = [target];
-            }
-          } catch {
-            // Path doesn't exist, treat as eval name
-            testNamePattern = new RegExp(target, 'i');
+        try {
+          // Propagate debug mode to processes that we can't reach otherwise (e.g., reporter, app instrumentation)
+          if (options.debug) {
+            process.env.AXIOM_DEBUG = 'true';
           }
-        }
 
-        // Load config file
-        const { config, configPath } = await loadConfig(targetPath);
+          let targetPath = '.';
+          let include = ['**/*.eval.ts'];
+          let testNamePattern: RegExp | undefined;
 
-        // Log config usage once at CLI level if debug flag is enabled
-        if (config?.__debug__logConfig && configPath) {
-          console.log(`[AxiomAI] using config from ${configPath}`);
-        }
+          const isGlobPattern = isGlob(target);
 
-        await runEvalWithContext(flagOverrides, async () => {
-          return runVitest(targetPath, {
-            watch: options.watch,
-            baseline: options.baseline,
-            include,
-            testNamePattern,
-            debug: options.debug,
-            overrides: flagOverrides,
-            config,
+          if (isGlobPattern) {
+            // Handle glob patterns like "**/*.eval.ts" or "**/my-feature/*"
+            include = [target];
+          } else {
+            try {
+              // Try to treat as file/directory path
+              const stat = lstatSync(target);
+              if (stat.isDirectory()) {
+                targetPath = target;
+                include = ['**/*.eval.ts'];
+              } else {
+                // Single file
+                include = [target];
+              }
+            } catch {
+              // Path doesn't exist, treat as eval name
+              testNamePattern = new RegExp(target, 'i');
+            }
+          }
+
+          // Load config file
+          const { config, configPath } = await loadConfig(targetPath);
+
+          // Log config usage once at CLI level if debug flag is enabled
+          if (config?.__debug__logConfig && configPath) {
+            console.log(`[AxiomAI] using config from ${configPath}`);
+          }
+
+          await runEvalWithContext(flagOverrides, async () => {
+            return runVitest(targetPath, {
+              watch: options.watch,
+              baseline: options.baseline,
+              include,
+              testNamePattern,
+              debug: options.debug,
+              overrides: flagOverrides,
+              config,
+            });
           });
-        });
+        } catch (error) {
+          if (error instanceof AxiomCLIError) {
+            console.error(`\n❌ ${error.message}\n`);
+            process.exit(1);
+          }
+          throw error;
+        }
       }),
   );
 };

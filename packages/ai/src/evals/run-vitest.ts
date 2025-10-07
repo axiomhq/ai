@@ -4,6 +4,7 @@ import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
 import type { ResolvedAxiomConfig } from '../config';
+import { setAxiomConfig } from './context/storage';
 
 export const runVitest = async (
   dir: string,
@@ -17,6 +18,9 @@ export const runVitest = async (
     config: ResolvedAxiomConfig;
   },
 ) => {
+  // Store config globally so reporters can access it
+  setAxiomConfig(opts.config);
+
   // Initialize instrumentation explicitly based on debug flag
   initInstrumentation({ enabled: !opts.debug, config: opts.config });
 
