@@ -3,7 +3,7 @@ import c from 'tinyrainbow';
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
-import type { AxiomConfig } from '../config';
+import type { ResolvedAxiomConfig } from '../config';
 
 export const runVitest = async (
   dir: string,
@@ -14,7 +14,7 @@ export const runVitest = async (
     testNamePattern?: RegExp;
     debug?: boolean;
     overrides?: Record<string, any>;
-    config: AxiomConfig;
+    config: ResolvedAxiomConfig;
   },
 ) => {
   // Initialize instrumentation explicitly based on debug flag

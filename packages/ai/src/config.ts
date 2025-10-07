@@ -5,4 +5,4 @@
  */
 
 export { defineConfig } from './config/index';
-export type { AxiomConfig, AxiomConnectionConfig } from './config/index';
+export type { AxiomConfig, AxiomConnectionConfig, ResolvedAxiomConfig } from './config/index';

@@ -1,11 +1,11 @@
 import { loadConfig as c12LoadConfig } from 'c12';
-import { defaultConfig, type AxiomConfig } from './index';
+import { createDefaultConfig, type AxiomConfig, type ResolvedAxiomConfig } from './index';
 
 /**
  * Result of loading a config file
  */
 export interface LoadConfigResult {
-  config: AxiomConfig;
+  config: ResolvedAxiomConfig;
   configPath: string | null;
 }
 
@@ -39,7 +39,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
       configFile: 'axiom.config',
       // Default configuration with env var fallbacks
       // Applied before user config, so users can override anything
-      defaultConfig: defaultConfig,
+      defaultConfig: createDefaultConfig() as AxiomConfig,
       // Disable configs other than .ts/.js/.mts/.mjs/.cts/.cjs
       rcFile: false,
       globalRc: false,
@@ -48,7 +48,8 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
     });
 
     return {
-      config: result.config || {},
+      // c12 merges user config with defaultConfig, so we can safely assert the type
+      config: result.config as ResolvedAxiomConfig,
       configPath: result.configFile || null,
     };
   } catch (error) {

@@ -1,4 +1,4 @@
-import type { AxiomConfig } from './index';
+import type { ResolvedAxiomConfig } from './index';
 
 /**
  * Resolved Axiom connection settings
@@ -10,20 +10,18 @@ export interface ResolvedAxiomConnection {
 }
 
 /**
- * Resolve Axiom connection settings from config and environment variables.
+ * Resolve Axiom connection settings from resolved config.
  *
- * Priority order:
- * 1. Config values (if provided)
- * 2. Environment variables
- * 3. Defaults
+ * Since the config is already resolved with defaults merged, we can directly
+ * access the properties without fallback chains.
  *
- * @param config - The loaded configuration (optional)
+ * @param config - The resolved configuration
  * @returns Resolved connection settings
  */
-export function resolveAxiomConnection(config: AxiomConfig): ResolvedAxiomConnection {
+export function resolveAxiomConnection(config: ResolvedAxiomConfig): ResolvedAxiomConnection {
   return {
-    url: config.eval?.url ?? process.env.AXIOM_URL ?? 'https://api.axiom.co',
-    token: config.eval?.token ?? process.env.AXIOM_TOKEN,
-    dataset: config.eval?.dataset ?? process.env.AXIOM_DATASET ?? '',
+    url: config.eval.url,
+    token: config.eval.token,
+    dataset: config.eval.dataset,
   };
 }

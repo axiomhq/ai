@@ -1,9 +1,9 @@
 import type { Case, Chat, Evaluation, Task } from './eval.types';
-import type { AxiomConfig } from '../config';
+import type { ResolvedAxiomConfig } from '../config';
 import { resolveAxiomConnection } from '../config/resolver';
 
 /** Query axiom to find a baseline for an Eval */
-export const findBaseline = async (evalName: string, config: AxiomConfig) => {
+export const findBaseline = async (evalName: string, config: ResolvedAxiomConfig) => {
   const { dataset, url, token } = resolveAxiomConnection(config);
 
   try {
@@ -38,7 +38,7 @@ export const findBaseline = async (evalName: string, config: AxiomConfig) => {
   }
 };
 
-export const findEvaluationCases = async (evalId: string, config: AxiomConfig) => {
+export const findEvaluationCases = async (evalId: string, config: ResolvedAxiomConfig) => {
   try {
     const { dataset, url, token } = resolveAxiomConnection(config);
 

@@ -1,4 +1,17 @@
 /**
+ * Utility type to make all properties in T required recursively.
+ * Keeps the types as-is but removes the optionality.
+ */
+type DeepRequired<T> =
+  T extends Array<infer U>
+    ? Array<U>
+    : T extends object
+      ? {
+          [P in keyof T]-?: DeepRequired<T[P]>;
+        }
+      : T;
+
+/**
  * Axiom API connection configuration
  */
 export interface AxiomConnectionConfig {
@@ -10,10 +23,10 @@ export interface AxiomConnectionConfig {
   url?: string;
 
   /**
-   * Axiom API token
+   * Axiom API token (can be undefined if not set)
    * @example process.env.AXIOM_TOKEN
    */
-  token?: string;
+  token?: string | undefined;
 
   /**
    * Axiom dataset name
@@ -33,7 +46,7 @@ type AxiomEvalsInstrumentationConfig =
     };
 
 /**
- * Axiom AI SDK base configuration
+ * Axiom AI SDK base configuration (user-facing, all optional)
  */
 export interface AxiomConfigBase {
   /**
@@ -66,6 +79,15 @@ export interface AxiomConfigBase {
     exclude?: string[];
   };
 }
+
+/**
+ * Resolved Axiom AI SDK configuration with all required keys.
+ * This is the type returned after merging user config with defaults.
+ *
+ * Uses DeepRequired to ensure all optional properties from AxiomConfigBase
+ * become required, preventing missing properties in the resolved config.
+ */
+export type ResolvedAxiomConfig = DeepRequired<AxiomConfigBase>;
 
 /**
  * Axiom AI SDK configuration with optional environment-specific overrides.
@@ -108,23 +130,43 @@ export function defineConfig(config: AxiomConfig): AxiomConfig {
   return config;
 }
 
-export const defaultConfig: AxiomConfig = {
-  __debug__logConfig: false,
-  eval: {
-    dataset: process.env.AXIOM_DATASET,
-    token: process.env.AXIOM_TOKEN,
-    url: process.env.AXIOM_URL || 'https://api.axiom.co',
+/**
+ * Create default configuration from environment variables.
+ *
+ * @returns Resolved configuration with all required properties
+ */
+export function createDefaultConfig(): ResolvedAxiomConfig {
+  const token = process.env.AXIOM_TOKEN;
+  const dataset = process.env.AXIOM_DATASET;
 
-    // TODO: BEFORE MERGE - does c12 offer a better way to handle this?
-    include: [
-      '**/*.eval.ts',
-      '**/*.eval.js',
-      '**/*.eval.mts',
-      '**/*.eval.mjs',
-      '**/*.eval.cts',
-      '**/*.eval.cjs',
-    ],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/build/**'],
-    timeoutMs: 60_000,
-  },
-};
+  if (!token) {
+    throw new Error(
+      '[AxiomAI] Missing Axiom eval token. Please either set in `axiom.config.ts` or `process.env.AXIOM_TOKEN`.',
+    );
+  }
+  if (!dataset) {
+    throw new Error(
+      '[AxiomAI] Missing Axiom eval dataset. Please either set in `axiom.config.ts` or `process.env.AXIOM_DATASET`.',
+    );
+  }
+
+  return {
+    __debug__logConfig: false,
+    eval: {
+      url: process.env.AXIOM_URL || 'https://api.axiom.co',
+      token: token,
+      dataset: dataset,
+      instrumentation: { type: 'file', path: 'TODO: BEFORE MERGE - figure this out' },
+      include: [
+        '**/*.eval.ts',
+        '**/*.eval.js',
+        '**/*.eval.mts',
+        '**/*.eval.mjs',
+        '**/*.eval.cts',
+        '**/*.eval.cjs',
+      ],
+      exclude: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+      timeoutMs: 60_000,
+    },
+  } satisfies ResolvedAxiomConfig;
+}

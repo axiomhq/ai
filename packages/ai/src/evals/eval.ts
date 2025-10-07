@@ -4,7 +4,7 @@ import { customAlphabet } from 'nanoid';
 import { withEvalContext, getEvalContext, getConfigScope } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
-import type { AxiomConfig } from '../config';
+import type { ResolvedAxiomConfig } from '../config';
 import { startSpan, flush } from './instrument';
 import { getGitUserInfo } from './git-info';
 import type {
@@ -37,7 +37,7 @@ declare module 'vitest' {
     baseline?: string;
     debug?: boolean;
     overrides?: Record<string, any>;
-    axiomConfig?: AxiomConfig;
+    axiomConfig?: ResolvedAxiomConfig;
   }
 }
 
@@ -150,7 +150,7 @@ async function registerEval<
   const baselineId = inject('baseline');
   const isDebug = inject('debug');
   const injectedOverrides = inject('overrides') as Record<string, any> | undefined;
-  const axiomConfig = inject('axiomConfig') as AxiomConfig | undefined;
+  const axiomConfig = inject('axiomConfig') as ResolvedAxiomConfig | undefined;
 
   const result = await describe(
     `evaluate: ${evalName}`,
