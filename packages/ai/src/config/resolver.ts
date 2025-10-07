@@ -20,10 +20,10 @@ export interface ResolvedAxiomConnection {
  * @param config - The loaded configuration (optional)
  * @returns Resolved connection settings
  */
-export function resolveAxiomConnection(config?: AxiomConfig): ResolvedAxiomConnection {
+export function resolveAxiomConnection(config: AxiomConfig): ResolvedAxiomConnection {
   return {
-    url: config?.eval?.url ?? process.env.AXIOM_URL ?? 'https://api.axiom.co',
-    token: config?.eval?.token ?? process.env.AXIOM_TOKEN,
-    dataset: config?.eval?.dataset ?? process.env.AXIOM_DATASET ?? '',
+    url: config.eval?.url ?? process.env.AXIOM_URL ?? 'https://api.axiom.co',
+    token: config.eval?.token ?? process.env.AXIOM_TOKEN,
+    dataset: config.eval?.dataset ?? process.env.AXIOM_DATASET ?? '',
   };
 }

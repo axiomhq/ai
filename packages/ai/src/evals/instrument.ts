@@ -9,12 +9,13 @@ import { resolveAxiomConnection } from '../config/resolver';
 // Lazily initialized tracer provider and exporter
 let provider: NodeTracerProvider | undefined;
 let initialized = false;
-let globalConfig: AxiomConfig | undefined;
+// TODO: BEFORE MERGE - is this ok to not be nullish?
+let globalConfig: AxiomConfig;
 
 // Create a shared tracer instance (no-op if no provider registered)
 export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
-export function initInstrumentation(config: { enabled: boolean; config?: AxiomConfig }): void {
+export function initInstrumentation(config: { enabled: boolean; config: AxiomConfig }): void {
   // Store config globally for use in startSpan
   globalConfig = config.config;
 

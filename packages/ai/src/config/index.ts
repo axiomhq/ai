@@ -111,6 +111,10 @@ export function defineConfig(config: AxiomConfig): AxiomConfig {
 export const defaultConfig: AxiomConfig = {
   __debug__logConfig: false,
   eval: {
+    dataset: process.env.AXIOM_DATASET,
+    token: process.env.AXIOM_TOKEN,
+    url: process.env.AXIOM_URL || 'https://api.axiom.co',
+
     // TODO: BEFORE MERGE - does c12 offer a better way to handle this?
     include: [
       '**/*.eval.ts',

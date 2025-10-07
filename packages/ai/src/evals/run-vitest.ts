@@ -14,7 +14,7 @@ export const runVitest = async (
     testNamePattern?: RegExp;
     debug?: boolean;
     overrides?: Record<string, any>;
-    config?: AxiomConfig;
+    config: AxiomConfig;
   },
 ) => {
   // Initialize instrumentation explicitly based on debug flag
