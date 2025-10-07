@@ -3,8 +3,7 @@ import c from 'tinyrainbow';
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
-
-export const DEFAULT_TIMEOUT = parseInt(process.env.AXIOM_TIMEOUT || '60000');
+import type { AxiomConfig } from '../config';
 
 export const runVitest = async (
   dir: string,
@@ -15,10 +14,11 @@ export const runVitest = async (
     testNamePattern?: RegExp;
     debug?: boolean;
     overrides?: Record<string, any>;
+    config?: AxiomConfig;
   },
 ) => {
   // Initialize instrumentation explicitly based on debug flag
-  initInstrumentation({ enabled: !opts.debug });
+  initInstrumentation({ enabled: !opts.debug, config: opts.config });
 
   if (opts.debug) {
     console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
@@ -37,12 +37,13 @@ export const runVitest = async (
     printConsoleTrace: true,
     silent: false,
     disableConsoleIntercept: true,
-    testTimeout: DEFAULT_TIMEOUT,
+    testTimeout: opts.config?.eval?.timeoutMs || 60_000,
     globals: true,
     provide: {
       baseline: opts.baseline,
       debug: opts.debug,
       overrides: opts.overrides,
+      axiomConfig: opts.config,
     },
   });
 

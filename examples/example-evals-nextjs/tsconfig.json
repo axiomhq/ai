@@ -33,7 +33,8 @@
     ".next/types/**/*.ts",
     "src/instrumentation.ts",
     "src/instrumentation.node.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "axiom.config.ts"
   ],
   "exclude": ["node_modules"]
 }

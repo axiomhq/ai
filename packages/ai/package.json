@@ -45,6 +45,16 @@
         "types": "./dist/evals.d.cts",
         "default": "./dist/evals.cjs"
       }
+    },
+    "./ai/config": {
+      "import": {
+        "types": "./dist/config.d.ts",
+        "default": "./dist/config.js"
+      },
+      "require": {
+        "types": "./dist/config.d.cts",
+        "default": "./dist/config.cjs"
+      }
     }
   },
   "keywords": [
@@ -69,6 +79,7 @@
     "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "@sinclair/typebox": "^0.34.37",
+    "c12": "^2.0.1",
     "commander": "^14.0.0",
     "console-table-printer": "^2.14.6",
     "handlebars": "^4.7.8",

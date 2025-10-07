@@ -4,6 +4,7 @@ import { lstatSync } from 'node:fs';
 import { runEvalWithContext } from '../utils/eval-context-runner';
 import type { FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
+import { loadConfig } from '../../config/loader';
 
 export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
@@ -57,6 +58,14 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           }
         }
 
+        // Load config file
+        const { config, configPath } = await loadConfig(targetPath);
+
+        // Log config usage once at CLI level if debug flag is enabled
+        if (config?.__debug__logConfig && configPath) {
+          console.log(`[AxiomAI] using config from ${configPath}`);
+        }
+
         await runEvalWithContext(flagOverrides, async () => {
           return runVitest(targetPath, {
             watch: options.watch,
@@ -65,6 +74,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             testNamePattern,
             debug: options.debug,
             overrides: flagOverrides,
+            config,
           });
         });
       }),
