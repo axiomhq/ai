@@ -73,11 +73,22 @@ export interface AxiomConfigBase {
   AxiomConnectionConfig & {
     // TODO: BEFORE MERGE - currently not handling
     instrumentation?: AxiomEvalsInstrumentationConfig;
-    // TODO: BEFORE MERGE - currently not handling
+    /**
+     * Timeout for eval execution in milliseconds
+     * @default 60000
+     */
     timeoutMs?: number;
-    // TODO: BEFORE MERGE - currently not handling
+    /**
+     * Glob patterns to include when running evals
+     * @default ['**\/*.eval.{ts,js,mts,mjs,cts,cjs}']
+     * @example ['**\/*.eval.ts', 'tests/**\/*.test.ts']
+     */
     include?: string[];
-    // TODO: BEFORE MERGE - currently not handling
+    /**
+     * Glob patterns to exclude when running evals
+     * @default ['**\/node_modules/**', '**\/dist/**', '**\/build/**']
+     * @example ['**\/node_modules/**', '**\/.next/**']
+     */
     exclude?: string[];
   };
 }
@@ -147,15 +158,8 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
       token: process.env.AXIOM_TOKEN,
       dataset: process.env.AXIOM_DATASET,
       instrumentation: { type: 'file', path: 'TODO: BEFORE MERGE - figure this out' },
-      include: [
-        '**/*.eval.ts',
-        '**/*.eval.js',
-        '**/*.eval.mts',
-        '**/*.eval.mjs',
-        '**/*.eval.cts',
-        '**/*.eval.cjs',
-      ],
-      exclude: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+      include: [],
+      exclude: [],
       timeoutMs: 60_000,
     },
   };

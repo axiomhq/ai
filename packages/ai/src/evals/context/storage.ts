@@ -1,7 +1,7 @@
 import { trace } from '@opentelemetry/api';
 import { createAsyncHook } from './manager';
 import { type createAppScope } from '../../app-scope';
-import type { ResolvedAxiomConfig } from '../../config';
+import type { ResolvedAxiomConfig } from '../../config/index';
 
 // Global fallback for config scope when called outside of eval context (e.g., module import time)
 const CONFIG_SCOPE_SYMBOL = Symbol.for('axiom.eval.configScope');

@@ -3,7 +3,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, type Context, type SpanOptions } from '@opentelemetry/api';
 import { initAxiomAI } from '../../src/otel/initAxiomAI';
-import type { ResolvedAxiomConfig } from '../config';
+import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 
 // Lazily initialized tracer provider and exporter
@@ -13,7 +13,10 @@ let initialized = false;
 // Create a shared tracer instance (no-op if no provider registered)
 export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
-export function initInstrumentation(config: { enabled: boolean; config: ResolvedAxiomConfig }): void {
+export function initInstrumentation(config: {
+  enabled: boolean;
+  config: ResolvedAxiomConfig;
+}): void {
   if (!config.enabled) {
     initialized = true; // Mark initialized to avoid later accidental enablement
     return;
@@ -73,7 +76,7 @@ export function ensureInstrumentationInitialized(config: ResolvedAxiomConfig): v
 export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
   if (!initialized) {
     throw new Error(
-      'Instrumentation not initialized. This is likely a bug - instrumentation should be initialized before startSpan is called.'
+      'Instrumentation not initialized. This is likely a bug - instrumentation should be initialized before startSpan is called.',
     );
   }
   return tracer.startSpan(name, opts, context);

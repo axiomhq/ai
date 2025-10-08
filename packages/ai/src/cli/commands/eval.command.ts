@@ -31,10 +31,14 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           }
 
           let targetPath = '.';
-          let include = ['**/*.eval.ts'];
+          let include: string[] = [];
+          let exclude: string[] | undefined;
           let testNamePattern: RegExp | undefined;
 
           const isGlobPattern = isGlob(target);
+
+          // Load config file first to get defaults
+          const { config, configPath } = await loadConfig(target === '.' ? '.' : targetPath);
 
           if (isGlobPattern) {
             // Handle glob patterns like "**/*.eval.ts" or "**/my-feature/*"
@@ -45,7 +49,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               const stat = lstatSync(target);
               if (stat.isDirectory()) {
                 targetPath = target;
-                include = ['**/*.eval.ts'];
+                // Use config include patterns
+                include = config?.eval?.include || [];
               } else {
                 // Single file
                 include = [target];
@@ -53,11 +58,13 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             } catch {
               // Path doesn't exist, treat as eval name
               testNamePattern = new RegExp(target, 'i');
+              // Use config include patterns when searching by name
+              include = config?.eval?.include || [];
             }
           }
 
-          // Load config file
-          const { config, configPath } = await loadConfig(targetPath);
+          // Always use config exclude patterns
+          exclude = config?.eval?.exclude;
 
           // Log config usage once at CLI level if debug flag is enabled
           if (config?.__debug__logConfig && configPath) {
@@ -69,6 +76,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               watch: options.watch,
               baseline: options.baseline,
               include,
+              exclude,
               testNamePattern,
               debug: options.debug,
               overrides: flagOverrides,

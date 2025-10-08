@@ -8,6 +8,9 @@ export default defineConfig({
     token: process.env.AXIOM_TOKEN,
     dataset: process.env.AXIOM_DATASET,
 
+    include: ['**/*.eval.{ts,js,mts,mjs,cts,cjs}'],
+    exclude: [],
+
     instrumentation: {
       type: 'file',
       path: './src/instrumentation.ts',

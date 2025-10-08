@@ -1,5 +1,5 @@
 import type { Case, Chat, Evaluation, Task } from './eval.types';
-import type { ResolvedAxiomConfig } from '../config';
+import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 
 /** Query axiom to find a baseline for an Eval */

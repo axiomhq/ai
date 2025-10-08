@@ -4,7 +4,7 @@ import { customAlphabet } from 'nanoid';
 import { withEvalContext, getEvalContext, getConfigScope } from './context/storage';
 
 import { Attr } from '../otel/semconv/attributes';
-import type { ResolvedAxiomConfig } from '../config';
+import type { ResolvedAxiomConfig } from '../config/index';
 import { startSpan, flush, ensureInstrumentationInitialized } from './instrument';
 import { getGitUserInfo } from './git-info';
 import type {

@@ -3,8 +3,8 @@ import c from 'tinyrainbow';
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
-import type { ResolvedAxiomConfig } from '../config';
 import { setAxiomConfig } from './context/storage';
+import type { ResolvedAxiomConfig } from '../config/index';
 
 export const runVitest = async (
   dir: string,
@@ -12,6 +12,7 @@ export const runVitest = async (
     watch: boolean;
     baseline?: string;
     include: string[];
+    exclude?: string[];
     testNamePattern?: RegExp;
     debug?: boolean;
     overrides?: Record<string, any>;
@@ -32,6 +33,7 @@ export const runVitest = async (
     root: dir ? dir : process.cwd(),
     mode: 'test',
     include: opts.include,
+    exclude: opts.exclude,
     testNamePattern: opts.testNamePattern,
     reporters: ['verbose', new AxiomReporter()],
     environment: 'node',
