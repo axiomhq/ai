@@ -5,7 +5,7 @@ import { withEvalContext, getEvalContext, getConfigScope } from './context/stora
 
 import { Attr } from '../otel/semconv/attributes';
 import type { ResolvedAxiomConfig } from '../config';
-import { startSpan, flush } from './instrument';
+import { startSpan, flush, ensureInstrumentationInitialized } from './instrument';
 import { getGitUserInfo } from './git-info';
 import type {
   CollectionRecord,
@@ -154,6 +154,11 @@ async function registerEval<
 
   if (!axiomConfig) {
     throw new AxiomCLIError('Axiom config not found');
+  }
+
+  // Ensure instrumentation is initialized with config from inject context
+  if (!isDebug) {
+    ensureInstrumentationInitialized(axiomConfig);
   }
 
   const result = await describe(

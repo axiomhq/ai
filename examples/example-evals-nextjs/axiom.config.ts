@@ -1,4 +1,4 @@
-import { defineConfig, type AxiomConfig } from 'axiom/ai/config';
+import { defineConfig } from 'axiom/ai/config';
 
 export default defineConfig({
   __debug__logConfig: true,
@@ -15,4 +15,4 @@ export default defineConfig({
 
     timeoutMs: 60_000,
   },
-}) satisfies AxiomConfig;
+});

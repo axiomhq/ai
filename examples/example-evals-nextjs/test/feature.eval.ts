@@ -2,7 +2,7 @@ import { experimental_Eval as Eval } from 'axiom/ai/evals';
 import { flag, fact, pickFlags } from '../src/lib/app-scope';
 
 const myFn = async (input: string, expected: string) => {
-  const strategy = flag('behavior.strategy', 'smart');
+  const strategy = flag('behavior.strategy');
   const _f = flag('ui.theme');
 
   const response = strategy === 'dumb' ? input : expected;

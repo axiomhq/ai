@@ -9,16 +9,11 @@ import { resolveAxiomConnection } from '../config/resolver';
 // Lazily initialized tracer provider and exporter
 let provider: NodeTracerProvider | undefined;
 let initialized = false;
-// Global config is always resolved with defaults, so never nullish
-let globalConfig: ResolvedAxiomConfig;
 
 // Create a shared tracer instance (no-op if no provider registered)
 export const tracer = trace.getTracer('axiom', __SDK_VERSION__);
 
 export function initInstrumentation(config: { enabled: boolean; config: ResolvedAxiomConfig }): void {
-  // Store config globally for use in startSpan
-  globalConfig = config.config;
-
   if (!config.enabled) {
     initialized = true; // Mark initialized to avoid later accidental enablement
     return;
@@ -65,10 +60,21 @@ export const flush = async () => {
   await provider?.forceFlush();
 };
 
-export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
-  // need to re-init instrumentation in vitest worker processes
+/**
+ * Ensure instrumentation is initialized with the given config.
+ * Call this from within test context before using startSpan.
+ */
+export function ensureInstrumentationInitialized(config: ResolvedAxiomConfig): void {
   if (!initialized) {
-    initInstrumentation({ enabled: true, config: globalConfig });
+    initInstrumentation({ enabled: true, config });
+  }
+}
+
+export const startSpan = (name: string, opts: SpanOptions, context?: Context) => {
+  if (!initialized) {
+    throw new Error(
+      'Instrumentation not initialized. This is likely a bug - instrumentation should be initialized before startSpan is called.'
+    );
   }
   return tracer.startSpan(name, opts, context);
 };

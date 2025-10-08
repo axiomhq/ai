@@ -1,5 +1,5 @@
 import { loadConfig as c12LoadConfig } from 'c12';
-import { createDefaultConfig, type AxiomConfig, type ResolvedAxiomConfig } from './index';
+import { createPartialDefaults, validateConfig, type AxiomConfig, type ResolvedAxiomConfig } from './index';
 import { AxiomCLIError, errorToString } from '../cli/errors';
 
 /**
@@ -38,9 +38,9 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
       cwd,
       // Support common config file extensions
       configFile: 'axiom.config',
-      // Default configuration with env var fallbacks
+      // Partial defaults with env var fallbacks
       // Applied before user config, so users can override anything
-      defaultConfig: createDefaultConfig() as AxiomConfig,
+      defaultConfig: createPartialDefaults() as AxiomConfig,
       // Disable configs other than .ts/.js/.mts/.mjs/.cts/.cjs
       rcFile: false,
       globalRc: false,
@@ -48,9 +48,11 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
       giget: false,
     });
 
+    // Validate merged config has all required values
+    const validatedConfig = validateConfig(result.config);
+
     return {
-      // c12 merges user config with defaultConfig, so we can safely assert the type
-      config: result.config as ResolvedAxiomConfig,
+      config: validatedConfig,
       configPath: result.configFile || null,
     };
   } catch (error) {

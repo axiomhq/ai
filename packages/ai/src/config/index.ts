@@ -133,31 +133,19 @@ export function defineConfig(config: AxiomConfig): AxiomConfig {
 }
 
 /**
- * Create default configuration from environment variables.
+ * Create partial default configuration from environment variables.
+ * Does not throw if required values are missing - validation happens after merge.
  *
- * @returns Resolved configuration with all required properties
+ * @returns Partial configuration with defaults and env var values
+ * @internal
  */
-export function createDefaultConfig(): ResolvedAxiomConfig {
-  const token = process.env.AXIOM_TOKEN;
-  const dataset = process.env.AXIOM_DATASET;
-
-  if (!token) {
-    throw new AxiomCLIError(
-      'Missing eval API token. Please set either eval.toen in axiom.config.ts, or process.env.AXIOM_TOKEN',
-    );
-  }
-  if (!dataset) {
-    throw new AxiomCLIError(
-      'Missing eval dataset. Please set either eval.dataset in axiom.config.ts, or process.env.AXIOM_DATASET',
-    );
-  }
-
+export function createPartialDefaults(): Partial<AxiomConfigBase> {
   return {
     __debug__logConfig: false,
     eval: {
       url: process.env.AXIOM_URL || 'https://api.axiom.co',
-      token: token,
-      dataset: dataset,
+      token: process.env.AXIOM_TOKEN,
+      dataset: process.env.AXIOM_DATASET,
       instrumentation: { type: 'file', path: 'TODO: BEFORE MERGE - figure this out' },
       include: [
         '**/*.eval.ts',
@@ -170,5 +158,26 @@ export function createDefaultConfig(): ResolvedAxiomConfig {
       exclude: ['**/node_modules/**', '**/dist/**', '**/build/**'],
       timeoutMs: 60_000,
     },
-  } satisfies ResolvedAxiomConfig;
+  };
+}
+
+export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomConfig {
+  const errors: string[] = [];
+
+  if (!config.eval?.token) {
+    errors.push(
+      'eval.token is required (set in axiom.config.ts or AXIOM_TOKEN environment variable)',
+    );
+  }
+  if (!config.eval?.dataset) {
+    errors.push(
+      'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
+    );
+  }
+
+  if (errors.length > 0) {
+    throw new AxiomCLIError(`Invalid Axiom configuration:\n  - ${errors.join('\n  - ')}`);
+  }
+
+  return config as ResolvedAxiomConfig;
 }
