@@ -31,7 +31,6 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             process.env.AXIOM_DEBUG = 'true';
           }
 
-          let targetPath = '.';
           let include: string[] = [];
           let exclude: string[] | undefined;
           let testNamePattern: RegExp | undefined;
@@ -49,7 +48,6 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               // Try to treat as file/directory path
               const stat = lstatSync(target);
               if (stat.isDirectory()) {
-                targetPath = target;
                 // Use config include patterns
                 include = config?.eval?.include || [];
               } else {
@@ -78,7 +76,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           }
 
           await runEvalWithContext(flagOverrides, async () => {
-            return runVitest(targetPath, {
+            return runVitest('.', {
               watch: options.watch,
               baseline: options.baseline,
               include,
