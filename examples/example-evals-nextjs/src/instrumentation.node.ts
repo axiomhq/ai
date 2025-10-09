@@ -10,21 +10,29 @@ let provider: NodeTracerProvider | undefined;
 
 export const setupAppInstrumentation: AxiomEvalInstrumentationHook = async (options) => {
   if (provider) {
-    return { provider, tracer };
+    return { provider };
   }
 
-  const dataset = options.dataset ?? process.env.AXIOM_DATASET;
-  const url = options.url ?? process.env.AXIOM_URL ?? 'https://api.axiom.co';
-  const token = options.token ?? process.env.AXIOM_TOKEN;
+  const dataset = options.dataset;
+  const url = options.url;
+  const token = options.token;
 
   if (!dataset) {
-    throw new Error('AXIOM_DATASET is required to initialize tracing');
+    throw new Error('Dataset is required to initialize tracing');
+  }
+
+  if (!options.url) {
+    throw new Error('URL is required to initialize tracing');
+  }
+
+  if (!options.token) {
+    throw new Error('Token is required to initialize tracing');
   }
 
   const exporter = new OTLPTraceExporter({
     url: `${url}/v1/traces`,
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
       'X-Axiom-Dataset': dataset,
     },
   });
