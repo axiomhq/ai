@@ -71,8 +71,7 @@ export interface AxiomConfigBase {
    * }
    * ```
    */
-  eval?: // TODO: BEFORE MERGE - currently not handling
-  AxiomConnectionConfig & {
+  eval?: AxiomConnectionConfig & {
     /**
      * Optional hook to initialize application OpenTelemetry instrumentation.
      * Called before eval execution with resolved Axiom connection details.
