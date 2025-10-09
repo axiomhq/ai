@@ -37,9 +37,7 @@ async function runInstrumentationHook(
   try {
     return await hook(options);
   } catch (error) {
-    throw new AxiomCLIError(
-      `Failed to execute instrumentation hook: ${(error as Error)?.message ?? String(error)}`,
-    );
+    throw new AxiomCLIError(`Failed to execute instrumentation hook: ${errorToString(error)}`);
   }
 }
 
@@ -101,9 +99,7 @@ async function resolveInstrumentationHook(
               null) as AxiomEvalInstrumentationHook | null;
           } catch (error) {
             throw new AxiomCLIError(
-              `Failed to reload instrumentation from config: ${
-                (error as Error)?.message ?? String(error)
-              }`,
+              `Failed to reload instrumentation from config: ${errorToString(error)}`,
             );
           }
         })(),
@@ -137,7 +133,7 @@ export async function initInstrumentation(config: {
 
     const connection = resolveAxiomConnection(config.config);
     const hook =
-      (config.config.eval.instrumentation as AxiomEvalInstrumentationHook | null | undefined) ??
+      config.config.eval.instrumentation ??
       (await resolveInstrumentationHook(config.config, config.configPath ?? null));
     let hookResult: AxiomEvalInstrumentationResult | void = undefined;
 
