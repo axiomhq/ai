@@ -40,16 +40,43 @@ export interface AxiomConnectionConfig {
   dataset?: string;
 }
 
+/**
+ * Options passed to the instrumentation hook
+ * - url: string
+ * - token: string
+ * - dataset: string
+ */
 export interface AxiomEvalInstrumentationOptions {
   url: string;
   token: string;
   dataset: string;
 }
 
+/**
+ * Result returned from the instrumentation hook
+ * - provider: TracerProvider
+ */
 export interface AxiomEvalInstrumentationResult {
   provider: TracerProvider;
 }
 
+/**
+ * Hook function to initialize application OpenTelemetry instrumentation.
+ * Called before eval execution with resolved Axiom connection details.
+ *
+ * @param options - Configuration options
+ * @param options.url - Axiom API URL
+ * @param options.token - Axiom API token
+ * @param options.dataset - Axiom dataset name
+ * @returns TracerProvider or Promise resolving to TracerProvider
+ *
+ * @example
+ * ```typescript
+ * instrumentation: ({ url, token, dataset }) => {
+ *   return setupAppInstrumentation({ url, token, dataset });
+ * }
+ * ```
+ */
 export type AxiomEvalInstrumentationHook = (
   options: AxiomEvalInstrumentationOptions,
 ) => AxiomEvalInstrumentationResult | Promise<AxiomEvalInstrumentationResult>;
@@ -59,12 +86,12 @@ export type AxiomEvalInstrumentationHook = (
  */
 export interface AxiomConfigBase {
   /**
-   * Axiom API connection settings
+   * Eval configuration settings
    *
    * @example
    * ```typescript
-   * axiom: {
-   *   url: process.env.AXIOM_URL || 'https://api.axiom.co',
+   * eval: {
+   *   url: process.env.AXIOM_URL,
    *   token: process.env.AXIOM_TOKEN,
    *   dataset: process.env.AXIOM_DATASET
    * }
@@ -114,8 +141,10 @@ export type ResolvedAxiomConfig = DeepRequired<AxiomConfigBase>;
  * @example
  * ```typescript
  * export default defineConfig({
- *   axiom: {
- *     url: 'https://api.axiom.co'
+ *   eval: {
+ *     url: process.env.AXIOM_URL,
+ *     token: process.env.AXIOM_TOKEN,
+ *     dataset: process.env.AXIOM_DATASET,
  *   },
  * })
  * ```
@@ -128,7 +157,6 @@ export interface AxiomConfig extends AxiomConfigBase {
   [key: `$${string}`]: Partial<AxiomConfigBase> | undefined;
 }
 
-// TODO: BEFORE MERGE - give a better example
 /**
  * Type-safe helper for defining Axiom configuration.
  *
@@ -137,7 +165,17 @@ export interface AxiomConfig extends AxiomConfigBase {
  *
  * @example
  * ```typescript
- * import { defineConfig } from 'axiom/ai/config'
+ * import { defineConfig } from 'axiom/ai/config';
+ *
+ * export default defineConfig({
+ *   eval: {
+ *     url: process.env.AXIOM_URL,
+ *     token: process.env.AXIOM_TOKEN,
+ *     dataset: process.env.AXIOM_DATASET,
+ *     include: ['**\/*.eval.{ts,js}'],
+ *     instrumentation: ({ url, token, dataset }) => setupAppInstrumentation({ url, token, dataset }),
+ *   },
+ * });
  * ```
  */
 export function defineConfig(config: AxiomConfig): AxiomConfig {
@@ -165,6 +203,14 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
   };
 }
 
+/**
+ * Validates and returns a fully resolved Axiom configuration.
+ *
+ * @param config - Partial configuration to validate
+ * @returns Fully resolved configuration with all required fields
+ * @throws {AxiomCLIError} If required fields are missing or invalid
+ * @internal
+ */
 export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomConfig {
   const errors: string[] = [];
 

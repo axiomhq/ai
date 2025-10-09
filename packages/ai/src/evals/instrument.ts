@@ -19,7 +19,6 @@ import { resolveAxiomConnection } from '../config/resolver';
 import { AxiomCLIError, errorToString } from '../cli/errors';
 
 // Lazily initialized tracer provider and exporter
-// TODO: BEFORE MERGE - see if we can move these out of top-level scope. would make testing easier and help prevent edge cases!
 let axiomProvider: NodeTracerProvider | undefined;
 let axiomTracer: Tracer | undefined;
 let userProvider: TracerProvider | undefined;

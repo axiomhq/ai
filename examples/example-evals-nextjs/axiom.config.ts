@@ -10,7 +10,7 @@ export default defineConfig({
     include: ['**/*.eval.{ts,js,mts,mjs,cts,cjs}'],
     exclude: [],
 
-    instrumentation: (opts) => setupAppInstrumentation(opts),
+    instrumentation: ({ url, token, dataset }) => setupAppInstrumentation({ url, token, dataset }),
 
     timeoutMs: 60_000,
   },
