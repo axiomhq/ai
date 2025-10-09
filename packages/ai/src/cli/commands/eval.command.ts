@@ -6,6 +6,7 @@ import type { FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
 import { AxiomCLIError } from '../errors';
+import c from 'tinyrainbow';
 
 export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
@@ -66,9 +67,14 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           // Always use config exclude patterns
           exclude = config?.eval?.exclude;
 
-          // Log config usage once at CLI level if debug flag is enabled
-          if (config?.__debug__logConfig && configPath) {
-            console.log(`[AxiomAI] using config from ${configPath}`);
+          // Warn once at CLI level if instrumentation is missing
+          if (!config?.eval?.instrumentation) {
+            console.warn(
+              c.yellow(
+                '⚠ App instrumentation (`eval.instrumentation` in `axiom.config.ts`) not configured. Using default provider.',
+              ),
+            );
+            console.log('');
           }
 
           await runEvalWithContext(flagOverrides, async () => {
@@ -81,6 +87,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               debug: options.debug,
               overrides: flagOverrides,
               config,
+              configPath,
             });
           });
         } catch (error) {

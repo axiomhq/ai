@@ -72,6 +72,57 @@ const result = await withSpan(
 npm install axiom
 ```
 
+## Eval Instrumentation
+
+When running evals, share your existing OpenTelemetry setup by exporting a function that initializes your tracer provider:
+
+```ts
+// instrumentation.node.ts
+import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { initAxiomAI } from 'axiom/ai';
+import type { AxiomEvalInstrumentationHook } from 'axiom/ai/config';
+
+let provider: NodeTracerProvider | undefined;
+
+export const setupAppInstrumentation: AxiomEvalInstrumentationHook = async ({ dataset, token, url }) => {
+  if (provider) return { provider };
+
+  const exporter = new OTLPTraceExporter({
+    url: `${url}/v1/traces`,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Axiom-Dataset': dataset,
+    },
+  });
+
+  provider = new NodeTracerProvider({
+    resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: 'my-app' }),
+    spanProcessors: [new BatchSpanProcessor(exporter)],
+  });
+
+  provider.register();
+  initAxiomAI({ tracer: provider.getTracer('my-app') });
+
+  return { provider };
+};
+```
+
+```ts
+// axiom.config.ts
+import { defineConfig } from 'axiom/ai/config';
+import { setupAppInstrumentation } from './instrumentation.node';
+
+export default defineConfig({
+  eval: {
+    instrumentation: setupAppInstrumentation,
+    // ...
+  },
+});
+```
+
 ## Documentation
 
 For more information about how to set up and use the Axiom JavaScript SDK, read documentation on [axiom.co/docs/ai-engineering/quickstart](https://axiom.co/docs/ai-engineering/quickstart).

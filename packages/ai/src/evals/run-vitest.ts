@@ -17,13 +17,26 @@ export const runVitest = async (
     debug?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
+    configPath?: string | null;
   },
 ) => {
   // Store config globally so reporters can access it
   setAxiomConfig(opts.config);
 
   // Initialize instrumentation explicitly based on debug flag
-  initInstrumentation({ enabled: !opts.debug, config: opts.config });
+  await initInstrumentation({
+    enabled: !opts.debug,
+    config: opts.config,
+    configPath: opts.configPath ?? null,
+  });
+
+  const providedConfig: ResolvedAxiomConfig = {
+    ...opts.config,
+    eval: {
+      ...opts.config.eval,
+      instrumentation: null,
+    },
+  };
 
   if (opts.debug) {
     console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
@@ -49,7 +62,8 @@ export const runVitest = async (
       baseline: opts.baseline,
       debug: opts.debug,
       overrides: opts.overrides,
-      axiomConfig: opts.config,
+      axiomConfig: providedConfig,
+      axiomConfigPath: opts.configPath ?? null,
     },
   });
 

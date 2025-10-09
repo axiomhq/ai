@@ -38,6 +38,7 @@ declare module 'vitest' {
     debug?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
+    axiomConfigPath?: string | null;
   }
 }
 
@@ -149,17 +150,17 @@ async function registerEval<
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
   const isDebug = inject('debug');
-  const injectedOverrides = inject('overrides') as Record<string, any> | undefined;
-  const axiomConfig = inject('axiomConfig') as ResolvedAxiomConfig | undefined;
+  const injectedOverrides = inject('overrides');
+  const axiomConfig = inject('axiomConfig');
+  const axiomConfigPath = inject('axiomConfigPath');
 
   if (!axiomConfig) {
     throw new AxiomCLIError('Axiom config not found');
   }
 
-  // Ensure instrumentation is initialized with config from inject context
-  if (!isDebug) {
-    ensureInstrumentationInitialized(axiomConfig);
-  }
+  const instrumentationReady = !isDebug
+    ? ensureInstrumentationInitialized(axiomConfig, axiomConfigPath ?? null)
+    : Promise.resolve();
 
   const result = await describe(
     `evaluate: ${evalName}`,
@@ -176,30 +177,9 @@ async function registerEval<
       const evalVersion = nanoid();
       let evalId = ''; // get traceId
 
-      const suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
-        attributes: {
-          [Attr.GenAI.Operation.Name]: 'eval',
-          [Attr.Eval.Name]: evalName,
-          [Attr.Eval.Version]: evalVersion,
-          [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
-          [Attr.Eval.Tags]: [],
-          [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
-          [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
-          [Attr.Eval.Collection.Size]: dataset.length,
-          // metadata
-          'eval.metadata': JSON.stringify(opts.metadata),
-          // baseline
-          [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
-          [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
-          // user info
-          [Attr.Eval.User.Name]: user?.name,
-          [Attr.Eval.User.Email]: user?.email,
-        },
-      });
-      evalId = suiteSpan.spanContext().traceId;
-      suiteSpan.setAttribute(Attr.Eval.ID, evalId);
-
-      const suiteContext = trace.setSpan(context.active(), suiteSpan);
+      let suiteSpan: ReturnType<typeof startSpan> | undefined;
+      let suiteContext: Context | undefined;
+      let instrumentationError: unknown = undefined;
 
       // Track out-of-scope flags across all cases for evaluation-level reporting
       const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
@@ -210,7 +190,38 @@ async function registerEval<
         | { flags: Record<string, any>; pickedFlags?: string[]; overrides?: Record<string, any> }
         | undefined;
 
-      beforeAll((suite) => {
+      beforeAll(async (suite) => {
+        try {
+          await instrumentationReady;
+        } catch (error) {
+          instrumentationError = error;
+          throw error;
+        }
+
+        suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
+          attributes: {
+            [Attr.GenAI.Operation.Name]: 'eval',
+            [Attr.Eval.Name]: evalName,
+            [Attr.Eval.Version]: evalVersion,
+            [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
+            [Attr.Eval.Tags]: [],
+            [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
+            [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
+            [Attr.Eval.Collection.Size]: dataset.length,
+            // metadata
+            'eval.metadata': JSON.stringify(opts.metadata),
+            // baseline
+            [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
+            [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
+            // user info
+            [Attr.Eval.User.Name]: user?.name,
+            [Attr.Eval.User.Email]: user?.email,
+          },
+        });
+        evalId = suiteSpan.spanContext().traceId;
+        suiteSpan.setAttribute(Attr.Eval.ID, evalId);
+        suiteContext = trace.setSpan(context.active(), suiteSpan);
+
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
           try {
@@ -229,12 +240,16 @@ async function registerEval<
         const flagConfig = captureFlagConfig(opts.configFlags);
         suite.meta.evaluation.flagConfig = flagConfig;
         const flagConfigJson = JSON.stringify(flagConfig);
-        suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
+        suiteSpan?.setAttribute('eval.config.flags', flagConfigJson);
       });
 
       afterAll(async (suite) => {
+        if (instrumentationError) {
+          throw instrumentationError;
+        }
+
         const tags: string[] = ['offline'];
-        suiteSpan.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
+        suiteSpan?.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
 
         // Aggregate out-of-scope flags for evaluation-level reporting
         const flagSummary = new Map<string, OutOfScopeFlag>();
@@ -257,7 +272,7 @@ async function registerEval<
         }
 
         // Update evaluation report with aggregated out-of-scope flags
-        if (suite.meta.evaluation) {
+        if (suite.meta.evaluation && suiteSpan) {
           suite.meta.evaluation.outOfScopeFlags = Array.from(flagSummary.entries()).map(
             ([_flagPath, stats]) => stats,
           );
@@ -275,8 +290,8 @@ async function registerEval<
         }
 
         // end root span
-        suiteSpan.setStatus({ code: SpanStatusCode.OK });
-        suiteSpan.end();
+        suiteSpan?.setStatus({ code: SpanStatusCode.OK });
+        suiteSpan?.end();
         await flush();
       });
 
@@ -286,6 +301,12 @@ async function registerEval<
         dataset.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
       )('case', async (data: CollectionRecordWithIndex, { task }) => {
         const start = performance.now();
+        if (!suiteContext) {
+          throw new Error(
+            'Suite context not initialized. This is likely a bug – instrumentation should complete before tests run.',
+          );
+        }
+
         const caseSpan = startSpan(
           `case ${data.index}`,
           {

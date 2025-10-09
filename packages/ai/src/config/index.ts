@@ -1,3 +1,4 @@
+import type { Tracer, TracerProvider } from '@opentelemetry/api';
 import { AxiomCLIError as AxiomCLIError } from '../cli/errors';
 
 /**
@@ -7,11 +8,13 @@ import { AxiomCLIError as AxiomCLIError } from '../cli/errors';
 type DeepRequired<T> =
   T extends Array<infer U>
     ? Array<U>
-    : T extends object
-      ? {
-          [P in keyof T]-?: DeepRequired<T[P]>;
-        }
-      : T;
+    : T extends (...args: any[]) => any
+      ? T
+      : T extends object
+        ? {
+            [P in keyof T]-?: DeepRequired<T[P]>;
+          }
+        : T;
 
 /**
  * Axiom API connection configuration
@@ -37,26 +40,25 @@ export interface AxiomConnectionConfig {
   dataset?: string;
 }
 
-type AxiomEvalsInstrumentationConfig =
-  | {
-      type: 'file';
-      path: string;
-    }
-  | {
-      type: 'function';
-      init: () => void;
-    };
+export interface AxiomEvalInstrumentationOptions {
+  url: string;
+  token?: string;
+  dataset: string;
+}
+
+export interface AxiomEvalInstrumentationResult {
+  tracer?: Tracer;
+  provider?: TracerProvider;
+}
+
+export type AxiomEvalInstrumentationHook = (
+  options: AxiomEvalInstrumentationOptions,
+) => void | AxiomEvalInstrumentationResult | Promise<void | AxiomEvalInstrumentationResult>;
 
 /**
  * Axiom AI SDK base configuration (user-facing, all optional)
  */
 export interface AxiomConfigBase {
-  /**
-   * @internal
-   * Debug flag to log when config is loaded
-   */
-  __debug__logConfig?: boolean;
-
   /**
    * Axiom API connection settings
    *
@@ -71,8 +73,12 @@ export interface AxiomConfigBase {
    */
   eval?: // TODO: BEFORE MERGE - currently not handling
   AxiomConnectionConfig & {
-    // TODO: BEFORE MERGE - currently not handling
-    instrumentation?: AxiomEvalsInstrumentationConfig;
+    /**
+     * Optional hook to initialize application OpenTelemetry instrumentation.
+     * Called before eval execution with resolved Axiom connection details.
+     * Return your configured tracer provider/tracer (or void) after registering them.
+     */
+    instrumentation?: AxiomEvalInstrumentationHook | null;
     /**
      * Timeout for eval execution in milliseconds
      * @default 60000
@@ -124,6 +130,7 @@ export interface AxiomConfig extends AxiomConfigBase {
   [key: `$${string}`]: Partial<AxiomConfigBase> | undefined;
 }
 
+// TODO: BEFORE MERGE - give a better example
 /**
  * Type-safe helper for defining Axiom configuration.
  *
@@ -133,10 +140,6 @@ export interface AxiomConfig extends AxiomConfigBase {
  * @example
  * ```typescript
  * import { defineConfig } from 'axiom/ai/config'
- *
- * export default defineConfig({
- *   __debug__useConfig: true
- * })
  * ```
  */
 export function defineConfig(config: AxiomConfig): AxiomConfig {
@@ -152,12 +155,11 @@ export function defineConfig(config: AxiomConfig): AxiomConfig {
  */
 export function createPartialDefaults(): Partial<AxiomConfigBase> {
   return {
-    __debug__logConfig: false,
     eval: {
       url: process.env.AXIOM_URL || 'https://api.axiom.co',
       token: process.env.AXIOM_TOKEN,
       dataset: process.env.AXIOM_DATASET,
-      instrumentation: { type: 'file', path: 'TODO: BEFORE MERGE - figure this out' },
+      instrumentation: null,
       include: [],
       exclude: [],
       timeoutMs: 60_000,
@@ -176,6 +178,17 @@ export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomC
   if (!config.eval?.dataset) {
     errors.push(
       'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
+    );
+  }
+
+  const instrumentation = config.eval?.instrumentation;
+  if (
+    instrumentation !== null &&
+    instrumentation !== undefined &&
+    typeof instrumentation !== 'function'
+  ) {
+    errors.push(
+      'eval.instrumentation must be a function returning OTEL setup information or null.',
     );
   }
 
