@@ -48,7 +48,6 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               // Try to treat as file/directory path
               const stat = lstatSync(target);
               if (stat.isDirectory()) {
-                // Use config include patterns
                 include = config?.eval?.include || [];
               } else {
                 // Single file
@@ -62,10 +61,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             }
           }
 
-          // Always use config exclude patterns
           exclude = config?.eval?.exclude;
 
-          // Warn once at CLI level if instrumentation is missing
           if (!config?.eval?.instrumentation) {
             console.warn(
               c.yellow(
