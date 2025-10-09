@@ -238,7 +238,7 @@ async function registerEval<
         const flagConfig = captureFlagConfig(opts.configFlags);
         suite.meta.evaluation.flagConfig = flagConfig;
         const flagConfigJson = JSON.stringify(flagConfig);
-        suiteSpan?.setAttribute('eval.config.flags', flagConfigJson);
+        suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
       });
 
       afterAll(async (suite) => {
@@ -301,7 +301,7 @@ async function registerEval<
         const start = performance.now();
         if (!suiteContext) {
           throw new Error(
-            'Suite context not initialized. This is likely a bug – instrumentation should complete before tests run.',
+            '[Axiom AI] Suite context not initialized. This is likely a bug – instrumentation should complete before tests run.',
           );
         }
 
