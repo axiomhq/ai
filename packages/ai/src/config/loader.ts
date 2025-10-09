@@ -1,5 +1,10 @@
 import { loadConfig as c12LoadConfig } from 'c12';
-import { createPartialDefaults, validateConfig, type AxiomConfig, type ResolvedAxiomConfig } from './index';
+import {
+  createPartialDefaults,
+  validateConfig,
+  type AxiomConfig,
+  type ResolvedAxiomConfig,
+} from './index';
 import { AxiomCLIError, errorToString } from '../cli/errors';
 
 /**
