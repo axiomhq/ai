@@ -1,13 +1,4 @@
-import type { ResolvedAxiomConfig } from './index';
-
-/**
- * Resolved Axiom connection settings
- */
-export interface ResolvedAxiomConnection {
-  url: string;
-  token: string | undefined;
-  dataset: string;
-}
+import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './index';
 
 /**
  * Resolve Axiom connection settings from resolved config.
@@ -18,7 +9,9 @@ export interface ResolvedAxiomConnection {
  * @param config - The resolved configuration
  * @returns Resolved connection settings
  */
-export function resolveAxiomConnection(config: ResolvedAxiomConfig): ResolvedAxiomConnection {
+export function resolveAxiomConnection(
+  config: ResolvedAxiomConfig,
+): AxiomEvalInstrumentationOptions {
   return {
     url: config.eval.url,
     token: config.eval.token,

@@ -40,10 +40,9 @@ export interface AxiomConnectionConfig {
   dataset?: string;
 }
 
-// TODO: BEFORE MERGE - make all optional?
 export interface AxiomEvalInstrumentationOptions {
   url: string;
-  token?: string;
+  token: string;
   dataset: string;
 }
 
@@ -177,6 +176,12 @@ export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomC
   if (!config.eval?.dataset) {
     errors.push(
       'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
+    );
+  }
+
+  if (!config.eval?.url) {
+    console.log(
+      'eval.url was not specified. Defaulting to `https://api.axiom.co`. Please set it in axiom.config.ts or AXIOM_URL environment variable if you want to use a different endpoint.',
     );
   }
 
