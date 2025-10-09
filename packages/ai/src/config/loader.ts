@@ -17,13 +17,6 @@ export interface LoadConfigResult {
 /**
  * Load Axiom configuration from axiom.config.ts (or .js, .mjs, etc.)
  *
- * Uses c12 for smart configuration loading with support for:
- * - Multiple file formats (.ts, .mts, .cts, .js, .mjs, .cjs, .json, .yaml, .toml)
- * - Environment-specific overrides ($development, $production, etc.)
- * - Config extending (extends field)
- * - RC files (.axiomrc)
- * - Package.json integration
- *
  * @param cwd - The directory to search for config file (defaults to process.cwd())
  * @returns The loaded config and the path to the config file (if found)
  *
