@@ -1,4 +1,4 @@
-import type { Tracer, TracerProvider } from '@opentelemetry/api';
+import type { TracerProvider } from '@opentelemetry/api';
 import { AxiomCLIError as AxiomCLIError } from '../cli/errors';
 
 /**
@@ -40,6 +40,7 @@ export interface AxiomConnectionConfig {
   dataset?: string;
 }
 
+// TODO: BEFORE MERGE - make all optional?
 export interface AxiomEvalInstrumentationOptions {
   url: string;
   token?: string;
@@ -47,13 +48,12 @@ export interface AxiomEvalInstrumentationOptions {
 }
 
 export interface AxiomEvalInstrumentationResult {
-  tracer?: Tracer;
-  provider?: TracerProvider;
+  provider: TracerProvider;
 }
 
 export type AxiomEvalInstrumentationHook = (
   options: AxiomEvalInstrumentationOptions,
-) => void | AxiomEvalInstrumentationResult | Promise<void | AxiomEvalInstrumentationResult>;
+) => AxiomEvalInstrumentationResult | Promise<AxiomEvalInstrumentationResult>;
 
 /**
  * Axiom AI SDK base configuration (user-facing, all optional)

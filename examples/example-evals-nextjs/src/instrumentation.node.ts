@@ -39,5 +39,5 @@ export const setupAppInstrumentation: AxiomEvalInstrumentationHook = async (opti
   provider.register();
   initAxiomAI({ tracer, redactionPolicy: RedactionPolicy.AxiomDefault });
 
-  return { provider, tracer };
+  return { provider };
 };

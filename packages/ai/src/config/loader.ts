@@ -58,7 +58,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
 
     return {
       config: validatedConfig,
-      configPath: result.configFile || null,
+      configPath: result.configFile ?? null,
     };
   } catch (error) {
     if (error instanceof AxiomCLIError) {

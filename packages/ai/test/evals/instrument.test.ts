@@ -54,6 +54,7 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
+      configPath: '/tmp/axiom.config.ts',
     });
 
     expect(hook).toHaveBeenCalledWith({
@@ -73,33 +74,12 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
+      configPath: '/tmp/axiom.config.ts',
     });
 
     await flush();
 
     expect(flushSpy).toHaveBeenCalled();
-  });
-
-  it('reloads instrumentation via config path when missing', async () => {
-    const hook = vi.fn(() => ({
-      provider: { forceFlush: vi.fn().mockResolvedValue(undefined) } as any,
-    }));
-
-    const configLoader = await import('../../src/config/loader');
-    const loadConfigSpy = vi.spyOn(configLoader, 'loadConfig');
-    loadConfigSpy.mockResolvedValueOnce({
-      config: createConfig({ hook }),
-      configPath: '/tmp/axiom.config.ts',
-    });
-
-    const { initInstrumentation } = await import('../../src/evals/instrument');
-    await initInstrumentation({
-      enabled: true,
-      config: createConfig({ hook: null }),
-      configPath: '/tmp/axiom.config.ts',
-    });
-
-    expect(hook).toHaveBeenCalled();
   });
 
   it('keeps trace context across eval and app spans when user instrumentation is present', async () => {
@@ -115,6 +95,7 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
+      configPath: '/tmp/axiom.config.ts',
     });
 
     const evalSpan = startSpan('eval-span', {});
@@ -153,6 +134,7 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
+      configPath: '/tmp/axiom.config.ts',
     });
 
     const evalSpan = startSpan('eval-span', {});

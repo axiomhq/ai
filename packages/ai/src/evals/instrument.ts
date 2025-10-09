@@ -17,8 +17,6 @@ import type {
 } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { AxiomCLIError, errorToString } from '../cli/errors';
-import { loadConfig } from '../config/loader';
-import { dirname } from 'node:path';
 
 // Lazily initialized tracer provider and exporter
 // TODO: BEFORE MERGE - see if we can move these out of top-level scope. would make testing easier and help prevent edge cases!
@@ -28,7 +26,6 @@ let userProvider: TracerProvider | undefined;
 
 let initializationPromise: Promise<void> | null = null;
 let initialized = false;
-let hookResolutionPromises = new Map<string, Promise<AxiomEvalInstrumentationHook | null>>();
 
 async function runInstrumentationHook(
   hook: AxiomEvalInstrumentationHook,
@@ -76,44 +73,10 @@ function setupEvalProvider(connection: ReturnType<typeof resolveAxiomConnection>
   axiomTracer = axiomProvider.getTracer('axiom', __SDK_VERSION__);
 }
 
-async function resolveInstrumentationHook(
-  config: ResolvedAxiomConfig,
-  configPath: string | null,
-): Promise<AxiomEvalInstrumentationHook | null> {
-  if (config.eval.instrumentation) {
-    return config.eval.instrumentation;
-  }
-
-  const key = configPath ?? '__unknown__';
-
-  if (!hookResolutionPromises.has(key)) {
-    if (!configPath) {
-      hookResolutionPromises.set(key, Promise.resolve(null));
-    } else {
-      hookResolutionPromises.set(
-        key,
-        (async () => {
-          try {
-            const { config: loadedConfig } = await loadConfig(dirname(configPath));
-            return (loadedConfig.eval.instrumentation ??
-              null) as AxiomEvalInstrumentationHook | null;
-          } catch (error) {
-            throw new AxiomCLIError(
-              `Failed to reload instrumentation from config: ${errorToString(error)}`,
-            );
-          }
-        })(),
-      );
-    }
-  }
-
-  return hookResolutionPromises.get(key)!;
-}
-
 export async function initInstrumentation(config: {
   enabled: boolean;
   config: ResolvedAxiomConfig;
-  configPath?: string | null;
+  configPath: string | null;
 }): Promise<void> {
   if (initialized) {
     return;
@@ -132,9 +95,7 @@ export async function initInstrumentation(config: {
     }
 
     const connection = resolveAxiomConnection(config.config);
-    const hook =
-      config.config.eval.instrumentation ??
-      (await resolveInstrumentationHook(config.config, config.configPath ?? null));
+    const hook = config.config.eval.instrumentation;
     let hookResult: AxiomEvalInstrumentationResult | void = undefined;
 
     if (hook) {
@@ -190,7 +151,7 @@ export const flush = async () => {
   }
 
   for (const provider of candidateProviders) {
-    const flushFn = (provider as unknown as { forceFlush?: () => Promise<void> }).forceFlush;
+    const flushFn = (provider as any).forceFlush;
     if (typeof flushFn === 'function') {
       tasks.push(
         flushFn.call(provider).catch((error: unknown) => {
