@@ -1,4 +1,5 @@
 import { loadConfig as c12LoadConfig } from 'c12';
+import { defu } from 'defu';
 import {
   createPartialDefaults,
   validateConfig,
@@ -6,6 +7,20 @@ import {
   type ResolvedAxiomConfig,
 } from './index';
 import { AxiomCLIError, errorToString } from '../cli/errors';
+
+/**
+ * Custom merger that uses defu but overrides include/exclude arrays instead of merging them
+ */
+function customMerger(target: any, source: any): any {
+  const merged = defu(source, target);
+
+  // If source explicitly has eval.include, override it instead of merging
+  if (source?.eval && 'include' in source.eval) {
+    merged.eval.include = source.eval.include;
+  }
+
+  return merged;
+}
 
 /**
  * Result of loading a config file
@@ -27,14 +42,14 @@ export interface LoadConfigResult {
  */
 export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfigResult> {
   try {
+    const defaults = createPartialDefaults();
+
     const result = await c12LoadConfig<AxiomConfig>({
       name: 'axiom',
       cwd,
       // Support common config file extensions
       configFile: 'axiom.config',
-      // Partial defaults with env var fallbacks
-      // Applied before user config, so users can override anything
-      defaultConfig: createPartialDefaults() as AxiomConfig,
+      // Don't use defaultConfig - we'll merge manually to control array behavior
       // Disable configs other than .ts/.js/.mts/.mjs/.cts/.cjs
       rcFile: false,
       globalRc: false,
@@ -42,8 +57,9 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
       giget: false,
     });
 
-    // Validate merged config has all required values
-    const validatedConfig = validateConfig(result.config);
+    // Manually merge with defaults, overriding `include` instead of merging
+    const mergedConfig = customMerger(defaults, result.config);
+    const validatedConfig = validateConfig(mergedConfig);
 
     return {
       config: validatedConfig,

@@ -84,6 +84,8 @@ export type AxiomEvalInstrumentationHook = (
 /**
  * Axiom AI SDK base configuration (user-facing, all optional)
  */
+export const DEFAULT_EVAL_INCLUDE = ['**/*.eval.{ts,js,mts,mjs,cts,cjs}'] as const;
+
 export interface AxiomConfigBase {
   /**
    * Eval configuration settings
@@ -196,7 +198,7 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
       token: process.env.AXIOM_TOKEN,
       dataset: process.env.AXIOM_DATASET,
       instrumentation: null,
-      include: [],
+      include: [...DEFAULT_EVAL_INCLUDE],
       exclude: [],
       timeoutMs: 60_000,
     },
