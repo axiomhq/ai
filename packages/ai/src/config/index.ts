@@ -1,5 +1,5 @@
 import type { TracerProvider } from '@opentelemetry/api';
-import { AxiomCLIError as AxiomCLIError } from '../cli/errors';
+import { AxiomCLIError } from '../cli/errors';
 
 /**
  * Utility type to make all properties in T required recursively.
