@@ -38,7 +38,6 @@ declare module 'vitest' {
     debug?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
-    axiomConfigPath?: string | null;
   }
 }
 
@@ -152,14 +151,13 @@ async function registerEval<
   const isDebug = inject('debug');
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
-  const axiomConfigPath = inject('axiomConfigPath');
 
   if (!axiomConfig) {
     throw new AxiomCLIError('Axiom config not found');
   }
 
   const instrumentationReady = !isDebug
-    ? ensureInstrumentationInitialized(axiomConfig, axiomConfigPath ?? null)
+    ? ensureInstrumentationInitialized(axiomConfig)
     : Promise.resolve();
 
   const result = await describe(

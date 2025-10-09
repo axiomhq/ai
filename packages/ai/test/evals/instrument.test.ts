@@ -54,7 +54,6 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
-      configPath: '/tmp/axiom.config.ts',
     });
 
     expect(hook).toHaveBeenCalledWith({
@@ -74,7 +73,6 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
-      configPath: '/tmp/axiom.config.ts',
     });
 
     await flush();
@@ -95,7 +93,6 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
-      configPath: '/tmp/axiom.config.ts',
     });
 
     const evalSpan = startSpan('eval-span', {});
@@ -134,7 +131,6 @@ describe.sequential('eval instrumentation', () => {
     await initInstrumentation({
       enabled: true,
       config: createConfig({ hook }),
-      configPath: '/tmp/axiom.config.ts',
     });
 
     const evalSpan = startSpan('eval-span', {});

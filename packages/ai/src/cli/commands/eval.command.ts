@@ -39,7 +39,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           const isGlobPattern = isGlob(target);
 
           // Load config file first to get defaults
-          const { config, configPath } = await loadConfig(target === '.' ? '.' : targetPath);
+          const { config } = await loadConfig(target === '.' ? '.' : targetPath);
 
           if (isGlobPattern) {
             // Handle glob patterns like "**/*.eval.ts" or "**/my-feature/*"
@@ -87,7 +87,6 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               debug: options.debug,
               overrides: flagOverrides,
               config,
-              configPath,
             });
           });
         } catch (error) {

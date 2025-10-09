@@ -12,7 +12,6 @@ import { AxiomCLIError, errorToString } from '../cli/errors';
  */
 export interface LoadConfigResult {
   config: ResolvedAxiomConfig;
-  configPath: string | null;
 }
 
 /**
@@ -30,10 +29,7 @@ export interface LoadConfigResult {
  *
  * @example
  * ```typescript
- * const { config, configPath } = await loadConfig();
- * if (configPath) {
- *   console.log('Loaded config from:', configPath);
- * }
+ * const { config } = await loadConfig();
  * ```
  */
 export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfigResult> {
@@ -58,7 +54,6 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
 
     return {
       config: validatedConfig,
-      configPath: result.configFile ?? null,
     };
   } catch (error) {
     if (error instanceof AxiomCLIError) {

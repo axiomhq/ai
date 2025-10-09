@@ -17,7 +17,6 @@ export const runVitest = async (
     debug?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
-    configPath?: string | null;
   },
 ) => {
   // Store config globally so reporters can access it
@@ -27,7 +26,6 @@ export const runVitest = async (
   await initInstrumentation({
     enabled: !opts.debug,
     config: opts.config,
-    configPath: opts.configPath ?? null,
   });
 
   const providedConfig: ResolvedAxiomConfig = {
@@ -63,7 +61,6 @@ export const runVitest = async (
       debug: opts.debug,
       overrides: opts.overrides,
       axiomConfig: providedConfig,
-      axiomConfigPath: opts.configPath ?? null,
     },
   });
 

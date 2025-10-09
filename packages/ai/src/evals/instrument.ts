@@ -76,7 +76,6 @@ function setupEvalProvider(connection: ReturnType<typeof resolveAxiomConnection>
 export async function initInstrumentation(config: {
   enabled: boolean;
   config: ResolvedAxiomConfig;
-  configPath: string | null;
 }): Promise<void> {
   if (initialized) {
     return;
@@ -170,15 +169,12 @@ export const flush = async () => {
  * Ensure instrumentation is initialized with the given config.
  * Call this from within test context before using startSpan.
  */
-export async function ensureInstrumentationInitialized(
-  config: ResolvedAxiomConfig,
-  configPath?: string | null,
-): Promise<void> {
+export async function ensureInstrumentationInitialized(config: ResolvedAxiomConfig): Promise<void> {
   if (initialized) {
     return;
   }
 
-  await initInstrumentation({ enabled: true, config, configPath: configPath ?? null });
+  await initInstrumentation({ enabled: true, config });
 }
 
 const getEvalTracer = (): Tracer => {
