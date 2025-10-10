@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/axiomhq/ai/compare/axiom-v0.21.0...axiom-v0.22.0) (2025-10-10)
+
+
+### Features
+
+* `axiom.config.ts` ([#98](https://github.com/axiomhq/ai/issues/98)) ([f70239b](https://github.com/axiomhq/ai/commit/f70239bcb875048e15504a673550b88c707d6cdb))
+
 ## [0.21.0](https://github.com/axiomhq/ai/compare/axiom-v0.20.0...axiom-v0.21.0) (2025-10-06)
 
 
