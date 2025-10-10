@@ -1,6 +1,7 @@
 import { trace } from '@opentelemetry/api';
 import { createAsyncHook } from './manager';
 import { type createAppScope } from '../../app-scope';
+import type { ResolvedAxiomConfig } from '../../config/index';
 
 // Global fallback for config scope when called outside of eval context (e.g., module import time)
 const CONFIG_SCOPE_SYMBOL = Symbol.for('axiom.eval.configScope');
@@ -9,6 +10,15 @@ function getGlobalConfigScope(): ReturnType<typeof createAppScope> | undefined {
 }
 function setGlobalConfigScope(scope: ReturnType<typeof createAppScope>) {
   (globalThis as any)[CONFIG_SCOPE_SYMBOL] = scope;
+}
+
+// Global storage for axiom config (accessible from reporters)
+const AXIOM_CONFIG_SYMBOL = Symbol.for('axiom.eval.config');
+export function getAxiomConfig(): ResolvedAxiomConfig | undefined {
+  return (globalThis as any)[AXIOM_CONFIG_SYMBOL];
+}
+export function setAxiomConfig(config: ResolvedAxiomConfig) {
+  (globalThis as any)[AXIOM_CONFIG_SYMBOL] = config;
 }
 
 // Mini-context for in-process access

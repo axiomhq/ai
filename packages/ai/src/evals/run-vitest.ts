@@ -3,8 +3,8 @@ import c from 'tinyrainbow';
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
-
-export const DEFAULT_TIMEOUT = parseInt(process.env.AXIOM_TIMEOUT || '60000');
+import { setAxiomConfig } from './context/storage';
+import type { ResolvedAxiomConfig } from '../config/index';
 
 export const runVitest = async (
   dir: string,
@@ -12,13 +12,30 @@ export const runVitest = async (
     watch: boolean;
     baseline?: string;
     include: string[];
+    exclude?: string[];
     testNamePattern?: RegExp;
     debug?: boolean;
     overrides?: Record<string, any>;
+    config: ResolvedAxiomConfig;
   },
 ) => {
+  // Store config globally so reporters can access it
+  setAxiomConfig(opts.config);
+
   // Initialize instrumentation explicitly based on debug flag
-  initInstrumentation({ enabled: !opts.debug });
+  await initInstrumentation({
+    enabled: !opts.debug,
+    config: opts.config,
+  });
+
+  const providedConfig: ResolvedAxiomConfig = {
+    ...opts.config,
+    eval: {
+      ...opts.config.eval,
+      // function can't be serialized, so we need to remove it
+      instrumentation: null,
+    },
+  };
 
   if (opts.debug) {
     console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
@@ -28,6 +45,7 @@ export const runVitest = async (
     root: dir ? dir : process.cwd(),
     mode: 'test',
     include: opts.include,
+    exclude: opts.exclude,
     testNamePattern: opts.testNamePattern,
     reporters: ['verbose', new AxiomReporter()],
     environment: 'node',
@@ -37,12 +55,13 @@ export const runVitest = async (
     printConsoleTrace: true,
     silent: false,
     disableConsoleIntercept: true,
-    testTimeout: DEFAULT_TIMEOUT,
+    testTimeout: opts.config?.eval?.timeoutMs || 60_000,
     globals: true,
     provide: {
       baseline: opts.baseline,
       debug: opts.debug,
       overrides: opts.overrides,
+      axiomConfig: providedConfig,
     },
   });
 

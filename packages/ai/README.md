@@ -1,6 +1,14 @@
 # Axiom AI
 
-Axiom AI SDK provides an API to wrap your AI calls with observability instrumentation.
+Axiom AI SDK provides
+- an API to wrap your AI calls with observability instrumentation.
+- offline evals
+
+## Install
+
+```bash
+npm install axiom
+```
 
 ## Model Wrapping
 
@@ -64,12 +72,6 @@ const result = await withSpan(
     })
   }
 )
-```
-
-## Install
-
-```bash
-npm install axiom
 ```
 
 ## Documentation

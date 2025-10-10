@@ -1,5 +1,13 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    await import('./instrumentation.node');
+    const { setupAppInstrumentation } = await import('./instrumentation.node');
+
+    await setupAppInstrumentation({
+      // In Next.js, environment variables are available when `instrumentation.ts` runs.
+      // In other frameworks, you might need `dotenv` or similar.
+      dataset: process.env.AXIOM_DATASET!,
+      token: process.env.AXIOM_TOKEN!,
+      url: process.env.AXIOM_URL ?? 'https://api.axiom.co',
+    });
   }
 }
