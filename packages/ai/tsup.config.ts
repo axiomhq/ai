@@ -11,6 +11,8 @@ export default defineConfig({
     'vitest/index.cjs',
     'esbuild',
     'fsevents',
+    'c12',
+    'defu',
     // Ensure Node builtins used via createRequire stay external in ESM bundle
     'async_hooks',
     'node:async_hooks',
