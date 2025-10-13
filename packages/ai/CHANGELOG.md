@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/axiomhq/ai/compare/axiom-v0.22.0...axiom-v0.22.1) (2025-10-13)
+
+
+### Bug Fixes
+
+* **cli:** externalize c12 to resolve "Dynamic require of 'os'" error in eval command ([#100](https://github.com/axiomhq/ai/issues/100)) ([07100a2](https://github.com/axiomhq/ai/commit/07100a29e1485ece5dcbb2306141f866ceaabf30))
+
 ## [0.22.0](https://github.com/axiomhq/ai/compare/axiom-v0.21.0...axiom-v0.22.0) (2025-10-10)
 
 
