@@ -7,9 +7,6 @@ export default defineConfig({
     token: process.env.AXIOM_TOKEN,
     dataset: process.env.AXIOM_DATASET,
 
-    // TODO: REMOVE THIS @gabrielelpidio
-    apiUrl: process.env.AXIOM_API_URL,
-
     include: ['**/*.eval.{ts,js,mts,mjs,cts,cjs}'],
     exclude: [],
 

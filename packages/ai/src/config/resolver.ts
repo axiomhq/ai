@@ -1,6 +1,17 @@
 import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './index';
 
 /**
+ * Builds a resources URL under the assumption that the API URL is in the format of https://api.axiom.co by replacing the subdomain with app.
+ * @param urlString - The API URL
+ * @returns The resources URL
+ */
+const buildResourcesUrl = (urlString: string) => {
+  const url = new URL(urlString);
+
+  return `${url.protocol}//app.${url.host.split('api.').at(-1)}`;
+};
+
+/**
  * Resolve Axiom connection settings from resolved config.
  *
  * Since the config is already resolved with defaults merged, we can directly
@@ -12,9 +23,15 @@ import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './ind
 export function resolveAxiomConnection(
   config: ResolvedAxiomConfig,
 ): AxiomEvalInstrumentationOptions {
+  let resourcesUrl = buildResourcesUrl(config.eval.url);
+
+  if ('__overrideResourcesUrl' in config.eval) {
+    resourcesUrl = config.eval.__overrideResourcesUrl as string;
+  }
+
   return {
     url: config.eval.url,
-    apiUrl: config.eval.apiUrl,
+    resourcesUrl,
     token: config.eval.token,
     dataset: config.eval.dataset,
   };

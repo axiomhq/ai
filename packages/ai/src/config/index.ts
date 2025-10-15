@@ -28,13 +28,6 @@ export interface AxiomConnectionConfig {
   url?: string;
 
   /**
-   * TODO: REMOVE THIS @gabrielelpidio
-   *
-   * temp apiUrl
-   */
-  apiUrl?: string;
-
-  /**
    * Axiom API token (can be undefined if not set)
    * @example process.env.AXIOM_TOKEN
    */
@@ -51,11 +44,15 @@ export interface AxiomConnectionConfig {
  * Options passed to the instrumentation hook
  * - url: string
  * - token: string
+ * - resourcesUrl: string
  * - dataset: string
  */
 export interface AxiomEvalInstrumentationOptions {
   url: string;
-  apiUrl: string;
+  /**
+   * Axiom URL for resources like evaluations, prompts, etc.
+   */
+  resourcesUrl: string;
   token: string;
   dataset: string;
 }
@@ -86,7 +83,7 @@ export interface AxiomEvalInstrumentationResult {
  * ```
  */
 export type AxiomEvalInstrumentationHook = (
-  options: AxiomEvalInstrumentationOptions,
+  options: Omit<AxiomEvalInstrumentationOptions, 'resourcesUrl'>,
 ) => AxiomEvalInstrumentationResult | Promise<AxiomEvalInstrumentationResult>;
 
 /**
