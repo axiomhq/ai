@@ -27,6 +27,7 @@ export interface EvaluationApiPayloadBase {
   readonly erroredCases?: number;
   readonly durationMs?: number;
   readonly scorerAvgs?: readonly number[];
+  readonly version: string;
 }
 
 export class EvaluationApiClient {

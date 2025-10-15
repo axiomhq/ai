@@ -46,7 +46,7 @@ declare module 'vitest' {
   }
 }
 
-const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
+const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -179,7 +179,7 @@ async function registerEval<
       const evaluationApiClient = new EvaluationApiClient(axiomConfig);
 
       // create a version code
-      const evalVersion = nanoid();
+      const evalVersion = createVersionId();
       let evalId = ''; // get traceId
       let suiteStart: number;
 
@@ -237,12 +237,11 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
 
-        // Report evaluation creation to API
-        const res = await evaluationApiClient.createEvaluation({
+        await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
           dataset: axiomConfig.eval.dataset,
-          // TODO: add region to axiomConfig?
+          version: evalVersion,
           region: 'US',
           baselineId: baseline?.id ?? undefined,
           totalCases: dataset.length,
@@ -252,12 +251,6 @@ async function registerEval<
           },
           status: 'running',
         });
-
-        if (!res) {
-          // TODO: Remove from release @gabrielelpidio
-          console.error('Error creating evaluation, skipping');
-          return;
-        }
 
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
