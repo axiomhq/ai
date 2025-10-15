@@ -1,6 +1,60 @@
 import type { Case, Chat, Evaluation, Task } from './eval.types';
+import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
+
+export interface EvaluationApiConfig {
+  readonly dataset?: string;
+  readonly region?: string;
+  readonly baseUrl?: string;
+  readonly apiUrl?: string;
+  readonly token?: string;
+}
+
+export type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled';
+
+export interface EvaluationApiPayloadBase {
+  readonly id: string;
+  readonly name: string;
+  readonly dataset: string;
+  readonly region: string;
+  readonly baselineId?: string;
+  readonly totalCases?: number;
+  readonly scorers?: readonly string[];
+  readonly config?: Readonly<Record<string, unknown>>;
+  readonly status: EvaluationStatus;
+  readonly successCases?: number;
+  readonly erroredCases?: number;
+  readonly durationMs?: number;
+  readonly scorerAvgs?: readonly number[];
+}
+
+export class EvaluationApiClient {
+  private readonly fetcher: Fetcher;
+  constructor(config: ResolvedAxiomConfig) {
+    const { apiUrl, token } = resolveAxiomConnection(config);
+
+    this.fetcher = createFetcher(apiUrl, token ?? '');
+  }
+
+  async createEvaluation(evaluation: EvaluationApiPayloadBase) {
+    const resp = await this.fetcher(`/api/evaluations/v3`, {
+      method: 'POST',
+      body: JSON.stringify(evaluation),
+    });
+
+    return resp.json();
+  }
+
+  async updateEvaluation(evaluation: Partial<EvaluationApiPayloadBase>) {
+    const resp = await this.fetcher(`/api/evaluations/v3/${evaluation.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(evaluation),
+    });
+
+    return resp.json();
+  }
+}
 
 /** Query axiom to find a baseline for an Eval */
 export const findBaseline = async (evalName: string, config: ResolvedAxiomConfig) => {

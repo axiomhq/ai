@@ -14,6 +14,7 @@ export function resolveAxiomConnection(
 ): AxiomEvalInstrumentationOptions {
   return {
     url: config.eval.url,
+    apiUrl: config.eval.apiUrl,
     token: config.eval.token,
     dataset: config.eval.dataset,
   };

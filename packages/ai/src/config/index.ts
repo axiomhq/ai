@@ -28,6 +28,13 @@ export interface AxiomConnectionConfig {
   url?: string;
 
   /**
+   * TODO: REMOVE THIS @gabrielelpidio
+   *
+   * temp apiUrl
+   */
+  apiUrl?: string;
+
+  /**
    * Axiom API token (can be undefined if not set)
    * @example process.env.AXIOM_TOKEN
    */
@@ -48,6 +55,7 @@ export interface AxiomConnectionConfig {
  */
 export interface AxiomEvalInstrumentationOptions {
   url: string;
+  apiUrl: string;
   token: string;
   dataset: string;
 }
