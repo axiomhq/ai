@@ -320,7 +320,6 @@ async function registerEval<
           };
         }
 
-        const status: EvaluationStatus = suite ? 'errored' : 'completed';
         const durationMs = Math.round(performance.now() - suiteStart);
 
         const successCases = suite.tasks.filter(
@@ -329,6 +328,9 @@ async function registerEval<
         const erroredCases = suite.tasks.filter(
           (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
         ).length;
+
+        // TODO: Is this right? @gabrielelpidio
+        const status: EvaluationStatus = successCases > erroredCases ? 'completed' : 'errored';
 
         await evaluationApiClient.updateEvaluation({
           id: evalId,
