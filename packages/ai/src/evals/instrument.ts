@@ -28,7 +28,7 @@ let initialized = false;
 
 async function runInstrumentationHook(
   hook: AxiomEvalInstrumentationHook,
-  options: AxiomEvalInstrumentationOptions,
+  options: Omit<AxiomEvalInstrumentationOptions, 'resourcesUrl'>,
 ): Promise<AxiomEvalInstrumentationResult | void> {
   try {
     return await hook(options);
