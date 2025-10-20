@@ -17,6 +17,7 @@ import type {
 } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { AxiomCLIError, errorToString } from '../cli/errors';
+import { loadConfig } from '../config/loader';
 
 // Lazily initialized tracer provider and exporter
 let axiomProvider: NodeTracerProvider | undefined;
@@ -25,6 +26,23 @@ let userProvider: TracerProvider | undefined;
 
 let initializationPromise: Promise<void> | null = null;
 let initialized = false;
+
+async function resolveInstrumentationHook(
+  config: ResolvedAxiomConfig,
+): Promise<AxiomEvalInstrumentationHook | null> {
+  if (config.eval.instrumentation) {
+    return config.eval.instrumentation;
+  }
+
+  try {
+    const { config: loadedConfig } = await loadConfig(process.cwd());
+    return (loadedConfig.eval.instrumentation ?? null) as AxiomEvalInstrumentationHook | null;
+  } catch (error) {
+    throw new AxiomCLIError(
+      `Failed to reload instrumentation from config: ${errorToString(error)}`,
+    );
+  }
+}
 
 async function runInstrumentationHook(
   hook: AxiomEvalInstrumentationHook,
@@ -93,7 +111,7 @@ export async function initInstrumentation(config: {
     }
 
     const connection = resolveAxiomConnection(config.config);
-    const hook = config.config.eval.instrumentation;
+    const hook = await resolveInstrumentationHook(config.config);
     let hookResult: AxiomEvalInstrumentationResult | void = undefined;
 
     if (hook) {
