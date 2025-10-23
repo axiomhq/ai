@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.2](https://github.com/axiomhq/ai/compare/axiom-v0.22.1...axiom-v0.22.2) (2025-10-22)
+
+
+### Bug Fixes
+
+* users application spans are using cli instrumentation ([#103](https://github.com/axiomhq/ai/issues/103)) ([d9ed0de](https://github.com/axiomhq/ai/commit/d9ed0deb5b400726bfcfc57bb7a0175ec9dea548))
+
 ## [0.22.1](https://github.com/axiomhq/ai/compare/axiom-v0.22.0...axiom-v0.22.1) (2025-10-13)
 
 
