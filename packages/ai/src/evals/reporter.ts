@@ -4,6 +4,7 @@ import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from
 import { getGlobalFlagOverrides } from './context/global-flags';
 import { getAxiomConfig, getConfigScope } from './context/storage';
 import { findEvaluationCases } from './eval.service';
+import { resolveAxiomConnection } from '../config/resolver';
 import type {
   Evaluation,
   EvaluationReport,
@@ -41,10 +42,18 @@ export class AxiomReporter implements Reporter {
   private _endOfRunConfigEnd: EvaluationReport['configEnd'] | undefined;
   private _suiteData: SuiteData[] = [];
   private _baselines: Map<string, Evaluation | null> = new Map();
+  private _resourcesUrl?: string;
 
   onTestRunStart() {
     this.start = performance.now();
     this.startTime = new Date().getTime();
+
+    // Store resourcesUrl from config
+    const config = getAxiomConfig();
+    if (config) {
+      const { resourcesUrl } = resolveAxiomConnection(config);
+      this._resourcesUrl = resourcesUrl;
+    }
 
     // Print global flag overrides at start
     const overrides = getGlobalFlagOverrides();
@@ -132,6 +141,8 @@ export class AxiomReporter implements Reporter {
       baseline: suiteBaseline || null,
       configFlags: meta.evaluation.configFlags,
       flagConfig: meta.evaluation.flagConfig,
+      runId: meta.evaluation.runId,
+      orgId: meta.evaluation.orgId,
       cases,
       outOfScopeFlags: meta.evaluation.outOfScopeFlags,
     });
@@ -165,6 +176,7 @@ export class AxiomReporter implements Reporter {
       calculateScorerAverages: this.calculateScorerAverages.bind(this),
       calculateBaselineScorerAverage: this.calculateBaselineScorerAverage.bind(this),
       calculateFlagDiff: this.calculateFlagDiff.bind(this),
+      resourcesUrl: this._resourcesUrl,
     });
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';

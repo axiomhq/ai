@@ -19,6 +19,7 @@ export interface EvaluationApiPayloadBase {
   readonly dataset: string;
   readonly region: string;
   readonly baselineId?: string;
+  readonly runId?: string;
   readonly totalCases?: number;
   readonly scorers?: readonly string[];
   readonly config?: Readonly<Record<string, unknown>>;
