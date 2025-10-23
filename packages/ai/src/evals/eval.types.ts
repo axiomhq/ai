@@ -1,5 +1,5 @@
 import type { TaskMeta } from 'vitest';
-import type { Score, ScoreWithName, ScorerLike } from './scorers';
+import type { ScoreWithName, ScorerLike } from './scorers';
 
 // Type utilities for automatic inference
 /** Extract the input type from CollectionRecord[] */
@@ -92,7 +92,7 @@ export type EvalParams<
   /** The task function to evaluate */
   task: EvalTask<TInput, TExpected, TOutput>;
   /** Array of scoring functions to evaluate the task output */
-  scorers: ReadonlyArray<ScorerLike<TInput, TOutput>>;
+  scorers: ReadonlyArray<ScorerLike<TInput, TExpected, TOutput>>;
   /** Optional metadata for the evaluation */
   metadata?: Record<string, unknown>;
   /** Optional timeout in milliseconds for task execution */

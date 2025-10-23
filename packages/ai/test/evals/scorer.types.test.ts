@@ -20,7 +20,7 @@ describe('Scorer type inference', () => {
       },
     );
 
-    expectTypeOf(scorerWithInput).toEqualTypeOf<ScorerType<string, number, {}>>();
+    expectTypeOf(scorerWithInput).toEqualTypeOf<ScorerType<string, never, number, {}>>();
   });
 
   it('TInput is never when omitted', () => {
@@ -28,7 +28,19 @@ describe('Scorer type inference', () => {
       expectTypeOf(output).toEqualTypeOf<string>();
       return 1;
     });
-    expectTypeOf(scorerNoInput).toEqualTypeOf<ScorerType<never, string, {}>>();
+    expectTypeOf(scorerNoInput).toEqualTypeOf<ScorerType<never, never, string, {}>>();
+  });
+
+  it('TExpected is inferred', () => {
+    const scorerWithExpected = Scorer(
+      'Test',
+      ({ expected, output }: { expected: string; output: string }) => {
+        expectTypeOf(expected).toEqualTypeOf<string>();
+        expectTypeOf(output).toEqualTypeOf<string>();
+        return 1;
+      },
+    );
+    expectTypeOf(scorerWithExpected).toEqualTypeOf<ScorerType<never, string, string, {}>>();
   });
 
   it('Omitting TOutput makes the scorer type `never`', () => {
@@ -47,7 +59,7 @@ describe('Scorer type inference', () => {
       },
     );
     expectTypeOf(scorerWithExtra).toEqualTypeOf<
-      ScorerType<never, string, { customProp: boolean }>
+      ScorerType<never, never, string, { customProp: boolean }>
     >();
   });
 

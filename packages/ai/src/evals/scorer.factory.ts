@@ -16,12 +16,13 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
 export function createScorer<
   TArgs extends Record<string, any> = {},
   TInput = TArgs extends { input: infer I } ? I : never,
+  TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : never,
   TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : never,
   TExtra extends Record<string, any> = Simplify<Omit<TArgs, 'input' | 'expected' | 'output'>>,
 >(
   name: string,
   fn: (args: TArgs) => number | Score | Promise<number | Score>,
-): TOutput extends never ? never : Scorer<TInput, TOutput, TExtra> {
+): TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
   const normalizeScore = (res: number | Score): Score => {
     if (typeof res === 'number') {
       return { score: res };
@@ -48,5 +49,5 @@ export function createScorer<
     enumerable: true,
   });
 
-  return scorer as TOutput extends never ? never : Scorer<TInput, TOutput, TExtra>;
+  return scorer as TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra>;
 }

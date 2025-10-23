@@ -19,7 +19,7 @@ import type {
   RuntimeFlagLog,
   OutOfScopeFlag,
 } from './eval.types';
-import type { ScoreWithName, ScorerLike } from './scorers';
+import type { Score, ScoreWithName } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
@@ -89,7 +89,9 @@ export function Eval<
   > & {
     data: () => Data | Promise<Data>;
     task: TaskFn;
-    scorers: ReadonlyArray<ScorerLike<InputOf<Data>, OutputOf<TaskFn>>>;
+    scorers: ReadonlyArray<
+      (args: { input: InputOf<Data>; expected: ExpectedOf<Data>; output: OutputOf<TaskFn> }) => Score | Promise<Score>
+    >;
   },
 ): void;
 

@@ -38,7 +38,7 @@ Eval('Spam classification', {
     (args) =>
       Levenshtein({
         output: args.output.response,
-        expected: args.expected?.response,
+        expected: args.expected.response,
       }),
   ],
   metadata: {
