@@ -8,7 +8,8 @@ export type ScoreWithName = Score & {
   name: string;
 };
 
-// Loose type - accepts scorers from any ecosystem (all params optional for compatibility)
+// Loose type - this is what we REQUIRE
+// (we accept scorers with looser requirements than how we define them)
 export type ScorerLike<
   TInput = any,
   TExpected = any,
@@ -22,8 +23,7 @@ export type ScorerLike<
   } & TExtra,
 ) => Score | Promise<Score>;
 
-// Strict type - returned by createScorer factory (extends ScorerLike + name property)
-// The factory ensures the scorer always gets called with all params, even though types are optional
+// Strict type - this is how we DEFINE scorers
 export type Scorer<
   TInput = any,
   TExpected = any,
@@ -33,6 +33,4 @@ export type Scorer<
   readonly name: string; // Name property for telemetry
 };
 
-// Factory function for creating scorers with better ergonomics
 export { createScorer } from './scorer.factory';
-export { createScorer as defineScorer } from './scorer.factory';

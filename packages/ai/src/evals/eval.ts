@@ -77,10 +77,11 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  */
 export function Eval<
   // Inference-friendly overload – no explicit generics required by callers.
-  const Data extends readonly CollectionRecord<any, any>[],
-  TaskFn extends (
-    args: { input: InputOf<Data>; expected: ExpectedOf<Data> },
-  ) => string | Record<string, any> | Promise<string | Record<string, any>>,
+  Data extends readonly CollectionRecord<any, any>[],
+  TaskFn extends (args: {
+    input: InputOf<Data>;
+    expected: ExpectedOf<Data>;
+  }) => string | Record<string, any> | Promise<string | Record<string, any>>,
 >(
   name: string,
   params: Omit<
@@ -90,7 +91,11 @@ export function Eval<
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<
-      (args: { input: InputOf<Data>; expected: ExpectedOf<Data>; output: OutputOf<TaskFn> }) => Score | Promise<Score>
+      (args: {
+        input: InputOf<Data>;
+        expected: ExpectedOf<Data>;
+        output: OutputOf<TaskFn>;
+      }) => Score | Promise<Score>
     >;
   },
 ): void;
@@ -144,8 +149,6 @@ async function registerEval<
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
   const datasetPromise = opts.data();
   const user = getGitUserInfo();
-
-  // TODO: EXPERIMENTS - we were creating `evalScope` here before
 
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
