@@ -14,14 +14,14 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
  * • Infers types from user's args annotation for type safety
  */
 export function createScorer<
-  TArgs extends { output: any } = { input: any; expected: any; output: any },
+  TArgs extends Record<string, any> = {},
   TInput = TArgs extends { input: infer I } ? I : never,
-  TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : any,
+  TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : never,
   TExtra extends Record<string, any> = Simplify<Omit<TArgs, 'input' | 'expected' | 'output'>>,
 >(
   name: string,
   fn: (args: TArgs) => number | Score | Promise<number | Score>,
-): Scorer<TInput, TOutput, TExtra> {
+): TOutput extends never ? never : Scorer<TInput, TOutput, TExtra> {
   const normalizeScore = (res: number | Score): Score => {
     if (typeof res === 'number') {
       return { score: res };
@@ -48,5 +48,5 @@ export function createScorer<
     enumerable: true,
   });
 
-  return scorer as Scorer<TInput, TOutput, TExtra>;
+  return scorer as TOutput extends never ? never : Scorer<TInput, TOutput, TExtra>;
 }
