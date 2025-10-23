@@ -19,6 +19,8 @@ export type SuiteData = {
   baseline: Evaluation | undefined | null;
   configFlags?: string[];
   flagConfig?: Record<string, any>;
+  runId?: string;
+  orgId?: string;
   cases: Array<{
     index: number;
     scores: Record<string, Score>;
@@ -356,11 +358,13 @@ export function printFinalReport({
   calculateScorerAverages,
   calculateBaselineScorerAverage,
   calculateFlagDiff,
+  resourcesUrl,
 }: {
   suiteData: SuiteData[];
   calculateScorerAverages: (suite: SuiteData) => Record<string, number>;
   calculateBaselineScorerAverage: (baseline: Evaluation, scorerName: string) => number | null;
   calculateFlagDiff: (suite: SuiteData) => Array<FlagDiff>;
+  resourcesUrl?: string;
 }) {
   console.log('');
   console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
@@ -373,6 +377,11 @@ export function printFinalReport({
     console.log('');
   }
 
-  console.log('View full report:');
-  console.log('https://app.axiom.co/evaluations/run/<run-id>');
+  const runId = suiteData[0]?.runId;
+  const orgId = suiteData[0]?.orgId;
+
+  if (runId && orgId && resourcesUrl) {
+    console.log('View full report:');
+    console.log(`${resourcesUrl}/${orgId}/rudder/evaluations/run/${runId}`);
+  }
 }

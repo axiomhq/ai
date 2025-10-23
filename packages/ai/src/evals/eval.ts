@@ -38,6 +38,7 @@ declare module 'vitest' {
     debug?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
+    runId?: string;
   }
 }
 
@@ -151,6 +152,7 @@ async function registerEval<
   const isDebug = inject('debug');
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
+  const runId = inject('runId');
 
   if (!axiomConfig) {
     throw new AxiomCLIError('Axiom config not found');
@@ -196,6 +198,8 @@ async function registerEval<
           id: evalId,
           name: evalName,
           version: evalVersion,
+          runId: runId ?? undefined,
+          orgId: undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
         };
@@ -232,13 +236,14 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
 
-        await evaluationApiClient.createEvaluation({
+        const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           region: 'US',
           baselineId: baseline?.id ?? undefined,
+          runId: runId ?? undefined,
           totalCases: dataset.length,
           scorers: opts.scorers?.map((s) => s.name) ?? [],
           config: {
@@ -246,6 +251,8 @@ async function registerEval<
           },
           status: 'running',
         });
+
+        const orgId = createEvalResponse?.data?.orgId;
 
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
@@ -258,6 +265,8 @@ async function registerEval<
           id: evalId,
           name: evalName,
           version: evalVersion,
+          runId: runId ?? undefined,
+          orgId: orgId ?? undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
         };
