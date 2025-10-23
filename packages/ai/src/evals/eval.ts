@@ -18,7 +18,7 @@ import type {
   RuntimeFlagLog,
   OutOfScopeFlag,
 } from './eval.types';
-import type { Score, Scorer } from './scorers';
+import type { ScoreWithName, ScorerLike } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
@@ -80,13 +80,12 @@ export function Eval<
   Out extends string | Record<string, any>,
   TaskFn extends EvalTask<InputOf<Data>, ExpectedOf<Data>, Out>,
   In = InputOf<Data>,
-  Exp = ExpectedOf<Data>,
 >(
   name: string,
   params: {
     data: () => Data | Promise<Data>;
     task: TaskFn;
-    scorers: ReadonlyArray<Scorer<In, Exp, Out>>;
+    scorers: ReadonlyArray<ScorerLike<In, Out>>;
     metadata?: Record<string, unknown>;
     timeout?: number;
     configFlags?: string[];
@@ -355,10 +354,11 @@ async function registerEval<
             overrides: result.overrides,
           };
 
-          const scoreList: Score[] = await Promise.all(
+          const scoreList: ScoreWithName[] = await Promise.all(
             opts.scorers.map(async (scorer) => {
+              const scorerName = (scorer as any).name || 'unknown';
               const scorerSpan = startSpan(
-                `score ${scorer.name}`,
+                `score ${scorerName}`,
                 {
                   attributes: {
                     [Attr.GenAI.Operation.Name]: 'eval.score',
@@ -374,14 +374,14 @@ async function registerEval<
               const result = await scorer({
                 input: data.input,
                 output,
-                expected: data.expected,
+                expected: data.expected as any,
               });
 
               const duration = Math.round(performance.now() - start);
               const scoreValue = result.score as number;
 
               scorerSpan.setAttributes({
-                [Attr.Eval.Score.Name]: result.name,
+                [Attr.Eval.Score.Name]: scorerName,
                 [Attr.Eval.Score.Value]: scoreValue,
               });
 
@@ -389,6 +389,7 @@ async function registerEval<
               scorerSpan.end();
 
               return {
+                name: scorerName,
                 ...result,
                 metadata: { duration, startedAt: start, error: null },
               };

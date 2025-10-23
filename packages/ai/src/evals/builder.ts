@@ -100,6 +100,7 @@ export function defineEval<
   return new EvalBuilderImpl<AllowedFlags, TInput, TExpected, TOutput>(name, params);
 }
 
+// TODO: BEFORE MERGE - note that this isn't used???
 /**
  * Pre-typed defineEval for app-specific flag/fact types.
  * Created by: const defineAppEval = createTypedDefineEval<AppFlags>();
