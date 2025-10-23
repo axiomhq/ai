@@ -13,6 +13,7 @@ import type {
   EvalTask,
   InputOf,
   ExpectedOf,
+  OutputOf,
   EvaluationReport,
   EvalCaseReport,
   RuntimeFlagLog,
@@ -76,27 +77,26 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  */
 export function Eval<
   // Inference-friendly overload – no explicit generics required by callers.
-  const Data extends readonly { input: any; expected: any }[],
-  Out extends string | Record<string, any>,
-  TaskFn extends EvalTask<InputOf<Data>, ExpectedOf<Data>, Out>,
-  In = InputOf<Data>,
+  const Data extends readonly CollectionRecord<any, any>[],
+  TaskFn extends (
+    args: { input: InputOf<Data>; expected: ExpectedOf<Data> },
+  ) => string | Record<string, any> | Promise<string | Record<string, any>>,
 >(
   name: string,
-  params: {
+  params: Omit<
+    EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
+    'data' | 'task' | 'scorers'
+  > & {
     data: () => Data | Promise<Data>;
     task: TaskFn;
-    scorers: ReadonlyArray<ScorerLike<In, Out>>;
-    metadata?: Record<string, unknown>;
-    timeout?: number;
-    configFlags?: string[];
+    scorers: ReadonlyArray<ScorerLike<InputOf<Data>, OutputOf<TaskFn>>>;
   },
 ): void;
 
 /**
- *
+ * Explicit generics overload – allows users to pass explicit types.
  */
 export function Eval<
-  // Explicit generics overload – allows users to pass explicit types.
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,

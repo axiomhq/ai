@@ -1,14 +1,17 @@
 import { Scorer } from 'axiom/ai/evals';
 import type z from 'zod';
 
-import {
-  type SupportTicketResponseSchema,
-  // type SupportTicketInputSchema,
-} from './capabilities/classify-ticket/schemas';
+import { type SupportTicketResponseSchema } from './capabilities/classify-ticket/schemas';
 
-// an example of a custom scorer
-export const exactMatchScorer = Scorer('Exact Match', ({ output, expected }) =>
-  output === expected ? 1 : 0,
+export const exactMatchScorer = Scorer(
+  'Exact Match',
+  ({
+    output,
+    expected,
+  }: {
+    output: z.infer<typeof SupportTicketResponseSchema>;
+    expected: z.infer<typeof SupportTicketResponseSchema>;
+  }) => (output.response === expected.response ? 1 : 0),
 );
 
 export const spamClassificationScorer = Scorer(

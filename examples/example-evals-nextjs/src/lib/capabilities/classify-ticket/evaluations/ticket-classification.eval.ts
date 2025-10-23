@@ -2,6 +2,7 @@ import { experimental_Eval as Eval } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 import { pickFlags } from '@/lib/app-scope';
+import { Levenshtein } from 'autoevals';
 
 Eval('Spam classification', {
   configFlags: pickFlags('ticketClassification'),
@@ -27,10 +28,19 @@ Eval('Spam classification', {
       },
     },
   ],
-  task: async ({ input }) => {
-    return await classifyTicketStep(input);
+  task: async ({ input }): Promise<{ category: string; response: string }> => {
+    const f = await classifyTicketStep(input);
+    return f;
   },
-  scorers: [spamClassificationScorer, jaccardResponseScorer],
+  scorers: [
+    spamClassificationScorer,
+    jaccardResponseScorer,
+    (args) =>
+      Levenshtein({
+        output: args.output.response,
+        expected: args.expected?.response,
+      }),
+  ],
   metadata: {
     description: 'Classify support tickets as spam or not spam',
   },

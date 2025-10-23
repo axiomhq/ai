@@ -14,8 +14,14 @@ export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
 export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
   ...args: any
 ) => AsyncIterable<infer O>
-  ? O
-  : Awaited<ReturnType<TaskFn>>;
+  ? O extends string | Record<string, any>
+    ? O
+    : never
+  : Awaited<ReturnType<TaskFn>> extends infer R
+    ? R extends string | Record<string, any>
+      ? R
+      : never
+    : never;
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
