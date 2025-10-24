@@ -2,15 +2,15 @@ import { experimental_Eval as Eval, Scorer } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 import { pickFlags } from '@/lib/app-scope';
-import { Levenshtein } from 'autoevals';
+import { ExactMatch } from 'autoevals';
 
-const _WrappedLevenshtein = Scorer(
-  'Levenshtein',
+const WrappedExactMatch = Scorer(
+  'Exact match',
   (args: {
     output: { response: string; category: string };
     expected: { response: string; category: string };
   }) => {
-    return Levenshtein({
+    return ExactMatch({
       output: args.output.response,
       expected: args.expected.response,
     });
@@ -44,11 +44,7 @@ Eval('Spam classification', {
   task: async ({ input }) => {
     return await classifyTicketStep(input);
   },
-  scorers: [
-    spamClassificationScorer,
-    jaccardResponseScorer,
-    // _WrappedLevenshtein
-  ],
+  scorers: [spamClassificationScorer, jaccardResponseScorer, WrappedExactMatch],
   metadata: {
     description: 'Classify support tickets as spam or not spam',
   },
