@@ -1,4 +1,4 @@
-import { experimental_Eval as Eval } from 'axiom/ai/evals';
+import { experimental_Eval as Eval, Scorer } from 'axiom/ai/evals';
 import { flag, fact, pickFlags } from '../src/lib/app-scope';
 
 const myFn = async (input: string, expected: string) => {
@@ -13,10 +13,10 @@ const myFn = async (input: string, expected: string) => {
 };
 
 // an example of a custom scorer
-const exactMatchScorer = (args: { output: string; expected?: string }) => ({
-  name: 'Exact Match',
-  score: args.output === args.expected ? 1 : 0,
-});
+const ExactMatchScorer = Scorer(
+  'Exact match',
+  ({ output, expected }: { output: string; expected: string }) => (output === expected ? 1 : 0),
+);
 
 Eval('Basic demo', {
   configFlags: pickFlags('behavior'),
@@ -31,11 +31,9 @@ Eval('Basic demo', {
     },
   ],
   task: async ({ input, expected }) => {
-    const r = await myFn(input, expected);
-    // console.log('tktk context', getEvalContext());
-    return r;
+    return await myFn(input, expected);
   },
-  scorers: [exactMatchScorer],
+  scorers: [ExactMatchScorer],
   metadata: {
     description:
       'Demonstrates pickFlags functionality - only behavior namespace is available, ui namespace is excluded',

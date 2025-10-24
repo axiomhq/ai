@@ -15,8 +15,8 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
  */
 export function createScorer<
   TArgs extends Record<string, any> = {},
-  TInput = TArgs extends { input: infer I } ? I : never,
-  TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : never,
+  TInput = TArgs extends { input: infer I } ? I : unknown,
+  TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : unknown,
   TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : never,
   TExtra extends Record<string, any> = Simplify<Omit<TArgs, 'input' | 'expected' | 'output'>>,
 >(
