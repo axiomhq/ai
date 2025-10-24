@@ -25,8 +25,8 @@ export function resolveAxiomConnection(
 ): AxiomEvalInstrumentationOptions & { consoleEndpointUrl: string } {
   let consoleEndpointUrl = buildResourcesUrl(config.eval.url);
 
-  if ('__overrideResourcesUrl' in config.eval) {
-    consoleEndpointUrl = config.eval.__overrideResourcesUrl as string;
+  if ('__overrideEndpointUrl' in config.eval) {
+    consoleEndpointUrl = config.eval.__overrideEndpointUrl as string;
   }
 
   return {
