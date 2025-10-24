@@ -3,7 +3,7 @@ import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorer
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 import { pickFlags } from '@/lib/app-scope';
 
-Eval('Spam classification', {
+Eval('spam-classification', {
   configFlags: pickFlags('ticketClassification'),
   data: () => [
     {
