@@ -42,7 +42,7 @@ export class AxiomReporter implements Reporter {
   private _endOfRunConfigEnd: EvaluationReport['configEnd'] | undefined;
   private _suiteData: SuiteData[] = [];
   private _baselines: Map<string, Evaluation | null> = new Map();
-  private _resourcesUrl?: string;
+  private _consoleEndpointUrl?: string;
 
   onTestRunStart() {
     this.start = performance.now();
@@ -51,8 +51,8 @@ export class AxiomReporter implements Reporter {
     // Store resourcesUrl from config
     const config = getAxiomConfig();
     if (config) {
-      const { resourcesUrl } = resolveAxiomConnection(config);
-      this._resourcesUrl = resourcesUrl;
+      const { consoleEndpointUrl } = resolveAxiomConnection(config);
+      this._consoleEndpointUrl = consoleEndpointUrl;
     }
 
     // Print global flag overrides at start
@@ -176,7 +176,7 @@ export class AxiomReporter implements Reporter {
       calculateScorerAverages: this.calculateScorerAverages.bind(this),
       calculateBaselineScorerAverage: this.calculateBaselineScorerAverage.bind(this),
       calculateFlagDiff: this.calculateFlagDiff.bind(this),
-      resourcesUrl: this._resourcesUrl,
+      consoleEndpointUrl: this._consoleEndpointUrl,
     });
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';

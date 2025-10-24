@@ -52,7 +52,6 @@ export interface AxiomEvalInstrumentationOptions {
   /**
    * Axiom URL for resources like evaluations, prompts, etc.
    */
-  resourcesUrl: string;
   token: string;
   dataset: string;
 }

@@ -22,16 +22,16 @@ const buildResourcesUrl = (urlString: string) => {
  */
 export function resolveAxiomConnection(
   config: ResolvedAxiomConfig,
-): AxiomEvalInstrumentationOptions {
-  let resourcesUrl = buildResourcesUrl(config.eval.url);
+): AxiomEvalInstrumentationOptions & { consoleEndpointUrl: string } {
+  let consoleEndpointUrl = buildResourcesUrl(config.eval.url);
 
   if ('__overrideResourcesUrl' in config.eval) {
-    resourcesUrl = config.eval.__overrideResourcesUrl as string;
+    consoleEndpointUrl = config.eval.__overrideResourcesUrl as string;
   }
 
   return {
     url: config.eval.url,
-    resourcesUrl,
+    consoleEndpointUrl: consoleEndpointUrl,
     token: config.eval.token,
     dataset: config.eval.dataset,
   };

@@ -358,13 +358,13 @@ export function printFinalReport({
   calculateScorerAverages,
   calculateBaselineScorerAverage,
   calculateFlagDiff,
-  resourcesUrl,
+  consoleEndpointUrl,
 }: {
   suiteData: SuiteData[];
   calculateScorerAverages: (suite: SuiteData) => Record<string, number>;
   calculateBaselineScorerAverage: (baseline: Evaluation, scorerName: string) => number | null;
   calculateFlagDiff: (suite: SuiteData) => Array<FlagDiff>;
-  resourcesUrl?: string;
+  consoleEndpointUrl?: string;
 }) {
   console.log('');
   console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
@@ -380,8 +380,8 @@ export function printFinalReport({
   const runId = suiteData[0]?.runId;
   const orgId = suiteData[0]?.orgId;
 
-  if (runId && orgId && resourcesUrl) {
+  if (runId && orgId && consoleEndpointUrl) {
     console.log('View full report:');
-    console.log(`${resourcesUrl}/${orgId}/rudder/evaluations/run/${runId}`);
+    console.log(`${consoleEndpointUrl}/${orgId}/rudder/evaluations/run/${runId}`);
   }
 }
