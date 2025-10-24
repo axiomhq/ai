@@ -4,30 +4,30 @@ import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 
 export interface EvaluationApiConfig {
-  readonly dataset?: string;
-  readonly region?: string;
-  readonly baseUrl?: string;
-  readonly apiUrl?: string;
-  readonly token?: string;
+  dataset?: string;
+  region?: string;
+  baseUrl?: string;
+  apiUrl?: string;
+  token?: string;
 }
 
 export type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled';
 
 export interface EvaluationApiPayloadBase {
-  readonly id: string;
-  readonly name: string;
-  readonly dataset: string;
-  readonly region: string;
-  readonly baselineId?: string;
-  readonly totalCases?: number;
-  readonly scorers?: readonly string[];
-  readonly config?: Readonly<Record<string, unknown>>;
-  readonly status: EvaluationStatus;
-  readonly successCases?: number;
-  readonly erroredCases?: number;
-  readonly durationMs?: number;
-  readonly scorerAvgs?: readonly number[];
-  readonly version: string;
+  id: string;
+  name: string;
+  dataset: string;
+  region: string;
+  baselineId?: string;
+  totalCases?: number;
+  scorers?: string[];
+  config?: Record<string, unknown>;
+  status: EvaluationStatus;
+  successCases?: number;
+  erroredCases?: number;
+  durationMs?: number;
+  scorerAvgs?: number[];
+  version: string;
 }
 
 export class EvaluationApiClient {
