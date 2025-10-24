@@ -33,9 +33,9 @@ export interface EvaluationApiPayloadBase {
 export class EvaluationApiClient {
   private readonly fetcher: Fetcher;
   constructor(config: ResolvedAxiomConfig) {
-    const { resourcesUrl, token } = resolveAxiomConnection(config);
+    const { consoleEndpointUrl, token } = resolveAxiomConnection(config);
 
-    this.fetcher = createFetcher(resourcesUrl, token ?? '');
+    this.fetcher = createFetcher(consoleEndpointUrl, token ?? '');
   }
 
   async createEvaluation(evaluation: EvaluationApiPayloadBase) {
