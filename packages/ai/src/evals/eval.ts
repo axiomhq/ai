@@ -19,12 +19,7 @@ import type {
   OutOfScopeFlag,
 } from './eval.types';
 import type { Score, Scorer } from './scorers';
-import {
-  EvaluationApiClient,
-  findBaseline,
-  findEvaluationCases,
-  type EvaluationStatus,
-} from './eval.service';
+import { EvaluationApiClient, findBaseline, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
@@ -329,12 +324,9 @@ async function registerEval<
           (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
         ).length;
 
-        // TODO: Is this right? @gabrielelpidio
-        const status: EvaluationStatus = successCases > erroredCases ? 'completed' : 'errored';
-
         await evaluationApiClient.updateEvaluation({
           id: evalId,
-          status,
+          status: 'completed',
           totalCases: dataset.length,
           successCases,
           erroredCases,
