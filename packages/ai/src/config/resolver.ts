@@ -5,7 +5,7 @@ import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './ind
  * @param urlString - The API URL
  * @returns The resources URL
  */
-const buildResourcesUrl = (urlString: string) => {
+const buildConsoleUrl = (urlString: string) => {
   const url = new URL(urlString);
 
   return `${url.protocol}//app.${url.host.split('api.').at(-1)}`;
@@ -23,7 +23,7 @@ const buildResourcesUrl = (urlString: string) => {
 export function resolveAxiomConnection(
   config: ResolvedAxiomConfig,
 ): AxiomEvalInstrumentationOptions & { consoleEndpointUrl: string } {
-  let consoleEndpointUrl = buildResourcesUrl(config.eval.url);
+  let consoleEndpointUrl = buildConsoleUrl(config.eval.url);
 
   if ('__overrideEndpointUrl' in config.eval) {
     consoleEndpointUrl = config.eval.__overrideEndpointUrl as string;
