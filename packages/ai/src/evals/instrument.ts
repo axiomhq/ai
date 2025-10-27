@@ -46,7 +46,7 @@ async function resolveInstrumentationHook(
 
 async function runInstrumentationHook(
   hook: AxiomEvalInstrumentationHook,
-  options: Omit<AxiomEvalInstrumentationOptions, 'resourcesUrl'>,
+  options: AxiomEvalInstrumentationOptions,
 ): Promise<AxiomEvalInstrumentationResult | void> {
   try {
     return await hook(options);

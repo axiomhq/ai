@@ -44,7 +44,6 @@ export interface AxiomConnectionConfig {
  * Options passed to the instrumentation hook
  * - url: string
  * - token: string
- * - resourcesUrl: string
  * - dataset: string
  */
 export interface AxiomEvalInstrumentationOptions {
@@ -82,7 +81,7 @@ export interface AxiomEvalInstrumentationResult {
  * ```
  */
 export type AxiomEvalInstrumentationHook = (
-  options: Omit<AxiomEvalInstrumentationOptions, 'resourcesUrl'>,
+  options: AxiomEvalInstrumentationOptions,
 ) => AxiomEvalInstrumentationResult | Promise<AxiomEvalInstrumentationResult>;
 
 /**
