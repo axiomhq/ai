@@ -302,8 +302,7 @@ async function registerEval<
 
       await it.concurrent.for(
         dataset.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
-        // TODO: BEFORE MERGE - why is data.
-      )('case', async (data: CollectionRecordWithIndex, { task }) => {
+      )('case', async (data, { task }) => {
         const start = performance.now();
         if (!suiteContext) {
           throw new Error(
@@ -381,7 +380,7 @@ async function registerEval<
               const result = await scorer({
                 input: data.input,
                 output,
-                expected: data.expected as any,
+                expected: data.expected,
               });
 
               const duration = Math.round(performance.now() - start);
