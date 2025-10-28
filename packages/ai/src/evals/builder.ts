@@ -99,21 +99,3 @@ export function defineEval<
 ): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput> {
   return new EvalBuilderImpl<AllowedFlags, TInput, TExpected, TOutput>(name, params);
 }
-
-// TODO: BEFORE MERGE - note that this isn't used???
-/**
- * Pre-typed defineEval for app-specific flag/fact types.
- * Created by: const defineAppEval = createTypedDefineEval<AppFlags>();
- */
-export function createTypedDefineEval<AppFlags extends Record<string, any>>() {
-  return function defineAppEval<
-    TInput extends string | Record<string, any> = string,
-    TExpected extends string | Record<string, any> = string,
-    TOutput extends string | Record<string, any> = string,
-  >(
-    name: string,
-    params: EvalParams<TInput, TExpected, TOutput>,
-  ): EvalBuilder<AppFlags, TInput, TExpected, TOutput> {
-    return defineEval<TInput, TExpected, TOutput, AppFlags>(name, params);
-  };
-}
