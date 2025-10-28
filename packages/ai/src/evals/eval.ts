@@ -136,6 +136,13 @@ function captureFlagConfig(configFlags?: string[]): Record<string, any> {
   return dotNotationToNested(filtered);
 }
 
+const getScorerName = <TScorer extends ScorerLike<any, any, any>>(
+  scorer: TScorer,
+  fallback: string = 'unknown',
+) => {
+  return (scorer as any).name || fallback;
+};
+
 async function registerEval<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
@@ -295,6 +302,7 @@ async function registerEval<
 
       await it.concurrent.for(
         dataset.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
+        // TODO: BEFORE MERGE - why is data.
       )('case', async (data: CollectionRecordWithIndex, { task }) => {
         const start = performance.now();
         if (!suiteContext) {
@@ -355,7 +363,7 @@ async function registerEval<
 
           const scoreList: ScoreWithName[] = await Promise.all(
             opts.scorers.map(async (scorer) => {
-              const scorerName = (scorer as any).name || 'unknown';
+              const scorerName = getScorerName(scorer);
               const scorerSpan = startSpan(
                 `score ${scorerName}`,
                 {
