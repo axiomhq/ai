@@ -28,6 +28,7 @@ export interface EvaluationApiPayloadBase {
   durationMs?: number;
   scorerAvgs?: number[];
   version: string;
+  runId?: string;
 }
 
 export class EvaluationApiClient {
