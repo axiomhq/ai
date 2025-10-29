@@ -54,11 +54,11 @@ export class AxiomReporter implements Reporter {
     }
 
     // Print flag overrides once when defaults become available
+    // (we don't have them in `onTestRunStart`)
     if (!this._printedFlagOverrides) {
-      // Get defaults and overrides from configEnd which has the correct schema defaults
       const defaultsFromConfigEnd = meta.evaluation.configEnd?.flags ?? {};
       const overridesFromConfigEnd = meta.evaluation.configEnd?.overrides ?? {};
-      
+
       if (Object.keys(overridesFromConfigEnd).length > 0) {
         printGlobalFlagOverrides(overridesFromConfigEnd, defaultsFromConfigEnd);
         this._printedFlagOverrides = true;
