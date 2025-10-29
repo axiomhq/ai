@@ -1,8 +1,7 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
-import { getGlobalFlagOverrides } from './context/global-flags';
-import { getAxiomConfig, getConfigScope } from './context/storage';
+import { getAxiomConfig } from './context/storage';
 import { findEvaluationCases } from './eval.service';
 import type {
   Evaluation,
@@ -41,15 +40,11 @@ export class AxiomReporter implements Reporter {
   private _endOfRunConfigEnd: EvaluationReport['configEnd'] | undefined;
   private _suiteData: SuiteData[] = [];
   private _baselines: Map<string, Evaluation | null> = new Map();
+  private _printedFlagOverrides = false;
 
   onTestRunStart() {
     this.start = performance.now();
     this.startTime = new Date().getTime();
-
-    // Print global flag overrides at start
-    const overrides = getGlobalFlagOverrides();
-    const defaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
-    printGlobalFlagOverrides(overrides, defaults);
   }
 
   async onTestSuiteReady(_testSuite: TestSuite) {
@@ -57,6 +52,19 @@ export class AxiomReporter implements Reporter {
     if (_testSuite.state() === 'skipped') {
       return;
     }
+
+    // Print flag overrides once when defaults become available
+    if (!this._printedFlagOverrides) {
+      // Get defaults and overrides from configEnd which has the correct schema defaults
+      const defaultsFromConfigEnd = meta.evaluation.configEnd?.flags ?? {};
+      const overridesFromConfigEnd = meta.evaluation.configEnd?.overrides ?? {};
+      
+      if (Object.keys(overridesFromConfigEnd).length > 0) {
+        printGlobalFlagOverrides(overridesFromConfigEnd, defaultsFromConfigEnd);
+        this._printedFlagOverrides = true;
+      }
+    }
+
     const baseline = meta.evaluation.baseline;
     if (baseline) {
       // load baseline data per suite
