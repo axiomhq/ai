@@ -61,8 +61,8 @@ export class AxiomReporter implements Reporter {
 
       if (Object.keys(overridesFromConfigEnd).length > 0) {
         printGlobalFlagOverrides(overridesFromConfigEnd, defaultsFromConfigEnd);
-        this._printedFlagOverrides = true;
       }
+      this._printedFlagOverrides = true;
     }
 
     const baseline = meta.evaluation.baseline;
