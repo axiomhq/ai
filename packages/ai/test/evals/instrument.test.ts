@@ -161,4 +161,58 @@ describe.sequential('eval instrumentation', () => {
 
     await appProvider.shutdown();
   });
+
+  it('worker process: app spans incorrectly get axiom service name when hook is not restored', async () => {
+    const axiomExporter = new InMemorySpanExporter();
+    const appExporter = new InMemorySpanExporter();
+
+    const appProvider = new NodeTracerProvider({
+      resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: 'my-worker-app' }),
+      spanProcessors: [new SimpleSpanProcessor(appExporter)],
+    });
+    appProvider.register();
+
+    const userHook: Hook = () => ({
+      provider: appProvider,
+    });
+
+    vi.doMock('@opentelemetry/exporter-trace-otlp-http', () => ({
+      OTLPTraceExporter: vi.fn(() => axiomExporter),
+    }));
+
+    vi.doMock('../../src/config/loader', () => ({
+      loadConfig: vi.fn(async () => ({
+        config: createConfig({ hook: userHook }),
+      })),
+    }));
+
+    const { initInstrumentation, startSpan, flush } = await import('../../src/evals/instrument');
+
+    await initInstrumentation({
+      enabled: true,
+      config: createConfig({ hook: null }),
+    });
+
+    const evalSpan = startSpan('worker-eval-span', {});
+
+    await context.with(trace.setSpan(context.active(), evalSpan), async () => {
+      const appSpan = trace.getTracer('app-tracer').startSpan('app-span');
+      appSpan.end();
+    });
+
+    evalSpan.end();
+    await flush();
+
+    const axiomSpans = axiomExporter.getFinishedSpans();
+
+    const evalSpanExported = axiomSpans.find((s) => s.name === 'worker-eval-span');
+    expect(evalSpanExported).toBeDefined();
+    expect(evalSpanExported?.resource.attributes[ATTR_SERVICE_NAME]).toBe('axiom');
+
+    const appSpanExported = appExporter.getFinishedSpans().find((s) => s.name === 'app-span');
+    expect(appSpanExported).toBeDefined();
+    expect(appSpanExported?.resource.attributes[ATTR_SERVICE_NAME]).toBe('my-worker-app');
+
+    await appProvider.shutdown();
+  });
 });
