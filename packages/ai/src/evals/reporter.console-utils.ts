@@ -124,8 +124,10 @@ export function printTestCaseScores(
   const index = testMeta.case.index;
 
   Object.keys(testMeta.case.scores).forEach((k) => {
-    const v = testMeta.case.scores[k].score ? testMeta.case.scores[k].score : 0;
-    const scoreValue = Number(v * 100).toFixed(2) + '%';
+    const scoreData = testMeta.case.scores[k];
+    const hasError = scoreData.metadata?.error;
+    const v = scoreData.score ? scoreData.score : 0;
+    const scoreValue = hasError ? c.dim('N/A') : Number(v * 100).toFixed(2) + '%';
 
     if (baseline?.cases[index]?.scores[k]) {
       const baselineScoreValue = baseline.cases[index].scores[k].value;
@@ -137,11 +139,22 @@ export function printTestCaseScores(
         k,
         c.magentaBright(blScoreText),
         '->',
-        c.blueBright(scoreValue),
-        diff > 0 ? c.green('+' + diffText) : diff < 0 ? c.red(diffText) : diffText,
+        hasError ? scoreValue : c.blueBright(scoreValue),
+        hasError
+          ? c.dim('(scorer not run)')
+          : diff > 0
+            ? c.green('+' + diffText)
+            : diff < 0
+              ? c.red(diffText)
+              : diffText,
       );
     } else {
-      console.log('   ', k, c.blueBright(scoreValue));
+      console.log(
+        '   ',
+        k,
+        hasError ? scoreValue : c.blueBright(scoreValue),
+        hasError ? c.dim('(scorer not run)') : '',
+      );
     }
 
     return [k, scoreValue];
@@ -273,32 +286,44 @@ export function printSuiteBox({
   const scorerNames = Object.keys(scorerAverages);
   const maxNameLength = Math.max(...scorerNames.map((name) => name.length));
 
+  const allCasesErrored = (scorerName: string) => {
+    return suite.cases.every((caseData) => caseData.scores[scorerName]?.metadata?.error);
+  };
+
   for (const scorerName of scorerNames) {
     const avg = scorerAverages[scorerName];
     const paddedName = scorerName.padEnd(maxNameLength);
+    const hasAllErrors = allCasesErrored(scorerName);
 
     if (suite.baseline) {
       const baselineAvg = calculateBaselineScorerAverage(suite.baseline, scorerName);
       if (baselineAvg !== null) {
-        const currentPercent = (avg * 100).toFixed(2) + '%';
+        const currentPercent = hasAllErrors ? c.dim('N/A') : (avg * 100).toFixed(2) + '%';
         const baselinePercent = (baselineAvg * 100).toFixed(2) + '%';
         const diff = avg - baselineAvg;
         const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
         const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
 
         const paddedBaseline = baselinePercent.padStart(7);
-        const paddedCurrent = currentPercent.padStart(7);
-        const paddedDiff = diffText.padStart(8);
+        const paddedCurrent =
+          typeof currentPercent === 'string' && currentPercent.includes('\x1b')
+            ? currentPercent
+            : currentPercent.padStart(7);
+        const paddedDiff = hasAllErrors ? c.dim('(all cases failed)') : diffText.padStart(8);
 
         console.log(
-          `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${c.magentaBright(paddedCurrent)}  (${diffColor(paddedDiff)})`,
+          `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${hasAllErrors ? paddedCurrent : c.magentaBright(paddedCurrent)}  (${hasAllErrors ? paddedDiff : diffColor(paddedDiff)})`,
         );
       } else {
-        const currentPercent = (avg * 100).toFixed(2) + '%';
+        const currentPercent = hasAllErrors
+          ? c.red('N/A (all cases failed)')
+          : (avg * 100).toFixed(2) + '%';
         console.log(`│   • ${paddedName}  ${currentPercent}`);
       }
     } else {
-      const currentPercent = (avg * 100).toFixed(2) + '%';
+      const currentPercent = hasAllErrors
+        ? c.red('N/A (all cases failed)')
+        : (avg * 100).toFixed(2) + '%';
       console.log(`│   • ${paddedName}  ${currentPercent}`);
     }
   }

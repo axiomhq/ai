@@ -201,8 +201,10 @@ export class AxiomReporter implements Reporter {
         if (!scorerTotals[scorerName]) {
           scorerTotals[scorerName] = { sum: 0, count: 0 };
         }
-        scorerTotals[scorerName].sum += score.score || 0;
-        scorerTotals[scorerName].count += 1;
+        if (!score.metadata?.error) {
+          scorerTotals[scorerName].sum += score.score || 0;
+          scorerTotals[scorerName].count += 1;
+        }
       }
     }
 

@@ -428,13 +428,27 @@ async function registerEval<
                 ctx.outOfScopeFlags ||
                 ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
 
+              // Populate scores with error metadata for all scorers that didn't run
+              const failedScores: Record<string, Score> = {};
+              for (const scorer of opts.scorers) {
+                failedScores[scorer.name] = {
+                  name: scorer.name,
+                  score: 0,
+                  metadata: {
+                    duration: 0,
+                    startedAt: start,
+                    error: error.message,
+                  },
+                };
+              }
+
               task.meta.case = {
                 name: evalName,
                 index: data.index,
                 expected: data.expected,
                 input: data.input,
                 output: String(e),
-                scores: {},
+                scores: failedScores,
                 status: 'fail',
                 errors: [error],
                 startedAt: start,
