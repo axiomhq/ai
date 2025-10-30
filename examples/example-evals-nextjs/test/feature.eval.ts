@@ -33,6 +33,7 @@ Eval('Basic demo', {
     },
   ],
   task: async ({ input, expected }) => {
+    throw new Error('boom');
     const r = await myFn(input, expected);
     // console.log('tktk context', getEvalContext());
     return r;
