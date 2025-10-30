@@ -23,7 +23,7 @@ import { findBaseline, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
-import { AxiomCLIError } from '../cli/errors';
+import { AxiomCLIError, errorToString } from '../cli/errors';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -235,10 +235,7 @@ async function registerEval<
           registrationStatus: instrumentationError
             ? {
                 status: 'failed',
-                error:
-                  instrumentationError instanceof Error
-                    ? instrumentationError.message
-                    : String(instrumentationError),
+                error: errorToString(instrumentationError),
               }
             : { status: 'success' },
         };

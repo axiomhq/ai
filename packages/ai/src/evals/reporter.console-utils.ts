@@ -391,11 +391,11 @@ export function printFinalReport({
     console.log('');
     for (const status of registrationStatus) {
       if (!status.registered) {
-        console.log(c.yellow('⚠️  Warning: Failed to register evaluation with Axiom'));
+        console.log(c.yellow(`⚠️  Warning: Failed to register "${status.name}" with Axiom`));
         if (status.error) {
           console.log(c.dim(`   Error: ${status.error}`));
         }
-        console.log(c.dim('   Results will not be available in the Axiom UI.'));
+        console.log(c.dim(`   Results for this evaluation will not be available in the Axiom UI.`));
       }
     }
   }
