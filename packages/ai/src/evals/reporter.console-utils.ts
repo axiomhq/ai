@@ -307,10 +307,7 @@ export function printSuiteBox({
         const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
 
         const paddedBaseline = baselinePercent.padStart(7);
-        const paddedCurrent =
-          typeof currentPercent === 'string' && currentPercent.includes('\x1b')
-            ? currentPercent
-            : currentPercent.padStart(7);
+        const paddedCurrent = hasAllErrors ? currentPercent : currentPercent.padStart(7);
         const paddedDiff = hasAllErrors ? c.dim('(all cases failed)') : diffText.padStart(8);
 
         console.log(
