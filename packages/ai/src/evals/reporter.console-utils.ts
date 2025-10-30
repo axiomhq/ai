@@ -7,6 +7,7 @@ import type {
   MetaWithCase,
   MetaWithEval,
   OutOfScopeFlag,
+  OutOfScopeFlagAccess,
 } from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
 import type { Score } from './scorers';
@@ -22,7 +23,7 @@ export type SuiteData = {
   cases: Array<{
     index: number;
     scores: Record<string, Score>;
-    outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+    outOfScopeFlags?: OutOfScopeFlagAccess[];
     errors?: Error[] | null;
     runtimeFlags?: any;
   }>;

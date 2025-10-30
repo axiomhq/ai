@@ -17,6 +17,7 @@ import type {
   EvalCaseReport,
   RuntimeFlagLog,
   OutOfScopeFlag,
+  OutOfScopeFlagAccess,
 } from './eval.types';
 import type { Score, Scorer } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
@@ -180,8 +181,7 @@ async function registerEval<
       let instrumentationError: unknown = undefined;
 
       // Track out-of-scope flags across all cases for evaluation-level reporting
-      const allOutOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] =
-        [];
+      const allOutOfScopeFlags: OutOfScopeFlagAccess[] = [];
 
       // Track final config snapshot from the last executed case for reporter printing
       let finalConfigSnapshot:
@@ -305,7 +305,7 @@ async function registerEval<
           );
         }
 
-        let outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] = [];
+        let outOfScopeFlags: OutOfScopeFlagAccess[] = [];
 
         await startActiveSpan(
           `case ${data.index}`,
@@ -424,9 +424,7 @@ async function registerEval<
               const error = e as Error;
 
               const ctx = getEvalContext();
-              outOfScopeFlags =
-                ctx.outOfScopeFlags ||
-                ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
+              outOfScopeFlags = ctx.outOfScopeFlags || ([] as OutOfScopeFlagAccess[]);
 
               // Populate scores with error metadata for all scorers that didn't run
               const failedScores: Record<string, Score> = {};
@@ -584,7 +582,7 @@ const runTask = async <
         async (): Promise<{
           output: TOutput;
           duration: number;
-          outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+          outOfScopeFlags: OutOfScopeFlagAccess[];
           finalFlags: Record<string, any>;
           overrides?: Record<string, any>;
         }> => {
