@@ -90,6 +90,7 @@ export function Eval<
     metadata?: Record<string, unknown>;
     timeout?: number;
     configFlags?: string[];
+    trials?: number;
   },
 ): void;
 
@@ -327,110 +328,195 @@ async function registerEval<
         );
         const caseContext = trace.setSpan(context.active(), caseSpan);
 
+        const numTrials = opts.trials ?? 1;
         let outOfScopeFlags: { flagPath: string; accessedAt: number; stackTrace: string[] }[] = [];
+
+        const trialResults: {
+          output: TOutput;
+          scores: Record<string, Score>;
+          duration: number;
+        }[] = [];
+        let lastError: Error | null = null;
+
         try {
-          const result = await runTask(
-            caseContext,
-            {
-              id: evalId,
-              version: evalVersion,
+          for (let trialIndex = 0; trialIndex < numTrials; trialIndex++) {
+            const trialSpan = startSpan(
+              `trial ${trialIndex}`,
+              {
+                attributes: {
+                  [Attr.GenAI.Operation.Name]: 'eval.trial',
+                  [Attr.Eval.ID]: evalId,
+                  [Attr.Eval.Name]: evalName,
+                  [Attr.Eval.Version]: evalVersion,
+                  [Attr.Eval.Case.Index]: data.index,
+                },
+              },
+              caseContext,
+            );
+            const trialContext = trace.setSpan(context.active(), trialSpan);
+
+            try {
+              const result = await runTask(
+                trialContext,
+                {
+                  id: evalId,
+                  version: evalVersion,
+                  name: evalName,
+                },
+                {
+                  index: data.index,
+                  expected: data.expected,
+                  input: data.input,
+                  scorers: opts.scorers,
+                  task: opts.task,
+                  metadata: opts.metadata,
+                  configFlags: opts.configFlags,
+                },
+              );
+              const { output, duration } = result;
+              outOfScopeFlags = result.outOfScopeFlags;
+
+              finalConfigSnapshot = {
+                flags: result.finalFlags || {},
+                pickedFlags: opts.configFlags,
+                overrides: result.overrides,
+              };
+
+              const scoreList: Score[] = await Promise.all(
+                opts.scorers.map(async (scorer) => {
+                  const scorerSpan = startSpan(
+                    `score ${scorer.name}`,
+                    {
+                      attributes: {
+                        [Attr.GenAI.Operation.Name]: 'eval.score',
+                        [Attr.Eval.ID]: evalId,
+                        [Attr.Eval.Name]: evalName,
+                        [Attr.Eval.Version]: evalVersion,
+                      },
+                    },
+                    trialContext,
+                  );
+
+                  const start = performance.now();
+                  const result = await scorer({
+                    input: data.input,
+                    output,
+                    expected: data.expected,
+                  });
+
+                  const duration = Math.round(performance.now() - start);
+                  const scoreValue = result.score as number;
+
+                  scorerSpan.setAttributes({
+                    [Attr.Eval.Score.Name]: result.name,
+                    [Attr.Eval.Score.Value]: scoreValue,
+                  });
+
+                  scorerSpan.setStatus({ code: SpanStatusCode.OK });
+                  scorerSpan.end();
+
+                  return {
+                    ...result,
+                    metadata: { duration, startedAt: start, error: null },
+                  };
+                }),
+              );
+
+              const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
+
+              trialSpan.setAttributes({
+                [Attr.Eval.Case.Output]:
+                  typeof output === 'string' ? output : JSON.stringify(output),
+                [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
+              });
+              trialSpan.setStatus({ code: SpanStatusCode.OK });
+              trialSpan.end();
+
+              trialResults.push({ output, scores, duration });
+
+              allOutOfScopeFlags.push(...outOfScopeFlags);
+            } catch (e) {
+              console.log(e);
+              const error = e as Error;
+              trialSpan.recordException(error);
+              trialSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+              trialSpan.end();
+
+              const ctx = getEvalContext();
+              outOfScopeFlags =
+                ctx.outOfScopeFlags ||
+                ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
+
+              lastError = error;
+
+              // For now, if a trial fails, we continue with remaining trials
+              // but we could make this configurable in the future
+            }
+          }
+
+          if (trialResults.length > 0) {
+            const scorerNames = Object.keys(trialResults[0].scores);
+            const averagedScores: Record<string, Score> = {};
+
+            for (const scorerName of scorerNames) {
+              const scorerValues = trialResults
+                .map((trial) => trial.scores[scorerName])
+                .filter((s) => s !== undefined);
+
+              if (scorerValues.length > 0) {
+                const avgScore =
+                  scorerValues.reduce((sum, s) => sum + (s.score as number), 0) /
+                  scorerValues.length;
+
+                averagedScores[scorerName] = {
+                  ...scorerValues[0],
+                  score: avgScore,
+                };
+              }
+            }
+
+            const avgDuration =
+              trialResults.reduce((sum, t) => sum + t.duration, 0) / trialResults.length;
+
+            const lastTrial = trialResults[trialResults.length - 1];
+
+            task.meta.case = {
+              index: data.index,
               name: evalName,
-            },
-            {
+              expected: data.expected,
+              input: data.input,
+              output: lastTrial.output,
+              scores: averagedScores,
+              status: 'success',
+              errors: [],
+              duration: Math.round(avgDuration),
+              startedAt: start,
+              outOfScopeFlags,
+              pickedFlags: opts.configFlags,
+            };
+          } else if (lastError) {
+            task.meta.case = {
+              name: evalName,
               index: data.index,
               expected: data.expected,
               input: data.input,
-              scorers: opts.scorers,
-              task: opts.task,
-              metadata: opts.metadata,
-              configFlags: opts.configFlags,
-            },
-          );
-          const { output, duration } = result;
-          outOfScopeFlags = result.outOfScopeFlags;
+              output: String(lastError),
+              scores: {},
+              status: 'fail',
+              errors: [lastError],
+              startedAt: start,
+              duration: Math.round(performance.now() - start),
+              outOfScopeFlags,
+              pickedFlags: opts.configFlags,
+            };
+          }
 
-          finalConfigSnapshot = {
-            flags: result.finalFlags || {},
-            pickedFlags: opts.configFlags,
-            overrides: result.overrides,
-          };
-
-          const scoreList: Score[] = await Promise.all(
-            opts.scorers.map(async (scorer) => {
-              const scorerSpan = startSpan(
-                `score ${scorer.name}`,
-                {
-                  attributes: {
-                    [Attr.GenAI.Operation.Name]: 'eval.score',
-                    [Attr.Eval.ID]: evalId,
-                    [Attr.Eval.Name]: evalName,
-                    [Attr.Eval.Version]: evalVersion,
-                  },
-                },
-                caseContext,
-              );
-
-              const start = performance.now();
-              const result = await scorer({
-                input: data.input,
-                output,
-                expected: data.expected,
-              });
-
-              const duration = Math.round(performance.now() - start);
-              const scoreValue = result.score as number;
-
-              scorerSpan.setAttributes({
-                [Attr.Eval.Score.Name]: result.name,
-                [Attr.Eval.Score.Value]: scoreValue,
-              });
-
-              scorerSpan.setStatus({ code: SpanStatusCode.OK });
-              scorerSpan.end();
-
-              return {
-                ...result,
-                metadata: { duration, startedAt: start, error: null },
-              };
-            }),
-          );
-
-          const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
-
-          caseSpan.setAttributes({
-            [Attr.Eval.Case.Output]: typeof output === 'string' ? output : JSON.stringify(output),
-            [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
-          });
           caseSpan.setStatus({ code: SpanStatusCode.OK });
-
-          // set task meta for showing result in vitest report
-          task.meta.case = {
-            index: data.index,
-            name: evalName,
-            expected: data.expected,
-            input: data.input,
-            output: output,
-            scores,
-            status: 'success',
-            errors: [],
-            duration,
-            startedAt: start,
-            outOfScopeFlags,
-            pickedFlags: opts.configFlags,
-          };
-
-          // Collect out-of-scope flags for evaluation-level aggregation
-          allOutOfScopeFlags.push(...outOfScopeFlags);
         } catch (e) {
           console.log(e);
           const error = e as Error;
           caseSpan.recordException(error);
           caseSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-
-          const ctx = getEvalContext();
-          outOfScopeFlags =
-            ctx.outOfScopeFlags ||
-            ([] as { flagPath: string; accessedAt: number; stackTrace: string[] }[]);
 
           task.meta.case = {
             name: evalName,
