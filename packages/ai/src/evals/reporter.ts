@@ -4,12 +4,7 @@ import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from
 import { getGlobalFlagOverrides } from './context/global-flags';
 import { getAxiomConfig, getConfigScope } from './context/storage';
 import { findEvaluationCases } from './eval.service';
-import type {
-  Evaluation,
-  EvaluationReport,
-  MetaWithCase,
-  MetaWithEval,
-} from './eval.types';
+import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,
