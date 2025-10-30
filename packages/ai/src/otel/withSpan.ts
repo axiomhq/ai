@@ -101,7 +101,7 @@ export function withSpan<Return>(
   const tracer = opts?.tracer ?? getTracer();
 
   // Create span manually to control its lifecycle
-  const span = tracer.startSpan('gen_ai.call_llm');
+  const span = tracer.startSpan('chat');
   const spanContext = trace.setSpan(context.active(), span);
 
   return context.with(spanContext, async () => {
