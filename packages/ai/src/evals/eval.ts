@@ -193,7 +193,6 @@ async function registerEval<
           await instrumentationReady;
         } catch (error) {
           instrumentationError = error;
-          throw error;
         }
 
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
@@ -233,6 +232,15 @@ async function registerEval<
           version: evalVersion,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
+          registrationStatus: instrumentationError
+            ? {
+                status: 'failed',
+                error:
+                  instrumentationError instanceof Error
+                    ? instrumentationError.message
+                    : String(instrumentationError),
+              }
+            : { status: 'success' },
         };
 
         const flagConfig = captureFlagConfig(opts.configFlags);

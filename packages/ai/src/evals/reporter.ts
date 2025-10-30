@@ -134,6 +134,7 @@ export class AxiomReporter implements Reporter {
       flagConfig: meta.evaluation.flagConfig,
       cases,
       outOfScopeFlags: meta.evaluation.outOfScopeFlags,
+      registrationStatus: meta.evaluation.registrationStatus,
     });
 
     printEvalNameAndFileName(testSuite, meta);
@@ -160,11 +161,18 @@ export class AxiomReporter implements Reporter {
       process.stdout.write('\x1b[2J\x1b[0f'); // Clear screen and move cursor to top
     }
 
+    const registrationStatus = this._suiteData.map((suite) => ({
+      name: suite.name,
+      registered: suite.registrationStatus?.status === 'success',
+      error: suite.registrationStatus?.status === 'failed' ? suite.registrationStatus.error : undefined,
+    }));
+
     printFinalReport({
       suiteData: this._suiteData,
       calculateScorerAverages: this.calculateScorerAverages.bind(this),
       calculateBaselineScorerAverage: this.calculateBaselineScorerAverage.bind(this),
       calculateFlagDiff: this.calculateFlagDiff.bind(this),
+      registrationStatus,
     });
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
