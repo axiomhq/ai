@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { loadPushCommand } from './cli/commands/push.command';
 import { loadPullCommand } from './cli/commands/pull.command';
 import { loadEvalCommand } from './cli/commands/eval.command';
+import { loadAuthCommand } from './cli/commands/auth.command';
 import { extractOverrides } from './cli/utils/parse-flag-overrides';
 
 // Load environment variables using @next/env
@@ -22,6 +23,7 @@ program
   .description("Axiom's CLI to manage your objects and run evals")
   .version(__SDK_VERSION__);
 
+loadAuthCommand(program);
 loadPushCommand(program);
 loadPullCommand(program);
 loadEvalCommand(program, overrides);
