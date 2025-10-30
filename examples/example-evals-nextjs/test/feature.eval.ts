@@ -20,7 +20,7 @@ const exactMatchScorer = ({ output, expected }: { output: string; expected?: str
   };
 };
 
-Eval('Basic demo', {
+Eval('Basic-demo', {
   configFlags: pickFlags('behavior'),
   data: () => [
     {
