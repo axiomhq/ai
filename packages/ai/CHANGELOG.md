@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.3](https://github.com/axiomhq/ai/compare/axiom-v0.22.2...axiom-v0.22.3) (2025-10-31)
+
+
+### Bug Fixes
+
+* missing task spans when eval errors ([#110](https://github.com/axiomhq/ai/issues/110)) ([6787829](https://github.com/axiomhq/ai/commit/6787829d079d6a26851dd88ebb5b8af472b816a1))
+
 ## [0.22.2](https://github.com/axiomhq/ai/compare/axiom-v0.22.1...axiom-v0.22.2) (2025-10-22)
 
 
