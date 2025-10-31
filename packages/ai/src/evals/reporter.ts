@@ -4,13 +4,7 @@ import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from
 import { getGlobalFlagOverrides } from './context/global-flags';
 import { getAxiomConfig, getConfigScope } from './context/storage';
 import { findEvaluationCases } from './eval.service';
-import type {
-  Evaluation,
-  EvaluationReport,
-  FlagDiff,
-  MetaWithCase,
-  MetaWithEval,
-} from './eval.types';
+import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,
@@ -25,7 +19,6 @@ import {
   printTestCaseSuccessOrFailed,
   type SuiteData,
 } from './reporter.console-utils';
-import { flattenObject } from '../util/dot-path';
 import { AxiomCLIError } from '../cli/errors';
 
 /**
@@ -162,9 +155,6 @@ export class AxiomReporter implements Reporter {
 
     printFinalReport({
       suiteData: this._suiteData,
-      calculateScorerAverages: this.calculateScorerAverages.bind(this),
-      calculateBaselineScorerAverage: this.calculateBaselineScorerAverage.bind(this),
-      calculateFlagDiff: this.calculateFlagDiff.bind(this),
     });
 
     const DEBUG = process.env.AXIOM_DEBUG === 'true';
@@ -188,85 +178,6 @@ export class AxiomReporter implements Reporter {
     printRuntimeFlags(testMeta);
 
     printOutOfScopeFlags(testMeta);
-  }
-
-  /**
-   * Calculate average scores per scorer for a suite
-   */
-  private calculateScorerAverages(suite: SuiteData): Record<string, number> {
-    const scorerTotals: Record<string, { sum: number; count: number }> = {};
-
-    for (const caseData of suite.cases) {
-      for (const [scorerName, score] of Object.entries(caseData.scores)) {
-        if (!scorerTotals[scorerName]) {
-          scorerTotals[scorerName] = { sum: 0, count: 0 };
-        }
-        scorerTotals[scorerName].sum += score.score || 0;
-        scorerTotals[scorerName].count += 1;
-      }
-    }
-
-    const averages: Record<string, number> = {};
-    for (const [scorerName, totals] of Object.entries(scorerTotals)) {
-      averages[scorerName] = totals.count > 0 ? totals.sum / totals.count : 0;
-    }
-
-    return averages;
-  }
-
-  /**
-   * Calculate average score for a specific scorer from baseline data
-   */
-  private calculateBaselineScorerAverage(baseline: Evaluation, scorerName: string): number | null {
-    const scores: number[] = [];
-
-    for (const caseData of baseline.cases) {
-      if (caseData.scores[scorerName]) {
-        scores.push(caseData.scores[scorerName].value);
-      }
-    }
-
-    if (scores.length === 0) return null;
-
-    const sum = scores.reduce((acc, val) => acc + val, 0);
-    return sum / scores.length;
-  }
-
-  /**
-   * Calculate flag diff between current run and baseline (filtered by configFlags)
-   */
-  private calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
-    if (!suite.baseline || !suite.configFlags || suite.configFlags.length === 0) {
-      return [];
-    }
-
-    const diffs: Array<FlagDiff> = [];
-
-    const currentConfig = suite.flagConfig || {};
-    const baselineConfig = suite.baseline.flagConfig || {};
-
-    const currentFlat = flattenObject(currentConfig);
-    const baselineFlat = flattenObject(baselineConfig);
-
-    const allKeys = new Set([...Object.keys(currentFlat), ...Object.keys(baselineFlat)]);
-
-    for (const key of allKeys) {
-      const isInScope = suite.configFlags.some((pattern) => key.startsWith(pattern));
-      if (!isInScope) continue;
-
-      const currentValue = currentFlat[key];
-      const baselineValue = baselineFlat[key];
-
-      if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
-        diffs.push({
-          flag: key,
-          current: currentValue ? JSON.stringify(currentValue) : undefined,
-          baseline: baselineValue ? JSON.stringify(baselineValue) : undefined,
-        });
-      }
-    }
-
-    return diffs;
   }
 
   /**

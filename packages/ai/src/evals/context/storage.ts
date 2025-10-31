@@ -2,6 +2,7 @@ import { trace } from '@opentelemetry/api';
 import { createAsyncHook } from './manager';
 import { type createAppScope } from '../../app-scope';
 import type { ResolvedAxiomConfig } from '../../config/index';
+import type { OutOfScopeFlagAccess } from '../eval.types';
 
 // Global fallback for config scope when called outside of eval context (e.g., module import time)
 const CONFIG_SCOPE_SYMBOL = Symbol.for('axiom.eval.configScope');
@@ -27,7 +28,7 @@ export const EVAL_CONTEXT = createAsyncHook<{
   facts: Record<string, any>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
-  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  outOfScopeFlags?: OutOfScopeFlagAccess[];
   parent?: EvalContextData<any, any>;
   overrides?: Record<string, any>;
   accessedFlagKeys?: string[];
@@ -38,7 +39,7 @@ export interface EvalContextData<Flags = any, Facts = any> {
   facts: Partial<Facts>;
   configScope?: ReturnType<typeof createAppScope>;
   pickedFlags?: string[];
-  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  outOfScopeFlags?: OutOfScopeFlagAccess[];
   parent?: EvalContextData<Flags, Facts>;
   overrides?: Record<string, any>;
   accessedFlagKeys?: string[];
