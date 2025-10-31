@@ -54,7 +54,7 @@ export class AxiomReporter implements Reporter {
 
   async onTestSuiteReady(_testSuite: TestSuite) {
     const meta = _testSuite.meta() as MetaWithEval;
-    if (_testSuite.state() === 'skipped') {
+    if (_testSuite.state() === 'skipped' || !meta?.evaluation) {
       return;
     }
     const baseline = meta.evaluation.baseline;
@@ -86,8 +86,8 @@ export class AxiomReporter implements Reporter {
 
   async onTestSuiteResult(testSuite: TestSuite) {
     const meta = testSuite.meta() as MetaWithEval;
-    // test suite won't have any meta because its skipped
-    if (testSuite.state() === 'skipped') {
+    // test suite won't have any meta because its skipped or failed before setup
+    if (testSuite.state() === 'skipped' || !meta?.evaluation) {
       return;
     }
 
