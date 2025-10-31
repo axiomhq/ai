@@ -164,7 +164,8 @@ export class AxiomReporter implements Reporter {
     const registrationStatus = this._suiteData.map((suite) => ({
       name: suite.name,
       registered: suite.registrationStatus?.status === 'success',
-      error: suite.registrationStatus?.status === 'failed' ? suite.registrationStatus.error : undefined,
+      error:
+        suite.registrationStatus?.status === 'failed' ? suite.registrationStatus.error : undefined,
     }));
 
     printFinalReport({
