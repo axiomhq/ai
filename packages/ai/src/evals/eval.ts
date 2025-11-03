@@ -196,8 +196,9 @@ async function registerEval<
           instrumentationError = error;
         }
 
-        // TODO: BEFORE MERGE - DO WE WANT THIS?
-        // Load baseline - if this fails, mark as instrumentation error too
+        // Load baseline, either from id or find the latest
+        // - Actual errors (`!resp.ok` etc) are treated as instrumentation failures
+        // - Nullish results just mean no baseline exists (first run or not found)
         try {
           if (!isDebug) {
             baseline = baselineId
@@ -205,6 +206,7 @@ async function registerEval<
               : await findBaseline(evalName, axiomConfig);
           }
         } catch (error) {
+          console.error(`Failed to load baseline: ${errorToString(error)}`);
           instrumentationError = instrumentationError || error;
         }
 
