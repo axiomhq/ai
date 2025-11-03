@@ -2,9 +2,12 @@ import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import {
+  context,
   trace,
   type Context,
+  type Span,
   type SpanOptions,
+  SpanStatusCode,
   type Tracer,
   type TracerProvider,
 } from '@opentelemetry/api';
@@ -211,4 +214,30 @@ export const startSpan = (name: string, opts: SpanOptions, context?: Context) =>
     );
   }
   return getEvalTracer().startSpan(name, opts, context);
+};
+
+export const startActiveSpan = async <T>(
+  name: string,
+  options: SpanOptions,
+  fn: (span: Span) => Promise<T>,
+  parentContext?: Context,
+): Promise<T> => {
+  const span = startSpan(name, options, parentContext);
+
+  return context.with(trace.setSpan(context.active(), span), async () => {
+    try {
+      const result = await fn(span);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.recordException(error as Error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 };
