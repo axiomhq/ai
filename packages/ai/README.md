@@ -10,6 +10,8 @@ Axiom AI SDK provides
 npm install axiom
 ```
 
+Evals require Node 22.20 or higher.
+
 ## Model Wrapping
 
 ```ts

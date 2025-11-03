@@ -30,7 +30,7 @@ type WithSpanMeta = {
  * - **Streaming objects**: Warns about incorrect usage patterns
  * - **Regular objects**: Ends span immediately after function completion
  *
- * The span name will be updated by the AI SDK middleware from 'gen_ai.call_llm'
+ * The span name will be updated by the AI SDK middleware from 'chat'
  * to a model-specific name like 'chat gpt-4o-mini' when used with wrapped models.
  *
  * @param meta - Span metadata for categorization and tracking
@@ -101,7 +101,7 @@ export function withSpan<Return>(
   const tracer = opts?.tracer ?? getTracer();
 
   // Create span manually to control its lifecycle
-  const span = tracer.startSpan('gen_ai.call_llm');
+  const span = tracer.startSpan('chat');
   const spanContext = trace.setSpan(context.active(), span);
 
   return context.with(spanContext, async () => {

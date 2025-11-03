@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { AxiomReporter } from '../../src/evals/reporter';
+import { calculateScorerAverages } from '../../src/evals/reporter.console-utils';
 import type { TestSuite, TestCase } from 'vitest/node.js';
 import type { EvaluationReport, EvalCaseReport } from '../../src/evals/eval.types';
 import { ConsoleCapture, createMockBaseline } from '../helpers/eval-test-setup';
@@ -45,14 +46,11 @@ describe('AxiomReporter', () => {
   });
 
   describe('onTestRunStart', () => {
-    it('initializes timing and prints flag overrides', () => {
+    it('initializes timing', () => {
       reporter.onTestRunStart();
 
       expect(reporter.start).toBeGreaterThan(0);
       expect(reporter.startTime).toBeGreaterThan(0);
-
-      const output = consoleCapture.getOutput();
-      expect(output).toContain('Flag overrides');
     });
   });
 
@@ -123,6 +121,32 @@ describe('AxiomReporter', () => {
       await reporter.onTestSuiteReady(mockSuite);
 
       expect((reporter as any)._endOfRunConfigEnd).toEqual(configEnd);
+    });
+
+    it('prints flag overrides when present', async () => {
+      const configEnd = {
+        flags: { model: { temperature: 0.7 } },
+        pickedFlags: ['model'],
+        overrides: { 'model.temperature': 0.8 },
+      };
+
+      const mockSuite = createMockTestSuite({
+        meta: {
+          evaluation: {
+            baseline: undefined,
+            id: 'eval-override',
+            name: 'override-test',
+            version: 'v1',
+            registrationStatus: { status: 'success' },
+            configEnd,
+          } as EvaluationReport,
+        },
+      });
+
+      await reporter.onTestSuiteReady(mockSuite);
+
+      const output = consoleCapture.getOutput();
+      expect(output).toContain('Flag overrides');
     });
   });
 
@@ -468,7 +492,7 @@ describe('AxiomReporter', () => {
         ],
       } as any;
 
-      const averages = (reporter as any).calculateScorerAverages(suiteData);
+      const averages = calculateScorerAverages(suiteData);
 
       expect(averages.accuracy).toBeCloseTo(0.9, 2);
       expect(averages.quality).toBeCloseTo(0.8, 2);
@@ -493,7 +517,7 @@ describe('AxiomReporter', () => {
         ],
       } as any;
 
-      const averages = (reporter as any).calculateScorerAverages(suiteData);
+      const averages = calculateScorerAverages(suiteData);
 
       expect(averages.accuracy).toBeCloseTo(0.85, 2);
       expect(averages.quality).toBeCloseTo(0.7, 2);

@@ -9,7 +9,7 @@ export { AxiomReporter as experimental_AxiomReporter } from './evals/reporter';
 export { withEvalContext, getEvalContext } from './evals/context/storage';
 export type { EvalContextData } from './evals/context/storage';
 
-export { defineEval, createTypedDefineEval } from './evals/builder';
+export { defineEval } from './evals/builder';
 export type { EvalBuilder } from './evals/builder';
 export { createAppScope } from './app-scope';
 export { validateCliFlags } from './validate-flags';
