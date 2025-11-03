@@ -28,12 +28,10 @@ describe('printSuiteBox', () => {
         index: 0,
         scores: {
           accuracy: {
-            name: 'accuracy',
             score: 0.85,
             metadata: { duration: 100, startedAt: 0, error: null },
           },
           relevance: {
-            name: 'relevance',
             score: 0.92,
             metadata: { duration: 150, startedAt: 0, error: null },
           },
@@ -43,12 +41,10 @@ describe('printSuiteBox', () => {
         index: 1,
         scores: {
           accuracy: {
-            name: 'accuracy',
             score: 0.78,
             metadata: { duration: 120, startedAt: 0, error: null },
           },
           relevance: {
-            name: 'relevance',
             score: 0.88,
             metadata: { duration: 140, startedAt: 0, error: null },
           },
@@ -237,12 +233,10 @@ describe('printSuiteBox', () => {
             index: 0,
             scores: {
               accuracy: {
-                name: 'accuracy',
                 score: 0,
                 metadata: { duration: 100, startedAt: 0, error: 'Task execution failed' },
               },
               relevance: {
-                name: 'relevance',
                 score: 0.92,
                 metadata: { duration: 150, startedAt: 0, error: null },
               },
@@ -252,12 +246,10 @@ describe('printSuiteBox', () => {
             index: 1,
             scores: {
               accuracy: {
-                name: 'accuracy',
                 score: 0,
                 metadata: { duration: 120, startedAt: 0, error: 'Task execution failed' },
               },
               relevance: {
-                name: 'relevance',
                 score: 0.88,
                 metadata: { duration: 140, startedAt: 0, error: null },
               },
@@ -290,7 +282,6 @@ describe('printSuiteBox', () => {
             index: 0,
             scores: {
               accuracy: {
-                name: 'accuracy',
                 score: 0,
                 metadata: { duration: 100, startedAt: 0, error: 'Task execution failed' },
               },
@@ -300,7 +291,6 @@ describe('printSuiteBox', () => {
             index: 1,
             scores: {
               accuracy: {
-                name: 'accuracy',
                 score: 0,
                 metadata: { duration: 120, startedAt: 0, error: 'Task execution failed' },
               },
