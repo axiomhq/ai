@@ -13,13 +13,14 @@ import type {
   EvalTask,
   InputOf,
   ExpectedOf,
+  OutputOf,
   EvaluationReport,
   EvalCaseReport,
   RuntimeFlagLog,
   OutOfScopeFlag,
   OutOfScopeFlagAccess,
 } from './eval.types';
-import type { Score, Scorer } from './scorers';
+import type { ScoreWithName, ScorerLike } from './scorers';
 import { findBaseline, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
@@ -77,28 +78,27 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
  */
 export function Eval<
   // Inference-friendly overload – no explicit generics required by callers.
-  const Data extends readonly { input: any; expected: any }[],
-  Out extends string | Record<string, any>,
-  TaskFn extends EvalTask<InputOf<Data>, ExpectedOf<Data>, Out>,
-  In = InputOf<Data>,
-  Exp = ExpectedOf<Data>,
+  Data extends readonly CollectionRecord<any, any>[],
+  TaskFn extends (args: {
+    input: InputOf<Data>;
+    expected: ExpectedOf<Data>;
+  }) => string | Record<string, any> | Promise<string | Record<string, any>>,
 >(
   name: string,
-  params: {
+  params: Omit<
+    EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
+    'data' | 'task' | 'scorers'
+  > & {
     data: () => Data | Promise<Data>;
     task: TaskFn;
-    scorers: ReadonlyArray<Scorer<In, Exp, Out>>;
-    metadata?: Record<string, unknown>;
-    timeout?: number;
-    configFlags?: string[];
+    scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
   },
 ): void;
 
 /**
- *
+ * Explicit generics overload – allows users to pass explicit types.
  */
 export function Eval<
-  // Explicit generics overload – allows users to pass explicit types.
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
@@ -137,6 +137,13 @@ function captureFlagConfig(configFlags?: string[]): Record<string, any> {
   return dotNotationToNested(filtered);
 }
 
+const getScorerName = <TScorer extends ScorerLike<any, any, any>>(
+  scorer: TScorer,
+  fallback: string = 'unknown',
+) => {
+  return (scorer as any).name || fallback;
+};
+
 async function registerEval<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
@@ -144,8 +151,6 @@ async function registerEval<
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
   const datasetPromise = opts.data();
   const user = getGitUserInfo();
-
-  // TODO: EXPERIMENTS - we were creating `evalScope` here before
 
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
@@ -297,7 +302,7 @@ async function registerEval<
 
       await it.concurrent.for(
         dataset.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
-      )('case', async (data: CollectionRecordWithIndex, { task }) => {
+      )('case', async (data, { task }) => {
         const start = performance.now();
         if (!suiteContext) {
           throw new Error(
@@ -355,10 +360,11 @@ async function registerEval<
                 overrides: result.overrides,
               };
 
-              const scoreList: Score[] = await Promise.all(
+              const scoreList: ScoreWithName[] = await Promise.all(
                 opts.scorers.map(async (scorer) => {
+                  const scorerName = getScorerName(scorer);
                   return startActiveSpan(
-                    `score ${scorer.name}`,
+                    `score ${scorerName}`,
                     {
                       attributes: {
                         [Attr.GenAI.Operation.Name]: 'eval.score',
@@ -379,11 +385,12 @@ async function registerEval<
                       const scoreValue = result.score as number;
 
                       scorerSpan.setAttributes({
-                        [Attr.Eval.Score.Name]: result.name,
+                        [Attr.Eval.Score.Name]: scorerName,
                         [Attr.Eval.Score.Value]: scoreValue,
                       });
 
                       return {
+                        name: scorerName,
                         ...result,
                         metadata: { duration, startedAt: start, error: null },
                       };
@@ -427,7 +434,7 @@ async function registerEval<
               outOfScopeFlags = ctx.outOfScopeFlags || ([] as OutOfScopeFlagAccess[]);
 
               // Populate scores with error metadata for all scorers that didn't run
-              const failedScores: Record<string, Score> = {};
+              const failedScores: Record<string, ScoreWithName> = {};
               for (const scorer of opts.scorers) {
                 failedScores[scorer.name] = {
                   name: scorer.name,
