@@ -30,7 +30,7 @@ type WithSpanMeta = {
  * - **Streaming objects**: Warns about incorrect usage patterns
  * - **Regular objects**: Ends span immediately after function completion
  *
- * The span name will be updated by the AI SDK middleware from 'gen_ai.call_llm'
+ * The span name will be updated by the AI SDK middleware from 'chat'
  * to a model-specific name like 'chat gpt-4o-mini' when used with wrapped models.
  *
  * @param meta - Span metadata for categorization and tracking
