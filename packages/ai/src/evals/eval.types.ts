@@ -217,7 +217,7 @@ export type EvalCaseReport = {
   /** Timestamp when the case started */
   startedAt: number | undefined;
   /** Flags accessed outside of the picked flags scope for this case */
-  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  outOfScopeFlags?: OutOfScopeFlagAccess[];
   /** Flags that are in scope for this evaluation */
   pickedFlags?: string[];
   /** Runtime flags actually used during this case */
@@ -228,6 +228,12 @@ export type FlagDiff = {
   flag: string;
   current: string | undefined;
   baseline: string | undefined;
+};
+
+export type OutOfScopeFlagAccess = {
+  flagPath: string;
+  accessedAt: number;
+  stackTrace: string[];
 };
 
 export type OutOfScopeFlag = {
