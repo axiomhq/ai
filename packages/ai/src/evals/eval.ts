@@ -237,10 +237,9 @@ async function registerEval<
           name: evalName,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
-          region: 'US',
           baselineId: baseline?.id ?? undefined,
           totalCases: dataset.length,
-          scorers: opts.scorers?.map((s) => s.name) ?? [],
+          scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
           config: {
             flags: opts.configFlags ?? [],
           },

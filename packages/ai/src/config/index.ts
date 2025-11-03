@@ -48,9 +48,6 @@ export interface AxiomConnectionConfig {
  */
 export interface AxiomEvalInstrumentationOptions {
   url: string;
-  /**
-   * Axiom URL for resources like evaluations, prompts, etc.
-   */
   token: string;
   dataset: string;
 }
