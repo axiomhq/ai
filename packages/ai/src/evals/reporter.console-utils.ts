@@ -7,10 +7,13 @@ import type {
   MetaWithCase,
   MetaWithEval,
   OutOfScopeFlag,
+  OutOfScopeFlagAccess,
 } from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
 import type { Score } from './scorers';
 import { deepEqual } from '../util/deep-equal';
+import { flattenObject } from '../util/dot-path';
+import type { AxiomConnectionResolvedConfig } from '../config/resolver';
 
 export type SuiteData = {
   name: string;
@@ -24,7 +27,7 @@ export type SuiteData = {
   cases: Array<{
     index: number;
     scores: Record<string, Score>;
-    outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+    outOfScopeFlags?: OutOfScopeFlagAccess[];
     errors?: Error[] | null;
     runtimeFlags?: any;
   }>;
@@ -126,8 +129,10 @@ export function printTestCaseScores(
   const index = testMeta.case.index;
 
   Object.keys(testMeta.case.scores).forEach((k) => {
-    const v = testMeta.case.scores[k].score ? testMeta.case.scores[k].score : 0;
-    const scoreValue = Number(v * 100).toFixed(2) + '%';
+    const scoreData = testMeta.case.scores[k];
+    const hasError = scoreData.metadata?.error;
+    const v = scoreData.score ? scoreData.score : 0;
+    const scoreValue = hasError ? c.dim('N/A') : Number(v * 100).toFixed(2) + '%';
 
     if (baseline?.cases[index]?.scores[k]) {
       const baselineScoreValue = baseline.cases[index].scores[k].value;
@@ -139,11 +144,22 @@ export function printTestCaseScores(
         k,
         c.magentaBright(blScoreText),
         '->',
-        c.blueBright(scoreValue),
-        diff > 0 ? c.green('+' + diffText) : diff < 0 ? c.red(diffText) : diffText,
+        hasError ? scoreValue : c.blueBright(scoreValue),
+        hasError
+          ? c.dim('(scorer not run)')
+          : diff > 0
+            ? c.green('+' + diffText)
+            : diff < 0
+              ? c.red(diffText)
+              : diffText,
       );
     } else {
-      console.log('   ', k, c.blueBright(scoreValue));
+      console.log(
+        '   ',
+        k,
+        hasError ? scoreValue : c.blueBright(scoreValue),
+        hasError ? c.dim('(scorer not run)') : '',
+      );
     }
 
     return [k, scoreValue];
@@ -275,32 +291,41 @@ export function printSuiteBox({
   const scorerNames = Object.keys(scorerAverages);
   const maxNameLength = Math.max(...scorerNames.map((name) => name.length));
 
+  const allCasesErrored = (scorerName: string) => {
+    return suite.cases.every((caseData) => caseData.scores[scorerName]?.metadata?.error);
+  };
+
   for (const scorerName of scorerNames) {
     const avg = scorerAverages[scorerName];
     const paddedName = scorerName.padEnd(maxNameLength);
+    const hasAllErrors = allCasesErrored(scorerName);
 
     if (suite.baseline) {
       const baselineAvg = calculateBaselineScorerAverage(suite.baseline, scorerName);
       if (baselineAvg !== null) {
-        const currentPercent = (avg * 100).toFixed(2) + '%';
+        const currentPercent = hasAllErrors ? c.dim('N/A') : (avg * 100).toFixed(2) + '%';
         const baselinePercent = (baselineAvg * 100).toFixed(2) + '%';
         const diff = avg - baselineAvg;
         const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
         const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
 
         const paddedBaseline = baselinePercent.padStart(7);
-        const paddedCurrent = currentPercent.padStart(7);
-        const paddedDiff = diffText.padStart(8);
+        const paddedCurrent = hasAllErrors ? currentPercent : currentPercent.padStart(7);
+        const paddedDiff = hasAllErrors ? c.dim('(all cases failed)') : diffText.padStart(8);
 
         console.log(
-          `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${c.magentaBright(paddedCurrent)}  (${diffColor(paddedDiff)})`,
+          `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${hasAllErrors ? paddedCurrent : c.magentaBright(paddedCurrent)}  (${hasAllErrors ? paddedDiff : diffColor(paddedDiff)})`,
         );
       } else {
-        const currentPercent = (avg * 100).toFixed(2) + '%';
+        const currentPercent = hasAllErrors
+          ? c.red('N/A (all cases failed)')
+          : (avg * 100).toFixed(2) + '%';
         console.log(`│   • ${paddedName}  ${currentPercent}`);
       }
     } else {
-      const currentPercent = (avg * 100).toFixed(2) + '%';
+      const currentPercent = hasAllErrors
+        ? c.red('N/A (all cases failed)')
+        : (avg * 100).toFixed(2) + '%';
       console.log(`│   • ${paddedName}  ${currentPercent}`);
     }
   }
@@ -353,18 +378,96 @@ export function printSuiteBox({
   console.log('└─');
 }
 
+/**
+ * Calculate average scores per scorer for a suite
+ */
+export function calculateScorerAverages(suite: SuiteData): Record<string, number> {
+  const scorerTotals: Record<string, { sum: number; count: number }> = {};
+
+  for (const caseData of suite.cases) {
+    for (const [scorerName, score] of Object.entries(caseData.scores)) {
+      if (!scorerTotals[scorerName]) {
+        scorerTotals[scorerName] = { sum: 0, count: 0 };
+      }
+      if (!score.metadata?.error) {
+        scorerTotals[scorerName].sum += score.score || 0;
+        scorerTotals[scorerName].count += 1;
+      }
+    }
+  }
+
+  const averages: Record<string, number> = {};
+  for (const [scorerName, totals] of Object.entries(scorerTotals)) {
+    averages[scorerName] = totals.count > 0 ? totals.sum / totals.count : 0;
+  }
+
+  return averages;
+}
+
+/**
+ * Calculate average score for a specific scorer from baseline data
+ */
+export function calculateBaselineScorerAverage(
+  baseline: Evaluation,
+  scorerName: string,
+): number | null {
+  const scores: number[] = [];
+
+  for (const caseData of baseline.cases) {
+    if (caseData.scores[scorerName]) {
+      scores.push(caseData.scores[scorerName].value);
+    }
+  }
+
+  if (scores.length === 0) return null;
+
+  const sum = scores.reduce((acc, val) => acc + val, 0);
+  return sum / scores.length;
+}
+
+/**
+ * Calculate flag diff between current run and baseline (filtered by configFlags)
+ */
+export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
+  if (!suite.baseline || !suite.configFlags || suite.configFlags.length === 0) {
+    return [];
+  }
+
+  const diffs: Array<FlagDiff> = [];
+
+  const currentConfig = suite.flagConfig || {};
+  const baselineConfig = suite.baseline.flagConfig || {};
+
+  const currentFlat = flattenObject(currentConfig);
+  const baselineFlat = flattenObject(baselineConfig);
+
+  const allKeys = new Set([...Object.keys(currentFlat), ...Object.keys(baselineFlat)]);
+
+  for (const key of allKeys) {
+    const isInScope = suite.configFlags.some((pattern) => key.startsWith(pattern));
+    if (!isInScope) continue;
+
+    const currentValue = currentFlat[key];
+    const baselineValue = baselineFlat[key];
+
+    if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
+      diffs.push({
+        flag: key,
+        current: currentValue ? JSON.stringify(currentValue) : undefined,
+        baseline: baselineValue ? JSON.stringify(baselineValue) : undefined,
+      });
+    }
+  }
+
+  return diffs;
+}
+
 export function printFinalReport({
   suiteData,
-  calculateScorerAverages,
-  calculateBaselineScorerAverage,
-  calculateFlagDiff,
-  consoleEndpointUrl,
+  config,
 }: {
   suiteData: SuiteData[];
-  calculateScorerAverages: (suite: SuiteData) => Record<string, number>;
-  calculateBaselineScorerAverage: (baseline: Evaluation, scorerName: string) => number | null;
-  calculateFlagDiff: (suite: SuiteData) => Array<FlagDiff>;
-  consoleEndpointUrl?: string;
+  config?: AxiomConnectionResolvedConfig;
 }) {
   console.log('');
   console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
@@ -380,8 +483,8 @@ export function printFinalReport({
   const runId = suiteData[0]?.runId;
   const orgId = suiteData[0]?.orgId;
 
-  if (runId && orgId && consoleEndpointUrl) {
+  if (runId && orgId && config?.consoleEndpointUrl) {
     console.log('View full report:');
-    console.log(`${consoleEndpointUrl}/${orgId}/rudder/evaluations/run/${runId}`);
+    console.log(`${config.consoleEndpointUrl}/${orgId}/rudder/evaluations/run/${runId}`);
   }
 }

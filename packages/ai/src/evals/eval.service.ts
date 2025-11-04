@@ -17,7 +17,6 @@ export interface EvaluationApiPayloadBase {
   id: string;
   name: string;
   dataset: string;
-  region: string;
   baselineId?: string;
   totalCases?: number;
   scorers?: string[];
