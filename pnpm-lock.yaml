@@ -1284,7 +1284,6 @@ packages:
   '@opentelemetry/exporter-jaeger@2.0.1':
     resolution: {integrity: sha512-FeHtOp2XMhYxzYhC8sXhsc3gMeoDzjI+CGuPX+vRSyUdHZHDKTMoY9jRfk8ObmZsZDTWmd63Yqcf4X472YtHeA==}
     engines: {node: ^18.19.0 || >=20.6.0}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
 
@@ -1664,7 +1663,6 @@ packages:
   '@opentelemetry/otlp-proto-exporter-base@0.41.2':
     resolution: {integrity: sha512-BxmEMiP6tHiFroe5/dTt9BsxCci7BTLtF7A6d4DKHLiLweWWZxQ9l7hON7qt/IhpKrQcAFD1OzZ1Gq2ZkNzhCw==}
     engines: {node: '>=14'}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       '@opentelemetry/api': ^1.0.0
 

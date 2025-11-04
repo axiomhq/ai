@@ -18,7 +18,7 @@ const ExactMatchScorer = Scorer(
   ({ output, expected }: { output: string; expected: string }) => (output === expected ? 1 : 0),
 );
 
-Eval('Basic demo', {
+Eval('Basic-demo', {
   configFlags: pickFlags('behavior'),
   data: () => [
     {
