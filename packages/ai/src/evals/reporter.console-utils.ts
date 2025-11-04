@@ -485,6 +485,6 @@ export function printFinalReport({
 
   if (runId && orgId && config?.consoleEndpointUrl) {
     console.log('View full report:');
-    console.log(`${config.consoleEndpointUrl}/${orgId}/rudder/evaluations/run/${runId}`);
+    console.log(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
   }
 }
