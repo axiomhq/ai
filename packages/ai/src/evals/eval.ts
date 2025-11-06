@@ -423,6 +423,7 @@ async function registerEval<
                       [Attr.Eval.Name]: evalName,
                       [Attr.Eval.Version]: evalVersion,
                       [Attr.Eval.Case.Index]: data.index,
+                      [Attr.Eval.Trial.Index]: trialIndex,
                     },
                   },
                   caseContext,
