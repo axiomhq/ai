@@ -7,6 +7,7 @@ import type {
   MetaWithCase,
   MetaWithEval,
   OutOfScopeFlag,
+  RegistrationStatus,
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
@@ -22,7 +23,7 @@ export type SuiteData = {
   baseline: Evaluation | undefined | null;
   configFlags?: string[];
   flagConfig?: Record<string, any>;
-  runId?: string;
+  runId: string;
   orgId?: string;
   cases: Array<{
     index: number;
@@ -32,6 +33,7 @@ export type SuiteData = {
     runtimeFlags?: any;
   }>;
   outOfScopeFlags?: OutOfScopeFlag[];
+  registrationStatus?: RegistrationStatus;
 };
 
 export function truncate(str: string, max: number): string {
@@ -465,9 +467,11 @@ export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
 export function printFinalReport({
   suiteData,
   config,
+  registrationStatus,
 }: {
   suiteData: SuiteData[];
   config?: AxiomConnectionResolvedConfig;
+  registrationStatus: Array<{ name: string; registered: boolean; error?: string }>;
 }) {
   console.log('');
   console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
@@ -483,8 +487,26 @@ export function printFinalReport({
   const runId = suiteData[0]?.runId;
   const orgId = suiteData[0]?.orgId;
 
-  if (runId && orgId && config?.consoleEndpointUrl) {
+  const anyRegistered = registrationStatus.some((s) => s.registered);
+  const anyFailed = registrationStatus.some((s) => !s.registered);
+
+  if (anyRegistered && orgId && config?.consoleEndpointUrl) {
     console.log('View full report:');
     console.log(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
+  } else {
+    console.log('Results not available in Axiom UI (registration failed)');
+  }
+
+  if (anyFailed) {
+    console.log('');
+    for (const status of registrationStatus) {
+      if (!status.registered) {
+        console.log(c.yellow(`⚠️  Warning: Failed to register "${status.name}" with Axiom`));
+        if (status.error) {
+          console.log(c.dim(`   Error: ${status.error}`));
+        }
+        console.log(c.dim(`   Results for this evaluation will not be available in the Axiom UI.`));
+      }
+    }
   }
 }
