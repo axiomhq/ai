@@ -41,7 +41,7 @@ declare module 'vitest' {
     debug?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
-    runId?: string;
+    runId: string;
   }
 }
 
@@ -197,11 +197,6 @@ async function registerEval<
         | undefined;
 
       beforeAll(async (suite) => {
-        /** This will probably never execute, but just in case */
-        if (!runId) {
-          throw new AxiomCLIError('Error creating evaluation - no run id provided');
-        }
-
         suite.meta.evaluation = {
           id: evalId,
           name: evalName,
