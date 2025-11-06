@@ -275,8 +275,6 @@ async function registerEval<
           status: 'running',
         });
 
-        console.log('createEvalResponse', createEvalResponse);
-
         const orgId = createEvalResponse?.data?.orgId;
 
         // Ensure worker process knows CLI overrides
