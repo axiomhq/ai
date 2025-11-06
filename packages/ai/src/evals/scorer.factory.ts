@@ -1,32 +1,53 @@
 import type { Score, Scorer } from './scorers';
 
+// Helper to force TypeScript to evaluate/simplify types
+type Simplify<T> = { [K in keyof T]: T[K] } & {};
+
 /**
  * Creates a scorer that is both ergonomic for authors and fully generic for
  * the type-system.
  *
- * • If the callback returns a `number`, it is wrapped into { name, score }
- * • If it returns a full `Score`, we only ensure the `name` field is present
+ * • If the callback returns a `number`, it is wrapped into { score }
+ * • If it returns a full `Score`, we use it as-is
+ * • The name is always added by the factory and attached to the function
+ * • Preserves sync/async behavior of the user's function
+ * • Infers types from user's args annotation for type safety
  */
-export function createScorer<TInput = unknown, TExpected = unknown, TOutput = unknown>(
+export function createScorer<
+  TArgs extends Record<string, any> = {},
+  TInput = TArgs extends { input: infer I } ? I : unknown,
+  TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : unknown,
+  TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : never,
+  TExtra extends Record<string, any> = Simplify<Omit<TArgs, 'input' | 'expected' | 'output'>>,
+>(
   name: string,
-  fn: (args: {
-    input: TInput;
-    expected: TExpected;
-    output: TOutput;
-  }) => number | Score | Promise<number | Score>,
-): Scorer<TInput, TExpected, TOutput> {
-  const scorer: Scorer<TInput, TExpected, TOutput> = async (args) => {
-    const res = await fn(args);
-
+  fn: (args: TArgs) => number | Score | Promise<number | Score>,
+): TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
+  const normalizeScore = (res: number | Score): Score => {
     if (typeof res === 'number') {
-      return { name, score: res };
+      return { score: res };
     }
-
-    // ensure name is always filled in
-    return { ...res, name };
+    return res;
   };
 
-  // Note: scorer function name will be set by runtime for observability
+  const scorer: any = (args: TArgs) => {
+    const res = fn(args);
 
-  return scorer;
+    // If user returned a Promise, handle async
+    if (res instanceof Promise) {
+      return res.then(normalizeScore);
+    }
+
+    // Otherwise handle sync
+    return normalizeScore(res);
+  };
+
+  // Attach name property to function for pre-execution access
+  Object.defineProperty(scorer, 'name', {
+    value: name,
+    configurable: true,
+    enumerable: true,
+  });
+
+  return scorer as TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra>;
 }

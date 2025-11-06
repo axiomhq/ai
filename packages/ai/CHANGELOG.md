@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.23.0](https://github.com/axiomhq/ai/compare/axiom-v0.22.2...axiom-v0.23.0) (2025-11-04)
+
+
+### Features
+
+* better scorers ([#106](https://github.com/axiomhq/ai/issues/106)) ([cb95b46](https://github.com/axiomhq/ai/commit/cb95b4609dcbd6c706897664e885661b392fe66d))
+* default name for chat span should be `chat`, not `gen_ai.call_llm` ([#108](https://github.com/axiomhq/ai/issues/108)) ([ad560d0](https://github.com/axiomhq/ai/commit/ad560d07442e587d41f162d19f058b2cdca88b7b))
+* **evaluations:** add evaluation API reporting ([#91](https://github.com/axiomhq/ai/issues/91)) ([e50e125](https://github.com/axiomhq/ai/commit/e50e1254f6f4cdba3e0c9c0e0837358ed7ec7961))
+
+
+### Bug Fixes
+
+* incorrect default shown for flag overrides ([#107](https://github.com/axiomhq/ai/issues/107)) ([ebd539d](https://github.com/axiomhq/ai/commit/ebd539d16527d376be234e2c24d220a54a152347))
+* missing task spans when eval errors ([#110](https://github.com/axiomhq/ai/issues/110)) ([6787829](https://github.com/axiomhq/ai/commit/6787829d079d6a26851dd88ebb5b8af472b816a1))
+
 ## [0.22.2](https://github.com/axiomhq/ai/compare/axiom-v0.22.1...axiom-v0.22.2) (2025-10-22)
 
 

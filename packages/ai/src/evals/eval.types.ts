@@ -1,5 +1,5 @@
 import type { TaskMeta } from 'vitest';
-import type { Score, Scorer } from './scorers';
+import type { ScoreWithName, ScorerLike } from './scorers';
 
 // Type utilities for automatic inference
 /** Extract the input type from CollectionRecord[] */
@@ -14,8 +14,14 @@ export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
 export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
   ...args: any
 ) => AsyncIterable<infer O>
-  ? O
-  : Awaited<ReturnType<TaskFn>>;
+  ? O extends string | Record<string, any>
+    ? O
+    : never
+  : Awaited<ReturnType<TaskFn>> extends infer R
+    ? R extends string | Record<string, any>
+      ? R
+      : never
+    : never;
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
@@ -86,7 +92,7 @@ export type EvalParams<
   /** The task function to evaluate */
   task: EvalTask<TInput, TExpected, TOutput>;
   /** Array of scoring functions to evaluate the task output */
-  scorers: ReadonlyArray<Scorer<TInput, TExpected, TOutput>>;
+  scorers: ReadonlyArray<ScorerLike<TInput, TExpected, TOutput>>;
   /** Optional metadata for the evaluation */
   metadata?: Record<string, unknown>;
   /** Optional timeout in milliseconds for task execution */
@@ -203,7 +209,7 @@ export type EvalCaseReport = {
   /** Expected output for comparison */
   expected: string | Record<string, any>;
   /** Array of {@link Score} results from all scorers that were run */
-  scores: Record<string, Score>;
+  scores: Record<string, ScoreWithName>;
   /** Any errors that occurred during evaluation */
   errors: Error[] | null;
   /** Status of the evaluation case */
@@ -213,7 +219,7 @@ export type EvalCaseReport = {
   /** Timestamp when the case started */
   startedAt: number | undefined;
   /** Flags accessed outside of the picked flags scope for this case */
-  outOfScopeFlags?: { flagPath: string; accessedAt: number; stackTrace: string[] }[];
+  outOfScopeFlags?: OutOfScopeFlagAccess[];
   /** Flags that are in scope for this evaluation */
   pickedFlags?: string[];
   /** Runtime flags actually used during this case */
@@ -226,6 +232,12 @@ export type FlagDiff = {
   baseline: string | undefined;
 };
 
+export type OutOfScopeFlagAccess = {
+  flagPath: string;
+  accessedAt: number;
+  stackTrace: string[];
+};
+
 export type OutOfScopeFlag = {
   flagPath: string;
   count: number;
@@ -233,6 +245,8 @@ export type OutOfScopeFlag = {
   lastAccessedAt: number;
   stackTrace: string[];
 };
+
+export type RegistrationStatus = { status: 'success' } | { status: 'failed'; error: string };
 
 export type EvaluationReport = {
   id: string;
@@ -251,6 +265,7 @@ export type EvaluationReport = {
     pickedFlags?: string[];
     overrides?: Record<string, any>;
   };
+  registrationStatus?: RegistrationStatus;
 };
 
 export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };
