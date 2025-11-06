@@ -164,6 +164,8 @@ async function registerEval<
     throw new AxiomCLIError('Axiom config not found');
   }
 
+  const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
+
   const instrumentationReady = !isDebug
     ? ensureInstrumentationInitialized(axiomConfig)
     : Promise.resolve();
@@ -231,6 +233,8 @@ async function registerEval<
             // baseline
             [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
             [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
+            // run
+            [Attr.Eval.Run.ID]: runId,
             // user info
             [Attr.Eval.User.Name]: user?.name,
             [Attr.Eval.User.Email]: user?.email,
@@ -241,20 +245,28 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
 
+        /** This will probably never execute, but just in case */
+        if (!runId) {
+          throw new AxiomCLIError('Error creating evaluation - no run id provided');
+        }
+
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baseline?.id ?? undefined,
-          runId: runId ?? undefined,
+          runId: runId,
           totalCases: dataset.length,
           scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
           config: {
             flags: opts.configFlags ?? [],
           },
+          configTimeoutMs: timeoutMs,
           status: 'running',
         });
+
+        console.log('createEvalResponse', createEvalResponse);
 
         const orgId = createEvalResponse?.data?.orgId;
 
@@ -556,7 +568,7 @@ async function registerEval<
         );
       });
     },
-    axiomConfig?.eval.timeoutMs,
+    timeoutMs,
   );
 
   return result;

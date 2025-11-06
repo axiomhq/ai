@@ -30,6 +30,7 @@ import {
   ATTR_EVAL_USER_NAME,
   ATTR_EVAL_USER_EMAIL,
   ATTR_EVAL_VERSION,
+  ATTR_EVAL_RUN_ID,
 } from './eval_proposal';
 
 import {
@@ -293,6 +294,7 @@ export const Attr = {
     Name: ATTR_EVAL_NAME,
     Version: ATTR_EVAL_VERSION,
     Type: ATTR_EVAL_TYPE,
+    // @TODO: move this to it's own object @gabrielelpidio
     BaselineID: ATTR_EVAL_BASELINE_ID,
     BaselineName: ATTR_EVAL_BASELINE_NAME,
     Tags: ATTR_EVAL_TAGS,
@@ -300,6 +302,9 @@ export const Attr = {
       ID: ATTR_EVAL_COLLECTION_ID,
       Name: ATTR_EVAL_COLLECTION_NAME,
       Size: ATTR_EVAL_COLLECTION_SIZE,
+    },
+    Run: {
+      ID: ATTR_EVAL_RUN_ID,
     },
     Case: {
       Index: ATTR_EVAL_CASE_INDEX,
