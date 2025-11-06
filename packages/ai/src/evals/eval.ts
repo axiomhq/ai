@@ -22,7 +22,7 @@ import type {
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { ScoreWithName, ScorerLike } from './scorers';
-import { findBaseline, findEvaluationCases } from './eval.service';
+import { EvaluationApiClient, findBaseline, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
@@ -44,7 +44,7 @@ declare module 'vitest' {
   }
 }
 
-const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
+const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -172,9 +172,12 @@ async function registerEval<
     async () => {
       const dataset = await datasetPromise;
 
+      const evaluationApiClient = new EvaluationApiClient(axiomConfig);
+
       // create a version code
-      const evalVersion = nanoid();
+      const evalVersion = createVersionId();
       let evalId = ''; // get traceId
+      let suiteStart: number;
 
       let suiteSpan: ReturnType<typeof startSpan> | undefined;
       let suiteContext: Context | undefined;
@@ -190,6 +193,14 @@ async function registerEval<
         | undefined;
 
       beforeAll(async (suite) => {
+        suite.meta.evaluation = {
+          id: evalId,
+          name: evalName,
+          version: evalVersion,
+          baseline: baseline ?? undefined,
+          configFlags: opts.configFlags,
+        };
+
         try {
           await instrumentationReady;
         } catch (error) {
@@ -231,8 +242,23 @@ async function registerEval<
           },
         });
         evalId = suiteSpan.spanContext().traceId;
+        suite.meta.evaluation.id = evalId;
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
+
+        await evaluationApiClient.createEvaluation({
+          id: evalId,
+          name: evalName,
+          dataset: axiomConfig.eval.dataset,
+          version: evalVersion,
+          baselineId: baseline?.id ?? undefined,
+          totalCases: dataset.length,
+          scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
+          config: {
+            flags: opts.configFlags ?? [],
+          },
+          status: 'running',
+        });
 
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
@@ -259,6 +285,7 @@ async function registerEval<
         suite.meta.evaluation.flagConfig = flagConfig;
         const flagConfigJson = JSON.stringify(flagConfig);
         suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
+        suiteStart = performance.now();
       });
 
       afterAll(async (suite) => {
@@ -306,6 +333,24 @@ async function registerEval<
             overrides,
           };
         }
+
+        const durationMs = Math.round(performance.now() - suiteStart);
+
+        const successCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'success',
+        ).length;
+        const erroredCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
+        ).length;
+
+        await evaluationApiClient.updateEvaluation({
+          id: evalId,
+          status: 'completed',
+          totalCases: dataset.length,
+          successCases,
+          erroredCases,
+          durationMs,
+        });
 
         // end root span
         suiteSpan?.setStatus({ code: SpanStatusCode.OK });
