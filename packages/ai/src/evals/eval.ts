@@ -288,7 +288,7 @@ async function registerEval<
           id: evalId,
           name: evalName,
           version: evalVersion,
-          runId: runId ?? undefined,
+          runId: runId,
           orgId: orgId ?? undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
