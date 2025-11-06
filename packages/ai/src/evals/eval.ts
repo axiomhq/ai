@@ -18,6 +18,7 @@ import type {
   EvalCaseReport,
   RuntimeFlagLog,
   OutOfScopeFlag,
+  Evaluation,
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { ScoreWithName, ScorerLike } from './scorers';
@@ -25,7 +26,7 @@ import { EvaluationApiClient, findBaseline, findEvaluationCases } from './eval.s
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
-import { AxiomCLIError } from '../cli/errors';
+import { AxiomCLIError, errorToString } from '../cli/errors';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -171,12 +172,6 @@ async function registerEval<
     async () => {
       const dataset = await datasetPromise;
 
-      const baseline = isDebug
-        ? undefined
-        : baselineId
-          ? await findEvaluationCases(baselineId, axiomConfig)
-          : await findBaseline(evalName, axiomConfig);
-
       const evaluationApiClient = new EvaluationApiClient(axiomConfig);
 
       // create a version code
@@ -187,6 +182,7 @@ async function registerEval<
       let suiteSpan: ReturnType<typeof startSpan> | undefined;
       let suiteContext: Context | undefined;
       let instrumentationError: unknown = undefined;
+      let baseline: Evaluation | null | undefined = undefined;
 
       // Track out-of-scope flags across all cases for evaluation-level reporting
       const allOutOfScopeFlags: OutOfScopeFlagAccess[] = [];
@@ -209,7 +205,20 @@ async function registerEval<
           await instrumentationReady;
         } catch (error) {
           instrumentationError = error;
-          throw error;
+        }
+
+        // Load baseline, either from id or find the latest
+        // - Actual errors (`!resp.ok` etc) are treated as instrumentation failures
+        // - Nullish results just mean no baseline exists (first run or not found)
+        try {
+          if (!isDebug) {
+            baseline = baselineId
+              ? await findEvaluationCases(baselineId, axiomConfig)
+              : await findBaseline(evalName, axiomConfig);
+          }
+        } catch (error) {
+          console.error(`Failed to load baseline: ${errorToString(error)}`);
+          instrumentationError = instrumentationError || error;
         }
 
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
@@ -264,6 +273,12 @@ async function registerEval<
           version: evalVersion,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
+          registrationStatus: instrumentationError
+            ? {
+                status: 'failed',
+                error: errorToString(instrumentationError),
+              }
+            : { status: 'success' },
         };
 
         const flagConfig = captureFlagConfig(opts.configFlags);
@@ -340,7 +355,18 @@ async function registerEval<
         // end root span
         suiteSpan?.setStatus({ code: SpanStatusCode.OK });
         suiteSpan?.end();
-        await flush();
+
+        try {
+          await flush();
+        } catch (flushError) {
+          // Update registration status to failed if flush fails
+          if (suite.meta.evaluation) {
+            suite.meta.evaluation.registrationStatus = {
+              status: 'failed',
+              error: errorToString(flushError),
+            };
+          }
+        }
       });
 
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;

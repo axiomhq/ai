@@ -57,69 +57,63 @@ export class EvaluationApiClient {
 }
 
 /** Query axiom to find a baseline for an Eval */
-export const findBaseline = async (evalName: string, config: ResolvedAxiomConfig) => {
+export const findBaseline = async (
+  evalName: string,
+  config: ResolvedAxiomConfig,
+): Promise<Evaluation | null> => {
   const { dataset, url, token } = resolveAxiomConnection(config);
 
-  try {
-    const apl = [
-      `['${dataset}']`,
-      `| where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
-      `| order by _time desc`,
-      `| limit 1`,
-    ].join('\n');
+  const apl = [
+    `['${dataset}']`,
+    `| where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
+    `| order by _time desc`,
+    `| limit 1`,
+  ].join('\n');
 
-    const headers = new Headers({
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    });
+  const headers = new Headers({
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  });
 
-    const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
-      headers: headers,
-      method: 'POST',
-      body: JSON.stringify({ apl }),
-    });
-    const payload = await resp.json();
-    if (!resp.ok) {
-      console.log(payload);
-      return undefined;
-    }
-    if (payload.matches.length) {
-      return mapSpanToEval(payload.matches[0]);
-    }
-  } catch (err) {
-    console.log(err);
-    return undefined;
+  const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
+    headers: headers,
+    method: 'POST',
+    body: JSON.stringify({ apl }),
+  });
+  const payload = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(`Failed to query baseline: ${payload.message || resp.statusText}`);
   }
+
+  return payload.matches.length ? mapSpanToEval(payload.matches[0]) : null;
 };
 
-export const findEvaluationCases = async (evalId: string, config: ResolvedAxiomConfig) => {
-  try {
-    const { dataset, url, token } = resolveAxiomConnection(config);
+export const findEvaluationCases = async (
+  evalId: string,
+  config: ResolvedAxiomConfig,
+): Promise<Evaluation | null> => {
+  const { dataset, url, token } = resolveAxiomConnection(config);
 
-    const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
+  const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
-    const headers = new Headers({
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    });
+  const headers = new Headers({
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  });
 
-    const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
-      headers: headers,
-      method: 'POST',
-      body: JSON.stringify({ apl }),
-    });
-    const payload = await resp.json();
-    if (!resp.ok) {
-      console.log(payload);
-      return undefined;
-    }
-    if (payload.matches.length) {
-      return buildSpanTree(payload.matches);
-    }
-  } catch (err) {
-    console.log(err);
-    return undefined;
+  const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
+    headers: headers,
+    method: 'POST',
+    body: JSON.stringify({ apl }),
+  });
+  const payload = await resp.json();
+
+  if (!resp.ok) {
+    throw new Error(`Failed to query evaluation cases: ${payload.message || resp.statusText}`);
   }
+
+  return payload.matches.length ? buildSpanTree(payload.matches) : null;
 };
 
 export const mapSpanToEval = (span: any): Evaluation => {

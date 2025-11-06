@@ -7,6 +7,7 @@ import type {
   MetaWithCase,
   MetaWithEval,
   OutOfScopeFlag,
+  RegistrationStatus,
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { TestSuite } from 'vitest/node.js';
@@ -29,6 +30,7 @@ export type SuiteData = {
     runtimeFlags?: any;
   }>;
   outOfScopeFlags?: OutOfScopeFlag[];
+  registrationStatus?: RegistrationStatus;
 };
 
 export function truncate(str: string, max: number): string {
@@ -459,7 +461,13 @@ export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
   return diffs;
 }
 
-export function printFinalReport({ suiteData }: { suiteData: SuiteData[] }) {
+export function printFinalReport({
+  suiteData,
+  registrationStatus,
+}: {
+  suiteData: SuiteData[];
+  registrationStatus: Array<{ name: string; registered: boolean; error?: string }>;
+}) {
   console.log('');
   console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
   console.log('');
@@ -471,6 +479,26 @@ export function printFinalReport({ suiteData }: { suiteData: SuiteData[] }) {
     console.log('');
   }
 
-  console.log('View full report:');
-  console.log('https://app.axiom.co/evaluations/run/<run-id>');
+  const anyRegistered = registrationStatus.some((s) => s.registered);
+  const anyFailed = registrationStatus.some((s) => !s.registered);
+
+  if (anyRegistered) {
+    console.log('View full report:');
+    console.log('https://app.axiom.co/evaluations/run/<run-id>');
+  } else {
+    console.log('Results not available in Axiom UI (registration failed)');
+  }
+
+  if (anyFailed) {
+    console.log('');
+    for (const status of registrationStatus) {
+      if (!status.registered) {
+        console.log(c.yellow(`⚠️  Warning: Failed to register "${status.name}" with Axiom`));
+        if (status.error) {
+          console.log(c.dim(`   Error: ${status.error}`));
+        }
+        console.log(c.dim(`   Results for this evaluation will not be available in the Axiom UI.`));
+      }
+    }
+  }
 }

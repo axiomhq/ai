@@ -244,6 +244,8 @@ export type OutOfScopeFlag = {
   stackTrace: string[];
 };
 
+export type RegistrationStatus = { status: 'success' } | { status: 'failed'; error: string };
+
 export type EvaluationReport = {
   id: string;
   name: string;
@@ -261,6 +263,7 @@ export type EvaluationReport = {
     pickedFlags?: string[];
     overrides?: Record<string, any>;
   };
+  registrationStatus?: RegistrationStatus;
 };
 
 export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };
