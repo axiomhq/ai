@@ -197,11 +197,16 @@ async function registerEval<
         | undefined;
 
       beforeAll(async (suite) => {
+        /** This will probably never execute, but just in case */
+        if (!runId) {
+          throw new AxiomCLIError('Error creating evaluation - no run id provided');
+        }
+
         suite.meta.evaluation = {
           id: evalId,
           name: evalName,
           version: evalVersion,
-          runId: runId ?? undefined,
+          runId: runId,
           orgId: undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
@@ -253,11 +258,6 @@ async function registerEval<
         suite.meta.evaluation.id = evalId;
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
-
-        /** This will probably never execute, but just in case */
-        if (!runId) {
-          throw new AxiomCLIError('Error creating evaluation - no run id provided');
-        }
 
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
