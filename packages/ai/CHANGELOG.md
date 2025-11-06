@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.24.0](https://github.com/axiomhq/ai/compare/axiom-v0.23.0...axiom-v0.24.0) (2025-11-06)
+
+
+### Features
+
+* **evals:** add runId to evaluation payload and reporting ([#105](https://github.com/axiomhq/ai/issues/105)) ([18518b2](https://github.com/axiomhq/ai/commit/18518b27dd499694f9207844f59f91b41cfbfa4d))
+
+
+### Bug Fixes
+
+* CLI doesn't show any warnings if it fails to register evaluation ([#111](https://github.com/axiomhq/ai/issues/111)) ([68a712d](https://github.com/axiomhq/ai/commit/68a712dbe5e83a70e2e2c00a8f19419776bb45fa))
+
 ## [0.23.0](https://github.com/axiomhq/ai/compare/axiom-v0.22.2...axiom-v0.23.0) (2025-11-04)
 
 
