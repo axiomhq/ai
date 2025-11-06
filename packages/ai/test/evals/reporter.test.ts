@@ -108,6 +108,7 @@ describe('AxiomReporter', () => {
       const mockSuite = createMockTestSuite({
         meta: {
           evaluation: {
+            runId: 'test-run-id',
             baseline: undefined,
             id: 'eval-789',
             name: 'config-test',
@@ -133,6 +134,7 @@ describe('AxiomReporter', () => {
       const mockSuite = createMockTestSuite({
         meta: {
           evaluation: {
+            runId: 'test-run-id',
             baseline: undefined,
             id: 'eval-override',
             name: 'override-test',
