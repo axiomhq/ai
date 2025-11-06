@@ -36,3 +36,5 @@ export function resolveAxiomConnection(
     dataset: config.eval.dataset,
   };
 }
+
+export type AxiomConnectionResolvedConfig = ReturnType<typeof resolveAxiomConnection>;

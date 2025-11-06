@@ -19,6 +19,7 @@ import {
   type SuiteData,
 } from './reporter.console-utils';
 import { AxiomCLIError } from '../cli/errors';
+import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -34,10 +35,17 @@ export class AxiomReporter implements Reporter {
   private _suiteData: SuiteData[] = [];
   private _baselines: Map<string, Evaluation | null> = new Map();
   private _printedFlagOverrides = false;
+  private _config: AxiomConnectionResolvedConfig | undefined;
 
   onTestRunStart() {
     this.start = performance.now();
     this.startTime = new Date().getTime();
+
+    // Store resourcesUrl from config
+    const config = getAxiomConfig();
+    if (config) {
+      this._config = resolveAxiomConnection(config);
+    }
   }
 
   async onTestSuiteReady(_testSuite: TestSuite) {
@@ -133,6 +141,8 @@ export class AxiomReporter implements Reporter {
       baseline: suiteBaseline || null,
       configFlags: meta.evaluation.configFlags,
       flagConfig: meta.evaluation.flagConfig,
+      runId: meta.evaluation.runId,
+      orgId: meta.evaluation.orgId,
       cases,
       outOfScopeFlags: meta.evaluation.outOfScopeFlags,
       registrationStatus: meta.evaluation.registrationStatus,
@@ -171,6 +181,7 @@ export class AxiomReporter implements Reporter {
 
     printFinalReport({
       suiteData: this._suiteData,
+      config: this._config,
       registrationStatus,
     });
 

@@ -21,6 +21,8 @@ export const ATTR_EVAL_CASE_METADATA = 'eval.case.metadata' as const;
 export const ATTR_EVAL_TASK_OUTPUT = 'eval.task.output' as const;
 export const ATTR_EVAL_TASK_NAME = 'eval.task.name' as const;
 export const ATTR_EVAL_TASK_TYPE = 'eval.task.type' as const;
+// run
+export const ATTR_EVAL_RUN_ID = 'eval.run.id' as const;
 // score
 export const ATTR_EVAL_SCORE_NAME = 'eval.score.name' as const;
 export const ATTR_EVAL_SCORE_VALUE = 'eval.score.value' as const;

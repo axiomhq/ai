@@ -14,6 +14,7 @@ import type { TestSuite } from 'vitest/node.js';
 import type { Score } from './scorers';
 import { deepEqual } from '../util/deep-equal';
 import { flattenObject } from '../util/dot-path';
+import type { AxiomConnectionResolvedConfig } from '../config/resolver';
 
 export type SuiteData = {
   name: string;
@@ -22,6 +23,8 @@ export type SuiteData = {
   baseline: Evaluation | undefined | null;
   configFlags?: string[];
   flagConfig?: Record<string, any>;
+  runId: string;
+  orgId?: string;
   cases: Array<{
     index: number;
     scores: Record<string, Score>;
@@ -463,9 +466,11 @@ export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
 
 export function printFinalReport({
   suiteData,
+  config,
   registrationStatus,
 }: {
   suiteData: SuiteData[];
+  config?: AxiomConnectionResolvedConfig;
   registrationStatus: Array<{ name: string; registered: boolean; error?: string }>;
 }) {
   console.log('');
@@ -479,12 +484,15 @@ export function printFinalReport({
     console.log('');
   }
 
+  const runId = suiteData[0]?.runId;
+  const orgId = suiteData[0]?.orgId;
+
   const anyRegistered = registrationStatus.some((s) => s.registered);
   const anyFailed = registrationStatus.some((s) => !s.registered);
 
-  if (anyRegistered) {
+  if (anyRegistered && orgId && config?.consoleEndpointUrl) {
     console.log('View full report:');
-    console.log('https://app.axiom.co/evaluations/run/<run-id>');
+    console.log(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
   } else {
     console.log('Results not available in Axiom UI (registration failed)');
   }

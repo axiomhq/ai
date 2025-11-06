@@ -1,4 +1,5 @@
 import { Command, Argument } from 'commander';
+import { customAlphabet } from 'nanoid';
 import { runVitest } from '../../evals/run-vitest';
 import { lstatSync } from 'node:fs';
 import { runEvalWithContext } from '../utils/eval-context-runner';
@@ -7,6 +8,8 @@ import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
 import { AxiomCLIError } from '../errors';
 import c from 'tinyrainbow';
+
+const createRunId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
@@ -72,6 +75,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             console.log('');
           }
 
+          const runId = createRunId();
+
           await runEvalWithContext(flagOverrides, async () => {
             return runVitest('.', {
               watch: options.watch,
@@ -82,6 +87,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               debug: options.debug,
               overrides: flagOverrides,
               config,
+              runId,
             });
           });
         } catch (error) {

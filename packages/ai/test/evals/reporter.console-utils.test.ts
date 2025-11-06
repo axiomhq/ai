@@ -23,6 +23,7 @@ describe('printSuiteBox', () => {
     file: '/path/to/test/evaluation.eval.ts',
     duration: '5.23s',
     baseline: null,
+    runId: 'test-run-id',
     cases: [
       {
         index: 0,
