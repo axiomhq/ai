@@ -238,7 +238,7 @@ async function registerEval<
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
             [Attr.Eval.Collection.Size]: dataset.length,
             // metadata
-            'eval.metadata': JSON.stringify(opts.metadata),
+            [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // baseline
             [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
             [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
@@ -298,7 +298,7 @@ async function registerEval<
         const flagConfig = captureFlagConfig(opts.configFlags);
         suite.meta.evaluation.flagConfig = flagConfig;
         const flagConfigJson = JSON.stringify(flagConfig);
-        suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
+        suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
         suiteStart = performance.now();
       });
 
