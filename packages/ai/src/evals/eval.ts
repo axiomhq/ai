@@ -240,8 +240,8 @@ async function registerEval<
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // baseline
-            [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
-            [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
+            [Attr.Eval.Baseline.ID]: baseline ? baseline.id : undefined,
+            [Attr.Eval.Baseline.Name]: baseline ? baseline.name : undefined,
             // run
             [Attr.Eval.Run.ID]: runId,
             // user info

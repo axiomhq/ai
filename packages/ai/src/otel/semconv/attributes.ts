@@ -301,8 +301,6 @@ export const Attr = {
       ID: ATTR_EVAL_BASELINE_ID,
       Name: ATTR_EVAL_BASELINE_NAME,
     },
-    BaselineID: ATTR_EVAL_BASELINE_ID,
-    BaselineName: ATTR_EVAL_BASELINE_NAME,
     Tags: ATTR_EVAL_TAGS,
     Metadata: ATTR_EVAL_METADATA,
     Collection: {
