@@ -69,7 +69,7 @@ export const findBaseline = async (
   const apl = [
     `['${dataset}']`,
     // TODO: need to also catch if it's not in attributes.custom!
-    `| where ['attributes.custom'][${Attr.Eval.Name}] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
+    `| where ['attributes.custom']['${Attr.Eval.Name}'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
     `| order by _time desc`,
     `| limit 1`,
   ].join('\n');
