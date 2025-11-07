@@ -17,6 +17,7 @@ export const runVitest = async (
     debug?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
+    runId: string;
   },
 ) => {
   // Store config globally so reporters can access it
@@ -62,6 +63,7 @@ export const runVitest = async (
       debug: opts.debug,
       overrides: opts.overrides,
       axiomConfig: providedConfig,
+      runId: opts.runId,
     },
   });
 

@@ -41,6 +41,7 @@ declare module 'vitest' {
     debug?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
+    runId: string;
   }
 }
 
@@ -158,10 +159,13 @@ async function registerEval<
   const isDebug = inject('debug');
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
+  const runId = inject('runId');
 
   if (!axiomConfig) {
     throw new AxiomCLIError('Axiom config not found');
   }
+
+  const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
 
   const instrumentationReady = !isDebug
     ? ensureInstrumentationInitialized(axiomConfig)
@@ -197,6 +201,8 @@ async function registerEval<
           id: evalId,
           name: evalName,
           version: evalVersion,
+          runId: runId,
+          orgId: undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
         };
@@ -232,10 +238,12 @@ async function registerEval<
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
             [Attr.Eval.Collection.Size]: dataset.length,
             // metadata
-            'eval.metadata': JSON.stringify(opts.metadata),
+            [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // baseline
             [Attr.Eval.BaselineID]: baseline ? baseline.id : undefined,
             [Attr.Eval.BaselineName]: baseline ? baseline.name : undefined,
+            // run
+            [Attr.Eval.Run.ID]: runId,
             // user info
             [Attr.Eval.User.Name]: user?.name,
             [Attr.Eval.User.Email]: user?.email,
@@ -246,19 +254,23 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
 
-        await evaluationApiClient.createEvaluation({
+        const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baseline?.id ?? undefined,
+          runId: runId,
           totalCases: dataset.length,
           scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
           config: {
             flags: opts.configFlags ?? [],
           },
+          configTimeoutMs: timeoutMs,
           status: 'running',
         });
+
+        const orgId = createEvalResponse?.data?.orgId;
 
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
@@ -271,6 +283,8 @@ async function registerEval<
           id: evalId,
           name: evalName,
           version: evalVersion,
+          runId: runId,
+          orgId: orgId ?? undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
           registrationStatus: instrumentationError
@@ -284,7 +298,7 @@ async function registerEval<
         const flagConfig = captureFlagConfig(opts.configFlags);
         suite.meta.evaluation.flagConfig = flagConfig;
         const flagConfigJson = JSON.stringify(flagConfig);
-        suiteSpan.setAttribute('eval.config.flags', flagConfigJson);
+        suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
         suiteStart = performance.now();
       });
 
@@ -690,7 +704,7 @@ async function registerEval<
         );
       });
     },
-    axiomConfig?.eval.timeoutMs,
+    timeoutMs,
   );
 
   return result;

@@ -2,6 +2,7 @@ import type { Case, Chat, Evaluation, Task } from './eval.types';
 import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
+import { Attr } from '../otel';
 
 export interface EvaluationApiConfig {
   dataset?: string;
@@ -27,6 +28,8 @@ export interface EvaluationApiPayloadBase {
   durationMs?: number;
   scorerAvgs?: number[];
   version: string;
+  runId: string;
+  configTimeoutMs: number;
 }
 
 export class EvaluationApiClient {
@@ -65,7 +68,8 @@ export const findBaseline = async (
 
   const apl = [
     `['${dataset}']`,
-    `| where ['attributes.custom']['eval.name'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
+    // TODO: need to also catch if it's not in attributes.custom!
+    `| where ['attributes.custom'][${Attr.Eval.Name}] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
     `| order by _time desc`,
     `| limit 1`,
   ].join('\n');
@@ -118,22 +122,24 @@ export const findEvaluationCases = async (
 
 export const mapSpanToEval = (span: any): Evaluation => {
   const flagConfigRaw =
-    span.data.attributes['eval.config.flags'] ?? span.data.attributes.custom['eval.config.flags'];
+    span.data.attributes[Attr.Eval.Config.Flags] ??
+    span.data.attributes.custom[Attr.Eval.Config.Flags];
 
   return {
-    id: span.data.attributes.custom['eval.id'],
-    name: span.data.attributes.custom['eval.name'],
-    type: span.data.attributes.custom['eval.type'],
-    version: span.data.attributes.custom['eval.version'],
+    id: span.data.attributes.custom[Attr.Eval.ID],
+    name: span.data.attributes.custom[Attr.Eval.Name],
+    type: span.data.attributes.custom[Attr.Eval.Type],
+    version: span.data.attributes.custom[Attr.Eval.Version],
     collection: {
-      name: span.data.attributes.custom['eval.collection.name'],
-      size: span.data.attributes.custom['eval.collection.size'],
+      name: span.data.attributes.custom[Attr.Eval.Collection.Name],
+      size: span.data.attributes.custom[Attr.Eval.Collection.Size],
     },
     baseline: {
-      id: span.data.attributes.custom['eval.baseline.id'],
-      name: span.data.attributes.custom['eval.baseline.name'],
+      id: span.data.attributes.custom[Attr.Eval.Baseline.ID],
+      name: span.data.attributes.custom[Attr.Eval.Baseline.Name],
     },
     prompt: {
+      // TODO: do we still want this?
       model: span.data.attributes.custom['eval.prompt.model'],
       params: span.data.attributes.custom['eval.prompt.params'],
     },
@@ -141,12 +147,12 @@ export const mapSpanToEval = (span: any): Evaluation => {
     status: span.data.status.code,
     traceId: span.data.trace_id,
     runAt: span._time,
-    tags: span.data.attributes.custom['eval.tags'].length
-      ? JSON.parse(span.data.attributes.custom['eval.tags'])
+    tags: span.data.attributes.custom[Attr.Eval.Tags].length
+      ? JSON.parse(span.data.attributes.custom[Attr.Eval.Tags])
       : [],
     user: {
-      name: span.data.attributes.custom['eval.user.name'],
-      email: span.data.attributes.custom['eval.user.email'],
+      name: span.data.attributes.custom[Attr.Eval.User.Name],
+      email: span.data.attributes.custom[Attr.Eval.User.Email],
     },
     cases: [],
     flagConfig: flagConfigRaw ? JSON.parse(flagConfigRaw) : undefined,
@@ -164,22 +170,19 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     duration = d;
   }
 
-  const runtimeFlagsRaw = data.attributes.custom['eval.case.config.runtime_flags'];
-
   return {
-    index: data.attributes.custom['eval.case.index'],
-    input: data.attributes.custom['eval.case.input'],
-    output: data.attributes.custom['eval.case.output'],
-    expected: data.attributes.custom['eval.case.expected'],
+    index: data.attributes.custom[Attr.Eval.Case.Index],
+    input: data.attributes.custom[Attr.Eval.Case.Input],
+    output: data.attributes.custom[Attr.Eval.Case.Output],
+    expected: data.attributes.custom[Attr.Eval.Case.Expected],
     duration: duration,
     status: data.status.code,
-    scores: data.attributes.custom['eval.case.scores']
-      ? JSON.parse(data.attributes.custom['eval.case.scores'])
+    scores: data.attributes.custom[Attr.Eval.Case.Scores]
+      ? JSON.parse(data.attributes.custom[Attr.Eval.Case.Scores])
       : {},
     runAt: item._time,
     spanId: data.span_id,
     traceId: data.trace_id,
-    runtimeFlags: runtimeFlagsRaw ? JSON.parse(runtimeFlagsRaw) : undefined,
   };
 };
 
@@ -269,10 +272,10 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
     caseData.scores = {};
 
     scoreSpans.forEach((score) => {
-      const name = score.data.attributes.custom['eval.score.name'];
+      const name = score.data.attributes.custom[Attr.Eval.Score.Name];
       caseData.scores[name] = {
         name,
-        value: score.data.attributes.custom['eval.score.value'],
+        value: score.data.attributes.custom[Attr.Eval.Score.Value],
         metadata: {
           error: score.data.attributes.error,
         },

@@ -252,6 +252,8 @@ export type EvaluationReport = {
   id: string;
   name: string;
   version: string;
+  runId: string;
+  orgId?: string;
   baseline: Evaluation | undefined;
   /** Flags that are in scope for this evaluation */
   configFlags?: string[];
