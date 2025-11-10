@@ -31,6 +31,8 @@ import {
   ATTR_EVAL_USER_EMAIL,
   ATTR_EVAL_VERSION,
   ATTR_EVAL_RUN_ID,
+  ATTR_EVAL_METADATA,
+  ATTR_EVAL_CONFIG_FLAGS,
 } from './eval_proposal';
 
 import {
@@ -294,14 +296,19 @@ export const Attr = {
     Name: ATTR_EVAL_NAME,
     Version: ATTR_EVAL_VERSION,
     Type: ATTR_EVAL_TYPE,
-    // @TODO: move this to it's own object @gabrielelpidio
-    BaselineID: ATTR_EVAL_BASELINE_ID,
-    BaselineName: ATTR_EVAL_BASELINE_NAME,
+    Baseline: {
+      ID: ATTR_EVAL_BASELINE_ID,
+      Name: ATTR_EVAL_BASELINE_NAME,
+    },
     Tags: ATTR_EVAL_TAGS,
+    Metadata: ATTR_EVAL_METADATA,
     Collection: {
       ID: ATTR_EVAL_COLLECTION_ID,
       Name: ATTR_EVAL_COLLECTION_NAME,
       Size: ATTR_EVAL_COLLECTION_SIZE,
+    },
+    Config: {
+      Flags: ATTR_EVAL_CONFIG_FLAGS,
     },
     Run: {
       ID: ATTR_EVAL_RUN_ID,
