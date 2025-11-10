@@ -43,5 +43,3 @@ export function validateName(name: string, kind: 'eval' | 'scorer'): void {
     );
   }
 }
-
-
