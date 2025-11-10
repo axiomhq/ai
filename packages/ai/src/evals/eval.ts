@@ -39,7 +39,7 @@ declare module 'vitest' {
   export interface ProvidedContext {
     baseline?: string;
     debug?: boolean;
-    collectOnly?: boolean;
+    list?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
     runId: string;
@@ -158,7 +158,7 @@ async function registerEval<
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
   const isDebug = inject('debug');
-  const isCollectOnly = inject('collectOnly');
+  const isList = inject('list');
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
   const runId = inject('runId');
@@ -170,7 +170,7 @@ async function registerEval<
   const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
 
   const instrumentationReady =
-    !isDebug && !isCollectOnly ? ensureInstrumentationInitialized(axiomConfig) : Promise.resolve();
+    !isDebug && !isList ? ensureInstrumentationInitialized(axiomConfig) : Promise.resolve();
 
   const result = await describe(
     evalName,
@@ -218,7 +218,7 @@ async function registerEval<
         // - Actual errors (`!resp.ok` etc) are treated as instrumentation failures
         // - Nullish results just mean no baseline exists (first run or not found)
         try {
-          if (!isDebug && !isCollectOnly) {
+          if (!isDebug && !isList) {
             baseline = baselineId
               ? await findEvaluationCases(baselineId, axiomConfig)
               : await findBaseline(evalName, axiomConfig);

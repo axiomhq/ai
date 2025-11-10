@@ -44,7 +44,7 @@ export const runVitest = async (
     exclude?: string[];
     testNamePattern?: RegExp;
     debug?: boolean;
-    collectOnly?: boolean;
+    list?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
     runId: string;
@@ -53,9 +53,9 @@ export const runVitest = async (
   // Store config globally so reporters can access it
   setAxiomConfig(opts.config);
 
-  // Initialize instrumentation explicitly based on debug or collect-only flag
+  // Initialize instrumentation explicitly based on debug or list flag
   await initInstrumentation({
-    enabled: !opts.debug && !opts.collectOnly,
+    enabled: !opts.debug && !opts.list,
     config: opts.config,
   });
 
@@ -72,8 +72,8 @@ export const runVitest = async (
     console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
   }
 
-  if (opts.collectOnly) {
-    console.log(c.bgWhite(c.blackBright(' Collect-only mode ')));
+  if (opts.list) {
+    console.log(c.bgWhite(c.blackBright(' List mode ')));
   }
 
   const vi = await createVitest('test', {
@@ -95,15 +95,15 @@ export const runVitest = async (
     provide: {
       baseline: opts.baseline,
       debug: opts.debug,
-      collectOnly: opts.collectOnly,
+      list: opts.list,
       overrides: opts.overrides,
       axiomConfig: providedConfig,
       runId: opts.runId,
     },
   });
 
-  // Collect-only mode: just list tests without running them
-  if (opts.collectOnly) {
+  // List mode: just list tests without running them
+  if (opts.list) {
     const result = await vi.collect();
     printCollectedEvals(result, dir || process.cwd());
     await vi.close();
