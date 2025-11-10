@@ -2,13 +2,21 @@ import { defineConfig } from 'tsup';
 import pkg from './package.json';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/bin.ts', 'src/evals.ts', 'src/config.ts'],
+  entry: [
+    'src/index.ts',
+    'src/bin.ts',
+    'src/evals.ts',
+    'src/config.ts',
+    'src/evals/custom-runner.ts',
+  ],
   format: ['esm', 'cjs'],
   external: [
     '@opentelemetry/api',
     'vitest',
     'vitest/node.js',
     'vitest/index.cjs',
+    'vitest/runners',
+    '@vitest/runner',
     'esbuild',
     'fsevents',
     'c12',
