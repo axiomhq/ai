@@ -6,7 +6,6 @@ import { tmpdir } from 'node:os';
 
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import { AxiomReporter } from './reporter';
-import { validateName } from './name-validation-runtime';
 import { flush, initInstrumentation } from './instrument';
 import { setAxiomConfig } from './context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
