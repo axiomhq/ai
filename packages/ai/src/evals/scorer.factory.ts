@@ -1,3 +1,4 @@
+import type { ValidateName } from './name-validation';
 import type { Score, Scorer } from './scorers';
 
 // Helper to force TypeScript to evaluate/simplify types
@@ -19,8 +20,9 @@ export function createScorer<
   TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : unknown,
   TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : never,
   TExtra extends Record<string, any> = Simplify<Omit<TArgs, 'input' | 'expected' | 'output'>>,
+  TName extends string = string,
 >(
-  name: string,
+  name: ValidateName<TName>,
   fn: (args: TArgs) => number | Score | Promise<number | Score>,
 ): TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
   const normalizeScore = (res: number | Score): Score => {

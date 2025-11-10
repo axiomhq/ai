@@ -27,6 +27,7 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
+import type { ValidateName } from './name-validation';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -46,82 +47,6 @@ declare module 'vitest' {
 }
 
 const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
-
-type ValidChars =
-  | 'a'
-  | 'b'
-  | 'c'
-  | 'd'
-  | 'e'
-  | 'f'
-  | 'g'
-  | 'h'
-  | 'i'
-  | 'j'
-  | 'k'
-  | 'l'
-  | 'm'
-  | 'n'
-  | 'o'
-  | 'p'
-  | 'q'
-  | 'r'
-  | 's'
-  | 't'
-  | 'u'
-  | 'v'
-  | 'w'
-  | 'x'
-  | 'y'
-  | 'z'
-  | 'A'
-  | 'B'
-  | 'C'
-  | 'D'
-  | 'E'
-  | 'F'
-  | 'G'
-  | 'H'
-  | 'I'
-  | 'J'
-  | 'K'
-  | 'L'
-  | 'M'
-  | 'N'
-  | 'O'
-  | 'P'
-  | 'Q'
-  | 'R'
-  | 'S'
-  | 'T'
-  | 'U'
-  | 'V'
-  | 'W'
-  | 'X'
-  | 'Y'
-  | 'Z'
-  | '0'
-  | '1'
-  | '2'
-  | '3'
-  | '4'
-  | '5'
-  | '6'
-  | '7'
-  | '8'
-  | '9'
-  | '-'
-  | '_';
-
-export type ValidateName<T extends string, Original extends string = T> = T extends ''
-  ? Original extends ''
-    ? '❌ Eval name cannot be empty'
-    : Original
-  : T extends `${infer First}${infer Rest}`
-    ? First extends ValidChars
-      ? ValidateName<Rest, Original>
-      : `❌ Invalid character in "${Original}". Only A-Z, a-z, 0-9, -, _ allowed`
-    : never;
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
