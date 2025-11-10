@@ -16,7 +16,6 @@ export default defineConfig({
     'vitest/node.js',
     'vitest/index.cjs',
     'vitest/runners',
-    '@vitest/runner',
     'esbuild',
     'fsevents',
     'c12',
