@@ -27,6 +27,8 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
+import type { ValidateName } from './name-validation';
+import { recordName } from './name-validation-runtime';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -86,8 +88,9 @@ export function Eval<
     input: InputOf<Data>;
     expected: ExpectedOf<Data>;
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
+  Name extends string = string,
 >(
-  name: string,
+  name: ValidateName<Name>,
   params: Omit<
     EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
     'data' | 'task' | 'scorers'
@@ -105,12 +108,24 @@ export function Eval<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
->(name: string, params: EvalParams<TInput, TExpected, TOutput>): void;
+  Name extends string = string,
+>(name: ValidateName<Name>, params: EvalParams<TInput, TExpected, TOutput>): void;
 
 /**
  * Implementation
  */
 export function Eval(name: string, params: any): void {
+  // Record eval name for validation
+  recordName('eval', name);
+
+  // Record all scorer names for validation
+  if (params.scorers) {
+    for (const scorer of params.scorers) {
+      const scorerName = getScorerName(scorer, '');
+      recordName('scorer', scorerName);
+    }
+  }
+
   registerEval(name, params as EvalParams<any, any, any>).catch(console.error);
 }
 

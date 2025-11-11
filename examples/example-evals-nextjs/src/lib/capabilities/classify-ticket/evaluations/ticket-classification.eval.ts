@@ -5,7 +5,7 @@ import { pickFlags } from '@/lib/app-scope';
 import { ExactMatch } from 'autoevals';
 
 const WrappedExactMatch = Scorer(
-  'Exact match',
+  'Exact-match',
   (args: {
     output: { response: string; category: string };
     expected: { response: string; category: string };
