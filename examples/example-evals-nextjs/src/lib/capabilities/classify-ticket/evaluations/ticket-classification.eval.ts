@@ -1,11 +1,11 @@
-import { experimental_Eval as Eval, Scorer } from 'axiom/ai/evals';
+import { Eval, Scorer } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
 import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
 import { pickFlags } from '@/lib/app-scope';
 import { ExactMatch } from 'autoevals';
 
 const WrappedExactMatch = Scorer(
-  'Exact-match',
+  'exact-match',
   (args: {
     output: { response: string; category: string };
     expected: { response: string; category: string };

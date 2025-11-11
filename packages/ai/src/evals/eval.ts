@@ -56,14 +56,13 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * This function sets up a complete evaluation pipeline that will run your {@link EvalTask}
  * against a dataset, score the results, and provide detailed {@link EvalCaseReport} reporting.
  *
- * @experimental This API is experimental and may change in future versions.
  *
  * @param name - Human-readable name for the evaluation suite
  * @param params - {@link EvalParams} configuration parameters for the evaluation
  *
  * @example
  * ```typescript
- * import { experimental_Eval as Eval } from 'axiom/ai/evals';
+ * import { Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
  *   data: async () => [
