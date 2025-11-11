@@ -93,8 +93,6 @@ export const runVitest = async (
   });
 
   // Start collection and execution
-  // Note: We validate in the custom runner before any suite executes
-  // The abort file will be written by workers if they detect invalid names
   await vi.start();
 
   // After execution, check if validation failed
