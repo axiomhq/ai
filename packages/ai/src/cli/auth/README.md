@@ -17,7 +17,7 @@ The authentication flow follows the same pattern as `axiomhq/cli` but adapted fo
    - Validates state parameter for CSRF protection
 
 3. **Configuration Management** (`config.ts`)
-   - Stores credentials in `~/.axiom.json` (JSON format)
+   - Stores credentials in JSON in `~/.axiom.json` (on Linux/Unix) or `%APPDATA%\axiom\config.json` (on Windows)
    - Supports environment variable overrides
    - Manages multiple deployments
 
@@ -27,7 +27,7 @@ The authentication flow follows the same pattern as `axiomhq/cli` but adapted fo
 
 ## Configuration File
 
-**Location:** `~/.axiom.json`
+**Location:** `~/.axiom.json` (on Linux/Unix) or `%APPDATA%\axiom\config.json` (on Windows)
 
 **Format:**
 \`\`\`json
@@ -45,12 +45,17 @@ The authentication flow follows the same pattern as `axiomhq/cli` but adapted fo
 
 ## Environment Variables
 
-Override configuration via environment variables (precedence: env > config file):
+Override configuration via `axiom.config.ts` file.
 
-- `AXIOM_TOKEN` - Access token
-- `AXIOM_URL` - API URL (default: https://api.axiom.co)
-- `AXIOM_ORG_ID` - Organization ID
-- `AXIOM_DEPLOYMENT` - Active deployment name
+```ts
+export default defineConfig({
+  eval: {
+    url: process.env.AXIOM_URL,
+    token: process.env.AXIOM_TOKEN,
+    dataset: process.env.AXIOM_DATASET,
+  },
+});
+```
 
 ## Commands
 
@@ -88,7 +93,7 @@ Check authentication status for all deployments:
 
 ## OAuth2 Configuration
 
-- **Client ID:** `13c885a8-f46a-4424-82d2-883cf7ccfe49`
+- **Client ID:** `264d906a404efc209b027f6595e6b616`
 - **Authorization Endpoint:** `https://login.axiom.co/oauth/authorize`
 - **Token Endpoint:** `https://login.axiom.co/oauth/token`
 - **PKCE Method:** S256
@@ -102,10 +107,3 @@ Check authentication status for all deployments:
   - `http` - Callback server
   - `fs/promises` - Config file I/O
 
-## Backward Compatibility
-
-The authentication module maintains backward compatibility with existing environment variable usage:
-
-- If `AXIOM_TOKEN` is set, it takes precedence
-- Existing code using `process.env.AXIOM_TOKEN` continues to work
-- Use `getAxiomToken()` helper to get token from env or config
