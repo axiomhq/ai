@@ -1,6 +1,17 @@
 import http, { type IncomingMessage, type ServerResponse } from 'http';
 import type { AddressInfo } from 'net';
 
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m] || m);
+}
+
 const SUCCESS_HTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -153,7 +164,7 @@ export async function waitForCallback(
       if (error) {
         const errorMsg = errorDescription || error;
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end(ERROR_HTML.replace('{{ERROR}}', errorMsg));
+        res.end(ERROR_HTML.replace('{{ERROR}}', escapeHtml(errorMsg)));
         clearTimeout(timeout);
         server.close();
         reject(new Error(`OAuth error: ${errorMsg}`));
@@ -162,13 +173,13 @@ export async function waitForCallback(
 
       if (!code || !state) {
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end(ERROR_HTML.replace('{{ERROR}}', 'Missing code or state parameter'));
+        res.end(ERROR_HTML.replace('{{ERROR}}', escapeHtml('Missing code or state parameter')));
         return;
       }
 
       if (state !== expectedState) {
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end(ERROR_HTML.replace('{{ERROR}}', 'Invalid state parameter (CSRF protection)'));
+        res.end(ERROR_HTML.replace('{{ERROR}}', escapeHtml('Invalid state parameter (CSRF protection)')));
         clearTimeout(timeout);
         server.close();
         reject(new Error('Invalid state parameter'));

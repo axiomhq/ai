@@ -1,7 +1,10 @@
 import type { Organization } from './types';
 
-export async function fetchOrganizations(token: string): Promise<Organization[]> {
-  const response = await fetch('https://api.axiom.co/v2/organizations', {
+export async function fetchOrganizations(
+  token: string,
+  apiBaseUrl: string,
+): Promise<Organization[]> {
+  const response = await fetch(`${apiBaseUrl}/v2/orgs`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -16,8 +19,12 @@ export async function fetchOrganizations(token: string): Promise<Organization[]>
   return data as Organization[];
 }
 
-export async function verifyToken(token: string, orgId: string): Promise<boolean> {
-  const response = await fetch('https://api.axiom.co/v2/user', {
+export async function verifyToken(
+  token: string,
+  orgId: string,
+  apiBaseUrl: string,
+): Promise<boolean> {
+  const response = await fetch(`${apiBaseUrl}/v2/user`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'X-Axiom-Org-Id': orgId,

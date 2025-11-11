@@ -1,9 +1,9 @@
 import type { Command } from 'commander';
-import { loadConfig, saveConfig } from '../auth/config';
+import { loadGlobalConfig, saveGlobalConfig } from '../auth/config';
 import { AxiomCLIError } from '../errors';
 
 export async function logoutCommand(alias?: string): Promise<void> {
-  const config = await loadConfig();
+  const config = await loadGlobalConfig();
 
   const deploymentToRemove = alias || config.active_deployment;
 
@@ -25,7 +25,7 @@ export async function logoutCommand(alias?: string): Promise<void> {
       remainingDeployments.length > 0 ? remainingDeployments[0] : undefined;
   }
 
-  await saveConfig(config);
+  await saveGlobalConfig(config);
 
   console.log(`✓ Logged out from ${deploymentToRemove}`);
   if (config.active_deployment) {

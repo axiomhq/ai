@@ -35,9 +35,9 @@ export interface EvaluationApiPayloadBase {
 export class EvaluationApiClient {
   private readonly fetcher: Fetcher;
   constructor(config: ResolvedAxiomConfig) {
-    const { consoleEndpointUrl, token } = resolveAxiomConnection(config);
+    const { consoleEndpointUrl, token, orgId } = resolveAxiomConnection(config);
 
-    this.fetcher = createFetcher(consoleEndpointUrl, token ?? '');
+    this.fetcher = createFetcher({ baseUrl: consoleEndpointUrl, token: token ?? '', orgId });
   }
 
   async createEvaluation(evaluation: EvaluationApiPayloadBase) {
@@ -64,7 +64,7 @@ export const findBaseline = async (
   evalName: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
+  const { dataset, url, token, orgId } = resolveAxiomConnection(config);
 
   const apl = [
     `['${dataset}']`,
@@ -77,6 +77,7 @@ export const findBaseline = async (
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
+    ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
   const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {

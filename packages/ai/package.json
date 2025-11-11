@@ -79,6 +79,7 @@
     "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "@sinclair/typebox": "^0.34.37",
+    "@types/open": "^6.2.1",
     "c12": "^2.0.4",
     "commander": "^14.0.0",
     "defu": "^6.1.4",

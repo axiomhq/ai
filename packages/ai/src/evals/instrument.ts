@@ -61,6 +61,7 @@ async function runInstrumentationHook(
 function setupEvalProvider(connection: ReturnType<typeof resolveAxiomConnection>) {
   const headers: Record<string, string> = {
     'X-Axiom-Dataset': connection.dataset,
+    ...(connection.orgId ? { 'X-AXIOM-ORG-ID': connection.orgId } : {}),
   };
 
   if (connection.token) {

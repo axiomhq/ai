@@ -1,10 +1,10 @@
 import type { Command } from 'commander';
-import { loadConfig, getActiveDeployment } from '../auth/config';
+import { loadGlobalConfig, getActiveDeployment } from '../auth/config';
 import { verifyToken } from '../auth/api';
 import { AxiomCLIError } from '../errors';
 
 export async function statusCommand(): Promise<void> {
-  const config = await loadConfig();
+  const config = await loadGlobalConfig();
 
   if (Object.keys(config.deployments).length === 0) {
     console.log('No authenticated deployments found.');
@@ -19,7 +19,7 @@ export async function statusCommand(): Promise<void> {
     const marker = isActive ? '→' : ' ';
 
     try {
-      const isValid = await verifyToken(deployment.token, deployment.org_id);
+      const isValid = await verifyToken(deployment.token, deployment.org_id, deployment.url);
       const status = isValid ? '✓' : '✗';
       const statusText = isValid ? 'Valid' : 'Invalid';
 

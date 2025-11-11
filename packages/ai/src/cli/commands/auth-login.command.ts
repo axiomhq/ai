@@ -1,15 +1,19 @@
 import type { Command } from 'commander';
-import {
-  generateCodeVerifier,
-  generateCodeChallenge,
-  generateState,
-  buildAuthUrl,
-  exchangeCodeForToken,
-} from '../auth/oauth';
+import { OAuth } from '../auth/oauth';
 import { startCallbackServer, waitForCallback } from '../auth/callback-server';
-import { loadConfig, saveConfig } from '../auth/config';
+import { getGlobalConfigPath, loadGlobalConfig, saveGlobalConfig } from '../auth/config';
 import { fetchOrganizations, verifyToken } from '../auth/api';
 import { AxiomCLIError } from '../errors';
+
+const BASE_HOSTNAME = 'axiom.co';
+
+const getApiUrl = (hostname: string) => {
+  return `https://api.${hostname}`;
+};
+
+const getOauthUrl = (hostname: string) => {
+  return `https://login.${hostname}`;
+};
 
 async function promptSelect<T>(
   message: string,
@@ -64,18 +68,19 @@ async function openBrowser(url: string): Promise<void> {
   await open(url);
 }
 
-export async function loginCommand(): Promise<void> {
+export async function loginCommand(hostname: string): Promise<void> {
   try {
     console.log('🔐 Starting authentication flow...\n');
 
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = generateCodeChallenge(codeVerifier);
-    const state = generateState();
+    const codeVerifier = OAuth.generateCodeVerifier();
+    const codeChallenge = OAuth.generateCodeChallenge(codeVerifier);
+    const state = OAuth.generateState();
+    const oauth = new OAuth(getOauthUrl(hostname));
 
     const { server, url: redirectUri } = await startCallbackServer();
     console.log(`✓ Started local callback server on ${redirectUri}\n`);
 
-    const authUrl = buildAuthUrl({
+    const authUrl = oauth.buildAuthUrl({
       redirectUri,
       state,
       codeChallenge,
@@ -95,7 +100,7 @@ export async function loginCommand(): Promise<void> {
 
     console.log('✓ Authentication successful, exchanging code for token...\n');
 
-    const accessToken = await exchangeCodeForToken({
+    const accessToken = await oauth.exchangeCodeForToken({
       code,
       redirectUri,
       codeVerifier,
@@ -103,7 +108,7 @@ export async function loginCommand(): Promise<void> {
 
     console.log('✓ Token received, fetching organizations...\n');
 
-    const organizations = await fetchOrganizations(accessToken);
+    const organizations = await fetchOrganizations(accessToken, getApiUrl(hostname));
 
     if (organizations.length === 0) {
       throw new AxiomCLIError('No organizations found for this account');
@@ -129,24 +134,24 @@ export async function loginCommand(): Promise<void> {
     const alias = await promptInput('Enter deployment alias', defaultAlias);
 
     console.log('\n✓ Verifying credentials...\n');
-    const isValid = await verifyToken(accessToken, selectedOrgId);
+    const isValid = await verifyToken(accessToken, selectedOrgId, getApiUrl(hostname));
 
     if (!isValid) {
       throw new AxiomCLIError('Token verification failed');
     }
 
-    const config = await loadConfig();
+    const config = await loadGlobalConfig();
     config.active_deployment = alias;
     config.deployments[alias] = {
-      url: 'https://api.axiom.co',
+      url: getApiUrl(hostname),
       token: accessToken,
       org_id: selectedOrgId,
     };
 
-    await saveConfig(config);
+    await saveGlobalConfig(config);
 
     console.log(`✓ Successfully logged in as ${alias}`);
-    console.log(`✓ Configuration saved to ~/.axiom.json\n`);
+    console.log(`✓ Configuration saved to ${getGlobalConfigPath()}\n`);
   } catch (error) {
     if (error instanceof AxiomCLIError) {
       throw error;
@@ -159,9 +164,10 @@ export function loadAuthLoginCommand(program: Command): void {
   program
     .command('login')
     .description('Authenticate with Axiom using OAuth2')
-    .action(async () => {
+    .option('--hostname <hostname>', 'Axiom hostname (default: axiom.co)')
+    .action(async (options) => {
       try {
-        await loginCommand();
+        await loginCommand(options.hostname ?? BASE_HOSTNAME);
       } catch (error) {
         if (error instanceof AxiomCLIError) {
           console.error(`\n❌ Error: ${error.message}\n`);

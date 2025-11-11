@@ -7,9 +7,26 @@ import type { FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
 import { AxiomCLIError } from '../errors';
+import { getAuthContext } from '../auth/global-auth';
 import c from 'tinyrainbow';
 
 const createRunId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
+
+/**
+ * Gets default token from auth context or falls back to env var
+ */
+function getDefaultToken(): string | undefined {
+  const authContext = getAuthContext();
+  return authContext?.token || process.env.AXIOM_TOKEN;
+}
+
+/**
+ * Gets default URL from auth context or falls back to env var
+ */
+function getDefaultUrl(): string {
+  const authContext = getAuthContext();
+  return authContext?.url || process.env.AXIOM_URL || 'https://api.axiom.co';
+}
 
 export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
@@ -22,9 +39,9 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
         ),
       )
       .option('-w, --watch true', 'keep server running and watch for changes', false)
-      .option('-t, --token <TOKEN>', 'axiom token', process.env.AXIOM_TOKEN)
+      .option('-t, --token <TOKEN>', 'axiom token', getDefaultToken)
       .option('-d, --dataset <DATASET>', 'axiom dataset name', process.env.AXIOM_DATASET)
-      .option('-u, --url <AXIOM URL>', 'axiom url', process.env.AXIOM_URL ?? 'https://api.axiom.co')
+      .option('-u, --url <AXIOM URL>', 'axiom url', getDefaultUrl)
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
       .option('--debug', 'run locally without sending to Axiom or loading baselines', false)
       .action(async (target: string, options) => {
