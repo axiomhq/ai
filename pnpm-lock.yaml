@@ -473,9 +473,6 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.37
         version: 0.34.40
-      '@types/open':
-        specifier: ^6.2.1
-        version: 6.2.1
       c12:
         specifier: ^2.0.4
         version: 2.0.4(magicast@0.3.5)
@@ -2083,10 +2080,6 @@ packages:
 
   '@types/node@22.17.2':
     resolution: {integrity: sha512-gL6z5N9Jm9mhY+U2KXZpteb+09zyffliRkZyZOHODGATyC5B1Jt/7TzuuiLkFsSUMLbS1OLmlj/E+/3KF4Q/4w==}
-
-  '@types/open@6.2.1':
-    resolution: {integrity: sha512-CzV16LToFaKwm1FfplVTF08E3pznw4fQNCQ87N+A1RU00zu/se7npvb6IC9db3/emnSThQ6R8qFKgrei2M4EYQ==}
-    deprecated: This is a stub types definition. open provides its own type definitions, so you do not need this installed.
 
   '@types/oracledb@6.5.2':
     resolution: {integrity: sha512-kK1eBS/Adeyis+3OlBDMeQQuasIDLUYXsi2T15ccNJ0iyUpQ4xDF7svFu3+bGVrI0CMBUclPciz+lsQR3JX3TQ==}
@@ -5651,10 +5644,6 @@ snapshots:
   '@types/node@22.17.2':
     dependencies:
       undici-types: 6.21.0
-
-  '@types/open@6.2.1':
-    dependencies:
-      open: 10.2.0
 
   '@types/oracledb@6.5.2':
     dependencies:
