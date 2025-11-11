@@ -55,21 +55,6 @@ export async function loadGlobalConfig(): Promise<Config> {
   }
 }
 
-export function loadGlobalConfigSync(): Config {
-  const configPath = getGlobalConfigPath();
-  const fsSync = require('fs');
-
-  try {
-    const content = fsSync.readFileSync(configPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { deployments: {} };
-    }
-    throw error;
-  }
-}
-
 export async function saveGlobalConfig(config: Config): Promise<void> {
   const configPath = getGlobalConfigPath();
   const configDir = path.dirname(configPath);
@@ -95,14 +80,4 @@ export function getActiveDeployment(config: Config): Deployment | null {
   if (!deployment) return null;
 
   return deployment;
-}
-
-export function getAxiomToken(): string {
-  if (process.env.AXIOM_TOKEN) {
-    return process.env.AXIOM_TOKEN;
-  }
-
-  const config = loadGlobalConfigSync();
-  const deployment = getActiveDeployment(config);
-  return deployment?.token || '';
 }
