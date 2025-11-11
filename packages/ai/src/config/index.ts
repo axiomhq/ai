@@ -208,7 +208,6 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
 
   try {
     const authContext = getAuthContext();
-    console.log('authContext', authContext);
     if (authContext) {
       token = authContext.token;
       url = authContext.url;
