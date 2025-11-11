@@ -146,13 +146,16 @@ export interface CallbackResult {
 
 export async function waitForCallback(
   server: http.Server,
-  expectedState: string
+  expectedState: string,
 ): Promise<CallbackResult> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      server.close();
-      reject(new Error('Authentication timeout after 5 minutes'));
-    }, 5 * 60 * 1000); // 5 minute timeout
+    const timeout = setTimeout(
+      () => {
+        server.close();
+        reject(new Error('Authentication timeout after 5 minutes'));
+      },
+      5 * 60 * 1000,
+    ); // 5 minute timeout
 
     server.on('request', (req: IncomingMessage, res: ServerResponse) => {
       const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -179,7 +182,9 @@ export async function waitForCallback(
 
       if (state !== expectedState) {
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end(ERROR_HTML.replace('{{ERROR}}', escapeHtml('Invalid state parameter (CSRF protection)')));
+        res.end(
+          ERROR_HTML.replace('{{ERROR}}', escapeHtml('Invalid state parameter (CSRF protection)')),
+        );
         clearTimeout(timeout);
         server.close();
         reject(new Error('Invalid state parameter'));
