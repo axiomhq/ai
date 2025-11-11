@@ -6,7 +6,8 @@ export default defineConfig({
     include: ['**/*.eval.{ts,js,mts,mjs,cts,cjs}'],
     exclude: [],
 
-    instrumentation: ({ url, token, dataset }) => setupAppInstrumentation({ url, token, dataset }),
+    instrumentation: ({ url, token, dataset, orgId }) =>
+      setupAppInstrumentation({ url, token, dataset, orgId }),
 
     timeoutMs: 60_000,
   },
