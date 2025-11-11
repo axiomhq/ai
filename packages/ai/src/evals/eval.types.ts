@@ -29,7 +29,6 @@ export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
  * Used with {@link EvalParams} to define the task that will be evaluated against a dataset.
  * The task output will be scored by functions defined in {@link EvalParams.scorers}.
  *
- * @experimental This API is experimental and may change in future versions.
  *
  * @param input - The input data to process
  * @param expected - The expected output for comparison/validation
@@ -58,7 +57,6 @@ export type EvalTask<
 /**
  * Record type representing a single data point in an evaluation dataset.
  *
- * @experimental This API is experimental and may change in future versions.
  */
 export type CollectionRecord<
   TInput extends string | Record<string, any>,
@@ -78,7 +76,6 @@ export type CollectionRecord<
  * Used with {@link Eval} to define how an evaluation should be executed.
  * Results are captured in {@link EvalReport} format.
  *
- * @experimental This API is experimental and may change in future versions.
  */
 export type EvalParams<
   TInput extends string | Record<string, any>,
@@ -193,7 +190,6 @@ export type Task = {
  * Generated for each test case when running {@link Eval} with {@link EvalParams}.
  * Contains all {@link Score} results and execution metadata.
  *
- * @experimental This API is experimental and may change in future versions.
  */
 export type EvalCaseReport = {
   /** Order/index of this case in the evaluation suite */
