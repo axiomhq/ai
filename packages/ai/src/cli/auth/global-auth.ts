@@ -1,9 +1,6 @@
 import { loadGlobalConfig, getActiveDeployment } from './config';
-import { AxiomCLIError } from '../errors';
-import type { Deployment } from './types';
 
 export interface AuthContext {
-  readonly deployment: Deployment;
   readonly token: string;
   readonly url: string;
   readonly orgId: string;
@@ -28,27 +25,17 @@ export function getAuthContext(): AuthContext | null {
  *
  * @throws {AxiomCLIError} If no active deployment is found
  */
-export async function setupGlobalAuth(): Promise<AuthContext> {
+export async function setupGlobalAuth(): Promise<AuthContext | null> {
   const config = await loadGlobalConfig();
   const deployment = getActiveDeployment(config);
-
-  if (!deployment) {
-    throw new AxiomCLIError('No active deployment found. Run "axiom auth login" to authenticate.');
+  if (deployment) {
+    // Store in module-level context for explicit access
+    authContext = {
+      token: deployment.token,
+      url: deployment.url,
+      orgId: deployment.org_id,
+    };
   }
-
-  if (!deployment.token) {
-    throw new AxiomCLIError(
-      'No token found in active deployment. Run "axiom auth login" to authenticate.',
-    );
-  }
-
-  // Store in module-level context for explicit access
-  authContext = {
-    deployment,
-    token: deployment.token,
-    url: deployment.url,
-    orgId: deployment.org_id,
-  };
 
   return authContext;
 }
