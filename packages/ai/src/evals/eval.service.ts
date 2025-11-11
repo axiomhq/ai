@@ -3,6 +3,7 @@ import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { Attr } from '../otel';
+import { AxiomCLIError } from '../cli/errors';
 
 export interface EvaluationApiConfig {
   dataset?: string;
@@ -46,6 +47,10 @@ export class EvaluationApiClient {
       body: JSON.stringify(evaluation),
     });
 
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to create evaluation: ${resp.statusText}`);
+    }
+
     return resp.json();
   }
 
@@ -54,6 +59,10 @@ export class EvaluationApiClient {
       method: 'PATCH',
       body: JSON.stringify(evaluation),
     });
+
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to update evaluation: ${resp.statusText}`);
+    }
 
     return resp.json();
   }
