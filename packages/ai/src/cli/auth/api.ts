@@ -1,3 +1,4 @@
+import { AxiomCLIError } from '../errors';
 import type { Organization } from './types';
 
 export async function fetchOrganizations(
@@ -12,7 +13,9 @@ export async function fetchOrganizations(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch organizations: ${response.status} ${response.statusText}`);
+    throw new AxiomCLIError(
+      `Failed to fetch organizations: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
