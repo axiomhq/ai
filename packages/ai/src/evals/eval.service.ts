@@ -98,13 +98,14 @@ export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
+  const { dataset, url, token, orgId } = resolveAxiomConnection(config);
 
   const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
+    ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
   const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
