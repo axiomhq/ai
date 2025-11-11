@@ -114,7 +114,7 @@ export function Eval<
  * Implementation
  */
 export function Eval(name: string, params: any): void {
-  // Record eval name for validation (in-memory + file)
+  // Record eval name for validation
   recordName('eval', name);
 
   // Record all scorer names for validation
