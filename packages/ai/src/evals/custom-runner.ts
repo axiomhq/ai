@@ -4,6 +4,9 @@ import { validateName } from './name-validation-runtime';
 
 /**
  * Custom Vitest runner that validates eval and scorer names before running any tests.
+ *
+ * The default runner doesn't give us a good way of doing this validation
+ * before tests start, unfortunately.
  */
 export default class AxiomEvalRunner extends VitestTestRunner {
   private validationChecked = false;
@@ -57,7 +60,6 @@ export default class AxiomEvalRunner extends VitestTestRunner {
       }
     }
 
-    // Call parent implementation
     await super.onBeforeRunSuite(suite);
   }
 }

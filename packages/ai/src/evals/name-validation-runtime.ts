@@ -2,21 +2,10 @@ import { AxiomCLIError } from '../cli/errors';
 import { appendFileSync } from 'node:fs';
 
 /**
- * Global registry for collecting eval and scorer names.
- */
-export const nameRegistry = {
-  evals: [] as Array<{ name: string }>,
-  scorers: [] as Array<{ name: string }>,
-};
-
-/**
- * Records an eval or scorer name both in-memory and to the cross-worker registry file.
+ * Records an eval or scorer name
+ * Uses a file to work cross-worker
  */
 export function recordName(kind: 'eval' | 'scorer', name: string): void {
-  // Keep in-memory registry for backwards compatibility
-  nameRegistry[kind === 'eval' ? 'evals' : 'scorers'].push({ name });
-
-  // Write to file for cross-worker validation
   const registryFile = process.env.AXIOM_NAME_REGISTRY_FILE;
   if (registryFile) {
     try {

@@ -82,6 +82,8 @@ class EvalBuilderImpl<
 
     // Call existing Eval function - this handles all Vitest registration
     // Cast finalName since suffix may add ':' which isn't in ValidChars
+    // (suffix is from like `someTest.run('variant')` which is used for parametrization)
+    // we currently don't expose this
     Eval<TInput, TExpected, TOutput>(finalName as never, finalParams);
   }
 }
