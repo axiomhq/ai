@@ -124,6 +124,7 @@ export async function initInstrumentation(config: {
         dataset: connection.dataset,
         token: connection.token,
         url: connection.url,
+        orgId: connection.orgId,
       });
 
       userProvider = hookResult?.provider ?? userProvider;
