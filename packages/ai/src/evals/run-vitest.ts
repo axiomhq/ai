@@ -1,10 +1,46 @@
 import c from 'tinyrainbow';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve, join } from 'node:path';
+import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
+import type { TestRunResult } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
 import { setAxiomConfig } from './context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const printCollectedEvals = (result: TestRunResult, rootDir: string) => {
+  if (!result.testModules || result.testModules.length === 0) {
+    console.log(c.yellow('\nNo evaluations found\n'));
+    return;
+  }
+
+  console.log(c.bold('\nFound evaluations:\n'));
+
+  let totalEvals = 0;
+  let totalCases = 0;
+
+  for (const module of result.testModules) {
+    const relativePath = path.relative(rootDir, module.moduleId);
+
+    for (const suite of module.children.suites()) {
+      totalEvals++;
+      const caseCount = suite.children.size;
+      totalCases += caseCount;
+      console.log(c.green(`✓ ${suite.name} (${caseCount} cases)`));
+      console.log(c.dim(`  ${relativePath}`));
+      console.log('');
+    }
+  }
+
+  console.log(c.bold(`Total: ${totalEvals} evaluations, ${totalCases} test cases\n`));
+};
 
 export const runVitest = async (
   dir: string,
@@ -15,6 +51,7 @@ export const runVitest = async (
     exclude?: string[];
     testNamePattern?: RegExp;
     debug?: boolean;
+    list?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
     runId: string;
@@ -23,9 +60,9 @@ export const runVitest = async (
   // Store config globally so reporters can access it
   setAxiomConfig(opts.config);
 
-  // Initialize instrumentation explicitly based on debug flag
+  // Initialize instrumentation explicitly based on debug or list flag
   await initInstrumentation({
-    enabled: !opts.debug,
+    enabled: !opts.debug && !opts.list,
     config: opts.config,
   });
 
@@ -40,6 +77,27 @@ export const runVitest = async (
 
   if (opts.debug) {
     console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
+  }
+
+  // Setup temp files for cross-worker name validation
+  const tmpDir = join(tmpdir(), 'axiom-eval', opts.runId);
+  mkdirSync(tmpDir, { recursive: true });
+
+  const nameRegistryFile = join(tmpDir, 'names.jsonl');
+  const abortFile = join(tmpDir, 'abort.txt');
+
+  // Clear registry file and remove any stale abort file
+  writeFileSync(nameRegistryFile, '', 'utf8');
+  if (existsSync(abortFile)) {
+    unlinkSync(abortFile);
+  }
+
+  // Make paths available to workers and reporters
+  process.env.AXIOM_NAME_REGISTRY_FILE = nameRegistryFile;
+  process.env.AXIOM_ABORT_FILE = abortFile;
+
+  if (opts.list) {
+    console.log(c.bgWhite(c.blackBright(' List mode ')));
   }
 
   const vi = await createVitest('test', {
@@ -58,16 +116,35 @@ export const runVitest = async (
     disableConsoleIntercept: true,
     testTimeout: opts.config?.eval?.timeoutMs || 60_000,
     globals: true,
+    runner: resolve(__dirname, 'evals', 'custom-runner.js'),
     provide: {
       baseline: opts.baseline,
       debug: opts.debug,
+      list: opts.list,
       overrides: opts.overrides,
       axiomConfig: providedConfig,
       runId: opts.runId,
     },
   });
 
+  // List mode: just list tests without running them
+  if (opts.list) {
+    const result = await vi.collect();
+    printCollectedEvals(result, dir || process.cwd());
+    await vi.close();
+    process.exit(0);
+  }
+
+  // Start collection and execution
   await vi.start();
+
+  // After execution, check if validation failed
+  if (existsSync(abortFile)) {
+    const message = readFileSync(abortFile, 'utf8');
+    console.error('\n' + message);
+    await vi.close();
+    process.exit(1);
+  }
 
   const dispose = registerConsoleShortcuts(vi, process.stdin, process.stdout);
 

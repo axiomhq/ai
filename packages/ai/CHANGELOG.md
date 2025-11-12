@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/axiomhq/ai/compare/axiom-v0.24.0...axiom-v0.25.0) (2025-11-11)
+
+
+### Features
+
+* add `--list` flag ([#116](https://github.com/axiomhq/ai/issues/116)) ([4f303cf](https://github.com/axiomhq/ai/commit/4f303cf6029e67ff766b3f47da732dc10de25244))
+
 ## [0.24.0](https://github.com/axiomhq/ai/compare/axiom-v0.23.0...axiom-v0.24.0) (2025-11-06)
 
 

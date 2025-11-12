@@ -27,6 +27,8 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
+import type { ValidateName } from './name-validation';
+import { recordName } from './name-validation-runtime';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -39,6 +41,7 @@ declare module 'vitest' {
   export interface ProvidedContext {
     baseline?: string;
     debug?: boolean;
+    list?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
     runId: string;
@@ -53,14 +56,13 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * This function sets up a complete evaluation pipeline that will run your {@link EvalTask}
  * against a dataset, score the results, and provide detailed {@link EvalCaseReport} reporting.
  *
- * @experimental This API is experimental and may change in future versions.
  *
  * @param name - Human-readable name for the evaluation suite
  * @param params - {@link EvalParams} configuration parameters for the evaluation
  *
  * @example
  * ```typescript
- * import { experimental_Eval as Eval } from 'axiom/ai/evals';
+ * import { Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
  *   data: async () => [
@@ -85,8 +87,9 @@ export function Eval<
     input: InputOf<Data>;
     expected: ExpectedOf<Data>;
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
+  Name extends string = string,
 >(
-  name: string,
+  name: ValidateName<Name>,
   params: Omit<
     EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
     'data' | 'task' | 'scorers'
@@ -104,12 +107,24 @@ export function Eval<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
->(name: string, params: EvalParams<TInput, TExpected, TOutput>): void;
+  Name extends string = string,
+>(name: ValidateName<Name>, params: EvalParams<TInput, TExpected, TOutput>): void;
 
 /**
  * Implementation
  */
 export function Eval(name: string, params: any): void {
+  // Record eval name for validation
+  recordName('eval', name);
+
+  // Record all scorer names for validation
+  if (params.scorers) {
+    for (const scorer of params.scorers) {
+      const scorerName = getScorerName(scorer, '');
+      recordName('scorer', scorerName);
+    }
+  }
+
   registerEval(name, params as EvalParams<any, any, any>).catch(console.error);
 }
 
@@ -157,6 +172,7 @@ async function registerEval<
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
   const isDebug = inject('debug');
+  const isList = inject('list');
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
   const runId = inject('runId');
@@ -167,12 +183,11 @@ async function registerEval<
 
   const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
 
-  const instrumentationReady = !isDebug
-    ? ensureInstrumentationInitialized(axiomConfig)
-    : Promise.resolve();
+  const instrumentationReady =
+    !isDebug && !isList ? ensureInstrumentationInitialized(axiomConfig) : Promise.resolve();
 
   const result = await describe(
-    `evaluate: ${evalName}`,
+    evalName,
     async () => {
       const dataset = await datasetPromise;
 
@@ -217,7 +232,7 @@ async function registerEval<
         // - Actual errors (`!resp.ok` etc) are treated as instrumentation failures
         // - Nullish results just mean no baseline exists (first run or not found)
         try {
-          if (!isDebug) {
+          if (!isDebug && !isList) {
             baseline = baselineId
               ? await findEvaluationCases(baselineId, axiomConfig)
               : await findBaseline(evalName, axiomConfig);

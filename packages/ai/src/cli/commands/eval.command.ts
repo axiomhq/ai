@@ -44,6 +44,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
       .option('-u, --url <AXIOM URL>', 'axiom url', getDefaultUrl)
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
       .option('--debug', 'run locally without sending to Axiom or loading baselines', false)
+      .option('--list', 'list evaluations and test cases without running them', false)
       .action(async (target: string, options) => {
         try {
           // Propagate debug mode to processes that we can't reach otherwise (e.g., reporter, app instrumentation)
@@ -102,6 +103,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               exclude,
               testNamePattern,
               debug: options.debug,
+              list: options.list,
               overrides: flagOverrides,
               config,
               runId,
