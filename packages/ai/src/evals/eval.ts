@@ -269,6 +269,11 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
 
+        const flagConfig = captureFlagConfig(opts.configFlags);
+        suite.meta.evaluation.flagConfig = flagConfig;
+        const flagConfigJson = JSON.stringify(flagConfig);
+        suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
+
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
@@ -277,11 +282,9 @@ async function registerEval<
           baselineId: baseline?.id ?? undefined,
           runId: runId,
           totalCases: dataset.length,
-          scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
-          config: {
-            flags: opts.configFlags ?? [],
-          },
+          config: { flags: flagConfig },
           configTimeoutMs: timeoutMs,
+          metadata: opts.metadata,
           status: 'running',
         });
 
@@ -310,10 +313,6 @@ async function registerEval<
             : { status: 'success' },
         };
 
-        const flagConfig = captureFlagConfig(opts.configFlags);
-        suite.meta.evaluation.flagConfig = flagConfig;
-        const flagConfigJson = JSON.stringify(flagConfig);
-        suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
         suiteStart = performance.now();
       });
 
@@ -363,28 +362,11 @@ async function registerEval<
           };
         }
 
-        const durationMs = Math.round(performance.now() - suiteStart);
-
-        const successCases = suite.tasks.filter(
-          (task) => task.meta.case.status === 'success',
-        ).length;
-        const erroredCases = suite.tasks.filter(
-          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
-        ).length;
-
-        await evaluationApiClient.updateEvaluation({
-          id: evalId,
-          status: 'completed',
-          totalCases: dataset.length,
-          successCases,
-          erroredCases,
-          durationMs,
-        });
-
         // end root span
         suiteSpan?.setStatus({ code: SpanStatusCode.OK });
         suiteSpan?.end();
 
+        // flush traces before updating Evaluation in Axiom
         try {
           await flush();
         } catch (flushError) {
@@ -396,6 +378,25 @@ async function registerEval<
             };
           }
         }
+
+        const durationMs = Math.round(performance.now() - suiteStart);
+
+        const successCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'success',
+        ).length;
+        const erroredCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
+        ).length;
+
+        // signal Axiom that evaluation finished to kick of summary calculations
+        await evaluationApiClient.updateEvaluation({
+          id: evalId,
+          status: 'completed',
+          totalCases: dataset.length,
+          successCases,
+          erroredCases,
+          durationMs,
+        });
       });
 
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
