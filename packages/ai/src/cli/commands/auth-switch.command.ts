@@ -37,9 +37,9 @@ async function promptSelect<T>(
 export async function switchCommand(alias?: string): Promise<void> {
   const config = await loadGlobalConfig();
 
-  if (Object.keys(config.deployments).length === 0) {
+  if (Object.keys(config.profiles).length === 0) {
     throw new AxiomCLIError(
-      'No authenticated deployments found. Run "axiom auth login" to authenticate.',
+      'No authenticated profiles found. Run "axiom auth login" to authenticate.',
     );
   }
 
@@ -47,43 +47,43 @@ export async function switchCommand(alias?: string): Promise<void> {
 
   if (alias) {
     // Use provided alias
-    if (!config.deployments[alias]) {
-      throw new AxiomCLIError(`Deployment "${alias}" not found`);
+    if (!config.profiles[alias]) {
+      throw new AxiomCLIError(`Profile "${alias}" not found`);
     }
     selectedAlias = alias;
   } else {
     // Prompt for selection
-    const deployments = Object.entries(config.deployments).map(([alias, deployment]) => ({
-      name: `${alias} (${deployment.url})`,
+    const profiles = Object.entries(config.profiles).map(([alias, profile]) => ({
+      name: `${alias} (${profile.url})`,
       value: alias,
     }));
 
-    if (deployments.length === 1) {
-      selectedAlias = deployments[0].value;
-      console.log(`✓ Using deployment: ${selectedAlias}\n`);
+    if (profiles.length === 1) {
+      selectedAlias = profiles[0].value;
+      console.log(`✓ Using profile: ${selectedAlias}\n`);
     } else {
-      selectedAlias = await promptSelect('Select a deployment to switch to:', deployments);
+      selectedAlias = await promptSelect('Select a profile to switch to:', profiles);
     }
   }
 
   // Check if already active
-  if (config.active_deployment === selectedAlias) {
-    console.log(`✓ Deployment "${selectedAlias}" is already active\n`);
+  if (config.active_profile === selectedAlias) {
+    console.log(`✓ Profile "${selectedAlias}" is already active\n`);
     return;
   }
 
   // Set as active
-  config.active_deployment = selectedAlias;
+  config.active_profile = selectedAlias;
   await saveGlobalConfig(config);
 
-  console.log(`✓ Switched to deployment: ${selectedAlias}\n`);
+  console.log(`✓ Switched to profile: ${selectedAlias}\n`);
 }
 
 export function loadAuthSwitchCommand(program: Command): void {
   program
     .command('switch')
-    .description('Switch to a different deployment')
-    .argument('[alias]', 'Deployment alias to switch to')
+    .description('Switch to a different profile')
+    .argument('[alias]', 'Profile alias to switch to')
     .action(async (alias?: string) => {
       try {
         await switchCommand(alias);
@@ -97,4 +97,3 @@ export function loadAuthSwitchCommand(program: Command): void {
       }
     });
 }
-

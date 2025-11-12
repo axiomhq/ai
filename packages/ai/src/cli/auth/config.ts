@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import type { Config, Deployment } from './types';
+import type { Config, Profile } from './types';
 
 const CONFIG_FILENAME = 'config.json';
 const CONFIG_DIR_NAME = 'axiom';
@@ -49,7 +49,7 @@ export async function loadGlobalConfig(): Promise<Config> {
     return JSON.parse(content);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { deployments: {} };
+      return { profiles: {} };
     }
     throw error;
   }
@@ -71,13 +71,13 @@ export async function saveGlobalConfig(config: Config): Promise<void> {
   await fs.chmod(configPath, 0o600);
 }
 
-export function getActiveDeployment(config: Config): Deployment | null {
+export function getActiveProfile(config: Config): Profile | null {
   // Get from config
-  const deploymentName = config.active_deployment;
-  if (!deploymentName) return null;
+  const profileName = config.active_profile;
+  if (!profileName) return null;
 
-  const deployment = config.deployments[deploymentName];
-  if (!deployment) return null;
+  const profile = config.profiles[profileName];
+  if (!profile) return null;
 
-  return deployment;
+  return profile;
 }

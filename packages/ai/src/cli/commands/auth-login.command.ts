@@ -131,7 +131,7 @@ export async function loginCommand(hostname: string): Promise<void> {
     const selectedOrg = organizations.find((org) => org.id === selectedOrgId)!;
     const defaultAlias = selectedOrg.slug || selectedOrg.name.toLowerCase().replace(/\s+/g, '-');
 
-    const alias = await promptInput('Enter deployment alias', defaultAlias);
+    const alias = await promptInput('Enter profile alias', defaultAlias);
 
     console.log('\n✓ Verifying credentials...\n');
     const isValid = await verifyToken(accessToken, selectedOrgId, getApiUrl(hostname));
@@ -141,8 +141,8 @@ export async function loginCommand(hostname: string): Promise<void> {
     }
 
     const config = await loadGlobalConfig();
-    config.active_deployment = alias;
-    config.deployments[alias] = {
+    config.active_profile = alias;
+    config.profiles[alias] = {
       url: getApiUrl(hostname),
       token: accessToken,
       org_id: selectedOrgId,

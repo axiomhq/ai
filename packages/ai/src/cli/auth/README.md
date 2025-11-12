@@ -19,7 +19,7 @@ The authentication flow follows the same pattern as `axiomhq/cli` but adapted fo
 3. **Configuration Management** (`config.ts`)
    - Stores credentials in JSON in `~/.axiom.json` (on Linux/Unix) or `%APPDATA%\axiom\config.json` (on Windows)
    - Supports environment variable overrides
-   - Manages multiple deployments
+   - Manages multiple profiles
 
 4. **API Client** (`api.ts`)
    - Fetches organizations
@@ -32,8 +32,8 @@ The authentication flow follows the same pattern as `axiomhq/cli` but adapted fo
 **Format:**
 \`\`\`json
 {
-  "active_deployment": "axiom",
-  "deployments": {
+  "active_profile": "axiom",
+  "profiles": {
     "axiom": {
       "url": "https://api.axiom.co",
       "token": "xapt-...",
@@ -69,7 +69,7 @@ Authenticate using OAuth2 flow:
 4. Exchanges code for token
 5. Fetches organizations
 6. Prompts for organization selection (if multiple)
-7. Prompts for deployment alias
+7. Prompts for profile alias
 8. Verifies credentials
 9. Saves to config file
 
@@ -78,17 +78,17 @@ Authenticate using OAuth2 flow:
 Remove authentication credentials:
 
 \`\`\`bash
-axiom auth logout              # Remove active deployment
-axiom auth logout --alias dev  # Remove specific deployment
+axiom auth logout              # Remove active profile
+axiom auth logout --alias dev  # Remove specific profile
 \`\`\`
 
 ### `axiom auth status`
 
-Check authentication status for all deployments:
+Check authentication status for all profiles:
 
-- Shows all configured deployments
+- Shows all configured profiles
 - Verifies each token is valid
-- Indicates which deployment is active
+- Indicates which profile is active
 - Shows if environment variables are being used
 
 ## OAuth2 Configuration

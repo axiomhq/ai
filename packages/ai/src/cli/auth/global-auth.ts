@@ -1,4 +1,4 @@
-import { loadGlobalConfig, getActiveDeployment } from './config';
+import { loadGlobalConfig, getActiveProfile } from './config';
 
 export interface AuthContext {
   readonly token: string;
@@ -23,17 +23,17 @@ export function getAuthContext(): AuthContext | null {
 /**
  * Sets up authentication context by loading config and storing it.
  *
- * @throws {AxiomCLIError} If no active deployment is found
+ * @throws {AxiomCLIError} If no active profile is found
  */
 export async function setupGlobalAuth(): Promise<AuthContext | null> {
   const config = await loadGlobalConfig();
-  const deployment = getActiveDeployment(config);
-  if (deployment) {
+  const profile = getActiveProfile(config);
+  if (profile) {
     // Store in module-level context for explicit access
     authContext = {
-      token: deployment.token,
-      url: deployment.url,
-      orgId: deployment.org_id,
+      token: profile.token,
+      url: profile.url,
+      orgId: profile.org_id,
     };
   }
 

@@ -1,31 +1,31 @@
 import type { Command } from 'commander';
-import { loadGlobalConfig, getActiveDeployment } from '../auth/config';
+import { loadGlobalConfig, getActiveProfile } from '../auth/config';
 import { verifyToken } from '../auth/api';
 import { AxiomCLIError } from '../errors';
 
 export async function statusCommand(): Promise<void> {
   const config = await loadGlobalConfig();
 
-  if (Object.keys(config.deployments).length === 0) {
-    console.log('No authenticated deployments found.');
+  if (Object.keys(config.profiles).length === 0) {
+    console.log('No authenticated profiles found.');
     console.log('Run "axiom auth login" to authenticate.');
     return;
   }
 
   console.log('\nAuthentication Status:\n');
 
-  for (const [alias, deployment] of Object.entries(config.deployments)) {
-    const isActive = config.active_deployment === alias;
+  for (const [alias, profile] of Object.entries(config.profiles)) {
+    const isActive = config.active_profile === alias;
     const marker = isActive ? '→' : ' ';
 
     try {
-      const isValid = await verifyToken(deployment.token, deployment.org_id, deployment.url);
+      const isValid = await verifyToken(profile.token, profile.org_id, profile.url);
       const status = isValid ? '✓' : '✗';
       const statusText = isValid ? 'Valid' : 'Invalid';
 
       console.log(`${marker} ${status} ${alias}`);
-      console.log(`    URL: ${deployment.url}`);
-      console.log(`    Org ID: ${deployment.org_id}`);
+      console.log(`    URL: ${profile.url}`);
+      console.log(`    Org ID: ${profile.org_id}`);
       console.log(`    Status: ${statusText}`);
       if (isActive) {
         console.log(`    (Active)`);
@@ -33,8 +33,8 @@ export async function statusCommand(): Promise<void> {
       console.log();
     } catch (error) {
       console.log(`${marker} ✗ ${alias}`);
-      console.log(`    URL: ${deployment.url}`);
-      console.log(`    Org ID: ${deployment.org_id}`);
+      console.log(`    URL: ${profile.url}`);
+      console.log(`    Org ID: ${profile.org_id}`);
       console.log(`    Status: Error - ${(error as Error).message}`);
       if (isActive) {
         console.log(`    (Active)`);
@@ -43,18 +43,18 @@ export async function statusCommand(): Promise<void> {
     }
   }
 
-  const activeDeployment = getActiveDeployment(config);
+  const activeProfile = getActiveProfile(config);
   if (process.env.AXIOM_TOKEN) {
     console.log('Note: Using AXIOM_TOKEN environment variable (overrides config file)\n');
-  } else if (activeDeployment && config.active_deployment) {
-    console.log(`Active deployment: ${config.active_deployment}\n`);
+  } else if (activeProfile && config.active_profile) {
+    console.log(`Active profile: ${config.active_profile}\n`);
   }
 }
 
 export function loadAuthStatusCommand(program: Command): void {
   program
     .command('status')
-    .description('Check authentication status for all deployments')
+    .description('Check authentication status for all profiles')
     .action(async () => {
       try {
         await statusCommand();

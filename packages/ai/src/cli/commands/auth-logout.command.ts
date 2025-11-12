@@ -5,33 +5,30 @@ import { AxiomCLIError } from '../errors';
 export async function logoutCommand(alias?: string): Promise<void> {
   const config = await loadGlobalConfig();
 
-  const deploymentToRemove = alias || config.active_deployment;
+  const profileToRemove = alias || config.active_profile;
 
-  if (!deploymentToRemove) {
-    throw new AxiomCLIError(
-      'No active deployment. Use --alias to specify which deployment to remove.',
-    );
+  if (!profileToRemove) {
+    throw new AxiomCLIError('No active profile. Use --alias to specify which profile to remove.');
   }
 
-  if (!config.deployments[deploymentToRemove]) {
-    throw new AxiomCLIError(`Deployment "${deploymentToRemove}" not found`);
+  if (!config.profiles[profileToRemove]) {
+    throw new AxiomCLIError(`Profile "${profileToRemove}" not found`);
   }
 
-  delete config.deployments[deploymentToRemove];
+  delete config.profiles[profileToRemove];
 
-  if (config.active_deployment === deploymentToRemove) {
-    const remainingDeployments = Object.keys(config.deployments);
-    config.active_deployment =
-      remainingDeployments.length > 0 ? remainingDeployments[0] : undefined;
+  if (config.active_profile === profileToRemove) {
+    const remainingProfiles = Object.keys(config.profiles);
+    config.active_profile = remainingProfiles.length > 0 ? remainingProfiles[0] : undefined;
   }
 
   await saveGlobalConfig(config);
 
-  console.log(`✓ Logged out from ${deploymentToRemove}`);
-  if (config.active_deployment) {
-    console.log(`✓ Active deployment is now: ${config.active_deployment}`);
+  console.log(`✓ Logged out from ${profileToRemove}`);
+  if (config.active_profile) {
+    console.log(`✓ Active profile is now: ${config.active_profile}`);
   } else {
-    console.log('No active deployments remaining. Run "axiom auth login" to authenticate.');
+    console.log('No active profiles remaining. Run "axiom auth login" to authenticate.');
   }
 }
 
@@ -39,7 +36,7 @@ export function loadAuthLogoutCommand(program: Command): void {
   program
     .command('logout')
     .description('Remove authentication credentials')
-    .option('-a, --alias <alias>', 'Deployment alias to remove')
+    .option('-a, --alias <alias>', 'Profile alias to remove')
     .action(async (options) => {
       try {
         await logoutCommand(options.alias);

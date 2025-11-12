@@ -1,12 +1,12 @@
-export interface Deployment {
+export interface Profile {
   url: string;
   token: string;
   org_id: string;
 }
 
 export interface Config {
-  active_deployment?: string;
-  deployments: Record<string, Deployment>;
+  active_profile?: string;
+  profiles: Record<string, Profile>;
 }
 
 export interface OAuthTokenResponse {
