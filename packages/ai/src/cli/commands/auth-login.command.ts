@@ -160,21 +160,23 @@ export async function loginCommand(hostname: string): Promise<void> {
   }
 }
 
-export function loadAuthLoginCommand(program: Command): void {
-  program
-    .command('login')
-    .description('Authenticate with Axiom using OAuth2')
-    .option('--hostname <hostname>', 'Axiom hostname (default: axiom.co)')
-    .action(async (options) => {
-      try {
-        await loginCommand(options.hostname ?? BASE_HOSTNAME);
-      } catch (error) {
-        if (error instanceof AxiomCLIError) {
-          console.error(`\n❌ Error: ${error.message}\n`);
-        } else {
-          console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+export function loadAuthLoginCommand(auth: Command, root: Command): void {
+  [auth, root].forEach((program) => {
+    program
+      .command('login')
+      .description('Authenticate with Axiom')
+      .option('--hostname <hostname>', 'Axiom hostname (default: axiom.co)')
+      .action(async (options) => {
+        try {
+          await loginCommand(options.hostname ?? BASE_HOSTNAME);
+        } catch (error) {
+          if (error instanceof AxiomCLIError) {
+            console.error(`\n❌ Error: ${error.message}\n`);
+          } else {
+            console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+          }
+          process.exit(1);
         }
-        process.exit(1);
-      }
-    });
+      });
+  });
 }

@@ -32,21 +32,23 @@ export async function logoutCommand(alias?: string): Promise<void> {
   }
 }
 
-export function loadAuthLogoutCommand(program: Command): void {
-  program
-    .command('logout')
-    .description('Remove authentication credentials')
-    .option('-a, --alias <alias>', 'Profile alias to remove')
-    .action(async (options) => {
-      try {
-        await logoutCommand(options.alias);
-      } catch (error) {
-        if (error instanceof AxiomCLIError) {
-          console.error(`\n❌ Error: ${error.message}\n`);
-        } else {
-          console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+export function loadAuthLogoutCommand(auth: Command, root: Command): void {
+  [auth, root].forEach((program) => {
+    program
+      .command('logout')
+      .description('Remove authentication credentials')
+      .option('-a, --alias <alias>', 'Profile alias to remove')
+      .action(async (options) => {
+        try {
+          await logoutCommand(options.alias);
+        } catch (error) {
+          if (error instanceof AxiomCLIError) {
+            console.error(`\n❌ Error: ${error.message}\n`);
+          } else {
+            console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+          }
+          process.exit(1);
         }
-        process.exit(1);
-      }
-    });
+      });
+  });
 }

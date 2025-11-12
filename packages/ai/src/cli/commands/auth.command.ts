@@ -7,8 +7,8 @@ import { loadAuthSwitchCommand } from './auth-switch.command';
 export function loadAuthCommand(program: Command): void {
   const auth = program.command('auth').description('Manage authentication with Axiom');
 
-  loadAuthLoginCommand(auth);
-  loadAuthLogoutCommand(auth);
+  loadAuthLoginCommand(auth, program);
+  loadAuthLogoutCommand(auth, program);
   loadAuthStatusCommand(auth);
   loadAuthSwitchCommand(auth);
 }
