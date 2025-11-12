@@ -1,4 +1,4 @@
-import { Command, Argument } from 'commander';
+import { Command, Argument, Option } from 'commander';
 import { customAlphabet } from 'nanoid';
 import { runVitest } from '../../evals/run-vitest';
 import { lstatSync } from 'node:fs';
@@ -10,6 +10,12 @@ import { AxiomCLIError } from '../errors';
 import c from 'tinyrainbow';
 
 const createRunId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
+
+// Module-level storage for console URL override
+let consoleUrl: string | undefined;
+export function getConsoleUrl(): string | undefined {
+  return consoleUrl;
+}
 
 export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides = {}) => {
   return program.addCommand(
@@ -28,6 +34,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
       .option('--debug', 'run locally without sending to Axiom or loading baselines', false)
       .option('--list', 'list evaluations and test cases without running them', false)
+      /** Hides the option from the help output, but still allows it to be passed */
+      .addOption(new Option('-c, --console-url <URL>', 'console url override').hideHelp())
       .action(async (target: string, options) => {
         try {
           // Propagate debug mode to processes that we can't reach otherwise (e.g., reporter, app instrumentation)
@@ -77,6 +85,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           }
 
           const runId = createRunId();
+
+          consoleUrl = options.consoleUrl;
 
           await runEvalWithContext(flagOverrides, async () => {
             return runVitest('.', {
