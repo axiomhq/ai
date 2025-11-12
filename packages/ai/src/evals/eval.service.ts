@@ -59,40 +59,6 @@ export class EvaluationApiClient {
   }
 }
 
-/** Query axiom to find a baseline for an Eval */
-export const findBaseline = async (
-  evalName: string,
-  config: ResolvedAxiomConfig,
-): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
-
-  const apl = [
-    `['${dataset}']`,
-    // TODO: need to also catch if it's not in attributes.custom!
-    `| where ['attributes.custom']['${Attr.Eval.Name}'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
-    `| order by _time desc`,
-    `| limit 1`,
-  ].join('\n');
-
-  const headers = new Headers({
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  });
-
-  const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
-    headers: headers,
-    method: 'POST',
-    body: JSON.stringify({ apl }),
-  });
-  const payload = await resp.json();
-
-  if (!resp.ok) {
-    throw new Error(`Failed to query baseline: ${payload.message || resp.statusText}`);
-  }
-
-  return payload.matches.length ? mapSpanToEval(payload.matches[0]) : null;
-};
-
 export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
