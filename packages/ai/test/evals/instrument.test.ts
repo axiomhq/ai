@@ -62,6 +62,7 @@ describe.sequential('eval instrumentation', () => {
       dataset: 'dataset-123',
       token: 'token-123',
       url: 'https://example.com',
+      orgId: 'org-123',
     });
   });
 
