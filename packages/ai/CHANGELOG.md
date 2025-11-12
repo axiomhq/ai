@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0](https://github.com/axiomhq/ai/compare/axiom-v0.25.0...axiom-v0.26.0) (2025-11-12)
+
+
+### Features
+
+* **AI-65:** move Eval() to GA ([#121](https://github.com/axiomhq/ai/issues/121)) ([3c6fb63](https://github.com/axiomhq/ai/commit/3c6fb634b62570eccf34b3624c8fe044d0f33a43))
+* type and runtime error if eval or scorer name doesnt match desired pattern ([#118](https://github.com/axiomhq/ai/issues/118)) ([8940c70](https://github.com/axiomhq/ai/commit/8940c7041813d4f505bf6526b3832f69b63c9ba3))
+
 ## [0.25.0](https://github.com/axiomhq/ai/compare/axiom-v0.24.0...axiom-v0.25.0) (2025-11-11)
 
 
