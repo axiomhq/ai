@@ -13,7 +13,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
     "plugins": [
       {
@@ -34,8 +34,7 @@
     "src/instrumentation.ts",
     "src/instrumentation.node.ts",
     "vitest.config.ts",
-    "axiom.config.ts",
-    ".next/dev/types/**/*.ts"
+    "axiom.config.ts"
   ],
   "exclude": ["node_modules"]
 }
