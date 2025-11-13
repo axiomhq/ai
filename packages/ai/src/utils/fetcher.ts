@@ -24,7 +24,6 @@ export const createFetcher = ({
         ...options.headers,
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
-        'x-axiom-check': 'good',
         ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
       },
     });
