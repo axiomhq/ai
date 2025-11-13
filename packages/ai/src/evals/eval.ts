@@ -22,11 +22,13 @@ import type {
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { ScoreWithName, ScorerLike } from './scorers';
-import { EvaluationApiClient, findBaseline, findEvaluationCases } from './eval.service';
+import { EvaluationApiClient, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
+import type { ValidateName } from './name-validation';
+import { recordName } from './name-validation-runtime';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -39,6 +41,7 @@ declare module 'vitest' {
   export interface ProvidedContext {
     baseline?: string;
     debug?: boolean;
+    list?: boolean;
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
     runId: string;
@@ -53,14 +56,13 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * This function sets up a complete evaluation pipeline that will run your {@link EvalTask}
  * against a dataset, score the results, and provide detailed {@link EvalCaseReport} reporting.
  *
- * @experimental This API is experimental and may change in future versions.
  *
  * @param name - Human-readable name for the evaluation suite
  * @param params - {@link EvalParams} configuration parameters for the evaluation
  *
  * @example
  * ```typescript
- * import { experimental_Eval as Eval } from 'axiom/ai/evals';
+ * import { Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
  *   data: async () => [
@@ -85,8 +87,9 @@ export function Eval<
     input: InputOf<Data>;
     expected: ExpectedOf<Data>;
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
+  Name extends string = string,
 >(
-  name: string,
+  name: ValidateName<Name>,
   params: Omit<
     EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
     'data' | 'task' | 'scorers'
@@ -104,12 +107,24 @@ export function Eval<
   TInput extends string | Record<string, any>,
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
->(name: string, params: EvalParams<TInput, TExpected, TOutput>): void;
+  Name extends string = string,
+>(name: ValidateName<Name>, params: EvalParams<TInput, TExpected, TOutput>): void;
 
 /**
  * Implementation
  */
 export function Eval(name: string, params: any): void {
+  // Record eval name for validation
+  recordName('eval', name);
+
+  // Record all scorer names for validation
+  if (params.scorers) {
+    for (const scorer of params.scorers) {
+      const scorerName = getScorerName(scorer, '');
+      recordName('scorer', scorerName);
+    }
+  }
+
   registerEval(name, params as EvalParams<any, any, any>).catch(console.error);
 }
 
@@ -157,6 +172,7 @@ async function registerEval<
   // check if user passed a specific baseline id to the CLI
   const baselineId = inject('baseline');
   const isDebug = inject('debug');
+  const isList = inject('list');
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
   const runId = inject('runId');
@@ -167,12 +183,11 @@ async function registerEval<
 
   const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
 
-  const instrumentationReady = !isDebug
-    ? ensureInstrumentationInitialized(axiomConfig)
-    : Promise.resolve();
+  const instrumentationReady =
+    !isDebug && !isList ? ensureInstrumentationInitialized(axiomConfig) : Promise.resolve();
 
   const result = await describe(
-    `evaluate: ${evalName}`,
+    evalName,
     async () => {
       const dataset = await datasetPromise;
 
@@ -213,20 +228,6 @@ async function registerEval<
           instrumentationError = error;
         }
 
-        // Load baseline, either from id or find the latest
-        // - Actual errors (`!resp.ok` etc) are treated as instrumentation failures
-        // - Nullish results just mean no baseline exists (first run or not found)
-        try {
-          if (!isDebug) {
-            baseline = baselineId
-              ? await findEvaluationCases(baselineId, axiomConfig)
-              : await findBaseline(evalName, axiomConfig);
-          }
-        } catch (error) {
-          console.error(`Failed to load baseline: ${errorToString(error)}`);
-          instrumentationError = instrumentationError || error;
-        }
-
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
           attributes: {
             [Attr.GenAI.Operation.Name]: 'eval',
@@ -239,9 +240,6 @@ async function registerEval<
             [Attr.Eval.Collection.Size]: dataset.length,
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
-            // baseline
-            [Attr.Eval.Baseline.ID]: baseline ? baseline.id : undefined,
-            [Attr.Eval.Baseline.Name]: baseline ? baseline.name : undefined,
             // run
             [Attr.Eval.Run.ID]: runId,
             // user info
@@ -259,7 +257,7 @@ async function registerEval<
           name: evalName,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
-          baselineId: baseline?.id ?? undefined,
+          baselineId: baselineId ?? undefined,
           runId: runId,
           totalCases: dataset.length,
           scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
@@ -271,6 +269,23 @@ async function registerEval<
         });
 
         const orgId = createEvalResponse?.data?.orgId;
+        const resolvedBaselineId = createEvalResponse?.data?.baselineId;
+
+        // Load baseline if we got a baselineId from the server
+        try {
+          if (!isDebug && !isList && resolvedBaselineId) {
+            baseline = await findEvaluationCases(resolvedBaselineId, axiomConfig);
+          }
+        } catch (error) {
+          console.error(`Failed to load baseline: ${errorToString(error)}`);
+          instrumentationError = instrumentationError || error;
+        }
+
+        // Update span with baseline info
+        if (baseline) {
+          suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
+          suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
+        }
 
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
