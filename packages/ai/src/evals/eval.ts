@@ -282,7 +282,7 @@ async function registerEval<
           baselineId: baseline?.id ?? undefined,
           runId: runId,
           totalCases: dataset.length,
-          config: { flags: flagConfig },
+          config: { overrides: injectedOverrides },
           configTimeoutMs: timeoutMs,
           metadata: opts.metadata,
           status: 'running',
