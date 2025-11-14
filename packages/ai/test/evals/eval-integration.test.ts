@@ -2,10 +2,7 @@
 // @vitest-pool forks
 
 /**
- * Integration test for Eval() that captures network calls, spans, and console output.
- *
- * IMPORTANT: Eval() must be called at the MODULE TOP-LEVEL, not inside it() blocks,
- * because it calls describe() to create vitest suites dynamically.
+ * Integration test for Eval() that captures network calls and spans
  */
 
 import { afterAll, vi } from 'vitest';
@@ -14,13 +11,10 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import type { ResolvedAxiomConfig } from '../../src/config/index';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 
-// ===== SETUP: Capture side effects =====
-
 const fetchCalls: Array<{ url: string; options: any }> = [];
 const consoleOutput: string[] = [];
 const spanExporter = new InMemorySpanExporter();
 
-// Setup OTel tracer provider with in-memory exporter
 const tracerProvider = new NodeTracerProvider({
   spanProcessors: [new SimpleSpanProcessor(spanExporter)],
 });
@@ -37,11 +31,9 @@ const mockConfig: ResolvedAxiomConfig = {
   },
 } as ResolvedAxiomConfig;
 
-// Mock fetch to capture network calls
 global.fetch = vi.fn(async (url: string, options?: any) => {
   fetchCalls.push({ url: String(url), options });
 
-  // Return empty baseline response for APL queries
   if (url.includes('_apl')) {
     return new Response(JSON.stringify({ matches: [] }), {
       status: 200,
@@ -49,20 +41,17 @@ global.fetch = vi.fn(async (url: string, options?: any) => {
     });
   }
 
-  // Return success for evaluation API calls
   return new Response(JSON.stringify({ success: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
 }) as any;
 
-// Mock console.log to capture output
 const originalLog = console.log;
 console.log = (...args: any[]) => {
   consoleOutput.push(args.map(String).join(' '));
 };
 
-// Mock the instrumentation module to use our test provider
 vi.doMock('../../src/evals/instrument', async () => {
   const { trace: _trace } = await import('@opentelemetry/api');
   const tracer = tracerProvider.getTracer('axiom-eval-test');
@@ -133,17 +122,22 @@ vi.doMock('vitest', async () => {
   };
 });
 
-// ===== CALL Eval() AT TOP LEVEL =====
-
 const { Eval } = await import('../../src/evals/eval');
+const { createScorer: Scorer } = await import('../../src/evals/scorers');
 
-// Create scorer function with name property
-const testScorer = async ({ output }: { output: any }) => {
+const testScorer = Scorer('test-scorer', async ({ output }: { output: any }) => {
   return {
     score: typeof output === 'string' && output.includes('output') ? 1.0 : 0.0,
   };
-};
-Object.defineProperty(testScorer, 'name', { value: 'test-scorer' });
+});
+
+const scorer1 = Scorer('scorer-1', async ({ output: _output }: { output: any }) => ({
+  score: 1.0,
+}));
+
+const scorer2 = Scorer('scorer-2', async ({ output: _output }: { output: any }) => ({
+  score: 0.8,
+}));
 
 Eval('Integration-Test-Eval', {
   data: async () => [
@@ -156,16 +150,26 @@ Eval('Integration-Test-Eval', {
   scorers: [testScorer as any],
 });
 
-// ===== ASSERTIONS: Run after all tests complete =====
+Eval('Second-Eval', {
+  data: async () => [{ input: 'input A', expected: 'expected A' }],
+  task: async ({ input }) => `output for ${input}`,
+  scorers: [scorer1 as any],
+});
+
+Eval('Third-Eval', {
+  data: async () => [
+    { input: 'input X', expected: 'expected X' },
+    { input: 'input Y', expected: 'expected Y' },
+  ],
+  task: async ({ input }) => `result for ${input}`,
+  scorers: [scorer2 as any],
+});
 
 afterAll(async () => {
-  // Restore console
   console.log = originalLog;
 
-  // Get all captured data
   const spans: ReadableSpan[] = spanExporter.getFinishedSpans();
 
-  // Assert network calls
   const baselineCall = fetchCalls.find((c) => c.url.includes('_apl'));
   const createCall = fetchCalls.find(
     (c) => c.url.includes('/api/evaluations/v3') && c.options?.method === 'POST',
@@ -178,26 +182,45 @@ afterAll(async () => {
   if (!createCall) throw new Error('Expected create evaluation call');
   if (!updateCall) throw new Error('Expected update evaluation call');
 
-  // Assert span structure
+  // Assert span structure for Integration-Test-Eval (comprehensive)
   const evalSpan = spans.find((s) => s.name.includes('eval Integration-Test-Eval'));
-  const caseSpans = spans.filter((s) => s.name.startsWith('case'));
+  const allCaseSpans = spans.filter((s) => s.name.startsWith('case'));
+  const integrationCaseSpans = allCaseSpans.slice(0, 2); // First 2 cases are from Integration-Test-Eval
   const taskSpans = spans.filter((s) => s.name === 'task');
   const scorerSpans = spans.filter((s) => s.name.includes('score'));
 
   if (!evalSpan) throw new Error('Expected eval span');
-  if (caseSpans.length !== 2) throw new Error(`Expected 2 case spans, got ${caseSpans.length}`);
-  if (taskSpans.length !== 2) throw new Error(`Expected 2 task spans, got ${taskSpans.length}`);
-  if (scorerSpans.length !== 2) {
-    throw new Error(`Expected 2 scorer spans, got ${scorerSpans.length}`);
+  if (integrationCaseSpans.length !== 2) {
+    throw new Error(
+      `Expected 2 Integration-Test-Eval case spans, got ${integrationCaseSpans.length}`,
+    );
+  }
+  if (taskSpans.length < 2) {
+    throw new Error(`Expected at least 2 task spans, got ${taskSpans.length}`);
+  }
+  if (scorerSpans.length < 2) {
+    throw new Error(`Expected at least 2 scorer spans, got ${scorerSpans.length}`);
   }
 
   // Assert span attributes
-  const firstCaseSpan = caseSpans[0];
+  const firstCaseSpan = integrationCaseSpans[0];
   const attrs = firstCaseSpan.attributes;
 
   if (!attrs['eval.case.input']) throw new Error('Expected eval.case.input attribute');
   if (!attrs['eval.case.output']) throw new Error('Expected eval.case.output attribute');
   if (!attrs['eval.case.scores']) throw new Error('Expected eval.case.scores attribute');
+
+  // Assert multiple evals ran (light validation)
+  const secondEvalSpan = spans.find((s) => s.name.includes('Second-Eval'));
+  const thirdEvalSpan = spans.find((s) => s.name.includes('Third-Eval'));
+
+  if (!secondEvalSpan) throw new Error('Expected Second-Eval span');
+  if (!thirdEvalSpan) throw new Error('Expected Third-Eval span');
+
+  // Total case count should be 2 + 1 + 2 = 5
+  if (allCaseSpans.length !== 5) {
+    throw new Error(`Expected 5 total case spans, got ${allCaseSpans.length}`);
+  }
 
   // Cleanup
   await tracerProvider.shutdown();
