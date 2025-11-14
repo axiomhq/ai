@@ -21,7 +21,6 @@ export interface EvaluationApiPayloadBase {
   dataset: string;
   baselineId?: string;
   totalCases?: number;
-  scorers?: string[];
   config?: Record<string, unknown>;
   status: EvaluationStatus;
   successCases?: number;
@@ -31,6 +30,7 @@ export interface EvaluationApiPayloadBase {
   version: string;
   runId: string;
   configTimeoutMs: number;
+  metadata?: Record<string, any>;
 }
 
 export class EvaluationApiClient {
