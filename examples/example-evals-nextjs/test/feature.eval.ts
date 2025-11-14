@@ -38,4 +38,5 @@ Eval('Basic-demo', {
     description:
       'Demonstrates pickFlags functionality - only behavior namespace is available, ui namespace is excluded',
   },
+  trials: 2,
 });

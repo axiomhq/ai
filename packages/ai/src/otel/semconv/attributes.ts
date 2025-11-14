@@ -30,6 +30,7 @@ import {
   ATTR_EVAL_USER_NAME,
   ATTR_EVAL_USER_EMAIL,
   ATTR_EVAL_VERSION,
+  ATTR_EVAL_TRIAL_INDEX,
   ATTR_EVAL_RUN_ID,
   ATTR_EVAL_METADATA,
   ATTR_EVAL_CONFIG_FLAGS,
@@ -320,6 +321,9 @@ export const Attr = {
       Expected: ATTR_EVAL_CASE_EXPECTED,
       Scores: ATTR_EVAL_CASE_SCORES,
       Metadata: ATTR_EVAL_CASE_METADATA,
+    },
+    Trial: {
+      Index: ATTR_EVAL_TRIAL_INDEX,
     },
     Task: {
       Output: ATTR_EVAL_TASK_OUTPUT,
