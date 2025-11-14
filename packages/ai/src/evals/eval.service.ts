@@ -42,7 +42,7 @@ export class EvaluationApiClient {
   }
 
   async createEvaluation(evaluation: EvaluationApiPayloadBase) {
-    const resp = await this.fetcher(`/api/evaluations/v3`, {
+    const resp = await this.fetcher(`/api/v3/evaluations`, {
       method: 'POST',
       body: JSON.stringify(evaluation),
     });
@@ -55,7 +55,7 @@ export class EvaluationApiClient {
   }
 
   async updateEvaluation(evaluation: Partial<EvaluationApiPayloadBase>) {
-    const resp = await this.fetcher(`/api/evaluations/v3/${evaluation.id}`, {
+    const resp = await this.fetcher(`/api/v3/evaluations/${evaluation.id}`, {
       method: 'PATCH',
       body: JSON.stringify(evaluation),
     });
