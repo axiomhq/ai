@@ -74,7 +74,6 @@ export const loadPushCommand = (program: Command) => {
             Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
             'Content-Type': 'application/json',
             'x-axiom-client': 'axiom-ai-cli',
-            'x-axiom-check': 'good',
           },
           body: JSON.stringify({
             ...content,

@@ -61,6 +61,7 @@ async function runInstrumentationHook(
 function setupEvalProvider(connection: ReturnType<typeof resolveAxiomConnection>) {
   const headers: Record<string, string> = {
     'X-Axiom-Dataset': connection.dataset,
+    ...(connection.orgId ? { 'X-AXIOM-ORG-ID': connection.orgId } : {}),
   };
 
   if (connection.token) {
@@ -123,6 +124,7 @@ export async function initInstrumentation(config: {
         dataset: connection.dataset,
         token: connection.token,
         url: connection.url,
+        orgId: connection.orgId,
       });
 
       userProvider = hookResult?.provider ?? userProvider;

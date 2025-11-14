@@ -25,6 +25,7 @@ describe('AxiomReporter', () => {
         include: [],
         exclude: [],
         timeoutMs: 60_000,
+        orgId: 'test-org-id',
       },
     } as ResolvedAxiomConfig;
 

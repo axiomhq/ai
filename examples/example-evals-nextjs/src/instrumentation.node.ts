@@ -16,6 +16,7 @@ export const setupAppInstrumentation: AxiomEvalInstrumentationHook = async (opti
   const dataset = options.dataset;
   const url = options.url;
   const token = options.token;
+  const orgId = options.orgId;
 
   if (!dataset) {
     throw new Error('Dataset is required to initialize tracing');
@@ -34,6 +35,7 @@ export const setupAppInstrumentation: AxiomEvalInstrumentationHook = async (opti
     headers: {
       Authorization: `Bearer ${token}`,
       'X-Axiom-Dataset': dataset,
+      ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
     },
   });
 
