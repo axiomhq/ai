@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/axiomhq/ai/compare/axiom-v0.26.0...axiom-v0.27.0) (2025-11-14)
+
+
+### Features
+
+* Add cli auth ([#117](https://github.com/axiomhq/ai/issues/117)) ([9079098](https://github.com/axiomhq/ai/commit/90790986f152f6b53fc990836570e6cafa19f599))
+
 ## [0.26.0](https://github.com/axiomhq/ai/compare/axiom-v0.25.0...axiom-v0.26.0) (2025-11-12)
 
 
