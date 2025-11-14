@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { loadPushCommand } from './cli/commands/push.command';
-import { loadPullCommand } from './cli/commands/pull.command';
 import { loadEvalCommand } from './cli/commands/eval.command';
 import { loadAuthCommand } from './cli/commands/auth.command';
 import { extractOverrides } from './cli/utils/parse-flag-overrides';
@@ -49,8 +47,6 @@ program.hook('preAction', async (_, actionCommand: Command) => {
 });
 
 loadAuthCommand(program);
-loadPushCommand(program);
-loadPullCommand(program);
 loadEvalCommand(program, overrides);
 loadVersionCommand(program);
 
