@@ -22,6 +22,7 @@ class EvalBuilderImpl<
   TInput extends string | Record<string, any> = string,
   TExpected extends string | Record<string, any> = string,
   TOutput extends string | Record<string, any> = string,
+  Name extends string = string,
 > implements EvalBuilder<AllowedFlags, TInput, TExpected, TOutput>
 {
   private hasRun = false; // Prevent double registration
@@ -84,7 +85,7 @@ class EvalBuilderImpl<
     // Cast finalName since suffix may add ':' which isn't in ValidChars
     // (suffix is from like `someTest.run('variant')` which is used for parametrization)
     // we currently don't expose this
-    Eval<TInput, TExpected, TOutput>(finalName as never, finalParams);
+    Eval<TInput, TExpected, TOutput, Name>(finalName as never, finalParams);
   }
 }
 

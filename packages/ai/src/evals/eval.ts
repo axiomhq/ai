@@ -65,6 +65,7 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * import { Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
+ *   capability: 'capability-name',
  *   data: async () => [
  *     { input: 'Explain photosynthesis', expected: 'Plants convert light to energy...' },
  *     { input: 'What is gravity?', expected: 'Gravity is a fundamental force...' }
@@ -116,6 +117,10 @@ export function Eval<
 export function Eval(name: string, params: any): void {
   // Record eval name for validation
   recordName('eval', name);
+  recordName('capability', params.capability);
+  if (params.step) {
+    recordName('step', params.step);
+  }
 
   // Record all scorer names for validation
   if (params.scorers) {
@@ -238,6 +243,9 @@ async function registerEval<
             [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
             [Attr.Eval.Collection.Size]: dataset.length,
+            // capability
+            [Attr.Eval.Capability.Name]: opts.capability,
+            [Attr.Eval.Step.Name]: opts.step ?? undefined,
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // run
@@ -260,6 +268,8 @@ async function registerEval<
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
+          capabilityName: opts.capability,
+          stepName: opts.step,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baselineId ?? undefined,
@@ -446,6 +456,7 @@ async function registerEval<
                   index: data.index,
                   expected: data.expected,
                   input: data.input,
+                  // @ts-expect-error
                   scorers: opts.scorers,
                   task: opts.task,
                   metadata: opts.metadata,
@@ -478,7 +489,7 @@ async function registerEval<
                       const start = performance.now();
                       const result = await scorer({
                         input: data.input,
-                        output,
+                        output: output as TOutput,
                         expected: data.expected,
                       });
 

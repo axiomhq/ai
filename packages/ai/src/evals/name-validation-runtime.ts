@@ -5,7 +5,7 @@ import { appendFileSync } from 'node:fs';
  * Records an eval or scorer name
  * Uses a file to work cross-worker
  */
-export function recordName(kind: 'eval' | 'scorer', name: string): void {
+export function recordName(kind: 'eval' | 'scorer' | 'capability' | 'step', name: string): void {
   const registryFile = process.env.AXIOM_NAME_REGISTRY_FILE;
   if (registryFile) {
     try {
@@ -20,7 +20,7 @@ export function recordName(kind: 'eval' | 'scorer', name: string): void {
  * Validates that a name contains only allowed characters (A-Z, a-z, 0-9, -, _)
  * and is not empty.
  */
-export function validateName(name: string, kind: 'eval' | 'scorer'): void {
+export function validateName(name: string, kind: 'eval' | 'scorer' | 'capability' | 'step'): void {
   if (name === '') {
     throw new AxiomCLIError(`❌ ${kind} name cannot be empty`);
   }
