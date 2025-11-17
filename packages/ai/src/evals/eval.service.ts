@@ -3,6 +3,7 @@ import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { Attr } from '../otel';
+import { AxiomCLIError } from '../cli/errors';
 
 export interface EvaluationApiConfig {
   dataset?: string;
@@ -35,9 +36,9 @@ export interface EvaluationApiPayloadBase {
 export class EvaluationApiClient {
   private readonly fetcher: Fetcher;
   constructor(config: ResolvedAxiomConfig) {
-    const { consoleEndpointUrl, token } = resolveAxiomConnection(config);
+    const { consoleEndpointUrl, token, orgId } = resolveAxiomConnection(config);
 
-    this.fetcher = createFetcher(consoleEndpointUrl, token ?? '');
+    this.fetcher = createFetcher({ baseUrl: consoleEndpointUrl, token: token ?? '', orgId });
   }
 
   async createEvaluation(evaluation: EvaluationApiPayloadBase) {
@@ -45,6 +46,10 @@ export class EvaluationApiClient {
       method: 'POST',
       body: JSON.stringify(evaluation),
     });
+
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to create evaluation: ${resp.statusText}`);
+    }
 
     return resp.json();
   }
@@ -55,55 +60,26 @@ export class EvaluationApiClient {
       body: JSON.stringify(evaluation),
     });
 
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to update evaluation: ${resp.statusText}`);
+    }
+
     return resp.json();
   }
 }
-
-/** Query axiom to find a baseline for an Eval */
-export const findBaseline = async (
-  evalName: string,
-  config: ResolvedAxiomConfig,
-): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
-
-  const apl = [
-    `['${dataset}']`,
-    // TODO: need to also catch if it's not in attributes.custom!
-    `| where ['attributes.custom']['${Attr.Eval.Name}'] == "${evalName}" and ['attributes.gen_ai.operation.name'] == 'eval'`,
-    `| order by _time desc`,
-    `| limit 1`,
-  ].join('\n');
-
-  const headers = new Headers({
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  });
-
-  const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
-    headers: headers,
-    method: 'POST',
-    body: JSON.stringify({ apl }),
-  });
-  const payload = await resp.json();
-
-  if (!resp.ok) {
-    throw new Error(`Failed to query baseline: ${payload.message || resp.statusText}`);
-  }
-
-  return payload.matches.length ? mapSpanToEval(payload.matches[0]) : null;
-};
 
 export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
+  const { dataset, url, token, orgId } = resolveAxiomConnection(config);
 
   const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
+    ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
   const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {

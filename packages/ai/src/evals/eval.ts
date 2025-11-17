@@ -22,7 +22,7 @@ import type {
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { ScoreWithName, ScorerLike } from './scorers';
-import { EvaluationApiClient, findBaseline, findEvaluationCases } from './eval.service';
+import { EvaluationApiClient, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
@@ -228,20 +228,6 @@ async function registerEval<
           instrumentationError = error;
         }
 
-        // Load baseline, either from id or find the latest
-        // - Actual errors (`!resp.ok` etc) are treated as instrumentation failures
-        // - Nullish results just mean no baseline exists (first run or not found)
-        try {
-          if (!isDebug && !isList) {
-            baseline = baselineId
-              ? await findEvaluationCases(baselineId, axiomConfig)
-              : await findBaseline(evalName, axiomConfig);
-          }
-        } catch (error) {
-          console.error(`Failed to load baseline: ${errorToString(error)}`);
-          instrumentationError = instrumentationError || error;
-        }
-
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
           attributes: {
             [Attr.GenAI.Operation.Name]: 'eval',
@@ -254,9 +240,6 @@ async function registerEval<
             [Attr.Eval.Collection.Size]: dataset.length,
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
-            // baseline
-            [Attr.Eval.Baseline.ID]: baseline ? baseline.id : undefined,
-            [Attr.Eval.Baseline.Name]: baseline ? baseline.name : undefined,
             // run
             [Attr.Eval.Run.ID]: runId,
             // user info
@@ -274,7 +257,7 @@ async function registerEval<
           name: evalName,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
-          baselineId: baseline?.id ?? undefined,
+          baselineId: baselineId ?? undefined,
           runId: runId,
           totalCases: dataset.length,
           scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
@@ -286,6 +269,23 @@ async function registerEval<
         });
 
         const orgId = createEvalResponse?.data?.orgId;
+        const resolvedBaselineId = createEvalResponse?.data?.baselineId;
+
+        // Load baseline if we got a baselineId from the server
+        try {
+          if (!isDebug && !isList && resolvedBaselineId) {
+            baseline = await findEvaluationCases(resolvedBaselineId, axiomConfig);
+          }
+        } catch (error) {
+          console.error(`Failed to load baseline: ${errorToString(error)}`);
+          instrumentationError = instrumentationError || error;
+        }
+
+        // Update span with baseline info
+        if (baseline) {
+          suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
+          suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
+        }
 
         // Ensure worker process knows CLI overrides
         if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {

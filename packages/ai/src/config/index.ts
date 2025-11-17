@@ -1,5 +1,6 @@
 import type { TracerProvider } from '@opentelemetry/api';
 import { AxiomCLIError } from '../cli/errors';
+import { getAuthContext } from '../cli/auth';
 
 /**
  * Utility type to make all properties in T required recursively.
@@ -38,6 +39,12 @@ export interface AxiomConnectionConfig {
    * @example process.env.AXIOM_DATASET
    */
   dataset?: string;
+
+  /**
+   * Axiom organization ID
+   * @example process.env.AXIOM_ORG_ID
+   */
+  orgId?: string;
 }
 
 /**
@@ -50,6 +57,7 @@ export interface AxiomEvalInstrumentationOptions {
   url: string;
   token: string;
   dataset: string;
+  orgId?: string;
 }
 
 /**
@@ -185,17 +193,40 @@ export function defineConfig(config: AxiomConfig): AxiomConfig {
 }
 
 /**
- * Create partial default configuration from environment variables.
+ * Create partial default configuration from auth context or environment variables.
  * Does not throw if required values are missing - validation happens after merge.
  *
- * @returns Partial configuration with defaults and env var values
+ * @returns Partial configuration with defaults and auth/env var values
  * @internal
  */
 export function createPartialDefaults(): Partial<AxiomConfigBase> {
+  // Try to get auth context first (available when running via CLI)
+  // Fall back to process.env for backward compatibility (e.g., when used outside CLI)
+  let token: string | undefined;
+  let url: string | undefined;
+  let orgId: string | undefined;
+
+  try {
+    const authContext = getAuthContext();
+    if (authContext) {
+      token = authContext.token;
+      url = authContext.url;
+      orgId = authContext.orgId;
+    }
+  } catch {
+    // Auth context not available, fall back to env vars
+  }
+
+  // Fall back to process.env if auth context not available
+  token = token || process.env.AXIOM_TOKEN;
+  url = url || process.env.AXIOM_URL;
+  orgId = orgId || process.env.AXIOM_ORG_ID;
+
   return {
     eval: {
-      url: process.env.AXIOM_URL || 'https://api.axiom.co',
-      token: process.env.AXIOM_TOKEN,
+      url: url || 'https://api.axiom.co',
+      orgId,
+      token,
       dataset: process.env.AXIOM_DATASET,
       instrumentation: null,
       include: [...DEFAULT_EVAL_INCLUDE],
