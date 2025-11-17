@@ -298,6 +298,7 @@ async function registerEval<
         if (baseline) {
           suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
           suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
+          suiteSpan.setAttribute(Attr.Eval.Baseline.Version, baseline.version);
         }
 
         // Ensure worker process knows CLI overrides
@@ -454,13 +455,14 @@ async function registerEval<
                 },
                 {
                   index: data.index,
-                  expected: data.expected,
                   input: data.input,
-                  // @ts-expect-error
+                  expected: data.expected,
                   scorers: opts.scorers,
                   task: opts.task,
                   metadata: opts.metadata,
                   configFlags: opts.configFlags,
+                  capability: opts.capability,
+                  step: opts.step,
                 },
               );
               const { output, duration } = result;
@@ -489,7 +491,7 @@ async function registerEval<
                       const start = performance.now();
                       const result = await scorer({
                         input: data.input,
-                        output: output as TOutput,
+                        output: output,
                         expected: data.expected,
                       });
 
@@ -678,7 +680,6 @@ const runTask = async <
     input: TInput;
     expected: TExpected | undefined;
   } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
-  // TODO: EXPERIMENTS - we had `evalScope` here before... need to figure out what to do instead
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
 
