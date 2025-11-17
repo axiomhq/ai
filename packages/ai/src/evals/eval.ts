@@ -288,6 +288,7 @@ async function registerEval<
         if (baseline) {
           suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
           suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
+          suiteSpan.setAttribute(Attr.Eval.Baseline.Version, baseline.version);
         }
 
         // Ensure worker process knows CLI overrides
