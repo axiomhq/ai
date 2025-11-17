@@ -1,4 +1,4 @@
-import type { Case, Chat, Evaluation, Task } from './eval.types';
+import type { Case, Evaluation, Task } from './eval.types';
 import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
@@ -97,38 +97,29 @@ export const findEvaluationCases = async (
 };
 
 export const mapSpanToEval = (span: any): Evaluation => {
-  const flagConfigRaw =
-    span.data.attributes[Attr.Eval.Config.Flags] ??
-    span.data.attributes.custom[Attr.Eval.Config.Flags];
+  const flagConfigRaw = span.data.attributes[Attr.Eval.Config.Flags];
 
   return {
-    id: span.data.attributes.custom[Attr.Eval.ID],
-    name: span.data.attributes.custom[Attr.Eval.Name],
-    type: span.data.attributes.custom[Attr.Eval.Type],
-    version: span.data.attributes.custom[Attr.Eval.Version],
+    id: span.data.attributes[Attr.Eval.ID],
+    name: span.data.attributes[Attr.Eval.Name],
+    type: span.data.attributes[Attr.Eval.Type],
+    version: span.data.attributes[Attr.Eval.Version],
     collection: {
-      name: span.data.attributes.custom[Attr.Eval.Collection.Name],
-      size: span.data.attributes.custom[Attr.Eval.Collection.Size],
+      name: span.data.attributes[Attr.Eval.Collection.Name],
+      size: span.data.attributes[Attr.Eval.Collection.Size],
     },
     baseline: {
-      id: span.data.attributes.custom[Attr.Eval.Baseline.ID],
-      name: span.data.attributes.custom[Attr.Eval.Baseline.Name],
-    },
-    prompt: {
-      // TODO: do we still want this?
-      model: span.data.attributes.custom['eval.prompt.model'],
-      params: span.data.attributes.custom['eval.prompt.params'],
+      id: span.data.attributes[Attr.Eval.Baseline.ID],
+      name: span.data.attributes[Attr.Eval.Baseline.Name],
     },
     duration: span.data.duration,
     status: span.data.status.code,
     traceId: span.data.trace_id,
     runAt: span._time,
-    tags: span.data.attributes.custom[Attr.Eval.Tags].length
-      ? JSON.parse(span.data.attributes.custom[Attr.Eval.Tags])
-      : [],
+    tags: span.data.attributes[Attr.Eval.Tags],
     user: {
-      name: span.data.attributes.custom[Attr.Eval.User.Name],
-      email: span.data.attributes.custom[Attr.Eval.User.Email],
+      name: span.data.attributes[Attr.Eval.User.Name],
+      email: span.data.attributes[Attr.Eval.User.Email],
     },
     cases: [],
     flagConfig: flagConfigRaw ? JSON.parse(flagConfigRaw) : undefined,
@@ -147,14 +138,14 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
   }
 
   return {
-    index: data.attributes.custom[Attr.Eval.Case.Index],
-    input: data.attributes.custom[Attr.Eval.Case.Input],
-    output: data.attributes.custom[Attr.Eval.Case.Output],
-    expected: data.attributes.custom[Attr.Eval.Case.Expected],
+    index: data.attributes[Attr.Eval.Case.Index],
+    input: data.attributes[Attr.Eval.Case.Input],
+    output: data.attributes[Attr.Eval.Case.Output],
+    expected: data.attributes[Attr.Eval.Case.Expected],
     duration: duration,
     status: data.status.code,
-    scores: data.attributes.custom[Attr.Eval.Case.Scores]
-      ? JSON.parse(data.attributes.custom[Attr.Eval.Case.Scores])
+    scores: data.attributes[Attr.Eval.Case.Scores]
+      ? JSON.parse(data.attributes[Attr.Eval.Case.Scores])
       : {},
     runAt: item._time,
     spanId: data.span_id,
@@ -194,45 +185,13 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
     if (taskSpans.length > 0) {
       const taskSpan = taskSpans[0]; // Assuming one task per case
 
-      // Find chat spans that belong to this task
-      const chatSpans = spans.filter(
-        (span) =>
-          span.data.name.startsWith('chat') && span.data.parent_span_id === taskSpan.data.span_id,
-      );
-
-      const chatData: Chat[] = chatSpans.map((chatSpan) => ({
-        operation: chatSpan.data.attributes.custom?.operation || '',
-        capability: chatSpan.data.attributes.custom?.capability || '',
-        step: chatSpan.data.attributes.custom?.step || '',
-        request: {
-          max_token: chatSpan.data.attributes.custom?.['request.max_token'] || '',
-          model: chatSpan.data.attributes.custom?.['request.model'] || '',
-          temperature: chatSpan.data.attributes.custom?.['request.temperature'] || 0,
-        },
-        response: {
-          finish_reasons: chatSpan.data.attributes.custom?.['response.finish_reasons'] || '',
-        },
-        usage: {
-          input_tokens: chatSpan.data.attributes.gen_ai?.usage?.input_tokens || 0,
-          output_tokens: chatSpan.data.attributes.gen_ai?.usage?.output_tokens || 0,
-        },
-      }));
-
-      // Create task data with chat information
+      // Create task data
       const taskData: Task = {
         name: taskSpan.data.name,
-        output: taskSpan.data.attributes.custom?.output || '',
-        trial: taskSpan.data.attributes.custom?.trial || 0,
-        type: taskSpan.data.attributes.custom?.type || '',
-        error: taskSpan.data.attributes.custom?.error,
-        chat: chatData[0] || {
-          operation: '',
-          capability: '',
-          step: '',
-          request: { max_token: '', model: '', temperature: 0 },
-          response: { finish_reasons: '' },
-          usage: { input_tokens: 0, output_tokens: 0 },
-        },
+        output: taskSpan.data.attributes.output || '',
+        trial: taskSpan.data.attributes.trial || 0,
+        type: taskSpan.data.attributes.type || '',
+        error: taskSpan.data.attributes.error,
       };
 
       caseData.task = taskData;
@@ -248,10 +207,10 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
     caseData.scores = {};
 
     scoreSpans.forEach((score) => {
-      const name = score.data.attributes.custom[Attr.Eval.Score.Name];
+      const name = score.data.attributes[Attr.Eval.Score.Name];
       caseData.scores[name] = {
         name,
-        value: score.data.attributes.custom[Attr.Eval.Score.Value],
+        value: score.data.attributes[Attr.Eval.Score.Value],
         metadata: {
           error: score.data.attributes.error,
         },

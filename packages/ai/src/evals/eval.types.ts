@@ -118,10 +118,6 @@ export type Evaluation = {
     name: string;
     size: number;
   };
-  prompt: {
-    model: string;
-    params: Record<string, unknown>;
-  };
   duration: number;
   status: string;
   traceId: string;
@@ -162,7 +158,7 @@ export type Chat = {
   capability: string;
   step: string;
   request: {
-    max_token: string;
+    max_tokens: string;
     model: string;
     temperature: number;
   };
@@ -181,7 +177,6 @@ export type Task = {
   trial: number;
   type: string;
   error?: string;
-  chat: Chat;
 };
 
 /**
