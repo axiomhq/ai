@@ -310,12 +310,6 @@ export const Attr = {
     Step: {
       Name: ATTR_EVAL_STEP_NAME,
     },
-    Capability: {
-      Name: ATTR_EVAL_CAPABILITY_NAME,
-    },
-    Step: {
-      Name: ATTR_EVAL_STEP_NAME,
-    },
     Tags: ATTR_EVAL_TAGS,
     Metadata: ATTR_EVAL_METADATA,
     Collection: {
