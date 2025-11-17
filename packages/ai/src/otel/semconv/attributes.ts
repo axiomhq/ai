@@ -23,6 +23,7 @@ import {
   ATTR_EVAL_ID,
   ATTR_EVAL_BASELINE_ID,
   ATTR_EVAL_BASELINE_NAME,
+  ATTR_EVAL_BASELINE_VERSION,
   ATTR_EVAL_NAME,
   ATTR_EVAL_TAGS,
   ATTR_EVAL_TYPE,
@@ -301,6 +302,7 @@ export const Attr = {
     Baseline: {
       ID: ATTR_EVAL_BASELINE_ID,
       Name: ATTR_EVAL_BASELINE_NAME,
+      Version: ATTR_EVAL_BASELINE_VERSION,
     },
     Capability: {
       Name: ATTR_EVAL_CAPABILITY_NAME,
