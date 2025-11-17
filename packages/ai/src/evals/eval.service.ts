@@ -21,8 +21,8 @@ export interface EvaluationApiPayloadBase {
   dataset: string;
   baselineId?: string;
   totalCases?: number;
-  capabilityName: string;
-  stepName: string | undefined;
+  capability: string;
+  step: string | undefined;
   config?: Record<string, unknown>;
   status: EvaluationStatus;
   successCases?: number;

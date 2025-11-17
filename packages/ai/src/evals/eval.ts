@@ -268,8 +268,8 @@ async function registerEval<
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
-          capabilityName: opts.capability,
-          stepName: opts.step,
+          capability: opts.capability,
+          step: opts.step,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baselineId ?? undefined,
