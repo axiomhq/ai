@@ -7,6 +7,9 @@ export const ATTR_EVAL_TAGS = 'eval.tags' as const;
 export const ATTR_EVAL_BASELINE_ID = 'eval.baseline.id' as const;
 export const ATTR_EVAL_BASELINE_NAME = 'eval.baseline.name' as const;
 export const ATTR_EVAL_METADATA = 'eval.metadata' as const;
+// capability
+export const ATTR_EVAL_CAPABILITY_NAME = 'eval.capability.name' as const;
+export const ATTR_EVAL_STEP_NAME = 'eval.step.name' as const;
 // collection
 export const ATTR_EVAL_COLLECTION_ID = 'eval.collection.id' as const;
 export const ATTR_EVAL_COLLECTION_SIZE = 'eval.collection.size' as const;

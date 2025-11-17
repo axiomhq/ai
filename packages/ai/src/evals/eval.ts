@@ -238,6 +238,9 @@ async function registerEval<
             [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
             [Attr.Eval.Collection.Size]: dataset.length,
+            // capability
+            [Attr.Eval.Capability.Name]: opts.capability,
+            [Attr.Eval.Step.Name]: opts.step ?? undefined,
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // run
@@ -260,6 +263,8 @@ async function registerEval<
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
+          capability: opts.capability,
+          step: opts.step,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baselineId ?? undefined,
@@ -444,12 +449,14 @@ async function registerEval<
                 },
                 {
                   index: data.index,
-                  expected: data.expected,
                   input: data.input,
+                  expected: data.expected,
                   scorers: opts.scorers,
                   task: opts.task,
                   metadata: opts.metadata,
                   configFlags: opts.configFlags,
+                  capability: opts.capability,
+                  step: opts.step,
                 },
               );
               const { output, duration } = result;
@@ -478,7 +485,7 @@ async function registerEval<
                       const start = performance.now();
                       const result = await scorer({
                         input: data.input,
-                        output,
+                        output: output,
                         expected: data.expected,
                       });
 
@@ -667,7 +674,6 @@ const runTask = async <
     input: TInput;
     expected: TExpected | undefined;
   } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
-  // TODO: EXPERIMENTS - we had `evalScope` here before... need to figure out what to do instead
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
 

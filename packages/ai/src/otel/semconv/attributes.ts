@@ -33,6 +33,8 @@ import {
   ATTR_EVAL_RUN_ID,
   ATTR_EVAL_METADATA,
   ATTR_EVAL_CONFIG_FLAGS,
+  ATTR_EVAL_CAPABILITY_NAME,
+  ATTR_EVAL_STEP_NAME,
 } from './eval_proposal';
 
 import {
@@ -299,6 +301,12 @@ export const Attr = {
     Baseline: {
       ID: ATTR_EVAL_BASELINE_ID,
       Name: ATTR_EVAL_BASELINE_NAME,
+    },
+    Capability: {
+      Name: ATTR_EVAL_CAPABILITY_NAME,
+    },
+    Step: {
+      Name: ATTR_EVAL_STEP_NAME,
     },
     Tags: ATTR_EVAL_TAGS,
     Metadata: ATTR_EVAL_METADATA,
