@@ -108,6 +108,7 @@
     "aiv5": "npm:ai@^5.0.93",
     "esbuild": "^0.25.8",
     "eslint": "catalog:",
+    "msw": "^2.12.2",
     "prettier": "catalog:",
     "tinyrainbow": "^2.0.0",
     "tsup": "catalog:",
