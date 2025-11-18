@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.28.0](https://github.com/axiomhq/ai/compare/axiom-v0.27.0...axiom-v0.28.0) (2025-11-18)
+
+
+### Features
+
+* **ai-76:** validate capability and step names ([#133](https://github.com/axiomhq/ai/issues/133)) ([d5904d9](https://github.com/axiomhq/ai/commit/d5904d9cbc4188499cfa4c988ecb99e7a5fb70f9))
+* better ValidateName, which lets us simplify eval types overall ([#137](https://github.com/axiomhq/ai/issues/137)) ([92893d7](https://github.com/axiomhq/ai/commit/92893d7a1375b1de78f30709cf57006a985a13e6))
+
+
+### Bug Fixes
+
+* **baseline-loading:** Load baseline once after Eval is registered ([#139](https://github.com/axiomhq/ai/issues/139)) ([c12eaf3](https://github.com/axiomhq/ai/commit/c12eaf313b46dc40112a6a9774612dd5bf0dd20b))
+
 ## [0.27.0](https://github.com/axiomhq/ai/compare/axiom-v0.26.0...axiom-v0.27.0) (2025-11-17)
 
 
