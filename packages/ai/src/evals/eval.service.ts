@@ -23,8 +23,6 @@ export interface EvaluationApiPayloadBase {
   dataset: string;
   baselineId?: string;
   totalCases?: number;
-  capability: string;
-  step: string | undefined;
   config?: Record<string, unknown>;
   status: EvaluationStatus;
   successCases?: number;
