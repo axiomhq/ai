@@ -11,6 +11,7 @@ import {
 import { WITHSPAN_BAGGAGE_KEY, WITHSPAN_REDACTION_POLICY_KEY } from './withSpanBaggageKey';
 import { getTracer } from './utils/wrapperUtils';
 import type { AxiomAIRedactionPolicy } from './utils/redaction';
+import type { ValidateName } from '../util/name-validation';
 
 /**
  * Metadata for categorizing and tracking spans within the AI application.
@@ -89,8 +90,15 @@ type WithSpanMeta = {
  * res.end();
  * ```
  */
-export function withSpan<Return>(
-  meta: WithSpanMeta,
+export function withSpan<
+  Return,
+  Capability extends string = string,
+  Step extends string = string,
+>(
+  meta: WithSpanMeta & {
+    capability: ValidateName<Capability>;
+    step: ValidateName<Step>;
+  },
   fn: (span: Span) => Promise<Return>,
   opts?: {
     tracer?: Tracer;
