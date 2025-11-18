@@ -1,5 +1,6 @@
 import { AxiomCLIError } from '../cli/errors';
 import { appendFileSync } from 'node:fs';
+import { isValidName } from '../util/name-validation-runtime';
 
 /**
  * Records an eval or scorer name
@@ -18,17 +19,11 @@ export function recordName(kind: 'eval' | 'scorer' | 'capability' | 'step', name
 
 /**
  * Validates that a name contains only allowed characters (A-Z, a-z, 0-9, -, _)
- * and is not empty.
+ * and is not empty. Throws AxiomCLIError if validation fails.
  */
 export function validateName(name: string, kind: 'eval' | 'scorer' | 'capability' | 'step'): void {
-  if (name === '') {
-    throw new AxiomCLIError(`❌ ${kind} name cannot be empty`);
-  }
-
-  const validPattern = /^[A-Za-z0-9_-]+$/;
-  if (!validPattern.test(name)) {
-    throw new AxiomCLIError(
-      `❌ Invalid character in ${kind} name "${name}". Only A-Z, a-z, 0-9, -, _ allowed`,
-    );
+  const validation = isValidName(name);
+  if (!validation.valid) {
+    throw new AxiomCLIError(`❌ ${kind} name: ${validation.error}`);
   }
 }
