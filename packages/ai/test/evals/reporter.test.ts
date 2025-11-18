@@ -5,6 +5,7 @@ import type { TestSuite, TestCase } from 'vitest/node.js';
 import type { EvaluationReport, EvalCaseReport } from '../../src/evals/eval.types';
 import { ConsoleCapture, createMockBaseline } from '../helpers/eval-test-setup';
 import type { ResolvedAxiomConfig } from '../../src/config/index';
+import { buildSpanTree } from '../../src/evals/eval.service';
 
 describe('AxiomReporter', () => {
   let reporter: AxiomReporter;
@@ -56,49 +57,6 @@ describe('AxiomReporter', () => {
   });
 
   describe('onTestSuiteReady', () => {
-    it('loads baseline when specified', async () => {
-      const mockBaseline = createMockBaseline('test-eval', 'baseline-123', 2);
-
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => mockBaseline,
-      });
-
-      const mockSuite = createMockTestSuite({
-        meta: {
-          evaluation: {
-            id: 'eval-456',
-            name: 'test-eval',
-            version: 'v2',
-            baseline: { id: 'baseline-123', name: 'test-eval', version: 'v1' },
-            registrationStatus: { status: 'success' },
-          } as EvaluationReport,
-        },
-      });
-
-      await reporter.onTestSuiteReady(mockSuite);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('_apl'),
-        expect.objectContaining({
-          method: 'POST',
-        }),
-      );
-    });
-
-    it('skips baseline loading for skipped suites', async () => {
-      const fetchSpy = vi.fn();
-      global.fetch = fetchSpy;
-
-      const mockSuite = createMockTestSuite({
-        state: 'skipped',
-      });
-
-      await reporter.onTestSuiteReady(mockSuite);
-
-      expect(fetchSpy).not.toHaveBeenCalled();
-    });
-
     it('captures end-of-run config snapshot', async () => {
       const configEnd = {
         flags: { model: { temperature: 0.7 } },
@@ -214,7 +172,7 @@ describe('AxiomReporter', () => {
             id: 'eval-999',
             name: 'Baseline Test',
             version: 'v2',
-            baseline: { id: 'baseline-123', name: 'Baseline Test', version: 'v1' },
+            baseline: buildSpanTree(mockBaseline.matches),
             registrationStatus: { status: 'success' },
           } as EvaluationReport,
         },
@@ -241,7 +199,6 @@ describe('AxiomReporter', () => {
         ],
       });
 
-      // Load baseline first
       await reporter.onTestSuiteReady(mockSuite);
 
       reporter.start = performance.now() - 1000;
