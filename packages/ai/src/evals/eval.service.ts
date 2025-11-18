@@ -23,6 +23,8 @@ export type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled'
 export interface EvaluationApiPayloadBase {
   id: string;
   name: string;
+  capability: string;
+  step?: string | undefined;
   dataset: string;
   baselineId?: string;
   totalCases?: number;

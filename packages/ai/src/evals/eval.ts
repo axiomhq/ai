@@ -65,6 +65,7 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * import { Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
+ *   capability: 'capability-name',
  *   data: async () => [
  *     { input: 'Explain photosynthesis', expected: 'Plants convert light to energy...' },
  *     { input: 'What is gravity?', expected: 'Gravity is a fundamental force...' }
@@ -88,12 +89,14 @@ export function Eval<
     expected: ExpectedOf<Data>;
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
   Name extends string = string,
+  Capability extends string = string,
 >(
   name: ValidateName<Name>,
   params: Omit<
     EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
-    'data' | 'task' | 'scorers'
+    'data' | 'task' | 'scorers' | 'capability'
   > & {
+    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
@@ -108,7 +111,13 @@ export function Eval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
   Name extends string = string,
->(name: ValidateName<Name>, params: EvalParams<TInput, TExpected, TOutput>): void;
+  Capability extends string = string,
+>(
+  name: ValidateName<Name>,
+  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability'> & {
+    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
+  },
+): void;
 
 /**
  * Implementation
@@ -116,6 +125,10 @@ export function Eval<
 export function Eval(name: string, params: any): void {
   // Record eval name for validation
   recordName('eval', name);
+  recordName('capability', params.capability);
+  if (params.step) {
+    recordName('step', params.step);
+  }
 
   // Record all scorer names for validation
   if (params.scorers) {
@@ -238,6 +251,9 @@ async function registerEval<
             [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
             [Attr.Eval.Collection.Size]: dataset.length,
+            // capability
+            [Attr.Eval.Capability.Name]: opts.capability,
+            [Attr.Eval.Step.Name]: opts.step ?? undefined,
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // run
@@ -260,6 +276,8 @@ async function registerEval<
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
+          capability: opts.capability,
+          step: opts.step,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baselineId ?? undefined,
@@ -288,6 +306,7 @@ async function registerEval<
         if (baseline) {
           suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
           suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
+          suiteSpan.setAttribute(Attr.Eval.Baseline.Version, baseline.version);
         }
 
         // Ensure worker process knows CLI overrides
@@ -444,12 +463,14 @@ async function registerEval<
                 },
                 {
                   index: data.index,
-                  expected: data.expected,
                   input: data.input,
+                  expected: data.expected,
                   scorers: opts.scorers,
                   task: opts.task,
                   metadata: opts.metadata,
                   configFlags: opts.configFlags,
+                  capability: opts.capability,
+                  step: opts.step,
                 },
               );
               const { output, duration } = result;
@@ -478,7 +499,7 @@ async function registerEval<
                       const start = performance.now();
                       const result = await scorer({
                         input: data.input,
-                        output,
+                        output: output,
                         expected: data.expected,
                       });
 
@@ -667,7 +688,6 @@ const runTask = async <
     input: TInput;
     expected: TExpected | undefined;
   } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
-  // TODO: EXPERIMENTS - we had `evalScope` here before... need to figure out what to do instead
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
 
