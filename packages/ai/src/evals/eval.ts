@@ -27,7 +27,7 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
-import type { ValidateName } from './name-validation';
+import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
 
 declare module 'vitest' {
@@ -90,13 +90,12 @@ export function Eval<
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
   Name extends string = string,
   Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<
-    EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
-    'data' | 'task' | 'scorers' | 'capability'
-  > & {
-    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
+  params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
+    capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
@@ -112,10 +111,12 @@ export function Eval<
   TOutput extends string | Record<string, any>,
   Name extends string = string,
   Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability'> & {
-    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
+  params: EvalParams<TInput, TExpected, TOutput> & {
+    capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
   },
 ): void;
 
