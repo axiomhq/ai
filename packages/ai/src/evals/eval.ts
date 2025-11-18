@@ -89,12 +89,14 @@ export function Eval<
     expected: ExpectedOf<Data>;
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
   Name extends string = string,
+  Capability extends string = string,
 >(
   name: ValidateName<Name>,
   params: Omit<
     EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
-    'data' | 'task' | 'scorers'
+    'data' | 'task' | 'scorers' | 'capability'
   > & {
+    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
@@ -109,7 +111,13 @@ export function Eval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
   Name extends string = string,
->(name: ValidateName<Name>, params: EvalParams<TInput, TExpected, TOutput>): void;
+  Capability extends string = string,
+>(
+  name: ValidateName<Name>,
+  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability'> & {
+    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
+  },
+): void;
 
 /**
  * Implementation

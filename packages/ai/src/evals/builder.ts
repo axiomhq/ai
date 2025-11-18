@@ -22,7 +22,6 @@ class EvalBuilderImpl<
   TInput extends string | Record<string, any> = string,
   TExpected extends string | Record<string, any> = string,
   TOutput extends string | Record<string, any> = string,
-  Name extends string = string,
 > implements EvalBuilder<AllowedFlags, TInput, TExpected, TOutput>
 {
   private hasRun = false; // Prevent double registration
@@ -85,7 +84,11 @@ class EvalBuilderImpl<
     // Cast finalName since suffix may add ':' which isn't in ValidChars
     // (suffix is from like `someTest.run('variant')` which is used for parametrization)
     // we currently don't expose this
-    Eval<TInput, TExpected, TOutput, Name>(finalName as never, finalParams);
+    const { capability, ...restParams } = finalParams;
+    Eval<TInput, TExpected, TOutput>(finalName as never, {
+      ...restParams,
+      capability: capability as never,
+    });
   }
 }
 
@@ -99,9 +102,12 @@ export function defineEval<
   TOutput extends string | Record<string, any> = string,
   AllowedFlags extends Record<string, any> = {},
   Name extends string = string,
+  Capability extends string = string,
 >(
   name: ValidateName<Name>,
-  params: EvalParams<TInput, TExpected, TOutput>,
+  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability'> & {
+    capability: ValidateName<Capability>;
+  },
 ): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput> {
   return new EvalBuilderImpl<AllowedFlags, TInput, TExpected, TOutput>(name, params);
 }

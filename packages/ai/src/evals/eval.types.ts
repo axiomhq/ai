@@ -1,6 +1,5 @@
 import type { TaskMeta } from 'vitest';
 import type { ScoreWithName, ScorerLike } from './scorers';
-import type { ValidateName } from './name-validation';
 
 // Type utilities for automatic inference
 /** Extract the input type from CollectionRecord[] */
@@ -87,7 +86,7 @@ export type EvalParams<
   data: () =>
     | readonly CollectionRecord<TInput, TExpected>[]
     | Promise<readonly CollectionRecord<TInput, TExpected>[]>;
-  capability: ValidateName<string>;
+  capability: string;
   step?: string | undefined;
   /** The task function to evaluate */
   task: EvalTask<TInput, TExpected, TOutput>;
