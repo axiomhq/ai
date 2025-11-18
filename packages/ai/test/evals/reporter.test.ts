@@ -5,6 +5,7 @@ import type { TestSuite, TestCase } from 'vitest/node.js';
 import type { EvaluationReport, EvalCaseReport } from '../../src/evals/eval.types';
 import { ConsoleCapture, createMockBaseline } from '../helpers/eval-test-setup';
 import type { ResolvedAxiomConfig } from '../../src/config/index';
+import { buildSpanTree } from '../../src/evals/eval.service';
 
 describe('AxiomReporter', () => {
   let reporter: AxiomReporter;
@@ -171,7 +172,7 @@ describe('AxiomReporter', () => {
             id: 'eval-999',
             name: 'Baseline Test',
             version: 'v2',
-            baseline: { id: 'baseline-123', name: 'Baseline Test', version: 'v1' },
+            baseline: buildSpanTree(mockBaseline.matches),
             registrationStatus: { status: 'success' },
           } as EvaluationReport,
         },
@@ -198,7 +199,6 @@ describe('AxiomReporter', () => {
         ],
       });
 
-      // Load baseline first
       await reporter.onTestSuiteReady(mockSuite);
 
       reporter.start = performance.now() - 1000;
