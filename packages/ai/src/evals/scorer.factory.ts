@@ -1,4 +1,4 @@
-import type { ValidateName } from './name-validation';
+import type { ValidateName } from '../util/name-validation';
 import type { Score, Scorer } from './scorers';
 
 // Helper to force TypeScript to evaluate/simplify types

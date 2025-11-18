@@ -1,7 +1,7 @@
 import type { EvalParams } from './eval.types';
 import { Eval } from './eval'; // existing Eval function
 import { withEvalContext } from './context/storage';
-import type { ValidateName } from './name-validation';
+import type { ValidateName } from '../util/name-validation';
 
 export interface EvalBuilder<
   AllowedFlags extends Record<string, any> = {},

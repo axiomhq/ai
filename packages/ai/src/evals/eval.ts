@@ -27,7 +27,7 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
-import type { ValidateName } from './name-validation';
+import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
 
 declare module 'vitest' {
