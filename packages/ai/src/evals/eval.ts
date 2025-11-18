@@ -294,7 +294,7 @@ async function registerEval<
 
         // Load baseline if we got a baselineId from the server
         try {
-          if (!isDebug && !isList && resolvedBaselineId) {
+          if (!isDebug && !isList && !!resolvedBaselineId) {
             baseline = await findEvaluationCases(resolvedBaselineId, axiomConfig);
           }
         } catch (error) {

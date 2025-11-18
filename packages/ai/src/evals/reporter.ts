@@ -2,7 +2,6 @@ import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
 import { getAxiomConfig } from './context/storage';
-import { findEvaluationCases } from './eval.service';
 import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import {
   maybePrintFlags,
@@ -18,7 +17,6 @@ import {
   printTestCaseSuccessOrFailed,
   type SuiteData,
 } from './reporter.console-utils';
-import { AxiomCLIError } from '../cli/errors';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 
 /**
@@ -33,7 +31,6 @@ export class AxiomReporter implements Reporter {
   start: number = 0;
   private _endOfRunConfigEnd: EvaluationReport['configEnd'] | undefined;
   private _suiteData: SuiteData[] = [];
-  private _baselines: Map<string, Evaluation | null> = new Map();
   private _printedFlagOverrides = false;
   private _config: AxiomConnectionResolvedConfig | undefined;
 
@@ -64,19 +61,6 @@ export class AxiomReporter implements Reporter {
         printGlobalFlagOverrides(overridesFromConfigEnd, defaultsFromConfigEnd);
       }
       this._printedFlagOverrides = true;
-    }
-
-    const baseline = meta.evaluation.baseline;
-    if (baseline) {
-      // load baseline data per suite
-      const config = getAxiomConfig();
-      if (!config) {
-        throw new AxiomCLIError('Axiom config not available in reporter');
-      }
-      const baselineData = await findEvaluationCases(baseline.id, config);
-      this._baselines.set(meta.evaluation.name, baselineData || null);
-    } else {
-      this._baselines.set(meta.evaluation.name, null);
     }
 
     // capture end-of-run config snapshot (first non-empty wins)
@@ -122,18 +106,8 @@ export class AxiomReporter implements Reporter {
     const relativePath = testSuite.module.moduleId.replace(cwd, '').replace(/^\//, '');
 
     // Collect suite data for final report
-    // Ensure baseline is loaded
-    let suiteBaseline = this._baselines.get(meta.evaluation.name);
-    if (suiteBaseline === undefined && meta.evaluation.baseline) {
-      // Baseline wasn't loaded yet, load it now
-      const config = getAxiomConfig();
-      if (!config) {
-        throw new AxiomCLIError('Axiom config not available in reporter');
-      }
-      const baselineData = await findEvaluationCases(meta.evaluation.baseline.id, config);
-      suiteBaseline = baselineData || null;
-      this._baselines.set(meta.evaluation.name, suiteBaseline);
-    }
+    let suiteBaseline = meta.evaluation.baseline;
+
     this._suiteData.push({
       name: meta.evaluation.name,
       file: relativePath,
