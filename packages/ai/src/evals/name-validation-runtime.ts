@@ -3,7 +3,7 @@ import { appendFileSync } from 'node:fs';
 import { isValidName } from '../util/name-validation-runtime';
 
 /**
- * Records an eval or scorer name
+ * Records an eval, scorer, capability, or step name
  * Uses a file to work cross-worker
  */
 export function recordName(kind: 'eval' | 'scorer' | 'capability' | 'step', name: string): void {
