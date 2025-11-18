@@ -1,7 +1,7 @@
 /**
  * Validates that a name contains only allowed characters (A-Z, a-z, 0-9, -, _)
  * and is not empty.
- * 
+ *
  * @returns Object with validation result and optional error message
  */
 export function isValidName(name: string): { valid: true } | { valid: false; error: string } {
