@@ -90,10 +90,12 @@ export function Eval<
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
   Name extends string = string,
   Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
   params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
     capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
@@ -109,10 +111,12 @@ export function Eval<
   TOutput extends string | Record<string, any>,
   Name extends string = string,
   Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
   params: EvalParams<TInput, TExpected, TOutput> & {
     capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
   },
 ): void;
 

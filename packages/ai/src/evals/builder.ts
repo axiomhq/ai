@@ -96,10 +96,12 @@ export function defineEval<
   AllowedFlags extends Record<string, any> = {},
   Name extends string = string,
   Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
   params: EvalParams<TInput, TExpected, TOutput> & {
     capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
   },
 ): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput> {
   return new EvalBuilderImpl<AllowedFlags, TInput, TExpected, TOutput>(name, params);

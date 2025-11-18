@@ -19,7 +19,8 @@ const WrappedExactMatch = Scorer(
 
 Eval('spam-classification', {
   configFlags: pickFlags('ticketClassification'),
-  capability: 'classify-ticket',
+  capability: 'ticket-classification',
+  step: 'classify-ticket',
   data: () => [
     {
       input: {
