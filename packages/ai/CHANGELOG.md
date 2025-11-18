@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.27.0](https://github.com/axiomhq/ai/compare/axiom-v0.26.0...axiom-v0.27.0) (2025-11-17)
+
+
+### Features
+
+* Add cli auth ([#117](https://github.com/axiomhq/ai/issues/117)) ([9079098](https://github.com/axiomhq/ai/commit/90790986f152f6b53fc990836570e6cafa19f599))
+* **AI-76:** add capability and step names ([#135](https://github.com/axiomhq/ai/issues/135)) ([0ec9282](https://github.com/axiomhq/ai/commit/0ec92828b9670c4c5ef7a99918d1894445ac6b28))
+
+
+### Bug Fixes
+
+* **AI-72:** attach missing baseline version to root span ([#134](https://github.com/axiomhq/ai/issues/134)) ([f1c8ad5](https://github.com/axiomhq/ai/commit/f1c8ad58e2c1acbf161d42c4b2577048d6c87d48))
+* **API:** revert v3 naming ([#125](https://github.com/axiomhq/ai/issues/125)) ([2b46d47](https://github.com/axiomhq/ai/commit/2b46d471bbbfefb03178f5fe05bffe5b13e68511))
+
+## [0.26.0](https://github.com/axiomhq/ai/compare/axiom-v0.25.0...axiom-v0.26.0) (2025-11-12)
+
+
+### Features
+
+* **AI-65:** move Eval() to GA ([#121](https://github.com/axiomhq/ai/issues/121)) ([3c6fb63](https://github.com/axiomhq/ai/commit/3c6fb634b62570eccf34b3624c8fe044d0f33a43))
+* type and runtime error if eval or scorer name doesnt match desired pattern ([#118](https://github.com/axiomhq/ai/issues/118)) ([8940c70](https://github.com/axiomhq/ai/commit/8940c7041813d4f505bf6526b3832f69b63c9ba3))
+
 ## [0.25.0](https://github.com/axiomhq/ai/compare/axiom-v0.24.0...axiom-v0.25.0) (2025-11-11)
 
 

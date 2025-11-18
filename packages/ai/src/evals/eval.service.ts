@@ -3,6 +3,7 @@ import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { Attr } from '../otel';
+import { AxiomCLIError } from '../cli/errors';
 
 export interface EvaluationApiConfig {
   dataset?: string;
@@ -17,10 +18,11 @@ export type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled'
 export interface EvaluationApiPayloadBase {
   id: string;
   name: string;
+  capability: string;
+  step?: string | undefined;
   dataset: string;
   baselineId?: string;
   totalCases?: number;
-  scorers?: string[];
   config?: Record<string, unknown>;
   status: EvaluationStatus;
   successCases?: number;
@@ -30,30 +32,39 @@ export interface EvaluationApiPayloadBase {
   version: string;
   runId: string;
   configTimeoutMs: number;
+  metadata?: Record<string, any>;
 }
 
 export class EvaluationApiClient {
   private readonly fetcher: Fetcher;
   constructor(config: ResolvedAxiomConfig) {
-    const { consoleEndpointUrl, token } = resolveAxiomConnection(config);
+    const { consoleEndpointUrl, token, orgId } = resolveAxiomConnection(config);
 
-    this.fetcher = createFetcher(consoleEndpointUrl, token ?? '');
+    this.fetcher = createFetcher({ baseUrl: consoleEndpointUrl, token: token ?? '', orgId });
   }
 
   async createEvaluation(evaluation: EvaluationApiPayloadBase) {
-    const resp = await this.fetcher(`/api/evaluations/v3`, {
+    const resp = await this.fetcher(`/api/v3/evaluations`, {
       method: 'POST',
       body: JSON.stringify(evaluation),
     });
+
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to create evaluation: ${resp.statusText}`);
+    }
 
     return resp.json();
   }
 
   async updateEvaluation(evaluation: Partial<EvaluationApiPayloadBase>) {
-    const resp = await this.fetcher(`/api/evaluations/v3/${evaluation.id}`, {
+    const resp = await this.fetcher(`/api/v3/evaluations/${evaluation.id}`, {
       method: 'PATCH',
       body: JSON.stringify(evaluation),
     });
+
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to update evaluation: ${resp.statusText}`);
+    }
 
     return resp.json();
   }
@@ -63,13 +74,14 @@ export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
+  const { dataset, url, token, orgId } = resolveAxiomConnection(config);
 
   const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
+    ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
   const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {

@@ -86,6 +86,8 @@ export type EvalParams<
   data: () =>
     | readonly CollectionRecord<TInput, TExpected>[]
     | Promise<readonly CollectionRecord<TInput, TExpected>[]>;
+  capability: string;
+  step?: string | undefined;
   /** The task function to evaluate */
   task: EvalTask<TInput, TExpected, TOutput>;
   /** Array of scoring functions to evaluate the task output */

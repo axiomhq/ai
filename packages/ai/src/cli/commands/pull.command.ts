@@ -23,7 +23,6 @@ export const loadPullCommand = (program: Command) => {
             Authorization: `Bearer ${process.env.AXIOM_TOKEN}`,
             'Content-Type': 'application/json',
             'x-axiom-client': 'axiom-ai-cli',
-            'x-axiom-check': 'good',
           },
         });
 
