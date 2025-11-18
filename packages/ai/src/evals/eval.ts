@@ -92,11 +92,8 @@ export function Eval<
   Capability extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<
-    EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
-    'data' | 'task' | 'scorers' | 'capability'
-  > & {
-    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
+  params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
+    capability: ValidateName<Capability>;
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
@@ -114,8 +111,8 @@ export function Eval<
   Capability extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability'> & {
-    capability: Capability extends ValidateName<Capability> ? Capability : ValidateName<Capability>;
+  params: EvalParams<TInput, TExpected, TOutput> & {
+    capability: ValidateName<Capability>;
   },
 ): void;
 
