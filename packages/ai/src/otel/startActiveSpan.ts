@@ -4,6 +4,11 @@ interface Callbacks {
   onSuccess?: (span: Span) => void;
   onError?: (error: unknown, span: Span) => void;
   onFinally?: (span: Span) => void;
+  /**
+   * If true, the operation will call span.end() manually.
+   * Used for streaming operations where the span should remain open until stream consumption completes.
+   */
+  manualEnd?: boolean;
 }
 
 export const createStartActiveSpan =
@@ -35,7 +40,12 @@ export const createStartActiveSpan =
         throw error;
       } finally {
         callbacks?.onFinally?.(span);
-        span.end();
+
+        // Only auto-end the span if manualEnd is not set
+        // For streaming operations, the operation itself will call span.end() when the stream completes
+        if (!callbacks?.manualEnd) {
+          span.end();
+        }
       }
     });
   };

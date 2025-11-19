@@ -20,7 +20,6 @@ import { type LanguageModelV1Middleware } from 'aiv4';
 
 import { type Span } from '@opentelemetry/api';
 import { Attr } from './semconv/attributes';
-import type { OpenAIMessage } from './vercelTypes';
 import { createSimpleCompletion } from './completionUtils';
 import {
   appendToolCalls,
@@ -35,9 +34,10 @@ import {
   withSpanHandling,
   determineOutputTypeV1,
   determineOutputTypeV2,
+  classifyToolError,
   createStreamChildSpan,
-  handleStreamError,
-  type CommonSpanContext,
+  type GenAiSpanContextV1,
+  type GenAiSpanContextV2,
 } from './utils/wrapperUtils';
 import {
   promptV1ToOpenAI,
@@ -58,19 +58,6 @@ import { getRedactionPolicy, handleMaybeRedactedAttribute } from './utils/redact
 
 export interface AxiomTelemetryConfig {
   // Future configuration options can be added here
-}
-
-interface GenAiSpanContextV1 extends CommonSpanContext {
-  originalPrompt: OpenAIMessage[];
-  rawCall?: {
-    rawPrompt?: any[];
-    rawSettings?: any;
-  };
-}
-
-interface GenAiSpanContextV2 extends CommonSpanContext {
-  originalPrompt: OpenAIMessage[];
-  originalV2Prompt: any[];
 }
 
 const appendPromptMetadataToSpan = (
@@ -101,98 +88,101 @@ const appendPromptMetadataToSpan = (
 export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): LanguageModelV1Middleware {
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
-      return withSpanHandling(model.modelId, async (span, commonContext) => {
-        const context: GenAiSpanContextV1 = {
-          ...commonContext,
-          originalPrompt: [],
-          rawCall: undefined,
-        };
+      return withSpanHandling(
+        model.modelId,
+        async (span, commonContext, _lease) => {
+          const context = commonContext as GenAiSpanContextV1;
 
-        appendPromptMetadataToSpan(span, params.prompt);
+          appendPromptMetadataToSpan(span, params.prompt);
 
-        // Pre-call setup
-        setScopeAttributes(span);
-        setPreCallAttributesV1(span, params, context, model);
+          // Pre-call setup
+          setScopeAttributes(span);
+          setPreCallAttributesV1(span, params, context, model);
 
-        const res = await doGenerate();
+          const res = await doGenerate();
 
-        // Store rawCall data in context for access in post-call processing
-        context.rawCall = res.rawCall as { rawPrompt?: any[]; rawSettings?: any };
+          // Store rawCall data in context for access in post-call processing
+          context.rawCall = res.rawCall as { rawPrompt?: any[]; rawSettings?: any };
 
-        // Post-call processing
-        await setPostCallAttributesV1(span, res, context, model);
+          // Post-call processing
+          await setPostCallAttributesV1(span, res, context, model);
 
-        return res;
-      });
+          return res;
+        },
+        { version: 'v1' },
+      );
     },
 
     wrapStream: async ({ doStream, params, model }) => {
-      return withSpanHandling(model.modelId, async (span, commonContext) => {
-        const context: GenAiSpanContextV1 = {
-          ...commonContext,
-          originalPrompt: [],
-          rawCall: undefined,
-        };
+      return withSpanHandling(
+        model.modelId,
+        async (span, commonContext, lease) => {
+          const context = commonContext as GenAiSpanContextV1;
 
-        appendPromptMetadataToSpan(span, params.prompt);
+          appendPromptMetadataToSpan(span, params.prompt);
 
-        // Pre-call setup
-        setScopeAttributes(span);
-        setPreCallAttributesV1(span, params, context, model);
+          // Pre-call setup
+          setScopeAttributes(span);
+          setPreCallAttributesV1(span, params, context, model);
 
-        const { stream, ...head } = await doStream();
+          const { stream, ...head } = await doStream();
 
-        // Create child span for stream processing
-        const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
+          // Create child span for stream processing (provides granular visibility)
+          const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
 
-        const stats = new StreamStats();
-        const toolAggregator = new ToolCallAggregator();
-        const textAggregator = new TextAggregator();
+          const stats = new StreamStats();
+          const toolAggregator = new ToolCallAggregator();
+          const textAggregator = new TextAggregator();
 
-        return {
-          ...head,
-          stream: stream.pipeThrough(
-            new TransformStream({
-              transform(chunk: LanguageModelV1StreamPart, controller) {
-                try {
-                  stats.feed(chunk);
-                  toolAggregator.handleChunk(chunk);
-                  textAggregator.feed(chunk);
+          return {
+            ...head,
+            stream: stream.pipeThrough(
+              new TransformStream({
+                transform(chunk: LanguageModelV1StreamPart, controller) {
+                  try {
+                    stats.feed(chunk);
+                    toolAggregator.handleChunk(chunk);
+                    textAggregator.feed(chunk);
 
-                  controller.enqueue(chunk);
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-              async flush(controller) {
-                try {
-                  await setPostCallAttributesV1(
-                    span,
-                    {
-                      ...head,
-                      ...stats.result,
-                      toolCalls:
-                        toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
-                      text: textAggregator.text,
-                    },
-                    context,
-                    model,
-                  );
+                    controller.enqueue(chunk);
+                  } catch (err) {
+                    classifyToolError(err, childSpan);
+                    childSpan.end();
+                    if (lease.owned) lease.end();
+                    controller.error(err);
+                  }
+                },
+                async flush(controller) {
+                  try {
+                    await setPostCallAttributesV1(
+                      span,
+                      {
+                        ...head,
+                        ...stats.result,
+                        toolCalls:
+                          toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
+                        text: textAggregator.text,
+                      },
+                      context,
+                      model,
+                    );
 
-                  childSpan.end();
-                  controller.terminate();
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-            }),
-          ),
-        };
-      });
+                    childSpan.end();
+                    if (lease.owned) lease.end();
+                    controller.terminate();
+                  } catch (err) {
+                    classifyToolError(err, childSpan);
+                    childSpan.end();
+                    if (lease.owned) lease.end();
+                    controller.error(err);
+                  }
+                },
+              }),
+            ),
+          };
+        },
+        { streaming: true, version: 'v1' }, // Don't auto-end span, we'll end it when stream completes
+      );
     },
   };
 }
@@ -222,94 +212,97 @@ export function axiomAIMiddleware(config: { model: LanguageModelV1 | LanguageMod
 export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): LanguageModelV2Middleware {
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
-      return withSpanHandling(model.modelId, async (span, commonContext) => {
-        const context: GenAiSpanContextV2 = {
-          ...commonContext,
-          originalPrompt: [],
-          originalV2Prompt: [],
-        };
+      return withSpanHandling(
+        model.modelId,
+        async (span, commonContext, _lease) => {
+          const context = commonContext as GenAiSpanContextV2;
 
-        appendPromptMetadataToSpan(span, params.prompt);
+          appendPromptMetadataToSpan(span, params.prompt);
 
-        // Pre-call setup
-        setScopeAttributes(span);
-        setPreCallAttributesV2(span, params, context, model);
+          // Pre-call setup
+          setScopeAttributes(span);
+          setPreCallAttributesV2(span, params, context, model);
 
-        const res = await doGenerate();
+          const res = await doGenerate();
 
-        // Post-call processing
-        await setPostCallAttributesV2(span, res, context, model);
+          // Post-call processing
+          await setPostCallAttributesV2(span, res, context, model);
 
-        return res;
-      });
+          return res;
+        },
+        { version: 'v2' },
+      );
     },
 
     wrapStream: async ({ doStream, params, model }) => {
-      return withSpanHandling(model.modelId, async (span, commonContext) => {
-        const context: GenAiSpanContextV2 = {
-          ...commonContext,
-          originalPrompt: [],
-          originalV2Prompt: [],
-        };
+      return withSpanHandling(
+        model.modelId,
+        async (span, commonContext, lease) => {
+          const context = commonContext as GenAiSpanContextV2;
 
-        appendPromptMetadataToSpan(span, params.prompt);
+          appendPromptMetadataToSpan(span, params.prompt);
 
-        // Pre-call setup
-        setScopeAttributes(span);
-        setPreCallAttributesV2(span, params, context, model);
+          // Pre-call setup
+          setScopeAttributes(span);
+          setPreCallAttributesV2(span, params, context, model);
 
-        const ret = await doStream();
+          const ret = await doStream();
 
-        // Create child span for stream processing
-        const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
+          // Create child span for stream processing (provides granular visibility)
+          const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
 
-        const stats = new StreamStatsV2();
-        const toolAggregator = new ToolCallAggregatorV2();
-        const textAggregator = new TextAggregatorV2();
+          const stats = new StreamStatsV2();
+          const toolAggregator = new ToolCallAggregatorV2();
+          const textAggregator = new TextAggregatorV2();
 
-        return {
-          ...ret,
-          stream: ret.stream.pipeThrough(
-            new TransformStream({
-              transform(chunk: LanguageModelV2StreamPart, controller) {
-                try {
-                  stats.feed(chunk);
-                  toolAggregator.handleChunk(chunk);
-                  textAggregator.feed(chunk);
+          return {
+            ...ret,
+            stream: ret.stream.pipeThrough(
+              new TransformStream({
+                transform(chunk: LanguageModelV2StreamPart, controller) {
+                  try {
+                    stats.feed(chunk);
+                    toolAggregator.handleChunk(chunk);
+                    textAggregator.feed(chunk);
 
-                  controller.enqueue(chunk);
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-              async flush(controller) {
-                try {
-                  const streamResult = {
-                    ...stats.result,
-                    content: [
-                      ...(textAggregator.text
-                        ? [{ type: 'text' as const, text: textAggregator.text }]
-                        : []),
-                      ...toolAggregator.result,
-                    ],
-                  };
+                    controller.enqueue(chunk);
+                  } catch (err) {
+                    classifyToolError(err, childSpan);
+                    childSpan.end();
+                    if (lease.owned) lease.end();
+                    controller.error(err);
+                  }
+                },
+                async flush(controller) {
+                  try {
+                    const streamResult = {
+                      ...stats.result,
+                      content: [
+                        ...(textAggregator.text
+                          ? [{ type: 'text' as const, text: textAggregator.text }]
+                          : []),
+                        ...toolAggregator.result,
+                      ],
+                    };
 
-                  await setPostCallAttributesV2(span, streamResult, context, model);
+                    await setPostCallAttributesV2(span, streamResult, context, model);
 
-                  childSpan.end();
-                  controller.terminate();
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-            }),
-          ),
-        };
-      });
+                    childSpan.end();
+                    if (lease.owned) lease.end();
+                    controller.terminate();
+                  } catch (err) {
+                    classifyToolError(err, childSpan);
+                    childSpan.end();
+                    if (lease.owned) lease.end();
+                    controller.error(err);
+                  }
+                },
+              }),
+            ),
+          };
+        },
+        { streaming: true, version: 'v2' }, // Don't auto-end span, we'll end it when stream completes
+      );
     },
   };
 }
