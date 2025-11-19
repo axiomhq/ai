@@ -13,6 +13,9 @@ import {
 import { createMockProvider } from '../vercel/mock-provider-v1/mock-provider';
 import { createMockProvider as createMockProviderV2 } from '../vercel/mock-provider-v2/mock-provider-v2';
 import { createOtelTestSetup } from '../helpers/otel-test-setup';
+import { withSpan } from 'src';
+import { trace } from '@opentelemetry/api';
+import { createStartActiveSpan } from '../../src/otel/startActiveSpan';
 
 const otelTestSetup = createOtelTestSetup();
 
@@ -200,7 +203,7 @@ describe('Axiom Telemetry Middleware', () => {
         expect((childSpan as any).parentSpanId).toBe(parentSpan!.spanContext().spanId);
       }
 
-      // Critical: Parent span should have token usage attributes
+      // Parent span should have token usage attributes
       expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(10);
       expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(20);
       expect(parentSpan!.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
@@ -224,14 +227,9 @@ describe('Axiom Telemetry Middleware', () => {
     });
   });
 
-  describe('Span Ownership & Lifecycle (Priority 1 - Critical for Refactor)', () => {
+  describe('Span Ownership & Lifecycle', () => {
     describe('withSpan integration - middleware must not end user-owned spans', () => {
       it('should not end user-owned span during streaming (V1)', async () => {
-        // CRITICAL: This test verifies behavior when a streaming call is wrapped in withSpan().
-        // In the CURRENT implementation, the middleware DOES reuse the span but currently
-        // doesn't know it shouldn't manage its lifecycle. After refactoring to SpanLease,
-        // this test should pass with spanEndCalledByMiddleware === false.
-        const { withSpan } = await import('../../src/otel/withSpan');
         const mockProvider = createMockProvider();
         mockProvider.addStreamResponse('gpt-4-stream', {
           chunks: ['Hello', ' streaming!'],
@@ -272,8 +270,6 @@ describe('Axiom Telemetry Middleware', () => {
       });
 
       it('should not end user-owned span during streaming (V2)', async () => {
-        // CRITICAL: Same test for V2 middleware
-        const { withSpan } = await import('../../src/otel/withSpan');
         const mockProvider = createMockProviderV2();
         mockProvider.addStreamResponse('claude-3-stream', {
           chunks: ['Streaming', ' response!'],
@@ -314,9 +310,6 @@ describe('Axiom Telemetry Middleware', () => {
 
     describe('Token usage timing - regression test for THE BUG', () => {
       it('should set token usage attributes BEFORE span.end() is called (V1)', async () => {
-        // CRITICAL: This is a regression test for the bug where token attributes
-        // were being set AFTER span.end() was called, causing them to be lost.
-        // This test tracks the order of events to ensure attributes are set first.
         const mockProvider = createMockProvider();
         mockProvider.addStreamResponse('gpt-4-stream', {
           chunks: ['Hello', ' streaming!'],
@@ -351,7 +344,7 @@ describe('Axiom Telemetry Middleware', () => {
         const parentSpan = spans.find((s) => s.name === 'chat gpt-4-stream');
         expect(parentSpan).toBeDefined();
 
-        // CRITICAL: Token attributes MUST be present on the ended span
+        // Token attributes MUST be present on the ended span
         // If they were set after span.end(), they would be lost
         expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(10);
         expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(20);
@@ -393,7 +386,7 @@ describe('Axiom Telemetry Middleware', () => {
         const parentSpan = spans.find((s) => s.name === 'chat claude-3-stream');
         expect(parentSpan).toBeDefined();
 
-        // CRITICAL: Token attributes must be present
+        // Token attributes must be present
         expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(15);
         expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(25);
         expect(parentSpan!.endTime).toBeDefined();
@@ -403,11 +396,9 @@ describe('Axiom Telemetry Middleware', () => {
 
     describe('manualEnd flag behavior', () => {
       it('should not auto-end span when manualEnd is true', async () => {
-        // CRITICAL: This tests the core behavior of createStartActiveSpan with manualEnd flag.
+        // This tests the core behavior of createStartActiveSpan with manualEnd flag.
         // When manualEnd: true, the span should NOT be ended in the finally block.
         // This is used by streaming operations that need to keep the span open.
-        const { createStartActiveSpan } = await import('../../src/otel/startActiveSpan');
-        const { trace } = await import('@opentelemetry/api');
         const actualTracer = trace.getTracer('axiom-ai-test');
 
         const startActiveSpan = createStartActiveSpan(actualTracer);
@@ -430,7 +421,7 @@ describe('Axiom Telemetry Middleware', () => {
         expect(operationCompleted).toBe(true);
         expect(capturedSpan).not.toBeNull();
 
-        // CRITICAL: With manualEnd: true, span should NOT be in finished spans yet
+        // With manualEnd: true, span should NOT be in finished spans yet
         // because it hasn't been ended
         const finishedSpans = otelTestSetup.getSpans();
         const manualSpan = finishedSpans.find((s) => s.name === 'test-manual-span');
@@ -448,9 +439,6 @@ describe('Axiom Telemetry Middleware', () => {
       });
 
       it('should auto-end span when manualEnd is false or not set', async () => {
-        // Control test: verify normal behavior (auto-end) still works
-        const { createStartActiveSpan } = await import('../../src/otel/startActiveSpan');
-        const { trace } = await import('@opentelemetry/api');
         const actualTracer = trace.getTracer('axiom-ai-test');
 
         const startActiveSpan = createStartActiveSpan(actualTracer);
