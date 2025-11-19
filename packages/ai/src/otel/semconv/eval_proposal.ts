@@ -24,6 +24,8 @@ export const ATTR_EVAL_CASE_OUTPUT = 'eval.case.output' as const;
 export const ATTR_EVAL_CASE_EXPECTED = 'eval.case.expected' as const;
 export const ATTR_EVAL_CASE_SCORES = 'eval.case.scores' as const;
 export const ATTR_EVAL_CASE_METADATA = 'eval.case.metadata' as const;
+// trial
+export const ATTR_EVAL_TRIAL_INDEX = 'eval.trial.index' as const;
 // task
 export const ATTR_EVAL_TASK_OUTPUT = 'eval.task.output' as const;
 export const ATTR_EVAL_TASK_NAME = 'eval.task.name' as const;

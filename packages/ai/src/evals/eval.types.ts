@@ -98,6 +98,8 @@ export type EvalParams<
   timeout?: number;
   /** Optional reduction of flag namespace */
   configFlags?: string[];
+  /** Number of times to run each test case (defaults to 1) */
+  trials?: number;
 };
 
 // Discriminated-union type for per-case runtime flags (console/meta only)
