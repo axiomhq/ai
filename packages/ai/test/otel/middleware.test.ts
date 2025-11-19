@@ -107,6 +107,60 @@ describe('Axiom Telemetry Middleware', () => {
       expect(childSpan).toBeDefined();
       expect(parentSpan!.attributes['gen_ai.request.model']).toBe('gpt-4-stream');
     });
+
+    it('should keep parent span open until stream completes and set token usage attributes', async () => {
+      const mockProvider = createMockProvider();
+      mockProvider.addStreamResponse('gpt-4-stream', {
+        chunks: ['Hello', ' streaming!'],
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      });
+
+      const baseModel = mockProvider.languageModel('gpt-4-stream');
+      const instrumentedModel = wrapLanguageModel({
+        model: baseModel,
+        middleware: axiomAIMiddlewareV1(),
+      });
+
+      const result = streamText({
+        model: instrumentedModel,
+        prompt: 'Test streaming',
+      });
+
+      // Consume the stream
+      let fullText = '';
+      for await (const chunk of result.textStream) {
+        fullText += chunk;
+      }
+
+      expect(fullText).toBe('Hello streaming!');
+
+      const spans = otelTestSetup.getSpans();
+      expect(spans).toHaveLength(2); // Parent span + child stream span
+
+      const parentSpan = spans.find((s) => s.name === 'chat gpt-4-stream');
+      const childSpan = spans.find((s) => s.name === 'chat gpt-4-stream stream');
+
+      expect(parentSpan).toBeDefined();
+      expect(childSpan).toBeDefined();
+
+      // Critical: Parent span should have token usage attributes
+      expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(10);
+      expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(20);
+      expect(parentSpan!.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
+
+      // Verify parent span ended AFTER child span started (correct lifecycle)
+      // Parent should have longer duration since it wraps the entire operation
+      expect(parentSpan!.endTime).toBeDefined();
+      expect(childSpan!.endTime).toBeDefined();
+      expect(parentSpan!.startTime).toBeDefined();
+      expect(childSpan!.startTime).toBeDefined();
+
+      // Parent should start before or at same time as child
+      expect(parentSpan!.startTime[0]).toBeLessThanOrEqual(childSpan!.startTime[0]);
+      // Parent should end after or at same time as child (it wraps the stream)
+      expect(parentSpan!.endTime[0]).toBeGreaterThanOrEqual(childSpan!.endTime[0]);
+    });
   });
 
   describe('V2 Middleware', () => {
@@ -188,6 +242,60 @@ describe('Axiom Telemetry Middleware', () => {
       expect(parentSpan).toBeDefined();
       expect(childSpan).toBeDefined();
       expect(parentSpan!.attributes['gen_ai.request.model']).toBe('claude-3-stream');
+    });
+
+    it('should keep parent span open until stream completes and set token usage attributes', async () => {
+      const mockProvider = createMockProviderV2();
+      mockProvider.addStreamResponse('claude-3-stream', {
+        chunks: ['Streaming', ' response!'],
+        finishReason: 'stop',
+        usage: { inputTokens: 15, outputTokens: 25, totalTokens: 40 },
+      });
+
+      const baseModel = mockProvider.languageModel('claude-3-stream');
+      const instrumentedModel = wrapLanguageModelV5({
+        model: baseModel,
+        middleware: axiomAIMiddlewareV2(),
+      });
+
+      const result = streamTextV5({
+        model: instrumentedModel,
+        prompt: 'Test V2 streaming',
+      });
+
+      // Consume the stream
+      let fullText = '';
+      for await (const chunk of result.textStream) {
+        fullText += chunk;
+      }
+
+      expect(fullText).toBe('Streaming response!');
+
+      const spans = otelTestSetup.getSpans();
+      expect(spans).toHaveLength(2); // Parent span + child stream span
+
+      const parentSpan = spans.find((s) => s.name === 'chat claude-3-stream');
+      const childSpan = spans.find((s) => s.name === 'chat claude-3-stream stream');
+
+      expect(parentSpan).toBeDefined();
+      expect(childSpan).toBeDefined();
+
+      // Critical: Parent span should have token usage attributes
+      expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(15);
+      expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(25);
+      expect(parentSpan!.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
+
+      // Verify parent span ended AFTER child span started (correct lifecycle)
+      // Parent should have longer duration since it wraps the entire operation
+      expect(parentSpan!.endTime).toBeDefined();
+      expect(childSpan!.endTime).toBeDefined();
+      expect(parentSpan!.startTime).toBeDefined();
+      expect(childSpan!.startTime).toBeDefined();
+
+      // Parent should start before or at same time as child
+      expect(parentSpan!.startTime[0]).toBeLessThanOrEqual(childSpan!.startTime[0]);
+      // Parent should end after or at same time as child (it wraps the stream)
+      expect(parentSpan!.endTime[0]).toBeGreaterThanOrEqual(childSpan!.endTime[0]);
     });
   });
 
