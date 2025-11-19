@@ -354,6 +354,7 @@ export function handleStreamError(span: Span, err: unknown): void {
 export async function withSpanHandling<T>(
   modelId: string,
   operation: (span: Span, context: CommonSpanContext) => Promise<T>,
+  options?: { manualEnd?: boolean },
 ): Promise<T> {
   const bag = propagation.getActiveBaggage();
   const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
@@ -413,6 +414,7 @@ export async function withSpanHandling<T>(
     const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 
     return startActiveSpan(name, null, (span) => operation(span, context), {
+      manualEnd: options?.manualEnd,
       onError: (err, span) => {
         // Enhanced error handling for OpenTelemetry compliance
         // MANDATORY: Add OpenTelemetry error attributes for cross-vendor compatibility

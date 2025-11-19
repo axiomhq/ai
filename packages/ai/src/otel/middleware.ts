@@ -127,72 +127,79 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
     },
 
     wrapStream: async ({ doStream, params, model }) => {
-      return withSpanHandling(model.modelId, async (span, commonContext) => {
-        const context: GenAiSpanContextV1 = {
-          ...commonContext,
-          originalPrompt: [],
-          rawCall: undefined,
-        };
+      return withSpanHandling(
+        model.modelId,
+        async (span, commonContext) => {
+          const context: GenAiSpanContextV1 = {
+            ...commonContext,
+            originalPrompt: [],
+            rawCall: undefined,
+          };
 
-        appendPromptMetadataToSpan(span, params.prompt);
+          appendPromptMetadataToSpan(span, params.prompt);
 
-        // Pre-call setup
-        setScopeAttributes(span);
-        setPreCallAttributesV1(span, params, context, model);
+          // Pre-call setup
+          setScopeAttributes(span);
+          setPreCallAttributesV1(span, params, context, model);
 
-        const { stream, ...head } = await doStream();
+          const { stream, ...head } = await doStream();
 
-        // Create child span for stream processing
-        const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
+          // Create child span for stream processing
+          const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
 
-        const stats = new StreamStats();
-        const toolAggregator = new ToolCallAggregator();
-        const textAggregator = new TextAggregator();
+          const stats = new StreamStats();
+          const toolAggregator = new ToolCallAggregator();
+          const textAggregator = new TextAggregator();
 
-        return {
-          ...head,
-          stream: stream.pipeThrough(
-            new TransformStream({
-              transform(chunk: LanguageModelV1StreamPart, controller) {
-                try {
-                  stats.feed(chunk);
-                  toolAggregator.handleChunk(chunk);
-                  textAggregator.feed(chunk);
+          return {
+            ...head,
+            stream: stream.pipeThrough(
+              new TransformStream({
+                transform(chunk: LanguageModelV1StreamPart, controller) {
+                  try {
+                    stats.feed(chunk);
+                    toolAggregator.handleChunk(chunk);
+                    textAggregator.feed(chunk);
 
-                  controller.enqueue(chunk);
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-              async flush(controller) {
-                try {
-                  await setPostCallAttributesV1(
-                    span,
-                    {
-                      ...head,
-                      ...stats.result,
-                      toolCalls:
-                        toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
-                      text: textAggregator.text,
-                    },
-                    context,
-                    model,
-                  );
+                    controller.enqueue(chunk);
+                  } catch (err) {
+                    handleStreamError(childSpan, err);
+                    childSpan.end();
+                    span.end(); // End parent span on error
+                    controller.error(err);
+                  }
+                },
+                async flush(controller) {
+                  try {
+                    await setPostCallAttributesV1(
+                      span,
+                      {
+                        ...head,
+                        ...stats.result,
+                        toolCalls:
+                          toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
+                        text: textAggregator.text,
+                      },
+                      context,
+                      model,
+                    );
 
-                  childSpan.end();
-                  controller.terminate();
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-            }),
-          ),
-        };
-      });
+                    childSpan.end();
+                    span.end(); // End parent span after stream completes
+                    controller.terminate();
+                  } catch (err) {
+                    handleStreamError(childSpan, err);
+                    childSpan.end();
+                    span.end(); // End parent span on error
+                    controller.error(err);
+                  }
+                },
+              }),
+            ),
+          };
+        },
+        { manualEnd: true }, // Don't auto-end span, we'll end it when stream completes
+      );
     },
   };
 }
@@ -245,71 +252,78 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
     },
 
     wrapStream: async ({ doStream, params, model }) => {
-      return withSpanHandling(model.modelId, async (span, commonContext) => {
-        const context: GenAiSpanContextV2 = {
-          ...commonContext,
-          originalPrompt: [],
-          originalV2Prompt: [],
-        };
+      return withSpanHandling(
+        model.modelId,
+        async (span, commonContext) => {
+          const context: GenAiSpanContextV2 = {
+            ...commonContext,
+            originalPrompt: [],
+            originalV2Prompt: [],
+          };
 
-        appendPromptMetadataToSpan(span, params.prompt);
+          appendPromptMetadataToSpan(span, params.prompt);
 
-        // Pre-call setup
-        setScopeAttributes(span);
-        setPreCallAttributesV2(span, params, context, model);
+          // Pre-call setup
+          setScopeAttributes(span);
+          setPreCallAttributesV2(span, params, context, model);
 
-        const ret = await doStream();
+          const ret = await doStream();
 
-        // Create child span for stream processing
-        const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
+          // Create child span for stream processing
+          const childSpan = createStreamChildSpan(span, `chat ${model.modelId} stream`);
 
-        const stats = new StreamStatsV2();
-        const toolAggregator = new ToolCallAggregatorV2();
-        const textAggregator = new TextAggregatorV2();
+          const stats = new StreamStatsV2();
+          const toolAggregator = new ToolCallAggregatorV2();
+          const textAggregator = new TextAggregatorV2();
 
-        return {
-          ...ret,
-          stream: ret.stream.pipeThrough(
-            new TransformStream({
-              transform(chunk: LanguageModelV2StreamPart, controller) {
-                try {
-                  stats.feed(chunk);
-                  toolAggregator.handleChunk(chunk);
-                  textAggregator.feed(chunk);
+          return {
+            ...ret,
+            stream: ret.stream.pipeThrough(
+              new TransformStream({
+                transform(chunk: LanguageModelV2StreamPart, controller) {
+                  try {
+                    stats.feed(chunk);
+                    toolAggregator.handleChunk(chunk);
+                    textAggregator.feed(chunk);
 
-                  controller.enqueue(chunk);
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-              async flush(controller) {
-                try {
-                  const streamResult = {
-                    ...stats.result,
-                    content: [
-                      ...(textAggregator.text
-                        ? [{ type: 'text' as const, text: textAggregator.text }]
-                        : []),
-                      ...toolAggregator.result,
-                    ],
-                  };
+                    controller.enqueue(chunk);
+                  } catch (err) {
+                    handleStreamError(childSpan, err);
+                    childSpan.end();
+                    span.end(); // End parent span on error
+                    controller.error(err);
+                  }
+                },
+                async flush(controller) {
+                  try {
+                    const streamResult = {
+                      ...stats.result,
+                      content: [
+                        ...(textAggregator.text
+                          ? [{ type: 'text' as const, text: textAggregator.text }]
+                          : []),
+                        ...toolAggregator.result,
+                      ],
+                    };
 
-                  await setPostCallAttributesV2(span, streamResult, context, model);
+                    await setPostCallAttributesV2(span, streamResult, context, model);
 
-                  childSpan.end();
-                  controller.terminate();
-                } catch (err) {
-                  handleStreamError(childSpan, err);
-                  childSpan.end();
-                  controller.error(err);
-                }
-              },
-            }),
-          ),
-        };
-      });
+                    childSpan.end();
+                    span.end(); // End parent span after stream completes
+                    controller.terminate();
+                  } catch (err) {
+                    handleStreamError(childSpan, err);
+                    childSpan.end();
+                    span.end(); // End parent span on error
+                    controller.error(err);
+                  }
+                },
+              }),
+            ),
+          };
+        },
+        { manualEnd: true }, // Don't auto-end span, we'll end it when stream completes
+      );
     },
   };
 }
