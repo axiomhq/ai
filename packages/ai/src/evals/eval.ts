@@ -498,18 +498,18 @@ async function registerEval<
                       },
                     },
                     async (scorerSpan) => {
+                      const scorerStart = performance.now();
                       try {
-                        const start = performance.now();
                         const result = await scorer({
                           input: data.input,
                           output: output,
                           expected: data.expected,
                         });
 
-                        const duration = Math.round(performance.now() - start);
+                        const duration = Math.round(performance.now() - scorerStart);
                         const scoreValue = result.score as number;
                         const metadata = Object.assign(
-                          { duration, startedAt: start },
+                          { duration, startedAt: scorerStart },
                           result.metadata,
                         );
 
@@ -531,14 +531,18 @@ async function registerEval<
                         return {
                           name: scorerName,
                           score: scoreValue,
-                          metadata: Object.assign({ duration, startedAt: start }, result.metadata),
+                          metadata: Object.assign(
+                            { duration, startedAt: scorerStart },
+                            result.metadata,
+                          ),
                         };
                       } catch (error) {
+                        const scorerDuration = Math.round(performance.now() - scorerStart);
                         console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
                         const msg = getErrorMessage(error);
                         const metadata = {
-                          duration,
-                          startedAt: start,
+                          duration: scorerDuration,
+                          startedAt: scorerStart,
                           error: msg,
                         };
 
