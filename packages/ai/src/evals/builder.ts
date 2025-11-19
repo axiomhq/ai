@@ -1,7 +1,7 @@
 import type { EvalParams } from './eval.types';
 import { Eval } from './eval'; // existing Eval function
 import { withEvalContext } from './context/storage';
-import type { ValidateName } from './name-validation';
+import type { ValidateName } from '../util/name-validation';
 
 export interface EvalBuilder<
   AllowedFlags extends Record<string, any> = {},
@@ -81,10 +81,7 @@ class EvalBuilderImpl<
     }
 
     // Call existing Eval function - this handles all Vitest registration
-    // Cast finalName since suffix may add ':' which isn't in ValidChars
-    // (suffix is from like `someTest.run('variant')` which is used for parametrization)
-    // we currently don't expose this
-    Eval<TInput, TExpected, TOutput>(finalName as never, finalParams);
+    Eval<TInput, TExpected, TOutput>(finalName, finalParams);
   }
 }
 
@@ -98,9 +95,14 @@ export function defineEval<
   TOutput extends string | Record<string, any> = string,
   AllowedFlags extends Record<string, any> = {},
   Name extends string = string,
+  Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: EvalParams<TInput, TExpected, TOutput>,
+  params: EvalParams<TInput, TExpected, TOutput> & {
+    capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
+  },
 ): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput> {
   return new EvalBuilderImpl<AllowedFlags, TInput, TExpected, TOutput>(name, params);
 }

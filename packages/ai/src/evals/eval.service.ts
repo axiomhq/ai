@@ -3,6 +3,12 @@ import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { Attr } from '../otel';
+import { AxiomCLIError } from '../cli/errors';
+import {
+  getCustomOrRegularAttribute,
+  getCustomOrRegularNumber,
+  getCustomOrRegularString,
+} from '../util/traces';
 
 export interface EvaluationApiConfig {
   dataset?: string;
@@ -17,10 +23,11 @@ export type EvaluationStatus = 'running' | 'completed' | 'errored' | 'cancelled'
 export interface EvaluationApiPayloadBase {
   id: string;
   name: string;
+  capability: string;
+  step?: string | undefined;
   dataset: string;
   baselineId?: string;
   totalCases?: number;
-  scorers?: string[];
   config?: Record<string, unknown>;
   status: EvaluationStatus;
   successCases?: number;
@@ -30,30 +37,39 @@ export interface EvaluationApiPayloadBase {
   version: string;
   runId: string;
   configTimeoutMs: number;
+  metadata?: Record<string, any>;
 }
 
 export class EvaluationApiClient {
   private readonly fetcher: Fetcher;
   constructor(config: ResolvedAxiomConfig) {
-    const { consoleEndpointUrl, token } = resolveAxiomConnection(config);
+    const { consoleEndpointUrl, token, orgId } = resolveAxiomConnection(config);
 
-    this.fetcher = createFetcher(consoleEndpointUrl, token ?? '');
+    this.fetcher = createFetcher({ baseUrl: consoleEndpointUrl, token: token ?? '', orgId });
   }
 
   async createEvaluation(evaluation: EvaluationApiPayloadBase) {
-    const resp = await this.fetcher(`/api/evaluations/v3`, {
+    const resp = await this.fetcher(`/api/v3/evaluations`, {
       method: 'POST',
       body: JSON.stringify(evaluation),
     });
+
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to create evaluation: ${resp.statusText}`);
+    }
 
     return resp.json();
   }
 
   async updateEvaluation(evaluation: Partial<EvaluationApiPayloadBase>) {
-    const resp = await this.fetcher(`/api/evaluations/v3/${evaluation.id}`, {
+    const resp = await this.fetcher(`/api/v3/evaluations/${evaluation.id}`, {
       method: 'PATCH',
       body: JSON.stringify(evaluation),
     });
+
+    if (!resp.ok) {
+      throw new AxiomCLIError(`Failed to update evaluation: ${resp.statusText}`);
+    }
 
     return resp.json();
   }
@@ -63,13 +79,14 @@ export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, url, token } = resolveAxiomConnection(config);
+  const { dataset, url, token, orgId } = resolveAxiomConnection(config);
 
   const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
+    ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
   const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
@@ -86,43 +103,44 @@ export const findEvaluationCases = async (
   return payload.matches.length ? buildSpanTree(payload.matches) : null;
 };
 
-export const mapSpanToEval = (span: any): Evaluation => {
-  const flagConfigRaw =
-    span.data.attributes[Attr.Eval.Config.Flags] ??
-    span.data.attributes.custom[Attr.Eval.Config.Flags];
+type DeepPartial<T> = T extends object ? { [P in keyof T]?: DeepPartial<T[P]> } : T;
 
-  return {
-    id: span.data.attributes.custom[Attr.Eval.ID],
-    name: span.data.attributes.custom[Attr.Eval.Name],
-    type: span.data.attributes.custom[Attr.Eval.Type],
-    version: span.data.attributes.custom[Attr.Eval.Version],
+export const mapSpanToEval = (span: any): Evaluation => {
+  const flagConfigRaw = getCustomOrRegularAttribute(span.data.attributes, Attr.Eval.Config.Flags);
+  const tagsRaw = getCustomOrRegularAttribute(span.data.attributes, Attr.Eval.Tags);
+
+  const evaluation: DeepPartial<Evaluation> = {
+    id: getCustomOrRegularString(span.data.attributes, Attr.Eval.ID),
+    name: getCustomOrRegularString(span.data.attributes, Attr.Eval.Name),
+    type: getCustomOrRegularString(span.data.attributes, Attr.Eval.Type),
+    version: getCustomOrRegularString(span.data.attributes, Attr.Eval.Version),
     collection: {
-      name: span.data.attributes.custom[Attr.Eval.Collection.Name],
-      size: span.data.attributes.custom[Attr.Eval.Collection.Size],
+      name: getCustomOrRegularString(span.data.attributes, Attr.Eval.Collection.Name),
+      size: getCustomOrRegularNumber(span.data.attributes, Attr.Eval.Collection.Size),
     },
     baseline: {
-      id: span.data.attributes.custom[Attr.Eval.Baseline.ID],
-      name: span.data.attributes.custom[Attr.Eval.Baseline.Name],
-    },
-    prompt: {
-      // TODO: do we still want this?
-      model: span.data.attributes.custom['eval.prompt.model'],
-      params: span.data.attributes.custom['eval.prompt.params'],
+      id: getCustomOrRegularString(span.data.attributes, Attr.Eval.Baseline.ID),
+      name: getCustomOrRegularString(span.data.attributes, Attr.Eval.Baseline.Name),
     },
     duration: span.data.duration,
     status: span.data.status.code,
     traceId: span.data.trace_id,
     runAt: span._time,
-    tags: span.data.attributes.custom[Attr.Eval.Tags].length
-      ? JSON.parse(span.data.attributes.custom[Attr.Eval.Tags])
-      : [],
+    tags: tagsRaw ? (typeof tagsRaw === 'string' ? JSON.parse(tagsRaw) : tagsRaw) : [],
     user: {
-      name: span.data.attributes.custom[Attr.Eval.User.Name],
-      email: span.data.attributes.custom[Attr.Eval.User.Email],
+      name: getCustomOrRegularString(span.data.attributes, Attr.Eval.User.Name),
+      email: getCustomOrRegularString(span.data.attributes, Attr.Eval.User.Email),
     },
     cases: [],
-    flagConfig: flagConfigRaw ? JSON.parse(flagConfigRaw) : undefined,
+    flagConfig: flagConfigRaw
+      ? typeof flagConfigRaw === 'string'
+        ? JSON.parse(flagConfigRaw)
+        : flagConfigRaw
+      : undefined,
   };
+
+  // TODO: this is very optimistic!
+  return evaluation as Evaluation;
 };
 
 export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
@@ -136,20 +154,23 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     duration = d;
   }
 
-  return {
-    index: data.attributes.custom[Attr.Eval.Case.Index],
-    input: data.attributes.custom[Attr.Eval.Case.Input],
-    output: data.attributes.custom[Attr.Eval.Case.Output],
-    expected: data.attributes.custom[Attr.Eval.Case.Expected],
+  const scores = getCustomOrRegularAttribute(data.attributes, Attr.Eval.Case.Scores);
+
+  const caseData: DeepPartial<Case> = {
+    index: getCustomOrRegularNumber(data.attributes, Attr.Eval.Case.Index),
+    input: getCustomOrRegularString(data.attributes, Attr.Eval.Case.Input),
+    output: getCustomOrRegularString(data.attributes, Attr.Eval.Case.Output),
+    expected: getCustomOrRegularString(data.attributes, Attr.Eval.Case.Expected),
     duration: duration,
     status: data.status.code,
-    scores: data.attributes.custom[Attr.Eval.Case.Scores]
-      ? JSON.parse(data.attributes.custom[Attr.Eval.Case.Scores])
-      : {},
+    scores: scores ? (typeof scores === 'string' ? JSON.parse(scores) : scores) : undefined,
     runAt: item._time,
     spanId: data.span_id,
     traceId: data.trace_id,
   };
+
+  // TODO: this is very optimistic!
+  return caseData as Case;
 };
 
 // compute a root eval with its children spans, results in a usable object of eval, cases, scores and chats
@@ -191,30 +212,34 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
       );
 
       const chatData: Chat[] = chatSpans.map((chatSpan) => ({
-        operation: chatSpan.data.attributes.custom?.operation || '',
-        capability: chatSpan.data.attributes.custom?.capability || '',
-        step: chatSpan.data.attributes.custom?.step || '',
+        operation: getCustomOrRegularString(chatSpan.data.attributes, 'operation') ?? '',
+        capability: getCustomOrRegularString(chatSpan.data.attributes, 'capability') ?? '',
+        step: getCustomOrRegularString(chatSpan.data.attributes, 'step') ?? '',
         request: {
-          max_token: chatSpan.data.attributes.custom?.['request.max_token'] || '',
-          model: chatSpan.data.attributes.custom?.['request.model'] || '',
-          temperature: chatSpan.data.attributes.custom?.['request.temperature'] || 0,
+          max_token: getCustomOrRegularString(chatSpan.data.attributes, 'request.max_token') ?? '',
+          model: getCustomOrRegularString(chatSpan.data.attributes, 'request.model') ?? '',
+          temperature:
+            getCustomOrRegularNumber(chatSpan.data.attributes, 'request.temperature') ?? 0,
         },
         response: {
-          finish_reasons: chatSpan.data.attributes.custom?.['response.finish_reasons'] || '',
+          finish_reasons:
+            getCustomOrRegularString(chatSpan.data.attributes, 'response.finish_reasons') ?? '',
         },
         usage: {
-          input_tokens: chatSpan.data.attributes.gen_ai?.usage?.input_tokens || 0,
-          output_tokens: chatSpan.data.attributes.gen_ai?.usage?.output_tokens || 0,
+          input_tokens:
+            getCustomOrRegularNumber(chatSpan.data.attributes, 'usage.input_tokens') ?? 0,
+          output_tokens:
+            getCustomOrRegularNumber(chatSpan.data.attributes, 'usage.output_tokens') ?? 0,
         },
       }));
 
       // Create task data with chat information
       const taskData: Task = {
         name: taskSpan.data.name,
-        output: taskSpan.data.attributes.custom?.output || '',
-        trial: taskSpan.data.attributes.custom?.trial || 0,
-        type: taskSpan.data.attributes.custom?.type || '',
-        error: taskSpan.data.attributes.custom?.error,
+        output: getCustomOrRegularString(taskSpan.data.attributes, 'output') || '',
+        trial: getCustomOrRegularNumber(taskSpan.data.attributes, 'trial') || 0,
+        type: getCustomOrRegularString(taskSpan.data.attributes, 'type') || '',
+        error: getCustomOrRegularString(taskSpan.data.attributes, 'error') || '',
         chat: chatData[0] || {
           operation: '',
           capability: '',
@@ -238,10 +263,10 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
     caseData.scores = {};
 
     scoreSpans.forEach((score) => {
-      const name = score.data.attributes.custom[Attr.Eval.Score.Name];
+      const name = getCustomOrRegularString(score.data.attributes, 'name') ?? '';
       caseData.scores[name] = {
         name,
-        value: score.data.attributes.custom[Attr.Eval.Score.Value],
+        value: getCustomOrRegularNumber(score.data.attributes, 'value') ?? 0,
         metadata: {
           error: score.data.attributes.error,
         },

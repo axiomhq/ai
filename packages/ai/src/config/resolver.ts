@@ -31,6 +31,7 @@ export function resolveAxiomConnection(
     consoleEndpointUrl: consoleEndpointUrl,
     token: config.eval.token,
     dataset: config.eval.dataset,
+    orgId: config.eval.orgId,
   };
 }
 

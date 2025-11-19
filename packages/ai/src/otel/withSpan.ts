@@ -11,6 +11,8 @@ import {
 import { WITHSPAN_BAGGAGE_KEY, WITHSPAN_REDACTION_POLICY_KEY } from './withSpanBaggageKey';
 import { getTracer } from './utils/wrapperUtils';
 import type { AxiomAIRedactionPolicy } from './utils/redaction';
+import type { ValidateName } from '../util/name-validation';
+import { isValidName } from '../util/name-validation-runtime';
 
 /**
  * Metadata for categorizing and tracking spans within the AI application.
@@ -89,8 +91,11 @@ type WithSpanMeta = {
  * res.end();
  * ```
  */
-export function withSpan<Return>(
-  meta: WithSpanMeta,
+export function withSpan<Return, Capability extends string = string, Step extends string = string>(
+  meta: WithSpanMeta & {
+    capability: ValidateName<Capability>;
+    step: ValidateName<Step>;
+  },
   fn: (span: Span) => Promise<Return>,
   opts?: {
     tracer?: Tracer;
@@ -105,6 +110,16 @@ export function withSpan<Return>(
   const spanContext = trace.setSpan(context.active(), span);
 
   return context.with(spanContext, async () => {
+    const capabilityValidation = isValidName(meta.capability);
+    if (!capabilityValidation.valid) {
+      console.warn(`[AxiomAI] Invalid capability name: ${capabilityValidation.error}. `);
+    }
+
+    const stepValidation = isValidName(meta.step);
+    if (!stepValidation.valid) {
+      console.warn(`[AxiomAI] Invalid step name: ${stepValidation.error}. `);
+    }
+
     if (!span.isRecording()) {
       const provider = trace.getTracerProvider();
       const providerIsNoOp = provider.constructor.name === 'NoopTracerProvider';

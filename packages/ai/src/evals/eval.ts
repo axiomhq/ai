@@ -27,7 +27,7 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
-import type { ValidateName } from './name-validation';
+import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
 
 declare module 'vitest' {
@@ -65,6 +65,7 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * import { Eval } from 'axiom/ai/evals';
  *
  * Eval('Text Generation Quality', {
+ *   capability: 'capability-name',
  *   data: async () => [
  *     { input: 'Explain photosynthesis', expected: 'Plants convert light to energy...' },
  *     { input: 'What is gravity?', expected: 'Gravity is a fundamental force...' }
@@ -88,12 +89,13 @@ export function Eval<
     expected: ExpectedOf<Data>;
   }) => string | Record<string, any> | Promise<string | Record<string, any>>,
   Name extends string = string,
+  Capability extends string = string,
+  Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<
-    EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>,
-    'data' | 'task' | 'scorers'
-  > & {
+  params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
+    capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
     data: () => Data | Promise<Data>;
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
@@ -108,7 +110,15 @@ export function Eval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
   Name extends string = string,
->(name: ValidateName<Name>, params: EvalParams<TInput, TExpected, TOutput>): void;
+  Capability extends string = string,
+  Step extends string = string,
+>(
+  name: ValidateName<Name>,
+  params: EvalParams<TInput, TExpected, TOutput> & {
+    capability: ValidateName<Capability>;
+    step?: ValidateName<Step> | undefined;
+  },
+): void;
 
 /**
  * Implementation
@@ -116,6 +126,10 @@ export function Eval<
 export function Eval(name: string, params: any): void {
   // Record eval name for validation
   recordName('eval', name);
+  recordName('capability', params.capability);
+  if (params.step) {
+    recordName('step', params.step);
+  }
 
   // Record all scorer names for validation
   if (params.scorers) {
@@ -238,6 +252,9 @@ async function registerEval<
             [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
             [Attr.Eval.Collection.Size]: dataset.length,
+            // capability
+            [Attr.Eval.Capability.Name]: opts.capability,
+            [Attr.Eval.Step.Name]: opts.step ?? undefined,
             // metadata
             [Attr.Eval.Metadata]: JSON.stringify(opts.metadata),
             // run
@@ -252,19 +269,24 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.ID, evalId);
         suiteContext = trace.setSpan(context.active(), suiteSpan);
 
+        const flagConfig = captureFlagConfig(opts.configFlags);
+        suite.meta.evaluation.flagConfig = flagConfig;
+        const flagConfigJson = JSON.stringify(flagConfig);
+        suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
+
         const createEvalResponse = await evaluationApiClient.createEvaluation({
           id: evalId,
           name: evalName,
+          capability: opts.capability,
+          step: opts.step,
           dataset: axiomConfig.eval.dataset,
           version: evalVersion,
           baselineId: baselineId ?? undefined,
           runId: runId,
           totalCases: dataset.length,
-          scorers: opts.scorers?.map((s) => s.name ?? 'unknown'),
-          config: {
-            flags: opts.configFlags ?? [],
-          },
+          config: { overrides: injectedOverrides },
           configTimeoutMs: timeoutMs,
+          metadata: opts.metadata,
           status: 'running',
         });
 
@@ -273,7 +295,7 @@ async function registerEval<
 
         // Load baseline if we got a baselineId from the server
         try {
-          if (!isDebug && !isList && resolvedBaselineId) {
+          if (!isDebug && !isList && !!resolvedBaselineId) {
             baseline = await findEvaluationCases(resolvedBaselineId, axiomConfig);
           }
         } catch (error) {
@@ -285,6 +307,7 @@ async function registerEval<
         if (baseline) {
           suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
           suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
+          suiteSpan.setAttribute(Attr.Eval.Baseline.Version, baseline.version);
         }
 
         // Ensure worker process knows CLI overrides
@@ -310,10 +333,6 @@ async function registerEval<
             : { status: 'success' },
         };
 
-        const flagConfig = captureFlagConfig(opts.configFlags);
-        suite.meta.evaluation.flagConfig = flagConfig;
-        const flagConfigJson = JSON.stringify(flagConfig);
-        suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
         suiteStart = performance.now();
       });
 
@@ -363,28 +382,11 @@ async function registerEval<
           };
         }
 
-        const durationMs = Math.round(performance.now() - suiteStart);
-
-        const successCases = suite.tasks.filter(
-          (task) => task.meta.case.status === 'success',
-        ).length;
-        const erroredCases = suite.tasks.filter(
-          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
-        ).length;
-
-        await evaluationApiClient.updateEvaluation({
-          id: evalId,
-          status: 'completed',
-          totalCases: dataset.length,
-          successCases,
-          erroredCases,
-          durationMs,
-        });
-
         // end root span
         suiteSpan?.setStatus({ code: SpanStatusCode.OK });
         suiteSpan?.end();
 
+        // flush traces before updating Evaluation in Axiom
         try {
           await flush();
         } catch (flushError) {
@@ -396,6 +398,25 @@ async function registerEval<
             };
           }
         }
+
+        const durationMs = Math.round(performance.now() - suiteStart);
+
+        const successCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'success',
+        ).length;
+        const erroredCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
+        ).length;
+
+        // signal Axiom that evaluation finished to kick of summary calculations
+        await evaluationApiClient.updateEvaluation({
+          id: evalId,
+          status: 'completed',
+          totalCases: dataset.length,
+          successCases,
+          erroredCases,
+          durationMs,
+        });
       });
 
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
@@ -443,12 +464,14 @@ async function registerEval<
                 },
                 {
                   index: data.index,
-                  expected: data.expected,
                   input: data.input,
+                  expected: data.expected,
                   scorers: opts.scorers,
                   task: opts.task,
                   metadata: opts.metadata,
                   configFlags: opts.configFlags,
+                  capability: opts.capability,
+                  step: opts.step,
                 },
               );
               const { output, duration } = result;
@@ -477,7 +500,7 @@ async function registerEval<
                       const start = performance.now();
                       const result = await scorer({
                         input: data.input,
-                        output,
+                        output: output,
                         expected: data.expected,
                       });
 
@@ -666,7 +689,6 @@ const runTask = async <
     input: TInput;
     expected: TExpected | undefined;
   } & Omit<EvalParams<TInput, TExpected, TOutput>, 'data'>,
-  // TODO: EXPERIMENTS - we had `evalScope` here before... need to figure out what to do instead
 ) => {
   const taskName = opts.task.name ?? 'anonymous';
 

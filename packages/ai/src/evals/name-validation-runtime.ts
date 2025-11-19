@@ -1,11 +1,12 @@
 import { AxiomCLIError } from '../cli/errors';
 import { appendFileSync } from 'node:fs';
+import { isValidName } from '../util/name-validation-runtime';
 
 /**
- * Records an eval or scorer name
+ * Records an eval, scorer, capability, or step name
  * Uses a file to work cross-worker
  */
-export function recordName(kind: 'eval' | 'scorer', name: string): void {
+export function recordName(kind: 'eval' | 'scorer' | 'capability' | 'step', name: string): void {
   const registryFile = process.env.AXIOM_NAME_REGISTRY_FILE;
   if (registryFile) {
     try {
@@ -18,17 +19,11 @@ export function recordName(kind: 'eval' | 'scorer', name: string): void {
 
 /**
  * Validates that a name contains only allowed characters (A-Z, a-z, 0-9, -, _)
- * and is not empty.
+ * and is not empty. Throws AxiomCLIError if validation fails.
  */
-export function validateName(name: string, kind: 'eval' | 'scorer'): void {
-  if (name === '') {
-    throw new AxiomCLIError(`❌ ${kind} name cannot be empty`);
-  }
-
-  const validPattern = /^[A-Za-z0-9_-]+$/;
-  if (!validPattern.test(name)) {
-    throw new AxiomCLIError(
-      `❌ Invalid character in ${kind} name "${name}". Only A-Z, a-z, 0-9, -, _ allowed`,
-    );
+export function validateName(name: string, kind: 'eval' | 'scorer' | 'capability' | 'step'): void {
+  const validation = isValidName(name);
+  if (!validation.valid) {
+    throw new AxiomCLIError(`❌ ${kind} name: ${validation.error}`);
   }
 }
