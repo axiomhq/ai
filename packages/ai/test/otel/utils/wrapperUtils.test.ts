@@ -3,7 +3,7 @@ import { type Span } from '@opentelemetry/api';
 import {
   withSpanHandling,
   createStreamChildSpan,
-  handleStreamError,
+  classifyToolError,
 } from '../../../src/otel/utils/wrapperUtils';
 import { Attr } from '../../../src/otel/semconv/attributes';
 
@@ -77,7 +77,9 @@ describe('wrapperUtils error handling', () => {
       const timeoutError = new Error('Connection timeout');
       timeoutError.name = 'TimeoutError';
 
-      const operation = vi.fn().mockRejectedValue(timeoutError);
+      const operation = vi.fn(async (_span, _context, _lease) => {
+        throw timeoutError;
+      });
 
       try {
         await withSpanHandling('test-model', operation);
@@ -467,7 +469,7 @@ describe('wrapperUtils error handling', () => {
       });
     });
 
-    describe('handleStreamError', () => {
+    describe('classifyToolError', () => {
       beforeEach(() => {
         vi.clearAllMocks();
       });
@@ -476,7 +478,7 @@ describe('wrapperUtils error handling', () => {
         const testError = new Error('Stream processing failed');
         testError.name = 'NetworkError';
 
-        handleStreamError(mockChildSpan, testError);
+        classifyToolError(testError, mockChildSpan);
 
         expect(mockChildSpan.recordException).toHaveBeenCalledWith(testError);
         expect(mockChildSpan.setStatus).toHaveBeenCalledWith({
@@ -493,7 +495,7 @@ describe('wrapperUtils error handling', () => {
       it('should handle primitive errors', () => {
         const stringError = 'Stream failed with string error';
 
-        handleStreamError(mockChildSpan, stringError);
+        classifyToolError(stringError, mockChildSpan);
 
         expect(mockChildSpan.recordException).toHaveBeenCalledWith({
           message: 'Stream failed with string error',
@@ -514,7 +516,7 @@ describe('wrapperUtils error handling', () => {
         const timeoutError = new Error('Stream timeout');
         timeoutError.name = 'TimeoutError';
 
-        handleStreamError(mockChildSpan, timeoutError);
+        classifyToolError(timeoutError, mockChildSpan);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'timeout');
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
@@ -526,13 +528,13 @@ describe('wrapperUtils error handling', () => {
       it('should handle stream errors with HTTP status codes', () => {
         const apiError = {
           message: 'Stream API error',
-          name: 'APIError',
+          name: 'NetworkError',
           status: 503,
         };
 
-        handleStreamError(mockChildSpan, apiError);
+        classifyToolError(apiError, mockChildSpan);
 
-        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
+        expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'network');
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.HTTP.Response.StatusCode, 503);
       });
 
@@ -540,7 +542,7 @@ describe('wrapperUtils error handling', () => {
         const parseError = new Error('Invalid JSON in stream chunk');
         parseError.name = 'ParseError';
 
-        handleStreamError(mockChildSpan, parseError);
+        classifyToolError(parseError, mockChildSpan);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'parsing');
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
@@ -553,7 +555,7 @@ describe('wrapperUtils error handling', () => {
         const validationError = new Error('Invalid stream chunk format');
         validationError.name = 'ValidationError';
 
-        handleStreamError(mockChildSpan, validationError);
+        classifyToolError(validationError, mockChildSpan);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'validation');
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(
@@ -566,7 +568,7 @@ describe('wrapperUtils error handling', () => {
         const errorWithoutMessage = new Error('');
         errorWithoutMessage.name = 'TestError';
 
-        handleStreamError(mockChildSpan, errorWithoutMessage);
+        classifyToolError(errorWithoutMessage, mockChildSpan);
 
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
         expect(mockChildSpan.setAttribute).not.toHaveBeenCalledWith(Attr.Error.Message, '');
@@ -575,12 +577,10 @@ describe('wrapperUtils error handling', () => {
 
     describe('stream error lifecycle', () => {
       it('should properly end child span on error', () => {
-        // This is more of an integration test pattern
-        // The actual stream transform tests would be in the wrapper-specific test files
         const childSpan = createStreamChildSpan(mockSpan, 'chat test-model stream');
         const streamError = new Error('Stream interrupted');
 
-        handleStreamError(childSpan, streamError);
+        classifyToolError(streamError, childSpan);
         childSpan.end();
 
         expect(mockChildSpan.end).toHaveBeenCalled();

@@ -3,17 +3,49 @@ import {
   context,
   propagation,
   type Span,
+  type Tracer,
   SpanStatusCode,
   type AttributeValue,
-  type Tracer,
 } from '@opentelemetry/api';
 import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from '../semconv/attributes';
-import { createStartActiveSpan } from '../startActiveSpan';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
+import { createStartActiveSpan } from '../startActiveSpan';
 
 import { getGlobalTracer } from '../initAxiomAI';
-// Removed import of createGenAISpanName since it's no longer exported
 import packageJson from '../../../package.json';
+import type { OpenAIMessage } from '../vercelTypes';
+import type { LanguageModelV2Prompt } from '@ai-sdk/providerv2';
+
+/**
+ * Common span context discriminated union for V1 and V2
+ */
+type GenAiSpanContext =
+  | {
+      version: 'v1';
+      originalPrompt: OpenAIMessage[];
+      rawCall?: {
+        rawPrompt?: unknown[];
+        rawSettings?: unknown;
+      };
+    }
+  | {
+      version: 'v2';
+      originalPrompt: OpenAIMessage[];
+      originalV2Prompt?: LanguageModelV2Prompt;
+    };
+
+export type GenAiSpanContextV1 = Extract<GenAiSpanContext, { version: 'v1' }>;
+export type GenAiSpanContextV2 = Extract<GenAiSpanContext, { version: 'v2' }>;
+
+/**
+ * SpanLease represents ownership of a span's lifecycle
+ * - owned: true means the middleware created the span and must end it
+ * - owned: false means the span is owned by withSpan and middleware must NOT end it
+ */
+export interface SpanLease {
+  owned: boolean;
+  end: () => void;
+}
 
 /**
  * Classifies errors into low-cardinality types for OpenTelemetry error.type attribute
@@ -191,14 +223,6 @@ function createGenAISpanName(operation: string, suffix?: string): string {
 }
 
 /**
- * Common span context interface for both V1 and V2
- */
-export interface CommonSpanContext {
-  originalPrompt: any[];
-  rawCall?: any;
-}
-
-/**
  * Sets common scope attributes on a span from baggage
  */
 export function setScopeAttributes(span: Span): void {
@@ -300,28 +324,28 @@ export function setRequestParameterAttributes(
 
 /**
  * Creates a child span for stream processing
- * This is used to capture errors that occur during stream processing,
- * after the parent span has ended
+ * This provides granular visibility into stream consumption phases
  */
 export function createStreamChildSpan(parentSpan: Span, operationName: string): Span {
   const tracer = getTracer();
 
   // Create child span by setting parent context
-  const spanContext = trace.setSpan(context.active(), parentSpan);
+  const ctx = context.active();
+  const spanContext = trace.setSpan(ctx, parentSpan);
   const childSpan = tracer.startSpan(operationName, undefined, spanContext);
 
   return childSpan;
 }
 
 /**
- * Enhanced error handling for child spans with OpenTelemetry compliance
+ * Records an error on a span with proper classification and attributes
+ * Consolidates all error handling logic in one place
  */
-export function handleStreamError(span: Span, err: unknown): void {
+function recordSpanError(span: Span, err: unknown): void {
   // Enhanced error handling for OpenTelemetry compliance
   if (err instanceof Error) {
-    span.recordException(err); // Error objects are compatible with Exception interface
+    span.recordException(err);
   } else {
-    // Convert primitives to compatible format
     span.recordException({
       message: String(err),
       name: 'UnknownError',
@@ -350,88 +374,75 @@ export function handleStreamError(span: Span, err: unknown): void {
 
 /**
  * Common span handling logic for both V1 and V2
+ * Returns a SpanLease that indicates whether the middleware owns the span
  */
 export async function withSpanHandling<T>(
   modelId: string,
-  operation: (span: Span, context: CommonSpanContext) => Promise<T>,
-  options?: { manualEnd?: boolean },
+  operation: (span: Span, context: GenAiSpanContext, lease: SpanLease) => Promise<T>,
+  options?: { streaming?: boolean; version?: 'v1' | 'v2' },
 ): Promise<T> {
   const bag = propagation.getActiveBaggage();
   const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
-  const context: CommonSpanContext = {
-    originalPrompt: [],
-    rawCall: undefined,
-  };
+  const spanContext: GenAiSpanContext =
+    options?.version === 'v2'
+      ? { version: 'v2', originalPrompt: [], originalV2Prompt: undefined }
+      : { version: 'v1', originalPrompt: [], rawCall: undefined };
+
+  const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 
   if (isWithinWithSpan) {
-    // Reuse existing span created by withSpan
+    // Reuse existing span created by withSpan - we don't own it
     const activeSpan = trace.getActiveSpan();
     if (!activeSpan) {
       throw new Error('Expected active span when within withSpan');
     }
-    activeSpan.updateName(createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId));
+    activeSpan.updateName(name);
+
+    const lease: SpanLease = {
+      owned: false,
+      end: () => {}, // No-op: we don't own this span
+    };
 
     try {
-      return await operation(activeSpan, context);
+      return await operation(activeSpan, spanContext, lease);
     } catch (err) {
-      // Enhanced error handling for OpenTelemetry compliance
-      if (err instanceof Error) {
-        activeSpan.recordException(err); // Error objects are compatible with Exception interface
-      } else {
-        // Convert primitives to compatible format
-        activeSpan.recordException({
-          message: String(err),
-          name: 'UnknownError',
-        });
-      }
-
-      activeSpan.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: err instanceof Error ? err.message : String(err),
-      });
-
-      // MANDATORY: Add OpenTelemetry error attributes for cross-vendor compatibility
-      const errorType = classifyError(err);
-      activeSpan.setAttribute(Attr.Error.Type, errorType ?? 'unknown');
-
-      // OPTIONAL: Add human-readable error message
-      if (err instanceof Error && err.message) {
-        activeSpan.setAttribute(Attr.Error.Message, err.message);
-      }
-
-      // For Vercel AI SDK specific errors, add HTTP status if available
-      if (err && typeof err === 'object' && 'status' in err) {
-        activeSpan.setAttribute(Attr.HTTP.Response.StatusCode, err.status as AttributeValue);
-      }
-
+      recordSpanError(activeSpan, err);
       throw err;
     }
   } else {
-    // Create new span only if not within withSpan
+    // Create new span - we own it
     const tracer = getTracer();
     const startActiveSpan = createStartActiveSpan(tracer);
-    const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 
-    return startActiveSpan(name, null, (span) => operation(span, context), {
-      manualEnd: options?.manualEnd,
-      onError: (err, span) => {
-        // Enhanced error handling for OpenTelemetry compliance
-        // MANDATORY: Add OpenTelemetry error attributes for cross-vendor compatibility
-        const errorType = classifyError(err);
-        span.setAttribute(Attr.Error.Type, errorType ?? 'unknown');
-
-        // OPTIONAL: Add human-readable error message
-        if (err instanceof Error && err.message) {
-          span.setAttribute(Attr.Error.Message, err.message);
-        }
-
-        // For Vercel AI SDK specific errors, add HTTP status if available
-        if (err && typeof err === 'object' && 'status' in err) {
-          span.setAttribute(Attr.HTTP.Response.StatusCode, err.status as AttributeValue);
-        }
+    return startActiveSpan(
+      name,
+      null,
+      async (span) => {
+        const lease: SpanLease = {
+          owned: true,
+          end: () => span.end(),
+        };
+        return await operation(span, spanContext, lease);
       },
-    });
+      {
+        manualEnd: options?.streaming ?? false,
+        onError: (err, span) => {
+          // createStartActiveSpan already calls span.recordException()
+          // We only need to add our custom error classification attributes
+          const errorType = classifyError(err);
+          span.setAttribute(Attr.Error.Type, errorType ?? 'unknown');
+
+          if (err instanceof Error && err.message) {
+            span.setAttribute(Attr.Error.Message, err.message);
+          }
+
+          if (err && typeof err === 'object' && 'status' in err) {
+            span.setAttribute(Attr.HTTP.Response.StatusCode, err.status as AttributeValue);
+          }
+        },
+      },
+    );
   }
 }
 
