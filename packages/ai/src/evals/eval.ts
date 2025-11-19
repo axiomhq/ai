@@ -29,6 +29,7 @@ import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../cli/errors';
 import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
+import { getErrorMessage } from '../util/errors';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -497,26 +498,69 @@ async function registerEval<
                       },
                     },
                     async (scorerSpan) => {
-                      const start = performance.now();
-                      const result = await scorer({
-                        input: data.input,
-                        output: output,
-                        expected: data.expected,
-                      });
+                      try {
+                        const start = performance.now();
+                        const result = await scorer({
+                          input: data.input,
+                          output: output,
+                          expected: data.expected,
+                        });
 
-                      const duration = Math.round(performance.now() - start);
-                      const scoreValue = result.score as number;
+                        const duration = Math.round(performance.now() - start);
+                        const scoreValue = result.score as number;
+                        const metadata = Object.assign(
+                          { duration, startedAt: start },
+                          result.metadata,
+                        );
 
-                      scorerSpan.setAttributes({
-                        [Attr.Eval.Score.Name]: scorerName,
-                        [Attr.Eval.Score.Value]: scoreValue,
-                      });
+                        scorerSpan.setAttributes({
+                          [Attr.Eval.Score.Name]: scorerName,
+                          [Attr.Eval.Score.Value]: scoreValue,
+                          [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                        });
 
-                      return {
-                        name: scorerName,
-                        ...result,
-                        metadata: { duration, startedAt: start, error: null },
-                      };
+                        if (metadata.error) {
+                          const msg = getErrorMessage(metadata.error);
+
+                          scorerSpan.setStatus({
+                            code: SpanStatusCode.ERROR,
+                            message: msg,
+                          });
+                        }
+
+                        return {
+                          name: scorerName,
+                          score: scoreValue,
+                          metadata: Object.assign({ duration, startedAt: start }, result.metadata),
+                        };
+                      } catch (error) {
+                        console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
+                        const msg = getErrorMessage(error);
+                        const metadata = {
+                          duration,
+                          startedAt: start,
+                          error: msg,
+                        };
+
+                        scorerSpan.setAttributes({
+                          [Attr.Eval.Score.Name]: scorerName,
+                          [Attr.Eval.Score.Value]: undefined,
+                          [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                        });
+
+                        scorerSpan.setStatus({
+                          code: SpanStatusCode.ERROR,
+                          message: msg,
+                        });
+
+                        return {
+                          name: scorerName,
+                          score: null,
+                          metadata,
+                        };
+                      } finally {
+                        scorerSpan.end();
+                      }
                     },
                     caseContext,
                   );
