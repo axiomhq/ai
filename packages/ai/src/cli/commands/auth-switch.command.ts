@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { loadGlobalConfig, saveGlobalConfig } from '../auth/config';
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 
 async function promptSelect<T>(
   message: string,

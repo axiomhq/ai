@@ -19,7 +19,7 @@ import type {
   ResolvedAxiomConfig,
 } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
-import { AxiomCLIError, errorToString } from '../cli/errors';
+import { AxiomCLIError, errorToString } from '../util/errors';
 import { loadConfig } from '../config/loader';
 
 // Lazily initialized tracer provider and exporter

@@ -1,4 +1,4 @@
-import { AxiomCLIError } from '../cli/errors';
+import { AxiomCLIError } from '../util/errors';
 import { appendFileSync } from 'node:fs';
 import { isValidName } from '../util/name-validation-runtime';
 

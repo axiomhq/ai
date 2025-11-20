@@ -3,7 +3,7 @@ import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { Attr } from '../otel';
-import { AxiomCLIError } from '../cli/errors';
+import { AxiomCLIError } from '../util/errors';
 import {
   getCustomOrRegularAttribute,
   getCustomOrRegularNumber,

@@ -1,5 +1,5 @@
 import type { TracerProvider } from '@opentelemetry/api';
-import { AxiomCLIError } from '../cli/errors';
+import { AxiomCLIError } from '../util/errors';
 import { getAuthContext } from '../cli/auth';
 
 /**

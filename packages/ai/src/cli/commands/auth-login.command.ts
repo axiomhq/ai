@@ -3,7 +3,7 @@ import { OAuth } from '../auth/oauth';
 import { startCallbackServer, waitForCallback } from '../auth/callback-server';
 import { getGlobalConfigPath, loadGlobalConfig, saveGlobalConfig } from '../auth/config';
 import { fetchOrganizations, verifyToken } from '../auth/api';
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 
 const BASE_HOSTNAME = 'axiom.co';
 
