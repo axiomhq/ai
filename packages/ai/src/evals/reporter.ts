@@ -18,6 +18,7 @@ import {
   type SuiteData,
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
+import { getConsoleUrl } from '../cli/commands/eval.command';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -41,7 +42,7 @@ export class AxiomReporter implements Reporter {
     // Store resourcesUrl from config
     const config = getAxiomConfig();
     if (config) {
-      this._config = resolveAxiomConnection(config);
+      this._config = resolveAxiomConnection(config, getConsoleUrl());
     }
   }
 

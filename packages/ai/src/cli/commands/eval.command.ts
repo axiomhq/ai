@@ -146,6 +146,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               overrides: flagOverrides,
               config,
               runId,
+              consoleUrl: options.consoleUrl,
             });
           });
         } catch (error) {

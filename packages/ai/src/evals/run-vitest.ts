@@ -55,11 +55,11 @@ export const runVitest = async (
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
     runId: string;
+    consoleUrl?: string;
   },
 ) => {
   // Store config globally so reporters can access it
   setAxiomConfig(opts.config);
-
   // Initialize instrumentation explicitly based on debug or list flag
   await initInstrumentation({
     enabled: !opts.debug && !opts.list,
@@ -124,6 +124,7 @@ export const runVitest = async (
       overrides: opts.overrides,
       axiomConfig: providedConfig,
       runId: opts.runId,
+      consoleUrl: opts.consoleUrl,
     },
   });
 
