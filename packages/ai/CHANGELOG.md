@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/axiomhq/ai/compare/axiom-v0.29.0...axiom-v0.29.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* debug mode ([#147](https://github.com/axiomhq/ai/issues/147)) ([a0de30f](https://github.com/axiomhq/ai/commit/a0de30f0a7fea5c7c8dede321ca464eff97994e9))
+
 ## [0.29.0](https://github.com/axiomhq/ai/compare/axiom-v0.28.0...axiom-v0.29.0) (2025-11-20)
 
 
