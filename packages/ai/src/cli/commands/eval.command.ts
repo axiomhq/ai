@@ -12,6 +12,11 @@ import c from 'tinyrainbow';
 
 const createRunId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
+// Module-level storage for console URL override
+let consoleUrl: string | undefined;
+export function getConsoleUrl(): string | undefined {
+  return consoleUrl;
+}
 /**
  * Gets default token from auth context or falls back to env var
  */
@@ -126,6 +131,8 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           }
 
           const runId = createRunId();
+
+          consoleUrl = options.consoleUrl;
 
           await runEvalWithContext(flagOverrides, async () => {
             return runVitest('.', {

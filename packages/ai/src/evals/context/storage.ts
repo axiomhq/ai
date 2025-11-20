@@ -13,20 +13,12 @@ function setGlobalConfigScope(scope: ReturnType<typeof createAppScope>) {
   (globalThis as any)[CONFIG_SCOPE_SYMBOL] = scope;
 }
 
-const CONSOLE_URL_SYMBOL = Symbol.for('axiom.eval.consoleUrl');
-export function getConsoleUrl(): string | undefined {
-  return (globalThis as any)[CONSOLE_URL_SYMBOL];
-}
-export function setConsoleUrl(consoleUrl?: string) {
-  (globalThis as any)[CONSOLE_URL_SYMBOL] = consoleUrl;
-}
-
 // Global storage for axiom config (accessible from reporters)
 const AXIOM_CONFIG_SYMBOL = Symbol.for('axiom.eval.config');
 export function getAxiomConfig(): ResolvedAxiomConfig | undefined {
   return (globalThis as any)[AXIOM_CONFIG_SYMBOL];
 }
-export function setAxiomConfig(config: ResolvedAxiomConfig & { consoleUrl?: string }) {
+export function setAxiomConfig(config: ResolvedAxiomConfig) {
   (globalThis as any)[AXIOM_CONFIG_SYMBOL] = config;
 }
 

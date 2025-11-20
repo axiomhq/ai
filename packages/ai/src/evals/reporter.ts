@@ -1,7 +1,7 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
-import { getAxiomConfig, getConsoleUrl } from './context/storage';
+import { getAxiomConfig } from './context/storage';
 import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import {
   maybePrintFlags,
@@ -18,6 +18,7 @@ import {
   type SuiteData,
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
+import { getConsoleUrl } from '../cli/commands/eval.command';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
