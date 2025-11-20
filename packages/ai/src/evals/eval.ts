@@ -199,8 +199,9 @@ async function registerEval<
 
   const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
 
-  const instrumentationReady =
-    !isDebug && !isList ? ensureInstrumentationInitialized(axiomConfig) : Promise.resolve();
+  const instrumentationReady = ensureInstrumentationInitialized(axiomConfig, {
+    enabled: !isDebug && !isList,
+  });
 
   const result = await describe(
     evalName,
@@ -276,21 +277,24 @@ async function registerEval<
         const flagConfigJson = JSON.stringify(flagConfig);
         suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
 
-        const createEvalResponse = await evaluationApiClient.createEvaluation({
-          id: evalId,
-          name: evalName,
-          capability: opts.capability,
-          step: opts.step,
-          dataset: axiomConfig.eval.dataset,
-          version: evalVersion,
-          baselineId: baselineId ?? undefined,
-          runId: runId,
-          totalCases: dataset.length,
-          config: { overrides: injectedOverrides },
-          configTimeoutMs: timeoutMs,
-          metadata: opts.metadata,
-          status: 'running',
-        });
+        let createEvalResponse;
+        if (!isDebug && !isList) {
+          createEvalResponse = await evaluationApiClient.createEvaluation({
+            id: evalId,
+            name: evalName,
+            capability: opts.capability,
+            step: opts.step,
+            dataset: axiomConfig.eval.dataset,
+            version: evalVersion,
+            baselineId: baselineId ?? undefined,
+            runId: runId,
+            totalCases: dataset.length,
+            config: { overrides: injectedOverrides },
+            configTimeoutMs: timeoutMs,
+            metadata: opts.metadata,
+            status: 'running',
+          });
+        }
 
         const orgId = createEvalResponse?.data?.orgId;
         const resolvedBaselineId = createEvalResponse?.data?.baselineId;
@@ -411,14 +415,16 @@ async function registerEval<
         ).length;
 
         // signal Axiom that evaluation finished to kick of summary calculations
-        await evaluationApiClient.updateEvaluation({
-          id: evalId,
-          status: 'completed',
-          totalCases: dataset.length,
-          successCases,
-          erroredCases,
-          durationMs,
-        });
+        if (!isDebug && !isList) {
+          await evaluationApiClient.updateEvaluation({
+            id: evalId,
+            status: 'completed',
+            totalCases: dataset.length,
+            successCases,
+            erroredCases,
+            durationMs,
+          });
+        }
       });
 
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
