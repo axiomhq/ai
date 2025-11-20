@@ -191,12 +191,16 @@ export const flush = async () => {
  * Ensure instrumentation is initialized with the given config.
  * Call this from within test context before using startSpan.
  */
-export async function ensureInstrumentationInitialized(config: ResolvedAxiomConfig): Promise<void> {
+export async function ensureInstrumentationInitialized(
+  config: ResolvedAxiomConfig,
+  options: { enabled?: boolean } = {},
+): Promise<void> {
   if (initialized) {
     return;
   }
 
-  await initInstrumentation({ enabled: true, config });
+  const enabled = options.enabled ?? true;
+  await initInstrumentation({ enabled, config });
 }
 
 const getEvalTracer = (): Tracer => {
