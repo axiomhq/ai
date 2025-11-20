@@ -1,8 +1,9 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
-import { getAxiomConfig } from './context/storage';
-import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
+import { getAxiomConfig } from '../evals/context/storage';
+import type { Evaluation, EvaluationReport } from '../evals/eval.types';
+import type { MetaWithCase, MetaWithEval } from './types';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,

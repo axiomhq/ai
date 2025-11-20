@@ -4,14 +4,13 @@ import type {
   Evaluation,
   EvaluationReport,
   FlagDiff,
-  MetaWithCase,
-  MetaWithEval,
   OutOfScopeFlag,
   RegistrationStatus,
   OutOfScopeFlagAccess,
-} from './eval.types';
+} from '../evals/eval.types';
+import type { MetaWithCase, MetaWithEval } from './types';
 import type { TestSuite } from 'vitest/node.js';
-import type { Score } from './scorers';
+import type { Score } from '../evals/scorers';
 import { deepEqual } from '../util/deep-equal';
 import { flattenObject } from '../util/dot-path';
 import type { AxiomConnectionResolvedConfig } from '../config/resolver';

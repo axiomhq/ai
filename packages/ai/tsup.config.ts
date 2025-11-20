@@ -7,7 +7,7 @@ export default defineConfig({
     'src/bin.ts',
     'src/evals.ts',
     'src/config.ts',
-    'src/evals/custom-runner.ts',
+    'src/eval-runner/custom-runner.ts',
   ],
   format: ['esm', 'cjs'],
   external: [

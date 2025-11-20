@@ -8,8 +8,8 @@ import path from 'node:path';
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import type { TestRunResult } from 'vitest/node';
 import { AxiomReporter } from './reporter';
-import { flush, initInstrumentation } from './instrument';
-import { setAxiomConfig } from './context/storage';
+import { flush, initInstrumentation } from '../evals/instrument';
+import { setAxiomConfig } from '../evals/context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -116,7 +116,7 @@ export const runVitest = async (
     disableConsoleIntercept: true,
     testTimeout: opts.config?.eval?.timeoutMs || 60_000,
     globals: true,
-    runner: resolve(__dirname, 'evals', 'custom-runner.js'),
+    runner: resolve(__dirname, 'eval-runner', 'custom-runner.js'),
     provide: {
       baseline: opts.baseline,
       debug: opts.debug,

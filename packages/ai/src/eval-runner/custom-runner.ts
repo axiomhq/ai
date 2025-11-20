@@ -1,6 +1,6 @@
 import { VitestTestRunner } from 'vitest/runners';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { validateName } from './name-validation-runtime';
+import { validateName } from '../evals/name-validation-runtime';
 
 /**
  * Custom Vitest runner that validates eval and scorer names before running any tests.

@@ -46,6 +46,16 @@
         "default": "./dist/evals.cjs"
       }
     },
+    "./ai/eval-runner/custom-runner": {
+      "import": {
+        "types": "./dist/eval-runner/custom-runner.d.ts",
+        "default": "./dist/eval-runner/custom-runner.js"
+      },
+      "require": {
+        "types": "./dist/eval-runner/custom-runner.d.cts",
+        "default": "./dist/eval-runner/custom-runner.cjs"
+      }
+    },
     "./ai/config": {
       "import": {
         "types": "./dist/config.d.ts",

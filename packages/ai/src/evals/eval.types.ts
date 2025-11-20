@@ -1,4 +1,3 @@
-import type { TaskMeta } from 'vitest';
 import type { ScoreWithName, ScorerLike } from './scorers';
 
 // Type utilities for automatic inference
@@ -265,6 +264,3 @@ export type EvaluationReport = {
   };
   registrationStatus?: RegistrationStatus;
 };
-
-export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };
-export type MetaWithCase = TaskMeta & { case: EvalCaseReport };
