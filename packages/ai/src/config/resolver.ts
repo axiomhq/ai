@@ -1,4 +1,5 @@
 import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './index';
+import { getConsoleUrl } from '../cli/commands/eval.command';
 
 /**
  * Builds a resources URL under the assumption that the API URL is in the format of https://api.axiom.co by replacing the subdomain with app.
@@ -23,11 +24,7 @@ const buildConsoleUrl = (urlString: string) => {
 export function resolveAxiomConnection(
   config: ResolvedAxiomConfig,
 ): AxiomEvalInstrumentationOptions & { consoleEndpointUrl: string } {
-  let consoleEndpointUrl = buildConsoleUrl(config.eval.url);
-
-  if ('__overrideEndpointUrl' in config.eval) {
-    consoleEndpointUrl = config.eval.__overrideEndpointUrl as string;
-  }
+  const consoleEndpointUrl = getConsoleUrl() ?? buildConsoleUrl(config.eval.url);
 
   return {
     url: config.eval.url,
