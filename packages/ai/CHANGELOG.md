@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.29.0](https://github.com/axiomhq/ai/compare/axiom-v0.28.0...axiom-v0.29.0) (2025-11-20)
+
+
+### Features
+
+* **eval.command:** add console URL override option and integrate with resolver ([#124](https://github.com/axiomhq/ai/issues/124)) ([f4d2302](https://github.com/axiomhq/ai/commit/f4d2302f356831a5ffc210f7112455a683257b94))
+
+
+### Bug Fixes
+
+* capture scorer errors and update span status ([#143](https://github.com/axiomhq/ai/issues/143)) ([5b56764](https://github.com/axiomhq/ai/commit/5b56764d65c61cf392771b92ebed7d4665e9071e))
+* prevent token usage attributes from being lost in streaming operations ([#141](https://github.com/axiomhq/ai/issues/141)) ([5e31371](https://github.com/axiomhq/ai/commit/5e31371e017468efd2a31ae8edd5d65c02cfb3a0))
+
 ## [0.28.0](https://github.com/axiomhq/ai/compare/axiom-v0.27.0...axiom-v0.28.0) (2025-11-18)
 
 
