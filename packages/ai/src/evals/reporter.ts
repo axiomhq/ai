@@ -1,7 +1,7 @@
 import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
-import { getAxiomConfig } from './context/storage';
+import { getAxiomConfig, getConsoleUrl } from './context/storage';
 import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
 import {
   maybePrintFlags,
@@ -41,7 +41,7 @@ export class AxiomReporter implements Reporter {
     // Store resourcesUrl from config
     const config = getAxiomConfig();
     if (config) {
-      this._config = resolveAxiomConnection(config);
+      this._config = resolveAxiomConnection(config, getConsoleUrl());
     }
   }
 

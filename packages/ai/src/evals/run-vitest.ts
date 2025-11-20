@@ -9,7 +9,7 @@ import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import type { TestRunResult } from 'vitest/node';
 import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
-import { setAxiomConfig } from './context/storage';
+import { setAxiomConfig, setConsoleUrl } from './context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,11 +55,12 @@ export const runVitest = async (
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
     runId: string;
+    consoleUrl?: string;
   },
 ) => {
   // Store config globally so reporters can access it
   setAxiomConfig(opts.config);
-
+  setConsoleUrl(opts.consoleUrl);
   // Initialize instrumentation explicitly based on debug or list flag
   await initInstrumentation({
     enabled: !opts.debug && !opts.list,
@@ -124,6 +125,7 @@ export const runVitest = async (
       overrides: opts.overrides,
       axiomConfig: providedConfig,
       runId: opts.runId,
+      consoleUrl: opts.consoleUrl,
     },
   });
 

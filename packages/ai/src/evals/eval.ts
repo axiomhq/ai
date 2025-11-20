@@ -46,6 +46,7 @@ declare module 'vitest' {
     overrides?: Record<string, any>;
     axiomConfig?: ResolvedAxiomConfig;
     runId: string;
+    consoleUrl?: string;
   }
 }
 
@@ -191,6 +192,7 @@ async function registerEval<
   const injectedOverrides = inject('overrides');
   const axiomConfig = inject('axiomConfig');
   const runId = inject('runId');
+  const consoleUrl = inject('consoleUrl');
 
   if (!axiomConfig) {
     throw new AxiomCLIError('Axiom config not found');
@@ -206,7 +208,7 @@ async function registerEval<
     async () => {
       const dataset = await datasetPromise;
 
-      const evaluationApiClient = new EvaluationApiClient(axiomConfig);
+      const evaluationApiClient = new EvaluationApiClient(axiomConfig, consoleUrl);
 
       // create a version code
       const evalVersion = createVersionId();
