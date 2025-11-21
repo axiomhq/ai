@@ -1,6 +1,6 @@
 import { Command, Argument, Option } from 'commander';
 import { customAlphabet } from 'nanoid';
-import { runVitest } from '../../evals/run-vitest';
+import { runVitest } from '../../eval-runner/run-vitest';
 import { lstatSync } from 'node:fs';
 import { runEvalWithContext } from '../utils/eval-context-runner';
 import type { FlagOverrides } from '../utils/parse-flag-overrides';

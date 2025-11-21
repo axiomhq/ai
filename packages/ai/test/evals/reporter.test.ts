@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { AxiomReporter } from '../../src/evals/reporter';
-import { calculateScorerAverages } from '../../src/evals/reporter.console-utils';
+import { AxiomReporter } from '../../src/eval-runner/reporter';
+import { calculateScorerAverages } from '../../src/eval-runner/reporter.console-utils';
 import type { TestSuite, TestCase } from 'vitest/node.js';
 import type { EvaluationReport, EvalCaseReport } from '../../src/evals/eval.types';
 import { ConsoleCapture, createMockBaseline } from '../helpers/eval-test-setup';

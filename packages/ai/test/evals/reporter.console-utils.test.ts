@@ -4,7 +4,7 @@ import {
   calculateScorerAverages,
   calculateBaselineScorerAverage,
   type SuiteData,
-} from '../../src/evals/reporter.console-utils';
+} from '../../src/eval-runner/reporter.console-utils';
 import type { Evaluation, FlagDiff } from '../../src/evals/eval.types';
 
 describe('printSuiteBox', () => {
