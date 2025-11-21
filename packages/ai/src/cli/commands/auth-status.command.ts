@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { loadGlobalConfig, getActiveProfile } from '../auth/config';
 import { verifyToken } from '../auth/api';
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 
 export async function statusCommand(): Promise<void> {
   const config = await loadGlobalConfig();

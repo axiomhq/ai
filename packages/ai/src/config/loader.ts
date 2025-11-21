@@ -6,7 +6,7 @@ import {
   type AxiomConfig,
   type ResolvedAxiomConfig,
 } from './index';
-import { AxiomCLIError, errorToString } from '../cli/errors';
+import { AxiomCLIError, errorToString } from '../util/errors';
 
 /**
  * Custom merger that uses defu but overrides include/exclude arrays instead of merging them
