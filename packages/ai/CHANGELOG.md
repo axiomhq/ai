@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.30.0](https://github.com/axiomhq/ai/compare/axiom-v0.29.1...axiom-v0.30.0) (2025-11-21)
+
+
+### Features
+
+* better error serialization. pick one ([#145](https://github.com/axiomhq/ai/issues/145)) ([8ffd863](https://github.com/axiomhq/ai/commit/8ffd8636b4dc229fecb42bf75e39c84f1aba0846))
+* **cli:** add shorthands for auth status and switch ([#150](https://github.com/axiomhq/ai/issues/150)) ([c4cfbdd](https://github.com/axiomhq/ai/commit/c4cfbdd3a8f5a4ee63f467f99b9451845105f866))
+
 ## [0.29.1](https://github.com/axiomhq/ai/compare/axiom-v0.29.0...axiom-v0.29.1) (2025-11-20)
 
 
