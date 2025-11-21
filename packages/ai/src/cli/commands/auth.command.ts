@@ -9,6 +9,6 @@ export function loadAuthCommand(program: Command): void {
 
   loadAuthLoginCommand(auth, program);
   loadAuthLogoutCommand(auth, program);
-  loadAuthStatusCommand(auth);
-  loadAuthSwitchCommand(auth);
+  loadAuthStatusCommand(auth, program);
+  loadAuthSwitchCommand(auth, program);
 }

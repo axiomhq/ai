@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { loadGlobalConfig, getActiveProfile } from '../auth/config';
 import { verifyToken } from '../auth/api';
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 
 export async function statusCommand(): Promise<void> {
   const config = await loadGlobalConfig();
@@ -51,20 +51,22 @@ export async function statusCommand(): Promise<void> {
   }
 }
 
-export function loadAuthStatusCommand(program: Command): void {
-  program
-    .command('status')
-    .description('Check authentication status for all profiles')
-    .action(async () => {
-      try {
-        await statusCommand();
-      } catch (error) {
-        if (error instanceof AxiomCLIError) {
-          console.error(`\n❌ Error: ${error.message}\n`);
-        } else {
-          console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+export function loadAuthStatusCommand(auth: Command, program: Command): void {
+  [auth, program].forEach((program) => {
+    program
+      .command('status')
+      .description('Check authentication status for all profiles')
+      .action(async () => {
+        try {
+          await statusCommand();
+        } catch (error) {
+          if (error instanceof AxiomCLIError) {
+            console.error(`\n❌ Error: ${error.message}\n`);
+          } else {
+            console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+          }
+          process.exit(1);
         }
-        process.exit(1);
-      }
-    });
+      });
+  });
 }

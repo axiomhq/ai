@@ -6,7 +6,7 @@ import { runEvalWithContext } from '../utils/eval-context-runner';
 import type { FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 import { getAuthContext } from '../auth/global-auth';
 import c from 'tinyrainbow';
 

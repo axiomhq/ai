@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { loadGlobalConfig, saveGlobalConfig } from '../auth/config';
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 
 async function promptSelect<T>(
   message: string,
@@ -79,21 +79,23 @@ export async function switchCommand(alias?: string): Promise<void> {
   console.log(`✓ Switched to profile: ${selectedAlias}\n`);
 }
 
-export function loadAuthSwitchCommand(program: Command): void {
-  program
-    .command('switch')
-    .description('Switch to a different profile')
-    .argument('[alias]', 'Profile alias to switch to')
-    .action(async (alias?: string) => {
-      try {
-        await switchCommand(alias);
-      } catch (error) {
-        if (error instanceof AxiomCLIError) {
-          console.error(`\n❌ Error: ${error.message}\n`);
-        } else {
-          console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+export function loadAuthSwitchCommand(auth: Command, root: Command): void {
+  [auth, root].forEach((program) => {
+    program
+      .command('switch')
+      .description('Switch to a different profile')
+      .argument('[alias]', 'Profile alias to switch to')
+      .action(async (alias?: string) => {
+        try {
+          await switchCommand(alias);
+        } catch (error) {
+          if (error instanceof AxiomCLIError) {
+            console.error(`\n❌ Error: ${error.message}\n`);
+          } else {
+            console.error(`\n❌ Unexpected error: ${(error as Error).message}\n`);
+          }
+          process.exit(1);
         }
-        process.exit(1);
-      }
-    });
+      });
+  });
 }

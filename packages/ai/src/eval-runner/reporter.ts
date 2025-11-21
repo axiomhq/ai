@@ -86,6 +86,11 @@ export class AxiomReporter implements Reporter {
       return;
     }
 
+    // capture end-of-run config snapshot (first non-empty wins)
+    if (meta.evaluation.configEnd && !this._endOfRunConfigEnd) {
+      this._endOfRunConfigEnd = meta.evaluation.configEnd;
+    }
+
     const durationSeconds = Number((performance.now() - this.start) / 1000).toFixed(2);
 
     const cases: SuiteData['cases'] = [];
@@ -155,13 +160,15 @@ export class AxiomReporter implements Reporter {
         suite.registrationStatus?.status === 'failed' ? suite.registrationStatus.error : undefined,
     }));
 
+    const DEBUG = process.env.AXIOM_DEBUG === 'true';
+
     printFinalReport({
       suiteData: this._suiteData,
       config: this._config,
       registrationStatus,
+      isDebug: DEBUG,
     });
 
-    const DEBUG = process.env.AXIOM_DEBUG === 'true';
     if (DEBUG && this._endOfRunConfigEnd) {
       this.printConfigEnd(this._endOfRunConfigEnd);
     }

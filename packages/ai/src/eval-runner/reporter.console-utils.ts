@@ -467,10 +467,12 @@ export function printFinalReport({
   suiteData,
   config,
   registrationStatus,
+  isDebug,
 }: {
   suiteData: SuiteData[];
   config?: AxiomConnectionResolvedConfig;
   registrationStatus: Array<{ name: string; registered: boolean; error?: string }>;
+  isDebug?: boolean;
 }) {
   console.log('');
   console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
@@ -492,6 +494,8 @@ export function printFinalReport({
   if (anyRegistered && orgId && config?.consoleEndpointUrl) {
     console.log('View full report:');
     console.log(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
+  } else if (isDebug) {
+    console.log(c.dim('Results not uploaded to Axiom (debug mode)'));
   } else {
     console.log('Results not available in Axiom UI (registration failed)');
   }

@@ -26,10 +26,9 @@ import { EvaluationApiClient, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
-import { AxiomCLIError, errorToString } from '../cli/errors';
+import { AxiomCLIError, errorToString } from '../util/errors';
 import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
-import { getErrorMessage } from '../util/errors';
 
 declare module 'vitest' {
   interface TestSuiteMeta {
@@ -200,8 +199,9 @@ async function registerEval<
 
   const timeoutMs = opts.timeout ?? axiomConfig?.eval.timeoutMs;
 
-  const instrumentationReady =
-    !isDebug && !isList ? ensureInstrumentationInitialized(axiomConfig) : Promise.resolve();
+  const instrumentationReady = ensureInstrumentationInitialized(axiomConfig, {
+    enabled: !isDebug && !isList,
+  });
 
   const result = await describe(
     evalName,
@@ -277,21 +277,24 @@ async function registerEval<
         const flagConfigJson = JSON.stringify(flagConfig);
         suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
 
-        const createEvalResponse = await evaluationApiClient.createEvaluation({
-          id: evalId,
-          name: evalName,
-          capability: opts.capability,
-          step: opts.step,
-          dataset: axiomConfig.eval.dataset,
-          version: evalVersion,
-          baselineId: baselineId ?? undefined,
-          runId: runId,
-          totalCases: dataset.length,
-          config: { overrides: injectedOverrides },
-          configTimeoutMs: timeoutMs,
-          metadata: opts.metadata,
-          status: 'running',
-        });
+        let createEvalResponse;
+        if (!isDebug && !isList) {
+          createEvalResponse = await evaluationApiClient.createEvaluation({
+            id: evalId,
+            name: evalName,
+            capability: opts.capability,
+            step: opts.step,
+            dataset: axiomConfig.eval.dataset,
+            version: evalVersion,
+            baselineId: baselineId ?? undefined,
+            runId: runId,
+            totalCases: dataset.length,
+            config: { overrides: injectedOverrides },
+            configTimeoutMs: timeoutMs,
+            metadata: opts.metadata,
+            status: 'running',
+          });
+        }
 
         const orgId = createEvalResponse?.data?.orgId;
         const resolvedBaselineId = createEvalResponse?.data?.baselineId;
@@ -412,14 +415,16 @@ async function registerEval<
         ).length;
 
         // signal Axiom that evaluation finished to kick of summary calculations
-        await evaluationApiClient.updateEvaluation({
-          id: evalId,
-          status: 'completed',
-          totalCases: dataset.length,
-          successCases,
-          erroredCases,
-          durationMs,
-        });
+        if (!isDebug && !isList) {
+          await evaluationApiClient.updateEvaluation({
+            id: evalId,
+            status: 'completed',
+            totalCases: dataset.length,
+            successCases,
+            erroredCases,
+            durationMs,
+          });
+        }
       });
 
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
@@ -522,7 +527,7 @@ async function registerEval<
                         });
 
                         if (metadata.error) {
-                          const msg = getErrorMessage(metadata.error);
+                          const msg = errorToString(metadata.error);
 
                           scorerSpan.setStatus({
                             code: SpanStatusCode.ERROR,
@@ -541,7 +546,7 @@ async function registerEval<
                       } catch (error) {
                         const scorerDuration = Math.round(performance.now() - scorerStart);
                         console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
-                        const msg = getErrorMessage(error);
+                        const msg = errorToString(error);
                         const metadata = {
                           duration: scorerDuration,
                           startedAt: scorerStart,

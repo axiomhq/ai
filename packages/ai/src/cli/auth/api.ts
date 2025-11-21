@@ -1,4 +1,4 @@
-import { AxiomCLIError } from '../errors';
+import { AxiomCLIError } from '../../util/errors';
 import type { Organization } from './types';
 
 export async function fetchOrganizations(
