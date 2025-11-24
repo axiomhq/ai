@@ -17,6 +17,7 @@ import {
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 import { getConsoleUrl } from '../cli/commands/eval.command';
+import { dotNotationToNested, flattenObject } from '../util/dot-path';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -112,13 +113,22 @@ export class AxiomReporter implements Reporter {
     // Collect suite data for final report
     let suiteBaseline = meta.evaluation.baseline;
 
+    let flagConfig = meta.evaluation.flagConfig;
+    if (meta.evaluation.configEnd) {
+      const defaults = meta.evaluation.configEnd.flags ?? {};
+      const overrides = meta.evaluation.configEnd.overrides ?? {};
+      const defaultsFlat = flattenObject(defaults);
+      const overridesFlat = flattenObject(overrides);
+      flagConfig = dotNotationToNested({ ...defaultsFlat, ...overridesFlat });
+    }
+
     this._suiteData.push({
       name: meta.evaluation.name,
       file: relativePath,
       duration: durationSeconds + 's',
       baseline: suiteBaseline || null,
       configFlags: meta.evaluation.configFlags,
-      flagConfig: meta.evaluation.flagConfig,
+      flagConfig,
       runId: meta.evaluation.runId,
       orgId: meta.evaluation.orgId,
       cases,

@@ -575,8 +575,8 @@ export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
     if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
       diffs.push({
         flag: key,
-        current: currentValue ? JSON.stringify(currentValue) : undefined,
-        baseline: baselineValue ? JSON.stringify(baselineValue) : undefined,
+        current: currentValue !== undefined ? JSON.stringify(currentValue) : undefined,
+        baseline: baselineValue !== undefined ? JSON.stringify(baselineValue) : undefined,
       });
     }
   }
