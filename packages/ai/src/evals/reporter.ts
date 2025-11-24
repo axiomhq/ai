@@ -17,6 +17,7 @@ import {
   printTestCaseSuccessOrFailed,
   type SuiteData,
   truncate,
+  formatPercentage,
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 import { getConsoleUrl } from '../cli/commands/eval.command';
@@ -258,7 +259,7 @@ export class AxiomReporter implements Reporter {
 
         keys.forEach((k) => {
           const scoreData = orphanedCase.scores[k];
-          const rawScore = Number(scoreData.value * 100).toFixed(2) + '%';
+          const rawScore = formatPercentage(scoreData.value);
           const paddedName = k.padEnd(maxNameLength);
           const paddedScore = rawScore.padStart(7);
 

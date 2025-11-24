@@ -37,6 +37,19 @@ export type SuiteData = {
   registrationStatus?: RegistrationStatus;
 };
 
+export type Logger = (message?: string, ...optionalParams: any[]) => void;
+
+export function formatPercentage(value: number): string {
+  return Number(value * 100).toFixed(2) + '%';
+}
+
+export function formatDiff(current: number, baseline: number) {
+  const diff = current - baseline;
+  const diffText = (diff >= 0 ? '+' : '') + formatPercentage(diff);
+  const color = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+  return { text: diffText, color };
+}
+
 export function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max) + '…' : str;
 }
@@ -50,22 +63,26 @@ export function stringify(value: any): string {
   }
 }
 
-export function printEvalNameAndFileName(testSuite: TestSuite, meta: MetaWithEval) {
+export function printEvalNameAndFileName(
+  testSuite: TestSuite,
+  meta: MetaWithEval,
+  logger: Logger = console.log,
+) {
   const cwd = process.cwd();
 
-  console.log(
+  logger(
     ' ',
     c.bgCyan(c.black(` ${testSuite.project.name} `)),
     c.bgBlue(c.black(` ${meta.evaluation.name}-${meta.evaluation.version} `)),
     c.dim(`(${testSuite.children.size} cases)`),
   );
 
-  console.log(' ', c.dim(testSuite.module.moduleId.replace(cwd, '')));
+  logger(' ', c.dim(testSuite.module.moduleId.replace(cwd, '')));
 }
 
-export function printBaselineNameAndVersion(testMeta: MetaWithEval) {
+export function printBaselineNameAndVersion(testMeta: MetaWithEval, logger: Logger = console.log) {
   if (testMeta.evaluation.baseline) {
-    console.log(
+    logger(
       ' ',
       ' baseline ',
       c.bgMagenta(
@@ -73,27 +90,27 @@ export function printBaselineNameAndVersion(testMeta: MetaWithEval) {
       ),
     );
   } else {
-    console.log(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
+    logger(' ', c.bgWhite(c.blackBright(' baseline: ')), 'none');
   }
 
-  console.log('');
+  logger('');
 }
 
-export function printRuntimeFlags(testMeta: MetaWithCase) {
+export function printRuntimeFlags(testMeta: MetaWithCase, logger: Logger = console.log) {
   if (testMeta.case.runtimeFlags && Object.keys(testMeta.case.runtimeFlags).length > 0) {
     const entries = Object.entries(testMeta.case.runtimeFlags);
-    console.log('   ', c.dim('runtime flags'));
+    logger('   ', c.dim('runtime flags'));
     for (const [k, v] of entries) {
       switch (v.kind) {
         case 'replaced': {
           const valText = truncate(stringify(v.value), 80);
           const defText = truncate(stringify(v.default), 80);
-          console.log('     ', `${k}: ${valText} (default: ${defText})`);
+          logger('     ', `${k}: ${valText} (default: ${defText})`);
           break;
         }
         case 'introduced': {
           const valText = truncate(stringify(v.value), 80);
-          console.log('     ', `${k}: ${valText} (no default)`);
+          logger('     ', `${k}: ${valText} (no default)`);
           break;
         }
       }
@@ -105,27 +122,36 @@ export function printTestCaseCountStartDuration(
   testSuite: TestSuite,
   startTime: number,
   duration: string,
+  logger: Logger = console.log,
 ) {
-  console.log(' ');
-  console.log(' ', c.dim('Cases'), testSuite.children.size);
-  console.log(' ', c.dim('Start at'), new Date(startTime).toTimeString());
-  console.log(' ', c.dim('Duration'), `${duration}s`);
+  logger(' ');
+  logger(' ', c.dim('Cases'), testSuite.children.size);
+  logger(' ', c.dim('Start at'), new Date(startTime).toTimeString());
+  logger(' ', c.dim('Duration'), `${duration}s`);
 }
 
-export function printTestCaseSuccessOrFailed(testMeta: MetaWithCase, ok: boolean) {
+export function printTestCaseSuccessOrFailed(
+  testMeta: MetaWithCase,
+  ok: boolean,
+  logger: Logger = console.log,
+) {
   const index = testMeta.case.index;
 
   if (ok) {
-    console.log(' ', c.yellow(` \u2714 case ${index}:`));
+    logger(' ', c.yellow(` \u2714 case ${index}:`));
   } else {
-    console.log(' ', c.red(` \u2716 case ${index}: failed`));
+    logger(' ', c.red(` \u2716 case ${index}: failed`));
     for (const e of testMeta.case.errors ?? []) {
-      console.log('', e.message);
+      logger('', e.message);
     }
   }
 }
 
-export function printTestCaseScores(testMeta: MetaWithCase, baselineCase: Case | null | undefined) {
+export function printTestCaseScores(
+  testMeta: MetaWithCase,
+  baselineCase: Case | null | undefined,
+  logger: Logger = console.log,
+) {
   const scores = testMeta.case.scores;
   const keys = Object.keys(scores);
 
@@ -140,7 +166,7 @@ export function printTestCaseScores(testMeta: MetaWithCase, baselineCase: Case |
     const hasError = scoreData.metadata?.error;
     const v = scoreData.score ? scoreData.score : 0;
 
-    const rawCurrent = hasError ? 'N/A' : Number(v * 100).toFixed(2) + '%';
+    const rawCurrent = hasError ? 'N/A' : formatPercentage(v);
     const paddedCurrent = rawCurrent.padStart(7);
     const coloredCurrent = hasError ? c.dim(paddedCurrent) : c.magentaBright(paddedCurrent);
 
@@ -148,55 +174,54 @@ export function printTestCaseScores(testMeta: MetaWithCase, baselineCase: Case |
 
     if (baselineCase?.scores[k]) {
       const baselineScoreValue = baselineCase.scores[k].value;
-      const rawBaseline = Number(baselineScoreValue * 100).toFixed(2) + '%';
+      const rawBaseline = formatPercentage(baselineScoreValue);
       const paddedBaseline = rawBaseline.padStart(7);
       const coloredBaseline = c.blueBright(paddedBaseline);
 
-      const diff = v - baselineScoreValue;
-      const rawDiff = (diff >= 0 ? '+' : '') + Number(diff * 100).toFixed(2) + '%';
-      const paddedDiff = rawDiff.padStart(8);
-      const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+      const { text: diffText, color: diffColor } = formatDiff(v, baselineScoreValue);
+      const paddedDiff = diffText.padStart(8);
 
-      console.log(
+      logger(
         `    ${paddedName}  ${coloredBaseline} → ${coloredCurrent}  ${
           hasError ? c.dim('(scorer not run)') : c.dim('(') + diffColor(paddedDiff) + c.dim(')')
         }`,
       );
     } else {
-      console.log(
-        `    ${paddedName}  ${coloredCurrent} ${hasError ? c.dim('(scorer not run)') : ''}`,
-      );
+      logger(`    ${paddedName}  ${coloredCurrent} ${hasError ? c.dim('(scorer not run)') : ''}`);
     }
   });
 }
 
-export function printOutOfScopeFlags(testMeta: MetaWithCase) {
+export function printOutOfScopeFlags(testMeta: MetaWithCase, logger: Logger = console.log) {
   if (testMeta.case.outOfScopeFlags && testMeta.case.outOfScopeFlags.length > 0) {
     const pickedFlagsText = testMeta.case.pickedFlags
       ? `(picked: ${testMeta.case.pickedFlags.map((f) => `'${f}'`).join(', ')})`
       : '(none)';
-    console.log('   ', c.yellow(`⚠ Out-of-scope flags: ${pickedFlagsText}`));
+    logger('   ', c.yellow(`⚠ Out-of-scope flags: ${pickedFlagsText}`));
     testMeta.case.outOfScopeFlags.forEach((flag) => {
       const timeStr = new Date(flag.accessedAt).toLocaleTimeString();
-      console.log('     ', `${flag.flagPath} (at ${timeStr})`);
+      logger('     ', `${flag.flagPath} (at ${timeStr})`);
 
       // Show top stack trace frames
       if (flag.stackTrace && flag.stackTrace.length > 0) {
         flag.stackTrace.forEach((frame, i) => {
           const prefix = i === flag.stackTrace.length - 1 ? ' └─' : ' ├─';
-          console.log('     ', c.dim(`${prefix} ${frame}`));
+          logger('     ', c.dim(`${prefix} ${frame}`));
         });
       }
     });
   }
 }
 
-export function printConfigHeader() {
-  console.log('');
-  console.log(' ', c.bgWhite(c.blackBright(' Config ')));
+export function printConfigHeader(logger: Logger = console.log) {
+  logger('');
+  logger(' ', c.bgWhite(c.blackBright(' Config ')));
 }
 
-export function maybePrintFlags(configEnd: EvaluationReport['configEnd']) {
+export function maybePrintFlags(
+  configEnd: EvaluationReport['configEnd'],
+  logger: Logger = console.log,
+) {
   const defaults = configEnd?.flags ?? {};
   const overrides = configEnd?.overrides ?? {};
 
@@ -219,28 +244,29 @@ export function maybePrintFlags(configEnd: EvaluationReport['configEnd']) {
       const ovText = truncate(stringify(ovVal), 80);
       const defText = truncate(stringify(defVal), 80);
       if (changed) {
-        console.log(
-          '   ',
-          `${key}: ${ovText} ${c.dim(`(overridden by CLI, original: ${defText})`)}`,
-        );
+        logger('   ', `${key}: ${ovText} ${c.dim(`(overridden by CLI, original: ${defText})`)}`);
       } else {
-        console.log('   ', `${key}: ${defText}`);
+        logger('   ', `${key}: ${defText}`);
       }
     } else if (hasOverride) {
       const ovText = truncate(stringify(overrides[key]), 80);
-      console.log('   ', `${key}: ${ovText} ${c.dim('(added by CLI)')}`);
+      logger('   ', `${key}: ${ovText} ${c.dim('(added by CLI)')}`);
     } else if (hasDefault) {
       const defText = truncate(stringify(defaults[key]), 80);
-      console.log('   ', `${key}: ${defText}`);
+      logger('   ', `${key}: ${defText}`);
     }
   }
 
-  console.log('');
+  logger('');
 }
 
-export function printResultLink(testMeta: MetaWithCase, axiomUrl: string) {
+export function printResultLink(
+  testMeta: MetaWithCase,
+  axiomUrl: string,
+  logger: Logger = console.log,
+) {
   const url = `${axiomUrl}/evaluations/${testMeta.evaluation.name}/${testMeta.evaluation.id}`;
-  console.log(
+  logger(
     ' ',
     `see results for ${testMeta.evaluation.name}-${testMeta.evaluation.version} at ${url}`,
   );
@@ -256,23 +282,24 @@ export const reporterDate = (d: Date) => {
 export function printGlobalFlagOverrides(
   overrides: Record<string, any>,
   defaults: Record<string, any>,
+  logger: Logger = console.log,
 ) {
   if (Object.keys(overrides).length === 0) {
-    console.log('');
-    console.log(c.dim('Flag overrides: (none)'));
-    console.log('');
+    logger('');
+    logger(c.dim('Flag overrides: (none)'));
+    logger('');
     return;
   }
 
-  console.log('');
-  console.log('Flag overrides:');
+  logger('');
+  logger('Flag overrides:');
   for (const [key, value] of Object.entries(overrides)) {
     const defaultValue = defaults[key];
     const valueStr = JSON.stringify(value);
     const defaultStr = defaultValue !== undefined ? JSON.stringify(defaultValue) : 'none';
-    console.log(`  • ${key}: ${valueStr} ${c.dim(`(default: ${defaultStr})`)}`);
+    logger(`  • ${key}: ${valueStr} ${c.dim(`(default: ${defaultStr})`)}`);
   }
-  console.log('');
+  logger('');
 }
 
 export function printSuiteBox({
@@ -280,17 +307,19 @@ export function printSuiteBox({
   scorerAverages,
   calculateBaselineScorerAverage,
   flagDiff,
+  logger = console.log,
 }: {
   suite: SuiteData;
   scorerAverages: Record<string, number>;
   calculateBaselineScorerAverage: (baseline: Evaluation, scorerName: string) => number | null;
   flagDiff: Array<FlagDiff>;
+  logger?: Logger;
 }) {
   const filename = suite.file.split('/').pop();
 
-  console.log('┌─');
-  console.log(`│  ${c.blue(suite.name)} ${c.gray(`(${filename})`)}`);
-  console.log('├─');
+  logger('┌─');
+  logger(`│  ${c.blue(suite.name)} ${c.gray(`(${filename})`)}`);
+  logger('├─');
 
   const scorerNames = Object.keys(scorerAverages);
   const maxNameLength = Math.max(...scorerNames.map((name) => name.length));
@@ -307,53 +336,49 @@ export function printSuiteBox({
     if (suite.baseline) {
       const baselineAvg = calculateBaselineScorerAverage(suite.baseline, scorerName);
       if (baselineAvg !== null) {
-        const currentPercent = hasAllErrors ? c.dim('N/A') : (avg * 100).toFixed(2) + '%';
-        const baselinePercent = (baselineAvg * 100).toFixed(2) + '%';
-        const diff = avg - baselineAvg;
-        const diffText = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(2) + '%';
-        const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+        const currentPercent = hasAllErrors ? c.dim('N/A') : formatPercentage(avg);
+        const baselinePercent = formatPercentage(baselineAvg);
+        const { text: diffText, color: diffColor } = formatDiff(avg, baselineAvg);
 
         const paddedBaseline = baselinePercent.padStart(7);
         const paddedCurrent = hasAllErrors ? currentPercent : currentPercent.padStart(7);
         const paddedDiff = hasAllErrors ? c.dim('(all cases failed)') : diffText.padStart(8);
 
-        console.log(
+        logger(
           `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${hasAllErrors ? paddedCurrent : c.magentaBright(paddedCurrent)}  (${hasAllErrors ? paddedDiff : diffColor(paddedDiff)})`,
         );
       } else {
         const currentPercent = hasAllErrors
           ? c.red('N/A (all cases failed)')
-          : (avg * 100).toFixed(2) + '%';
-        console.log(`│   • ${paddedName}  ${currentPercent}`);
+          : formatPercentage(avg);
+        logger(`│   • ${paddedName}  ${currentPercent}`);
       }
     } else {
-      const currentPercent = hasAllErrors
-        ? c.red('N/A (all cases failed)')
-        : (avg * 100).toFixed(2) + '%';
-      console.log(`│   • ${paddedName}  ${currentPercent}`);
+      const currentPercent = hasAllErrors ? c.red('N/A (all cases failed)') : formatPercentage(avg);
+      logger(`│   • ${paddedName}  ${currentPercent}`);
     }
   }
 
-  console.log('├─');
+  logger('├─');
 
   if (suite.baseline) {
     const baselineTimestamp = suite.baseline.runAt
       ? reporterDate(new Date(suite.baseline.runAt))
       : 'unknown time';
-    console.log(
+    logger(
       `│  Baseline: ${suite.baseline.name}-${suite.baseline.version} ${c.gray(`(${baselineTimestamp})`)}`,
     );
   } else {
-    console.log(`│  Baseline: ${c.gray('(none)')}`);
+    logger(`│  Baseline: ${c.gray('(none)')}`);
   }
 
   if (suite.baseline) {
     const hasConfigChanges = flagDiff.length > 0;
 
-    console.log('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
+    logger('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
     if (hasConfigChanges) {
       for (const { flag, current, baseline } of flagDiff) {
-        console.log(
+        logger(
           `│   • ${flag}: ${current ?? '<not set>'} ${c.gray(`(baseline: ${baseline ?? '<not set>'})`)}`,
         );
       }
@@ -365,21 +390,19 @@ export function printSuiteBox({
       suite.configFlags && suite.configFlags.length > 0
         ? suite.configFlags.map((f) => `'${f}'`).join(', ')
         : 'none';
-    console.log('│');
-    console.log(
-      `│  ${c.yellow('⚠ Out-of-scope flags')} ${c.gray(`(picked: ${pickedFlagsText})`)}:`,
-    );
+    logger('│');
+    logger(`│  ${c.yellow('⚠ Out-of-scope flags')} ${c.gray(`(picked: ${pickedFlagsText})`)}:`);
     for (const flag of suite.outOfScopeFlags) {
       const lastStackTraceFrame = flag.stackTrace[0];
       const lastStackTraceFnName = lastStackTraceFrame.split(' ').shift();
       const lastStackTraceFile = lastStackTraceFrame.split('/').pop()?.slice(0, -1);
-      console.log(
+      logger(
         `│   • ${flag.flagPath} ${c.gray(`at ${lastStackTraceFnName} (${lastStackTraceFile})`)}`,
       );
     }
   }
 
-  console.log('└─');
+  logger('└─');
 }
 
 /**
@@ -471,21 +494,23 @@ export function printFinalReport({
   config,
   registrationStatus,
   isDebug,
+  logger = console.log,
 }: {
   suiteData: SuiteData[];
   config?: AxiomConnectionResolvedConfig;
   registrationStatus: Array<{ name: string; registered: boolean; error?: string }>;
   isDebug?: boolean;
+  logger?: Logger;
 }) {
-  console.log('');
-  console.log(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
-  console.log('');
+  logger('');
+  logger(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
+  logger('');
 
   for (const suite of suiteData) {
     const scorerAverages = calculateScorerAverages(suite);
     const flagDiff = suite.baseline ? calculateFlagDiff(suite) : [];
-    printSuiteBox({ suite, scorerAverages, calculateBaselineScorerAverage, flagDiff });
-    console.log('');
+    printSuiteBox({ suite, scorerAverages, calculateBaselineScorerAverage, flagDiff, logger });
+    logger('');
   }
 
   const runId = suiteData[0]?.runId;
@@ -495,23 +520,23 @@ export function printFinalReport({
   const anyFailed = registrationStatus.some((s) => !s.registered);
 
   if (anyRegistered && orgId && config?.consoleEndpointUrl) {
-    console.log('View full report:');
-    console.log(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
+    logger('View full report:');
+    logger(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
   } else if (isDebug) {
-    console.log(c.dim('Results not uploaded to Axiom (debug mode)'));
+    logger(c.dim('Results not uploaded to Axiom (debug mode)'));
   } else {
-    console.log('Results not available in Axiom UI (registration failed)');
+    logger('Results not available in Axiom UI (registration failed)');
   }
 
   if (anyFailed) {
-    console.log('');
+    logger('');
     for (const status of registrationStatus) {
       if (!status.registered) {
-        console.log(c.yellow(`⚠️  Warning: Failed to register "${status.name}" with Axiom`));
+        logger(c.yellow(`⚠️  Warning: Failed to register "${status.name}" with Axiom`));
         if (status.error) {
-          console.log(c.dim(`   Error: ${status.error}`));
+          logger(c.dim(`   Error: ${status.error}`));
         }
-        console.log(c.dim(`   Results for this evaluation will not be available in the Axiom UI.`));
+        logger(c.dim(`   Results for this evaluation will not be available in the Axiom UI.`));
       }
     }
   }
