@@ -47,6 +47,9 @@ export function formatPercentage(value: number): string {
 }
 
 export function formatDiff(current: number, baseline: number) {
+  if (!Number.isFinite(current) || !Number.isFinite(baseline)) {
+    return { text: 'N/A', color: c.dim };
+  }
   const diff = current - baseline;
   const diffText = (diff >= 0 ? '+' : '') + formatPercentage(diff);
   const color = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;

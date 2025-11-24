@@ -40,6 +40,23 @@ describe('reporter.console-utils', () => {
       expect(text).toBe('+0.00%');
       expect(color).toBe(c.dim);
     });
+
+    it('handles non-finite numbers', () => {
+      const testCases = [
+        [NaN, 0.5],
+        [0.5, NaN],
+        [Infinity, 0.5],
+        [0.5, Infinity],
+        [-Infinity, 0.5],
+        [0.5, -Infinity],
+      ];
+
+      for (const [current, baseline] of testCases) {
+        const { text, color } = formatDiff(current, baseline);
+        expect(text).toBe('N/A');
+        expect(color).toBe(c.dim);
+      }
+    });
   });
 
   describe('printTestCaseScores', () => {
