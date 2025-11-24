@@ -14,6 +14,12 @@ describe('reporter.console-utils', () => {
       expect(formatPercentage(1)).toBe('100.00%');
       expect(formatPercentage(0)).toBe('0.00%');
     });
+
+    it('handles non-finite numbers', () => {
+      expect(formatPercentage(NaN)).toBe('N/A');
+      expect(formatPercentage(Infinity)).toBe('N/A');
+      expect(formatPercentage(-Infinity)).toBe('N/A');
+    });
   });
 
   describe('formatDiff', () => {
@@ -33,6 +39,23 @@ describe('reporter.console-utils', () => {
       const { text, color } = formatDiff(0.5, 0.5);
       expect(text).toBe('+0.00%');
       expect(color).toBe(c.dim);
+    });
+
+    it('handles non-finite numbers', () => {
+      const testCases = [
+        [NaN, 0.5],
+        [0.5, NaN],
+        [Infinity, 0.5],
+        [0.5, Infinity],
+        [-Infinity, 0.5],
+        [0.5, -Infinity],
+      ];
+
+      for (const [current, baseline] of testCases) {
+        const { text, color } = formatDiff(current, baseline);
+        expect(text).toBe('N/A');
+        expect(color).toBe(c.dim);
+      }
     });
   });
 

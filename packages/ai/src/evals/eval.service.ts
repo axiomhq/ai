@@ -270,7 +270,12 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
           score.data.attributes,
           Attr.Eval.Score.Metadata,
         );
-        const metadata = metadataRaw ? JSON.parse(metadataRaw) : {};
+        let metadata = {};
+        try {
+          metadata = metadataRaw ? JSON.parse(metadataRaw) : {};
+        } catch {
+          // Ignore error
+        }
 
         caseData.scores[name] = {
           name,

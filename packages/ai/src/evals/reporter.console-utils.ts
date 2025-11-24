@@ -40,10 +40,16 @@ export type SuiteData = {
 export type Logger = (message?: string, ...optionalParams: any[]) => void;
 
 export function formatPercentage(value: number): string {
+  if (!Number.isFinite(value)) {
+    return 'N/A';
+  }
   return Number(value * 100).toFixed(2) + '%';
 }
 
 export function formatDiff(current: number, baseline: number) {
+  if (!Number.isFinite(current) || !Number.isFinite(baseline)) {
+    return { text: 'N/A', color: c.dim };
+  }
   const diff = current - baseline;
   const diffText = (diff >= 0 ? '+' : '') + formatPercentage(diff);
   const color = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
