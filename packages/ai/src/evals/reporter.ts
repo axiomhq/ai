@@ -146,12 +146,14 @@ export class AxiomReporter implements Reporter {
     printTestCaseCountStartDuration(testSuite, this.startTime, durationSeconds);
 
     const matchedBaselineIndices = new Set<number>();
-    const baselineCasesByFingerprint = new Map<string, Case>();
+    const baselineCasesByFingerprint = new Map<string, Case[]>();
 
     if (suiteBaseline) {
       for (const c of suiteBaseline.cases) {
         const fp = getCaseFingerprint(c.input, c.expected);
-        baselineCasesByFingerprint.set(fp, c);
+        const cases = baselineCasesByFingerprint.get(fp) || [];
+        cases.push(c);
+        baselineCasesByFingerprint.set(fp, cases);
       }
     }
 
@@ -201,7 +203,7 @@ export class AxiomReporter implements Reporter {
 
   private printCaseResult(
     test: TestCase,
-    baselineCasesByFingerprint: Map<string, Case>,
+    baselineCasesByFingerprint: Map<string, Case[]>,
     matchedIndices: Set<number>,
   ) {
     const ok = test.ok();
@@ -214,7 +216,8 @@ export class AxiomReporter implements Reporter {
     printTestCaseSuccessOrFailed(testMeta, ok);
 
     const fingerprint = getCaseFingerprint(testMeta.case.input, testMeta.case.expected);
-    const baselineCase = baselineCasesByFingerprint.get(fingerprint);
+    const baselineCases = baselineCasesByFingerprint.get(fingerprint);
+    const baselineCase = baselineCases?.shift();
 
     if (baselineCase) {
       matchedIndices.add(baselineCase.index);
