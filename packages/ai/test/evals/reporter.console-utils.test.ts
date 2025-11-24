@@ -212,7 +212,7 @@ describe('reporter.console-utils', () => {
       expect(diff[0]).toEqual({
         flag: 'feature.enabled',
         current: 'true',
-        baseline: undefined, // Expect undefined since mock setup doesn't match implementation behavior (flattenObject issue with false/undefined)
+        baseline: 'false',
       });
     });
 
