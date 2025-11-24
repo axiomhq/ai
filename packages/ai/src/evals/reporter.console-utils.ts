@@ -40,6 +40,9 @@ export type SuiteData = {
 export type Logger = (message?: string, ...optionalParams: any[]) => void;
 
 export function formatPercentage(value: number): string {
+  if (!Number.isFinite(value)) {
+    return 'N/A';
+  }
   return Number(value * 100).toFixed(2) + '%';
 }
 

@@ -14,6 +14,12 @@ describe('reporter.console-utils', () => {
       expect(formatPercentage(1)).toBe('100.00%');
       expect(formatPercentage(0)).toBe('0.00%');
     });
+
+    it('handles non-finite numbers', () => {
+      expect(formatPercentage(NaN)).toBe('N/A');
+      expect(formatPercentage(Infinity)).toBe('N/A');
+      expect(formatPercentage(-Infinity)).toBe('N/A');
+    });
   });
 
   describe('formatDiff', () => {
