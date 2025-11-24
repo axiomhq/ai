@@ -266,7 +266,10 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
       scoreSpans.forEach((score) => {
         const name = getCustomOrRegularString(score.data.attributes, Attr.Eval.Score.Name) ?? '';
         const value = getCustomOrRegularNumber(score.data.attributes, Attr.Eval.Score.Value) ?? 0;
-        const metadataRaw = getCustomOrRegularString(score.data.attributes, Attr.Eval.Score.Metadata);
+        const metadataRaw = getCustomOrRegularString(
+          score.data.attributes,
+          Attr.Eval.Score.Metadata,
+        );
         const metadata = metadataRaw ? JSON.parse(metadataRaw) : {};
 
         caseData.scores[name] = {

@@ -157,11 +157,7 @@ export class AxiomReporter implements Reporter {
 
     for (const test of testSuite.children) {
       if (test.type !== 'test') continue;
-      this.printCaseResult(
-        test,
-        baselineCasesByFingerprint,
-        matchedBaselineIndices,
-      );
+      this.printCaseResult(test, baselineCasesByFingerprint, matchedBaselineIndices);
     }
 
     if (suiteBaseline) {

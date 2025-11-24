@@ -32,7 +32,6 @@ Eval('spam-classification', {
         response: "We're sorry, but your message has been automatically closed.",
       },
     },
-    // { input: { subject: 'foo', content: 'foo' }, expected: { category: 'spam', response: 'soz' } },
     {
       input: {
         subject: 'FREE V1AGRA C1ALIS',
@@ -43,7 +42,6 @@ Eval('spam-classification', {
         response: "We're sorry, but your message has been automatically closed.",
       },
     },
-    { input: { subject: 'bar', content: 'bar' }, expected: { category: 'spam', response: 'soz' } },
   ],
   task: async ({ input }) => {
     return await classifyTicketStep(input);

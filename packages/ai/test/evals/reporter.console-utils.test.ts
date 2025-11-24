@@ -40,57 +40,57 @@ describe('reporter.console-utils', () => {
     it('prints aligned scores correctly', () => {
       const lines: string[] = [];
       const logger = (msg?: any, ...args: any[]) => {
-         lines.push([msg, ...args].join(' '));
+        lines.push([msg, ...args].join(' '));
       };
 
       const testMeta = {
         case: {
           scores: {
-            'short': { score: 0.5, metadata: {} },
+            short: { score: 0.5, metadata: {} },
             'very-long-name': { score: 0.75, metadata: {} },
-          }
-        }
+          },
+        },
       } as unknown as MetaWithCase;
 
       printTestCaseScores(testMeta, null, logger);
 
       expect(lines.length).toBe(2);
-      
+
       // Strip ansi codes for easier assertion
       const stripAnsi = (str: string) => str.replace(/\u001b\[\d+m/g, '');
-      
+
       const line1 = stripAnsi(lines[0]);
       const line2 = stripAnsi(lines[1]);
 
       // Check padding
       // "short" should be padded to length of "very-long-name" (14 chars)
       // 4 spaces indent + 14 chars name + 2 spaces + 7 chars score = 27 chars approx
-      
+
       expect(line1).toContain('short         '); // 14 chars
       expect(line1).toContain(' 50.00%');
-      
+
       expect(line2).toContain('very-long-name');
       expect(line2).toContain(' 75.00%');
     });
 
     it('prints aligned scores with baseline comparison', () => {
-       const lines: string[] = [];
+      const lines: string[] = [];
       const logger = (msg?: any, ...args: any[]) => {
-         lines.push([msg, ...args].join(' '));
+        lines.push([msg, ...args].join(' '));
       };
 
       const testMeta = {
         case: {
           scores: {
-            'accuracy': { score: 0.8, metadata: {} },
-          }
-        }
+            accuracy: { score: 0.8, metadata: {} },
+          },
+        },
       } as unknown as MetaWithCase;
 
       const baselineCase = {
         scores: {
-            'accuracy': { value: 0.6, metadata: {} }
-        }
+          accuracy: { value: 0.6, metadata: {} },
+        },
       } as unknown as Case;
 
       printTestCaseScores(testMeta, baselineCase, logger);
@@ -106,19 +106,19 @@ describe('reporter.console-utils', () => {
       // Padded with space because +20.00% is 7 chars and we pad to 8
       expect(line).toContain('( +20.00%)');
     });
-    
+
     it('handles error scores', () => {
       const lines: string[] = [];
       const logger = (msg?: any, ...args: any[]) => {
-         lines.push([msg, ...args].join(' '));
+        lines.push([msg, ...args].join(' '));
       };
 
       const testMeta = {
         case: {
           scores: {
-            'accuracy': { score: 0, metadata: { error: 'Some error' } },
-          }
-        }
+            accuracy: { score: 0, metadata: { error: 'Some error' } },
+          },
+        },
       } as unknown as MetaWithCase;
 
       printTestCaseScores(testMeta, null, logger);
