@@ -11,7 +11,7 @@ import type {
   RegistrationStatus,
   OutOfScopeFlagAccess,
 } from './eval.types';
-import type { TestSuite } from 'vitest/node.js';
+import type { TestSuite, TestCase } from 'vitest/node.js';
 import type { Score } from './scorers';
 import { deepEqual } from '../util/deep-equal';
 import { flattenObject } from '../util/dot-path';
@@ -67,6 +67,15 @@ export function stringify(value: any): string {
   } catch {
     return String(value);
   }
+}
+
+export function getCaseFingerprint(
+  input: string | Record<string, any>,
+  expected: string | Record<string, any>,
+): string {
+  const inputStr = typeof input === 'string' ? input : JSON.stringify(input);
+  const expectedStr = typeof expected === 'string' ? expected : JSON.stringify(expected);
+  return JSON.stringify({ input: inputStr, expected: expectedStr });
 }
 
 export function printEvalNameAndFileName(
@@ -219,9 +228,89 @@ export function printOutOfScopeFlags(testMeta: MetaWithCase, logger: Logger = co
   }
 }
 
+export function printCaseResult(
+  test: TestCase,
+  baselineCasesByFingerprint: Map<string, Case[]>,
+  matchedIndices: Set<number>,
+  logger: Logger = console.log,
+) {
+  const ok = test.ok();
+  const testMeta = test.meta() as MetaWithCase;
+
+  if (!testMeta?.case) {
+    return;
+  }
+
+  printTestCaseSuccessOrFailed(testMeta, ok, logger);
+
+  const fingerprint = getCaseFingerprint(testMeta.case.input, testMeta.case.expected);
+  const baselineCases = baselineCasesByFingerprint.get(fingerprint);
+  const baselineCase = baselineCases?.shift();
+
+  if (baselineCase) {
+    matchedIndices.add(baselineCase.index);
+  }
+
+  printTestCaseScores(testMeta, baselineCase, logger);
+
+  printRuntimeFlags(testMeta, logger);
+
+  printOutOfScopeFlags(testMeta, logger);
+}
+
+export function printOrphanedBaselineCases(
+  baseline: Evaluation,
+  matchedIndices: Set<number>,
+  logger: Logger = console.log,
+) {
+  const orphanedCases = baseline.cases.filter((c) => !matchedIndices.has(c.index));
+
+  if (orphanedCases.length === 0) {
+    return;
+  }
+
+  logger('');
+  logger(' ', c.yellow('Orphaned baseline cases:'));
+
+  for (const orphanedCase of orphanedCases) {
+    logger(
+      ' ',
+      c.dim(
+        `case ${orphanedCase.index}: ${truncate(orphanedCase.input, 50)} (score: ${truncate(
+          JSON.stringify(orphanedCase.scores),
+          50,
+        )})`,
+      ),
+    );
+    // We could print detailed scores here if we want, similar to printTestCaseScores
+    // But just listing them is probably enough for now, or using a simplified format
+    const keys = Object.keys(orphanedCase.scores);
+    if (keys.length > 0) {
+      const maxNameLength = Math.max(...keys.map((k) => k.length));
+
+      keys.forEach((k) => {
+        const scoreData = orphanedCase.scores[k];
+        const rawScore = formatPercentage(scoreData.value);
+        const paddedName = k.padEnd(maxNameLength);
+        const paddedScore = rawScore.padStart(7);
+
+        logger(`    ${paddedName}  ${c.blueBright(paddedScore)}`);
+      });
+    }
+  }
+}
+
 export function printConfigHeader(logger: Logger = console.log) {
   logger('');
   logger(' ', c.bgWhite(c.blackBright(' Config ')));
+}
+
+export function printConfigEnd(
+  configEnd: EvaluationReport['configEnd'],
+  logger: Logger = console.log,
+) {
+  printConfigHeader(logger);
+  maybePrintFlags(configEnd, logger);
 }
 
 export function maybePrintFlags(
