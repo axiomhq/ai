@@ -229,13 +229,6 @@ async function registerEval<
         | undefined;
 
       beforeAll(async (suite) => {
-        // Ensure worker process knows CLI overrides
-        if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
-          try {
-            setGlobalFlagOverrides(injectedOverrides);
-          } catch {}
-        }
-
         suite.meta.evaluation = {
           id: evalId,
           name: evalName,
@@ -321,6 +314,13 @@ async function registerEval<
           suiteSpan.setAttribute(Attr.Eval.Baseline.ID, baseline.id);
           suiteSpan.setAttribute(Attr.Eval.Baseline.Name, baseline.name);
           suiteSpan.setAttribute(Attr.Eval.Baseline.Version, baseline.version);
+        }
+
+        // Ensure worker process knows CLI overrides
+        if (injectedOverrides && Object.keys(injectedOverrides).length > 0) {
+          try {
+            setGlobalFlagOverrides(injectedOverrides);
+          } catch {}
         }
 
         suite.meta.evaluation = {
