@@ -2,23 +2,22 @@ import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
 import { getAxiomConfig } from './context/storage';
-import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
+import type { EvaluationReport, MetaWithCase, MetaWithEval, Case } from './eval.types';
 import {
-  maybePrintFlags,
   printBaselineNameAndVersion,
-  printConfigHeader,
   printEvalNameAndFileName,
   printFinalReport,
   printGlobalFlagOverrides,
-  printOutOfScopeFlags,
-  printRuntimeFlags,
   printTestCaseCountStartDuration,
-  printTestCaseScores,
-  printTestCaseSuccessOrFailed,
   type SuiteData,
+  printOrphanedBaselineCases,
+  getCaseFingerprint,
+  printCaseResult,
+  printConfigEnd,
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 import { getConsoleUrl } from '../cli/commands/eval.command';
+import { dotNotationToNested, flattenObject } from '../util/dot-path';
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -114,13 +113,22 @@ export class AxiomReporter implements Reporter {
     // Collect suite data for final report
     let suiteBaseline = meta.evaluation.baseline;
 
+    let flagConfig = meta.evaluation.flagConfig;
+    if (meta.evaluation.configEnd) {
+      const defaults = meta.evaluation.configEnd.flags ?? {};
+      const overrides = meta.evaluation.configEnd.overrides ?? {};
+      const defaultsFlat = flattenObject(defaults);
+      const overridesFlat = flattenObject(overrides);
+      flagConfig = dotNotationToNested({ ...defaultsFlat, ...overridesFlat });
+    }
+
     this._suiteData.push({
       name: meta.evaluation.name,
       file: relativePath,
       duration: durationSeconds + 's',
       baseline: suiteBaseline || null,
       configFlags: meta.evaluation.configFlags,
-      flagConfig: meta.evaluation.flagConfig,
+      flagConfig,
       runId: meta.evaluation.runId,
       orgId: meta.evaluation.orgId,
       cases,
@@ -133,9 +141,25 @@ export class AxiomReporter implements Reporter {
 
     printTestCaseCountStartDuration(testSuite, this.startTime, durationSeconds);
 
+    const matchedBaselineIndices = new Set<number>();
+    const baselineCasesByFingerprint = new Map<string, Case[]>();
+
+    if (suiteBaseline) {
+      for (const c of suiteBaseline.cases) {
+        const fp = getCaseFingerprint(c.input, c.expected);
+        const cases = baselineCasesByFingerprint.get(fp) || [];
+        cases.push(c);
+        baselineCasesByFingerprint.set(fp, cases);
+      }
+    }
+
     for (const test of testSuite.children) {
       if (test.type !== 'test') continue;
-      this.printCaseResult(test, suiteBaseline || null);
+      printCaseResult(test, baselineCasesByFingerprint, matchedBaselineIndices);
+    }
+
+    if (suiteBaseline) {
+      printOrphanedBaselineCases(suiteBaseline, matchedBaselineIndices);
     }
 
     console.log('');
@@ -169,32 +193,7 @@ export class AxiomReporter implements Reporter {
     });
 
     if (DEBUG && this._endOfRunConfigEnd) {
-      this.printConfigEnd(this._endOfRunConfigEnd);
+      printConfigEnd(this._endOfRunConfigEnd);
     }
-  }
-
-  private printCaseResult(test: TestCase, baseline: Evaluation | null) {
-    const ok = test.ok();
-    const testMeta = test.meta() as MetaWithCase;
-
-    if (!testMeta?.case) {
-      return;
-    }
-
-    printTestCaseSuccessOrFailed(testMeta, ok);
-
-    printTestCaseScores(testMeta, baseline);
-
-    printRuntimeFlags(testMeta);
-
-    printOutOfScopeFlags(testMeta);
-  }
-
-  /**
-   * End-of-suite config summary (console only)
-   */
-  private printConfigEnd(configEnd: EvaluationReport['configEnd']) {
-    printConfigHeader();
-    maybePrintFlags(configEnd);
   }
 }
