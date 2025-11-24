@@ -260,18 +260,25 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
         span.data.parent_span_id === caseSpan.data.span_id,
     );
 
-    caseData.scores = {};
+    if (scoreSpans.length > 0) {
+      caseData.scores = {};
 
-    scoreSpans.forEach((score) => {
-      const name = getCustomOrRegularString(score.data.attributes, 'name') ?? '';
-      caseData.scores[name] = {
-        name,
-        value: getCustomOrRegularNumber(score.data.attributes, 'value') ?? 0,
-        metadata: {
-          error: score.data.attributes.error,
-        },
-      };
-    });
+      scoreSpans.forEach((score) => {
+        const name = getCustomOrRegularString(score.data.attributes, Attr.Eval.Score.Name) ?? '';
+        const value = getCustomOrRegularNumber(score.data.attributes, Attr.Eval.Score.Value) ?? 0;
+        const metadataRaw = getCustomOrRegularString(score.data.attributes, Attr.Eval.Score.Metadata);
+        const metadata = metadataRaw ? JSON.parse(metadataRaw) : {};
+
+        caseData.scores[name] = {
+          name,
+          value,
+          metadata: {
+            error: score.data.attributes.error,
+            ...metadata,
+          },
+        };
+      });
+    }
 
     rootSpan.cases.push(caseData);
   }

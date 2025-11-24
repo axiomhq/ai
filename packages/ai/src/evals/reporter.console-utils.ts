@@ -1,6 +1,7 @@
 import c from 'tinyrainbow';
 
 import type {
+  Case,
   Evaluation,
   EvaluationReport,
   FlagDiff,
@@ -124,47 +125,48 @@ export function printTestCaseSuccessOrFailed(testMeta: MetaWithCase, ok: boolean
   }
 }
 
-export function printTestCaseScores(
-  testMeta: MetaWithCase,
-  baseline: Evaluation | null | undefined,
-) {
-  const index = testMeta.case.index;
+export function printTestCaseScores(testMeta: MetaWithCase, baselineCase: Case | null | undefined) {
+  const scores = testMeta.case.scores;
+  const keys = Object.keys(scores);
 
-  Object.keys(testMeta.case.scores).forEach((k) => {
-    const scoreData = testMeta.case.scores[k];
+  if (keys.length === 0) {
+    return;
+  }
+
+  const maxNameLength = Math.max(...keys.map((k) => k.length));
+
+  keys.forEach((k) => {
+    const scoreData = scores[k];
     const hasError = scoreData.metadata?.error;
     const v = scoreData.score ? scoreData.score : 0;
-    const scoreValue = hasError ? c.dim('N/A') : Number(v * 100).toFixed(2) + '%';
 
-    if (baseline?.cases[index]?.scores[k]) {
-      const baselineScoreValue = baseline.cases[index].scores[k].value;
+    const rawCurrent = hasError ? 'N/A' : Number(v * 100).toFixed(2) + '%';
+    const paddedCurrent = rawCurrent.padStart(7);
+    const coloredCurrent = hasError ? c.dim(paddedCurrent) : c.magentaBright(paddedCurrent);
+
+    const paddedName = k.padEnd(maxNameLength);
+
+    if (baselineCase?.scores[k]) {
+      const baselineScoreValue = baselineCase.scores[k].value;
+      const rawBaseline = Number(baselineScoreValue * 100).toFixed(2) + '%';
+      const paddedBaseline = rawBaseline.padStart(7);
+      const coloredBaseline = c.blueBright(paddedBaseline);
+
       const diff = v - baselineScoreValue;
-      const diffText = Number(diff * 100).toFixed(2) + '%';
-      const blScoreText = Number(baselineScoreValue * 100).toFixed(2) + '%';
+      const rawDiff = (diff >= 0 ? '+' : '') + Number(diff * 100).toFixed(2) + '%';
+      const paddedDiff = rawDiff.padStart(8);
+      const diffColor = diff > 0 ? c.green : diff < 0 ? c.red : c.dim;
+
       console.log(
-        '   ',
-        k,
-        c.magentaBright(blScoreText),
-        '->',
-        hasError ? scoreValue : c.blueBright(scoreValue),
-        hasError
-          ? c.dim('(scorer not run)')
-          : diff > 0
-            ? c.green('+' + diffText)
-            : diff < 0
-              ? c.red(diffText)
-              : diffText,
+        `    ${paddedName}  ${coloredBaseline} → ${coloredCurrent}  ${
+          hasError ? c.dim('(scorer not run)') : c.dim('(') + diffColor(paddedDiff) + c.dim(')')
+        }`,
       );
     } else {
       console.log(
-        '   ',
-        k,
-        hasError ? scoreValue : c.blueBright(scoreValue),
-        hasError ? c.dim('(scorer not run)') : '',
+        `    ${paddedName}  ${coloredCurrent} ${hasError ? c.dim('(scorer not run)') : ''}`,
       );
     }
-
-    return [k, scoreValue];
   });
 }
 

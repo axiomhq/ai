@@ -2,7 +2,7 @@ import type { SerializedError } from 'vitest';
 import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
 
 import { getAxiomConfig } from './context/storage';
-import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval } from './eval.types';
+import type { Evaluation, EvaluationReport, MetaWithCase, MetaWithEval, Case } from './eval.types';
 import {
   maybePrintFlags,
   printBaselineNameAndVersion,
@@ -16,9 +16,20 @@ import {
   printTestCaseScores,
   printTestCaseSuccessOrFailed,
   type SuiteData,
+  truncate,
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 import { getConsoleUrl } from '../cli/commands/eval.command';
+import c from 'tinyrainbow';
+
+function getCaseFingerprint(
+  input: string | Record<string, any>,
+  expected: string | Record<string, any>,
+): string {
+  const inputStr = typeof input === 'string' ? input : JSON.stringify(input);
+  const expectedStr = typeof expected === 'string' ? expected : JSON.stringify(expected);
+  return JSON.stringify({ input: inputStr, expected: expectedStr });
+}
 
 /**
  * Custom Vitest reporter for Axiom AI evaluations.
@@ -133,9 +144,27 @@ export class AxiomReporter implements Reporter {
 
     printTestCaseCountStartDuration(testSuite, this.startTime, durationSeconds);
 
+    const matchedBaselineIndices = new Set<number>();
+    const baselineCasesByFingerprint = new Map<string, Case>();
+
+    if (suiteBaseline) {
+      for (const c of suiteBaseline.cases) {
+        const fp = getCaseFingerprint(c.input, c.expected);
+        baselineCasesByFingerprint.set(fp, c);
+      }
+    }
+
     for (const test of testSuite.children) {
       if (test.type !== 'test') continue;
-      this.printCaseResult(test, suiteBaseline || null);
+      this.printCaseResult(
+        test,
+        baselineCasesByFingerprint,
+        matchedBaselineIndices,
+      );
+    }
+
+    if (suiteBaseline) {
+      this.printOrphanedBaselineCases(suiteBaseline, matchedBaselineIndices);
     }
 
     console.log('');
@@ -173,7 +202,11 @@ export class AxiomReporter implements Reporter {
     }
   }
 
-  private printCaseResult(test: TestCase, baseline: Evaluation | null) {
+  private printCaseResult(
+    test: TestCase,
+    baselineCasesByFingerprint: Map<string, Case>,
+    matchedIndices: Set<number>,
+  ) {
     const ok = test.ok();
     const testMeta = test.meta() as MetaWithCase;
 
@@ -183,11 +216,56 @@ export class AxiomReporter implements Reporter {
 
     printTestCaseSuccessOrFailed(testMeta, ok);
 
-    printTestCaseScores(testMeta, baseline);
+    const fingerprint = getCaseFingerprint(testMeta.case.input, testMeta.case.expected);
+    const baselineCase = baselineCasesByFingerprint.get(fingerprint);
+
+    if (baselineCase) {
+      matchedIndices.add(baselineCase.index);
+    }
+
+    printTestCaseScores(testMeta, baselineCase);
 
     printRuntimeFlags(testMeta);
 
     printOutOfScopeFlags(testMeta);
+  }
+
+  private printOrphanedBaselineCases(baseline: Evaluation, matchedIndices: Set<number>) {
+    const orphanedCases = baseline.cases.filter((c) => !matchedIndices.has(c.index));
+
+    if (orphanedCases.length === 0) {
+      return;
+    }
+
+    console.log('');
+    console.log(' ', c.yellow('Orphaned baseline cases:'));
+
+    for (const orphanedCase of orphanedCases) {
+      console.log(
+        ' ',
+        c.dim(
+          `case ${orphanedCase.index}: ${truncate(orphanedCase.input, 50)} (score: ${truncate(
+            JSON.stringify(orphanedCase.scores),
+            50,
+          )})`,
+        ),
+      );
+      // We could print detailed scores here if we want, similar to printTestCaseScores
+      // But just listing them is probably enough for now, or using a simplified format
+      const keys = Object.keys(orphanedCase.scores);
+      if (keys.length > 0) {
+        const maxNameLength = Math.max(...keys.map((k) => k.length));
+
+        keys.forEach((k) => {
+          const scoreData = orphanedCase.scores[k];
+          const rawScore = Number(scoreData.value * 100).toFixed(2) + '%';
+          const paddedName = k.padEnd(maxNameLength);
+          const paddedScore = rawScore.padStart(7);
+
+          console.log(`    ${paddedName}  ${c.blueBright(paddedScore)}`);
+        });
+      }
+    }
   }
 
   /**
