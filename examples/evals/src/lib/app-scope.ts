@@ -1,4 +1,4 @@
-import { createAppScope } from 'axiom/ai/evals';
+import { createAppScope } from 'axiom/ai';
 import z from 'zod';
 
 export const flagSchema = z.object({

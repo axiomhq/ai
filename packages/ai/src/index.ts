@@ -10,6 +10,12 @@ export * from './otel/middleware';
 export { type AxiomAIRedactionPolicy, RedactionPolicy } from './otel/utils/redaction';
 
 /**
+ * App Scope
+ */
+
+export { createAppScope } from './app-scope';
+
+/**
  * Prompts
  */
 
