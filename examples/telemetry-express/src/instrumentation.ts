@@ -16,17 +16,22 @@ registerInstrumentations({
   instrumentations: [new HttpInstrumentation(), new ExpressInstrumentation()],
 });
 
-export const setupTracing = (serviceName: string): Tracer => {
+export const setupTracing = (config: {
+  url: string;
+  token: string;
+  dataset: string;
+  serviceName: string;
+}): Tracer => {
   const exporter = new OTLPTraceExporter({
-    url: `${process.env['AXIOM_URL']}/v1/traces`,
+    url: `${config.url}/v1/traces`,
     headers: {
-      Authorization: `Bearer ${process.env['AXIOM_TOKEN']}`,
-      'X-Axiom-Dataset': process.env['AXIOM_DATASET']!,
+      Authorization: `Bearer ${config.token}`,
+      'X-Axiom-Dataset': config.dataset,
     },
   });
   const provider = new NodeTracerProvider({
     resource: resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: serviceName,
+      [ATTR_SERVICE_NAME]: config.serviceName,
     }),
     spanProcessors: [new SimpleSpanProcessor(exporter)],
   });
@@ -39,10 +44,9 @@ export const setupTracing = (serviceName: string): Tracer => {
   // Initialize the OpenTelemetry APIs to use the NodeTracerProvider bindings
   provider.register();
 
-  const tracer = trace.getTracer(serviceName);
+  const tracer = trace.getTracer(config.serviceName);
 
   // Initialize Axiom AI with the tracer
-  RedactionPolicy;
   initAxiomAI({ tracer, redactionPolicy: RedactionPolicy.AxiomDefault });
 
   return tracer;
