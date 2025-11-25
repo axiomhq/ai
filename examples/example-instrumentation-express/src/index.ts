@@ -1,7 +1,12 @@
 import { setupTracing } from './instrumentation';
 
 // be sure to call this before any other imports
-setupTracing('example-express-server');
+setupTracing({
+  url: process.env['AXIOM_URL'] || 'https://api.axiom.co',
+  token: process.env['AXIOM_TOKEN']!,
+  dataset: process.env['AXIOM_DATASET']!,
+  serviceName: 'example-express-server',
+});
 
 import { generateText, streamText } from 'ai';
 import type { Request, Response } from 'express';
