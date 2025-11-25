@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.30.0](https://github.com/axiomhq/ai/compare/axiom-v0.29.1...axiom-v0.30.0) (2025-11-25)
+
+
+### Features
+
+* better error serialization. pick one ([#145](https://github.com/axiomhq/ai/issues/145)) ([8ffd863](https://github.com/axiomhq/ai/commit/8ffd8636b4dc229fecb42bf75e39c84f1aba0846))
+* **cli:** add shorthands for auth status and switch ([#150](https://github.com/axiomhq/ai/issues/150)) ([c4cfbdd](https://github.com/axiomhq/ai/commit/c4cfbdd3a8f5a4ee63f467f99b9451845105f866))
+* move createAppScope out of evals package ([#156](https://github.com/axiomhq/ai/issues/156)) ([d6a6f23](https://github.com/axiomhq/ai/commit/d6a6f23c0fdf8d8cc21ada131c8ebd789b6fefd3))
+
+
+### Bug Fixes
+
+* baselines not showing, case mismatch producing bad output ([#151](https://github.com/axiomhq/ai/issues/151)) ([a6f2a41](https://github.com/axiomhq/ai/commit/a6f2a4100e6dde730363e6a16749fa24670e9c11))
+* config shows "not set" for config that _is_ set ([#152](https://github.com/axiomhq/ai/issues/152)) ([be7ecb0](https://github.com/axiomhq/ai/commit/be7ecb0ac835d7537aa7de680365387608ecf3eb))
+* overrides not visible in ui ([#153](https://github.com/axiomhq/ai/issues/153)) ([a9760a6](https://github.com/axiomhq/ai/commit/a9760a6d60f018d15e5fc446e3c5d07989142b89))
+
 ## [0.29.1](https://github.com/axiomhq/ai/compare/axiom-v0.29.0...axiom-v0.29.1) (2025-11-20)
 
 
