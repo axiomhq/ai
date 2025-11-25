@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.68",
+    "ai": "^5.0.101",
     "axiom": "workspace:*",
     "next": "16.0.4",
     "react": "19.2.0",
