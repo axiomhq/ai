@@ -1,5 +1,5 @@
 import { Eval, Scorer } from 'axiom/ai/evals';
-import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
+import { jaccardResponseScorer, categoryMatchScorer } from '../../../scorers';
 import { classifyTicketStep } from '../prompts';
 import { pickFlags } from '@/lib/app-scope';
 import { ExactMatch } from 'autoevals';
@@ -17,7 +17,7 @@ const WrappedExactMatch = Scorer(
   },
 );
 
-Eval('spam-classification', {
+Eval('ticket-classification', {
   configFlags: pickFlags('ticketClassification'),
   capability: 'ticket-classification',
   step: 'classify-ticket',
@@ -34,20 +34,30 @@ Eval('spam-classification', {
     },
     {
       input: {
-        subject: 'FREE V1AGRA C1ALIS',
-        content: 'BUY V1AGRA C1ALIS NOW ON WWW.BEST-V1AGRA-C1ALIS.COM!',
+        subject: 'How do I reset my password?',
+        content: 'I forgot my password and cannot log in.',
       },
       expected: {
-        category: 'spam',
-        response: "We're sorry, but your message has been automatically closed.",
+        category: 'question',
+        response: "A team member will be in touch with you shortly.",
+      },
+    },
+     {
+      input: {
+        subject: 'Bug in the dashboard',
+        content: 'The dashboard is not loading correctly on Safari.',
+      },
+      expected: {
+        category: 'bug_report',
+        response: "A team member will be in touch with you shortly.",
       },
     },
   ],
   task: async ({ input }) => {
     return await classifyTicketStep(input);
   },
-  scorers: [spamClassificationScorer, jaccardResponseScorer, WrappedExactMatch],
+  scorers: [categoryMatchScorer, jaccardResponseScorer, WrappedExactMatch],
   metadata: {
-    description: 'Classify support tickets as spam or not spam',
+    description: 'Classify support tickets into categories and check response',
   },
 });

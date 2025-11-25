@@ -30,3 +30,11 @@ export const jaccardResponseScorer = Scorer(
     return intersection.length / union.size;
   },
 );
+
+export const categoryMatchScorer = Scorer(
+  'Category-Match',
+  ({ output, expected }: { output: SupportTicketResponse; expected: SupportTicketResponse }) => {
+    return output.category === expected.category ? 1 : 0;
+  },
+);
+

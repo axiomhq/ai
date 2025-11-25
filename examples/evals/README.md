@@ -1,19 +1,37 @@
 # Eval examples
 
-This app provides an example for a [classify-ticket](./src/capabilities/classify-ticket/evaluations/ticket-classification.eval.ts) capability.
+This project demonstrates how to use Axiom Evals with a Next.js application.
+
+## Structure
+
+- `src/lib/capabilities/echo`: A minimal "echo" evaluation example.
+- `src/lib/capabilities/classify-ticket`: A comprehensive "kitchen sink" example simulating a customer service bot, integrated with the Next.js app.
+
+## Running Evals
 
 To run all evals:
+```bash
+pnpm eval
+```
 
-- `pnpm eval`
+To run the minimal example:
+```bash
+npx axiom eval src/lib/capabilities/echo/evaluations/echo.eval.ts
+```
 
-To run one eval file:
+To run the kitchen sink example:
+```bash
+npx axiom eval src/lib/capabilities/classify-ticket/evaluations/ticket-classification.eval.ts
+```
 
-- `npx axiom eval src/capabilities/classify-ticket/evaluations/ticket-classification.eval.ts`
+## Experiments
 
-To override flags from CLI:
+You can override flags from the CLI:
+```bash
+npx axiom eval src/lib/capabilities/classify-ticket/evaluations/ticket-classification.eval.ts --flag.ticketClassification.model=gpt-4o
+```
 
-- `npx axiom eval feature.eval.ts --flag.behavior.strategy=smart `
-
-To override flags from JSON:
-
-- `npx axiom eval feature.eval.ts --flags-config=experiment-example.json`
+Or using a config file:
+```bash
+npx axiom eval src/lib/capabilities/classify-ticket/evaluations/ticket-classification.eval.ts --flags-config=experiment-example.json
+```
