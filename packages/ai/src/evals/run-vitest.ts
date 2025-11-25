@@ -1,6 +1,5 @@
 import c from 'tinyrainbow';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve, join } from 'node:path';
+import { resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,9 +10,6 @@ import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
 import { setAxiomConfig } from './context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const printCollectedEvals = (result: TestRunResult, rootDir: string) => {
   if (!result.testModules || result.testModules.length === 0) {
