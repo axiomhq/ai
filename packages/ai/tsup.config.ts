@@ -29,7 +29,7 @@ export default defineConfig({
   noExternal: ['handlebars'],
   dts: true, // generate .d.ts files
   clean: true, // clean dist before build
-  shims: true, // lets us use globals in dual ESM/CJS buiilds by injecting polyfills for __dirname and __filename
+  shims: true, // lets us use globals in dual ESM/CJS builds by injecting polyfills for __dirname and __filename
   sourcemap: true,
   target: 'es2020',
   outDir: 'dist',
