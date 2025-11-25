@@ -14,7 +14,7 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
  * • Preserves sync/async behavior of the user's function
  * • Infers types from user's args annotation for type safety
  */
-function createScorer<
+export function createScorer<
   TArgs extends Record<string, any> = {},
   TInput = TArgs extends { input: infer I } ? I : unknown,
   TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : unknown,
@@ -53,5 +53,3 @@ function createScorer<
 
   return scorer as TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra>;
 }
-
-export { createScorer as Scorer };

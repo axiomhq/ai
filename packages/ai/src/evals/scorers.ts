@@ -33,4 +33,4 @@ export type Scorer<
   readonly name: string; // Name property for telemetry
 };
 
-export { Scorer as createScorer } from './scorer.factory';
+export { createScorer } from './scorer.factory';
