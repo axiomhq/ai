@@ -1,6 +1,6 @@
 import { Eval, Scorer } from 'axiom/ai/evals';
 import { jaccardResponseScorer, spamClassificationScorer } from '../../../scorers';
-import { classifyTicketStep } from '../../../capabilities/classify-ticket/prompts';
+import { classifyTicketStep } from '../prompts';
 import { pickFlags } from '@/lib/app-scope';
 import { ExactMatch } from 'autoevals';
 
