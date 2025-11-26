@@ -22,7 +22,7 @@ catalogs:
       specifier: ^4.0.0
       version: 4.0.13
     zod:
-      specifier: ^4.0.0
+      specifier: 4.1.5
       version: 4.1.5
 
 importers:
@@ -105,6 +105,9 @@ importers:
 
   examples/kitchen-sink:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: ^2.0.72
+        version: 2.0.72(zod@4.1.5)
       '@base-ui-components/react':
         specifier: 1.0.0-beta.6
         version: 1.0.0-beta.6(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -123,6 +126,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.38.0
         version: 1.38.0
+      ai:
+        specifier: 5.1.0-beta.28
+        version: 5.1.0-beta.28(zod@4.1.5)
       axiom:
         specifier: workspace:*
         version: link:../../packages/ai
@@ -141,6 +147,9 @@ importers:
       react-dom:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.5
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4
@@ -491,6 +500,9 @@ importers:
       open:
         specifier: ^10.1.0
         version: 10.2.0
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.2(@types/node@22.17.2)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.4))
     devDependencies:
       '@ai-sdk/anthropicv1':
         specifier: npm:@ai-sdk/anthropic@^1.2.12
@@ -576,6 +588,12 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/gateway@1.1.0-beta.19':
+    resolution: {integrity: sha512-O/XD8KdVrMIt/S7l+0QqdiyCL2PEC2CGM8i31bn/5P2JsPMdfDI9LX/VK4lLWNfuWCQePFnmiondnYnoqKF+Hg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/gateway@2.0.9':
     resolution: {integrity: sha512-E6x4h5CPPPJ0za1r5HsLtHbeI+Tp3H+YFtcH8G3dSSPFE6w+PZINzB4NxLZmg1QqSeA5HTP3ZEzzsohp0o2GEw==}
     engines: {node: '>=18'}
@@ -600,6 +618,12 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/openai@2.0.72':
+    resolution: {integrity: sha512-9j8Gdt9gFiUGFdQIjjynbC7+w8YQxkXje6dwAq1v2Pj17wmB3U0Td3lnEe/a+EnEysY3mdkc8dHPYc5BNev9NQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/provider-utils@2.2.8':
     resolution: {integrity: sha512-fqhG+4sCVv8x7nFzYnFo19ryhAa3w096Kmc3hWxMQfW/TubPOmt3A6tYZhl4mUfQWWQMsuSkLrtjlWuXBVSGQA==}
     engines: {node: '>=18'}
@@ -612,12 +636,22 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/provider-utils@3.1.0-beta.9':
+    resolution: {integrity: sha512-WlKYWOP0bVWadrzKCWE9FcTTCYyNjR/8lTCIaFea1wiqZ+uqgC+91vcC0wtwuAyHr306o/bgeAZxRq8gF/0SMg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/provider@1.1.3':
     resolution: {integrity: sha512-qZMxYJ0qqX/RfnuIaab+zp8UAeJn/ygXXAffR5I4N0n1IrvA6qBsjc8hXLmBiMV2zoXlifkacF7sEFnYnjBcqg==}
     engines: {node: '>=18'}
 
   '@ai-sdk/provider@2.0.0':
     resolution: {integrity: sha512-6o7Y2SeO9vFKB8lArHXehNuusnpddKPk7xqL7T2/b+OvXMRIXUO1rR4wcv1hAFUAT9avGZshty3Wlua/XA7TvA==}
+    engines: {node: '>=18'}
+
+  '@ai-sdk/provider@2.1.0-beta.5':
+    resolution: {integrity: sha512-gu/aV+8iTb0IjHmFO6eDuevp4E0fbtXqSj0RcKPttgedAbWY3uMe+vVgfe/j3bfbQfN7FjGkFDLS0xIirga7pA==}
     engines: {node: '>=18'}
 
   '@ai-sdk/react@1.2.12':
@@ -2653,6 +2687,12 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  ai@5.1.0-beta.28:
+    resolution: {integrity: sha512-MMGM5h3hB2ty9aeOYKyYkhdy8SW298Bgo3k+388+mfgAPbJUDOzIexnk6KynUXHwls5y/tUBafHe0v2YAupPbg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
 
@@ -3469,6 +3509,9 @@ packages:
   globalthis@1.0.4:
     resolution: {integrity: sha512-DpLKbNU4WylpxJykQujfCcwYWiV/Jhm50Goo0wrVILAv5jOr9d+H+UR3PhSCD2rCCEIg0uc+G+muBTwD54JhDQ==}
     engines: {node: '>= 0.4'}
+
+  globrex@0.1.2:
+    resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
 
   google-logging-utils@0.0.2:
     resolution: {integrity: sha512-NEgUnEcBiP5HrPzufUkBzJOD/Sxsco3rLNo1F1TNf7ieU8ryUzBhqba8r756CjLX7rn3fHl6iLEwPYuqpoKgQQ==}
@@ -4799,6 +4842,16 @@ packages:
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
 
+  tsconfck@3.1.6:
+    resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
+    engines: {node: ^18 || >=20}
+    hasBin: true
+    peerDependencies:
+      typescript: ^5.0.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   tsconfig-paths@3.15.0:
     resolution: {integrity: sha512-2Ac2RgzDe/cn48GvOe3M+o82pEFewD3UPbyoUHHdKasHwJKjds4fLXWf/Ux5kATBKN20oaFGu+jbElp1pos0mg==}
 
@@ -5009,6 +5062,14 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
+  vite-tsconfig-paths@5.1.4:
+    resolution: {integrity: sha512-cYj0LRuLV2c2sMqhqhGpaO3LretdtMn/BVX4cPLanIZuwwrkVl+lK84E/miEXkCHWXuq65rhNN4rXsBcOB3S4w==}
+    peerDependencies:
+      vite: '*'
+    peerDependenciesMeta:
+      vite:
+        optional: true
+
   vite@7.1.2:
     resolution: {integrity: sha512-J0SQBPlQiEXAF7tajiH+rUooJPo0l8KQgyg4/aMunNtrOa7bwuZJsJbDWzeljqQpgftxuq5yNJxQ91O9ts29UQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -5218,6 +5279,13 @@ snapshots:
       '@ai-sdk/provider-utils': 3.0.17(zod@4.1.5)
       zod: 4.1.5
 
+  '@ai-sdk/gateway@1.1.0-beta.19(zod@4.1.5)':
+    dependencies:
+      '@ai-sdk/provider': 2.1.0-beta.5
+      '@ai-sdk/provider-utils': 3.1.0-beta.9(zod@4.1.5)
+      '@vercel/oidc': 3.0.3
+      zod: 4.1.5
+
   '@ai-sdk/gateway@2.0.9(zod@4.1.5)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
@@ -5249,6 +5317,12 @@ snapshots:
       '@ai-sdk/provider-utils': 3.0.17(zod@4.1.5)
       zod: 4.1.5
 
+  '@ai-sdk/openai@2.0.72(zod@4.1.5)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.5)
+      zod: 4.1.5
+
   '@ai-sdk/provider-utils@2.2.8(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
@@ -5270,11 +5344,22 @@ snapshots:
       eventsource-parser: 3.0.6
       zod: 4.1.5
 
+  '@ai-sdk/provider-utils@3.1.0-beta.9(zod@4.1.5)':
+    dependencies:
+      '@ai-sdk/provider': 2.1.0-beta.5
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.6
+      zod: 4.1.5
+
   '@ai-sdk/provider@1.1.3':
     dependencies:
       json-schema: 0.4.0
 
   '@ai-sdk/provider@2.0.0':
+    dependencies:
+      json-schema: 0.4.0
+
+  '@ai-sdk/provider@2.1.0-beta.5':
     dependencies:
       json-schema: 0.4.0
 
@@ -7448,6 +7533,14 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       zod: 4.1.5
 
+  ai@5.1.0-beta.28(zod@4.1.5):
+    dependencies:
+      '@ai-sdk/gateway': 1.1.0-beta.19(zod@4.1.5)
+      '@ai-sdk/provider': 2.1.0-beta.5
+      '@ai-sdk/provider-utils': 3.1.0-beta.9(zod@4.1.5)
+      '@opentelemetry/api': 1.9.0
+      zod: 4.1.5
+
   ajv@6.12.6:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -8510,6 +8603,8 @@ snapshots:
     dependencies:
       define-properties: 1.2.1
       gopd: 1.2.0
+
+  globrex@0.1.2: {}
 
   google-logging-utils@0.0.2: {}
 
@@ -9922,6 +10017,10 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
+  tsconfck@3.1.6(typescript@5.9.2):
+    optionalDependencies:
+      typescript: 5.9.2
+
   tsconfig-paths@3.15.0:
     dependencies:
       '@types/json5': 0.0.29
@@ -10164,6 +10263,17 @@ snapshots:
   validate.io-function@1.0.2: {}
 
   vary@1.1.2: {}
+
+  vite-tsconfig-paths@5.1.4(typescript@5.9.2)(vite@7.1.2(@types/node@22.17.2)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.4)):
+    dependencies:
+      debug: 4.4.3
+      globrex: 0.1.2
+      tsconfck: 3.1.6(typescript@5.9.2)
+    optionalDependencies:
+      vite: 7.1.2(@types/node@22.17.2)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.4)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
 
   vite@7.1.2(@types/node@22.17.2)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.4):
     dependencies:

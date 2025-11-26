@@ -2,7 +2,7 @@ import { Context, Hono } from 'hono';
 import {
   generateSupportResponse,
   SupportResponseRequest,
-} from '@/lib/capabilities/support-agent/support-agent.service';
+} from '@/lib/capabilities/support-agent/support-agent';
 
 interface SupportResponseBody {
   content: string;

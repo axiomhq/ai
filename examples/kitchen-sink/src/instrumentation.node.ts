@@ -4,9 +4,7 @@ import { BatchSpanProcessor, NodeTracerProvider } from '@opentelemetry/sdk-trace
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { initAxiomAI, RedactionPolicy } from 'axiom/ai';
 import type { AxiomEvalInstrumentationHook } from 'axiom/ai/config';
-import { trace } from '@opentelemetry/api';
-
-export const tracer = trace.getTracer('axiom-ai-kitchen-sink-tracer');
+import { tracer } from './lib/utilities/tracer';
 
 let provider: NodeTracerProvider | undefined;
 
