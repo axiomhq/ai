@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/axiomhq/ai/compare/axiom-v0.31.0...axiom-v0.31.1) (2025-11-26)
+
+
+### Bug Fixes
+
+* evals break in projects with import aliases ([#167](https://github.com/axiomhq/ai/issues/167)) ([2bcc36a](https://github.com/axiomhq/ai/commit/2bcc36a1e42e6a21054284fac8fa8b920e3947a0))
+
 ## [0.31.0](https://github.com/axiomhq/ai/compare/axiom-v0.30.0...axiom-v0.31.0) (2025-11-26)
 
 
