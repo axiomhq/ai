@@ -1,7 +1,7 @@
 import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
 import { generateText, ModelMessage } from 'ai';
-import { withSpan } from 'axiom/ai';
+import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import z from 'zod';
 
 export const messageCategories = [
@@ -16,7 +16,7 @@ type MessageCategory = z.infer<typeof messageCategoriesSchema>;
 
 export const categorizeMessage = async (messages: ModelMessage[]): Promise<MessageCategory> => {
   const modelName = flag('supportAgent.categorizeMessage.model');
-  const model = openai(modelName);
+  const model = wrapAISDKModel(openai(modelName));
 
   return await withSpan({ capability: 'support_agent', step: 'categorize_message' }, async () => {
     const text = `<instructions>
