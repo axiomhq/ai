@@ -3,6 +3,7 @@ import { resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 import { createVitest, registerConsoleShortcuts } from 'vitest/node';
 import type { TestRunResult } from 'vitest/node';
@@ -96,34 +97,40 @@ export const runVitest = async (
     console.log(c.bgWhite(c.blackBright(' List mode ')));
   }
 
-  const vi = await createVitest('test', {
-    root: dir ? dir : process.cwd(),
-    mode: 'test',
-    include: opts.include,
-    exclude: opts.exclude,
-    testNamePattern: opts.testNamePattern,
-    reporters: ['verbose', new AxiomReporter()],
-    environment: 'node',
-    browser: undefined,
-    watch: opts.watch,
-    setupFiles: [], // ignore user vitest.config.ts etc
-    name: 'axiom:eval',
-    printConsoleTrace: true,
-    silent: false,
-    disableConsoleIntercept: true,
-    testTimeout: opts.config?.eval?.timeoutMs || 60_000,
-    globals: true,
-    runner: resolve(__dirname, 'evals', 'custom-runner.js'),
-    provide: {
-      baseline: opts.baseline,
-      debug: opts.debug,
-      list: opts.list,
-      overrides: opts.overrides,
-      axiomConfig: providedConfig,
-      runId: opts.runId,
-      consoleUrl: opts.consoleUrl,
+  const vi = await createVitest(
+    'test',
+    {
+      root: dir ? dir : process.cwd(),
+      mode: 'test',
+      include: opts.include,
+      exclude: opts.exclude,
+      testNamePattern: opts.testNamePattern,
+      reporters: ['verbose', new AxiomReporter()],
+      environment: 'node',
+      browser: undefined,
+      watch: opts.watch,
+      setupFiles: [], // ignore user vitest.config.ts etc
+      name: 'axiom:eval',
+      printConsoleTrace: true,
+      silent: false,
+      disableConsoleIntercept: true,
+      testTimeout: opts.config?.eval?.timeoutMs || 60_000,
+      globals: true,
+      runner: resolve(__dirname, 'evals', 'custom-runner.js'),
+      provide: {
+        baseline: opts.baseline,
+        debug: opts.debug,
+        list: opts.list,
+        overrides: opts.overrides,
+        axiomConfig: providedConfig,
+        runId: opts.runId,
+        consoleUrl: opts.consoleUrl,
+      },
     },
-  });
+    {
+      plugins: [tsconfigPaths({ root: dir || process.cwd() })],
+    },
+  );
 
   // List mode: just list tests without running them
   if (opts.list) {
