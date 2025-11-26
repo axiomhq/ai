@@ -68,6 +68,14 @@ export interface AxiomEvalInstrumentationResult {
   provider: TracerProvider;
 }
 
+export type SyncAxiomEvalInstrumentationHook = (
+  options: AxiomEvalInstrumentationOptions,
+) => AxiomEvalInstrumentationResult;
+
+export type AsyncAxiomEvalInstrumentationHook = (
+  options: AxiomEvalInstrumentationOptions,
+) => Promise<AxiomEvalInstrumentationResult>;
+
 /**
  * Hook function to initialize application OpenTelemetry instrumentation.
  * Called before eval execution with resolved Axiom connection details.
