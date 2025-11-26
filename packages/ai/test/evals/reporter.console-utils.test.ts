@@ -19,7 +19,7 @@ import {
   type SuiteData,
 } from '../../src/evals/reporter.console-utils';
 import type { MetaWithCase, Case, Evaluation } from '../../src/evals/eval.types';
-import type { TestCase } from 'vitest/node.js';
+import type { TestCase } from 'vitest/node';
 import c from 'tinyrainbow';
 
 describe('reporter.console-utils', () => {

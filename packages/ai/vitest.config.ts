@@ -8,13 +8,11 @@ export default defineConfig({
     globals: true,
     pool: 'forks',
     // TODO: ensure that this allows parallel tests
-    poolOptions: {
-      forks: {
-        isolate: true,
-      },
-    },
+    isolate: true,
     coverage: {
       enabled: true,
+      include: ['src/**/*.{js,ts}'],
+      exclude: ['src/**/*.md'],
     },
   },
   resolve: {

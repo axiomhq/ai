@@ -106,6 +106,7 @@ export const runVitest = async (
     environment: 'node',
     browser: undefined,
     watch: opts.watch,
+    setupFiles: [], // ignore user vitest.config.ts etc
     name: 'axiom:eval',
     printConsoleTrace: true,
     silent: false,

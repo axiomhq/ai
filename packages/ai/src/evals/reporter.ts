@@ -1,5 +1,5 @@
 import type { SerializedError } from 'vitest';
-import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node.js';
+import type { Reporter, TestCase, TestModule, TestRunEndReason, TestSuite } from 'vitest/node';
 
 import { getAxiomConfig } from './context/storage';
 import type { EvaluationReport, MetaWithCase, MetaWithEval, Case } from './eval.types';

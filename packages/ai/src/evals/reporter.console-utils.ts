@@ -11,7 +11,7 @@ import type {
   RegistrationStatus,
   OutOfScopeFlagAccess,
 } from './eval.types';
-import type { TestSuite, TestCase } from 'vitest/node.js';
+import type { TestSuite, TestCase } from 'vitest/node';
 import type { Score } from './scorers';
 import { deepEqual } from '../util/deep-equal';
 import { flattenObject } from '../util/dot-path';
