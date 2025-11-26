@@ -20,6 +20,7 @@ export default defineConfig({
     'fsevents',
     'c12',
     'defu',
+    'vite-tsconfig-paths',
     // Ensure Node builtins used via createRequire stay external in ESM bundle
     'async_hooks',
     'node:async_hooks',
