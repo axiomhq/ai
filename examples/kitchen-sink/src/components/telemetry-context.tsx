@@ -2,12 +2,11 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
-type TelemetryProvider = {
-  name: 'Axiom';
-  enabledFlag: string;
+interface AxiomConfig {
   dataset: string;
-  environment: string;
-};
+  url?: string;
+  orgId?: string;
+}
 
 interface TraceEntry {
   traceId: string;
@@ -17,29 +16,25 @@ interface TraceEntry {
 interface TelemetryContextType {
   traces: TraceEntry[];
   clearTraces: () => void;
-  enabledProviders: TelemetryProvider[];
+  axiom?: AxiomConfig;
 }
 
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
-function getEnabledTelemetryProviders(): TelemetryProvider[] {
-  const providers: TelemetryProvider[] = [];
-
+function getAxiomConfig(): AxiomConfig | undefined {
   if (process.env.NEXT_PUBLIC_AXIOM_ENABLED === 'true' && process.env.NEXT_PUBLIC_AXIOM_DATASET) {
-    providers.push({
-      name: 'Axiom',
-      enabledFlag: 'NEXT_PUBLIC_AXIOM_ENABLED',
+    return {
       dataset: process.env.NEXT_PUBLIC_AXIOM_DATASET,
-      environment: process.env.NEXT_PUBLIC_AXIOM_ENV,
-    });
+      url: process.env.NEXT_PUBLIC_AXIOM_URL,
+      orgId: process.env.NEXT_PUBLIC_AXIOM_ORG_ID,
+    };
   }
-
-  return providers;
+  return undefined;
 }
 
 export function TelemetryProvider({ children }: { children: ReactNode }) {
   const [traces, setTraces] = useState<TraceEntry[]>([]);
-  const [enabledProviders, setEnabledProviders] = useState<TelemetryProvider[]>([]);
+  const [axiom, setAxiom] = useState<AxiomConfig | undefined>(undefined);
 
   const addTrace = (traceId: string, timestamp: Date) => {
     const newTrace = { traceId, timestamp };
@@ -49,7 +44,8 @@ export function TelemetryProvider({ children }: { children: ReactNode }) {
   const clearTraces = () => setTraces([]);
 
   useEffect(() => {
-    setEnabledProviders(getEnabledTelemetryProviders());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAxiom(getAxiomConfig());
 
     // Keyboard shortcut for clearing traces
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -81,7 +77,7 @@ export function TelemetryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TelemetryContext.Provider value={{ traces, clearTraces, enabledProviders }}>
+    <TelemetryContext.Provider value={{ traces, clearTraces, axiom }}>
       {children}
     </TelemetryContext.Provider>
   );
