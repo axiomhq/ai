@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.1](https://github.com/axiomhq/ai/compare/axiom-v0.31.0...axiom-v0.31.1) (2025-11-26)
+
+
+### Bug Fixes
+
+* evals break in projects with import aliases ([#167](https://github.com/axiomhq/ai/issues/167)) ([2bcc36a](https://github.com/axiomhq/ai/commit/2bcc36a1e42e6a21054284fac8fa8b920e3947a0))
+
+## [0.31.0](https://github.com/axiomhq/ai/compare/axiom-v0.30.0...axiom-v0.31.0) (2025-11-26)
+
+
+### Features
+
+* update runner, improve instrumentation hooks dx ([#165](https://github.com/axiomhq/ai/issues/165)) ([1f29ca5](https://github.com/axiomhq/ai/commit/1f29ca5e26e58ebe07e9110468d13e43a55bc6b9))
+
 ## [0.30.0](https://github.com/axiomhq/ai/compare/axiom-v0.29.1...axiom-v0.30.0) (2025-11-25)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "axiom",
-  "version": "0.30.0",
+  "version": "0.31.1",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -84,7 +84,8 @@
     "defu": "^6.1.4",
     "handlebars": "^4.7.8",
     "nanoid": "^5.1.5",
-    "open": "^10.1.0"
+    "open": "^10.1.0",
+    "vite-tsconfig-paths": "^5.1.4"
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
