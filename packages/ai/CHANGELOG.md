@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/axiomhq/ai/compare/axiom-v0.30.0...axiom-v0.31.0) (2025-11-26)
+
+
+### Features
+
+* update runner, improve instrumentation hooks dx ([#165](https://github.com/axiomhq/ai/issues/165)) ([1f29ca5](https://github.com/axiomhq/ai/commit/1f29ca5e26e58ebe07e9110468d13e43a55bc6b9))
+
 ## [0.30.0](https://github.com/axiomhq/ai/compare/axiom-v0.29.1...axiom-v0.30.0) (2025-11-25)
 
 
