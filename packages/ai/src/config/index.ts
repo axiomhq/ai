@@ -62,10 +62,18 @@ export interface AxiomEvalInstrumentationOptions {
 
 /**
  * Result returned from the instrumentation hook
- * - provider: TracerProvider
  */
 export interface AxiomEvalInstrumentationResult {
-  provider: TracerProvider;
+  /**
+   * TracerProvider to be flushed when eval finishes.
+   *
+   * If you use the NodeSDK or register your provider globally, you don't need to return it
+   * here as the NodeSDK automatically flushes the global provider.
+   *
+   * Only return a provider if you want Axiom to explicitly flush it for you and it's not
+   * registered as the global tracer provider.
+   */
+  provider?: TracerProvider;
 }
 
 export type SyncAxiomEvalInstrumentationHook = (
