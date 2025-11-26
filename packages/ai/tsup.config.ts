@@ -13,7 +13,7 @@ export default defineConfig({
   external: [
     '@opentelemetry/api',
     'vitest',
-    'vitest/node.js',
+    'vitest/node',
     'vitest/index.cjs',
     'vitest/runners',
     'esbuild',

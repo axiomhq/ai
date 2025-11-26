@@ -126,7 +126,9 @@ describe.sequential('eval instrumentation', () => {
     const hook = vi.fn(() => ({ provider: appProvider, tracer: appTracer }));
 
     vi.doMock('@opentelemetry/exporter-trace-otlp-http', () => ({
-      OTLPTraceExporter: vi.fn(() => axiomExporter),
+      OTLPTraceExporter: vi.fn(function () {
+        return axiomExporter;
+      }),
     }));
 
     const { initInstrumentation, startSpan, flush } = await import('../../src/evals/instrument');
@@ -180,7 +182,9 @@ describe.sequential('eval instrumentation', () => {
     });
 
     vi.doMock('@opentelemetry/exporter-trace-otlp-http', () => ({
-      OTLPTraceExporter: vi.fn(() => axiomExporter),
+      OTLPTraceExporter: vi.fn(function () {
+        return axiomExporter;
+      }),
     }));
 
     vi.doMock('../../src/config/loader', () => ({
