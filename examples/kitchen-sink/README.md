@@ -20,7 +20,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Running Evals
 
-To run the evaluations defined in the `evals/` directory:
+To run the evaluations defined in the `src/lib/capabilities/support-agent/` directory:
 
 ```bash
 pnpm eval
@@ -50,7 +50,7 @@ Here is a list of the `axiom` features demonstrated in this project and where yo
 
 ### Evaluations
 - **`Eval`, `Scorer`**: Defines evaluations and custom scoring logic.
-  - [evals/categorize-messages.eval.ts](evals/categorize-messages.eval.ts)
-  - [evals/extract-ticket-info.eval.ts](evals/extract-ticket-info.eval.ts)
-  - [evals/retrieve-from-knowledge-base.eval.ts](evals/retrieve-from-knowledge-base.eval.ts)
-  - [evals/support-agent-e2e-tool-use.eval.ts](evals/support-agent-e2e-tool-use.eval.ts)
+  - [src/lib/capabilities/support-agent/categorize-messages.eval.ts](src/lib/capabilities/support-agent/categorize-messages.eval.ts)
+  - [src/lib/capabilities/support-agent/extract-ticket-info.eval.ts](src/lib/capabilities/support-agent/extract-ticket-info.eval.ts)
+  - [src/lib/capabilities/support-agent/retrieve-from-knowledge-base.eval.ts](src/lib/capabilities/support-agent/retrieve-from-knowledge-base.eval.ts)
+  - [src/lib/capabilities/support-agent/support-agent-e2e-tool-use.eval.ts](src/lib/capabilities/support-agent/support-agent-e2e-tool-use.eval.ts)
