@@ -6,14 +6,17 @@ import type { Score, Scorer } from './scorers';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 /**
- * Creates a scorer that is both ergonomic for authors and fully generic for
- * the type-system.
+ * Creates a scorer to be used in evals.
  *
- * • If the callback returns a `number`, it is wrapped into { score }
- * • If it returns a full `Score`, we use it as-is
- * • The name is always added by the factory and attached to the function
- * • Preserves sync/async behavior of the user's function
- * • Infers types from user's args annotation for type safety
+ * Scorers need to return a number or a boolean. If returning a number, it is
+ * suggested that this number is between 0 and 1.
+ *
+ * @example
+ * const scorer = createScorer('exact-match',
+ *   (args: { output: string; expected: string; }) => {
+ *     return args.output === args.expected ? true : false;
+ *   }
+ * );
  */
 export function createScorer<
   TArgs extends Record<string, any> = {},
@@ -23,7 +26,13 @@ export function createScorer<
   TExtra extends Record<string, any> = Simplify<Omit<TArgs, 'input' | 'expected' | 'output'>>,
   TName extends string = string,
 >(
+  /**
+   * The name of the scorer
+   */
   name: ValidateName<TName>,
+  /**
+   * The scorer function. Can be sync or async.
+   */
   fn: (args: TArgs) => number | boolean | Score | Promise<number | boolean | Score>,
 ): TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
   const normalizeScore = (res: number | boolean | Score): Score => {
