@@ -17,30 +17,12 @@ const sidebarSections: SidebarSection[] = [
   {
     title: 'Sandbox',
     items: [
-      { name: 'Health', href: '/health' },
-      // { name: 'Generate text', href: '/generate-text' },
-      // { name: 'Stream text', href: '/stream-text' },
-      // { name: 'Synthetic', href: '/synthetic' },
-      // { name: 'Classify ticket', href: '/classify' },
-      // {
-      //   name: 'Customer operations',
-      //   href: '/customer-ops-agent',
-      // },
       {
         name: 'Support agent',
         href: '/support-agent',
       },
     ],
   },
-  // {
-  //   title: "Customer support",
-  //   items: [
-  //     { name: "Classify", href: "/classify" },
-  //     { name: "Respond", href: "/respond" },
-  //     { name: "Orchestrate", href: "/orchestrate" },
-  //   ],
-  // },
-  // { title: "Tools", items: [{ name: "Field list", href: "/field-list" }] },
 ];
 
 export const Sidebar = () => {

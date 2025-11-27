@@ -1,10 +1,5 @@
-import { Text } from '@/components/text';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return (
-    <>
-      <Text variant="h1">Welcome to AI Sandbox</Text>
-      <Text variant="subtitle">This is a sandbox for testing AI capabilities.</Text>
-    </>
-  );
+  redirect('/support-agent');
 }
