@@ -1,4 +1,4 @@
-import { flag } from '@/app-scope';
+import { flag, pickFlags } from '@/app-scope';
 import { Eval, Scorer } from 'axiom/ai/evals';
 import { parrotOrAntiParrot } from './example';
 
@@ -11,6 +11,7 @@ const ExactMatch = Scorer(
 
 Eval('Minimal-Demo', {
   capability: 'minimal-demo',
+  configFlags: pickFlags('minimalDemo'),
   data: () => [
     { input: 'hello', expected: 'hello' },
     { input: 'world', expected: 'world' },
