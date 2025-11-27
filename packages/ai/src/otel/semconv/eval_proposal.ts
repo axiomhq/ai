@@ -35,6 +35,7 @@ export const ATTR_EVAL_SCORE_NAME = 'eval.score.name' as const;
 export const ATTR_EVAL_SCORE_VALUE = 'eval.score.value' as const;
 export const ATTR_EVAL_SCORE_THRESHOLD = 'eval.score.threshold' as const;
 export const ATTR_EVAL_SCORE_PASSED = 'eval.score.passed' as const;
+export const ATTR_EVAL_SCORE_IS_BOOLEAN = 'eval.score.is_boolean' as const;
 export const ATTR_EVAL_SCORE_SCORER = 'eval.score.scorer' as const;
 export const ATTR_EVAL_SCORE_METADATA = 'eval.score.metadata' as const;
 // user

@@ -1,3 +1,4 @@
+import { Attr } from '../otel/semconv/attributes';
 import type { ValidateName } from '../util/name-validation';
 import type { Score, Scorer } from './scorers';
 
@@ -23,11 +24,19 @@ export function createScorer<
   TName extends string = string,
 >(
   name: ValidateName<TName>,
-  fn: (args: TArgs) => number | Score | Promise<number | Score>,
+  fn: (args: TArgs) => number | boolean | Score | Promise<number | boolean | Score>,
 ): TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
-  const normalizeScore = (res: number | Score): Score => {
+  const normalizeScore = (res: number | boolean | Score): Score => {
     if (typeof res === 'number') {
       return { score: res };
+    }
+    if (typeof res === 'boolean') {
+      return {
+        score: res ? 1 : 0,
+        metadata: {
+          [Attr.Eval.Score.IsBoolean]: true,
+        },
+      };
     }
     return res;
   };
