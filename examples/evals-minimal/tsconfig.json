@@ -26,10 +26,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "axiom.config.ts",
-  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "axiom.config.ts"],
   "exclude": ["node_modules"]
 }
