@@ -82,10 +82,13 @@ export type EvalParams<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
 > = {
-  /** Function that returns the dataset with input/expected pairs for evaluation */
-  data: () =>
+  /** Dataset with input/expected pairs for evaluation, or a function that returns one */
+  data:
     | readonly CollectionRecord<TInput, TExpected>[]
-    | Promise<readonly CollectionRecord<TInput, TExpected>[]>;
+    | Promise<readonly CollectionRecord<TInput, TExpected>[]>
+    | (() =>
+        | readonly CollectionRecord<TInput, TExpected>[]
+        | Promise<readonly CollectionRecord<TInput, TExpected>[]>);
   capability: string;
   step?: string | undefined;
   /** The task function to evaluate */

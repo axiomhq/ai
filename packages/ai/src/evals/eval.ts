@@ -97,7 +97,7 @@ export function Eval<
   params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
-    data: () => Data | Promise<Data>;
+    data: Data | Promise<Data> | (() => Data | Promise<Data>);
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
   },
@@ -181,7 +181,8 @@ async function registerEval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
-  const datasetPromise = opts.data();
+  const datasetPromise: readonly CollectionRecord<TInput, TExpected>[] | Promise<readonly CollectionRecord<TInput, TExpected>[]> =
+    typeof opts.data === 'function' ? (opts.data as Function)() : opts.data;
   const user = getGitUserInfo();
 
   // check if user passed a specific baseline id to the CLI
