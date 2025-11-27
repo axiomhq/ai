@@ -21,7 +21,7 @@ Eval('spam-classification', {
   configFlags: pickFlags('ticketClassification'),
   capability: 'ticket-classification',
   step: 'classify-ticket',
-  data: () => [
+  data: [
     {
       input: {
         subject: "Congratulations! You've Been Selected for an Exclusive Reward",
