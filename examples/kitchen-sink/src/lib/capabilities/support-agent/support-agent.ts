@@ -94,7 +94,7 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
 };
 
 async function generateSupportAnswer(
-  messages: ModelMessage[]
+  messages: ModelMessage[],
 ): Promise<{ message: ModelMessage; toolCalls: ToolCalls }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
