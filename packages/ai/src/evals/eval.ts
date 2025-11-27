@@ -181,7 +181,9 @@ async function registerEval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
-  const datasetPromise: readonly CollectionRecord<TInput, TExpected>[] | Promise<readonly CollectionRecord<TInput, TExpected>[]> =
+  const datasetPromise:
+    | readonly CollectionRecord<TInput, TExpected>[]
+    | Promise<readonly CollectionRecord<TInput, TExpected>[]> =
     typeof opts.data === 'function' ? (opts.data as Function)() : opts.data;
   const user = getGitUserInfo();
 
