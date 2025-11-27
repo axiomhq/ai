@@ -1,46 +1,123 @@
-import { categorizeMessage } from './categorize-messages';
+import { flag } from '@/lib/app-scope';
+import { openai } from '@/lib/openai';
+import { generateText, ModelMessage, stepCountIs, tool } from 'ai';
+import { withSpan, wrapAISDKModel, wrapTools } from 'axiom/ai';
+import z from 'zod';
+import { categorizeMessage, MessageCategory } from './categorize-messages';
+import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
+import { veryBadRAG } from './retrieve-from-knowledge-base';
 import { startActiveSpan } from '@/lib/utilities/start-active-span';
 
-export interface SupportResponseRequest {
-  content: string;
-  context?: Record<string, string | number | boolean>;
-}
+export type SupportAgentResult = {
+  category: MessageCategory;
+  answer: ModelMessage | null; // null when we short-circuit (spam, etc)
+  retrieval?: {
+    status: string;
+    documents: { id: string; title: string; body: string }[];
+  };
+  ticket: ExtractTicketInfoResult | null;
+};
 
-export interface SupportResponseResult {
-  response: string;
-  traceId: string | null;
-}
+const supportAgentTools = wrapTools({
+  searchKnowledgeBase: tool({
+    description:
+      'Search the internal knowledge base for information about Pets.ai products, policies, and troubleshooting.',
+    inputSchema: z.object({
+      query: z.string().describe('The search query'),
+    }),
+    execute: async ({ query }: { query: string }) => {
+      const res = await veryBadRAG(query);
+      return res.documents.map((d) => `[${d.title}] ${d.body}`).join('\n\n');
+    },
+  }),
+});
 
-export const generateSupportResponse = async (
-  request: SupportResponseRequest,
-): Promise<SupportResponseResult> => {
-  return startActiveSpan('support_agent', null, async (span) => {
-    const traceId = span.spanContext().traceId;
+export const runSupportAgent = async (messages: ModelMessage[]): Promise<SupportAgentResult> => {
+  return startActiveSpan('support_agent', null, async () => {
+    // 1. Categorize
+    const category = await categorizeMessage(messages);
 
-    const category = await categorizeMessage([{ role: 'user', content: request.content }]);
-
-    switch (category) {
-      case 'spam':
-        return { response: 'I am sorry, but I cannot assist with that.', traceId };
-      case 'wrong_company':
-        return {
-          response: 'I am sorry but you seem to have contacted the wrong company.',
-          traceId,
-        };
-      case 'complaint':
-        return {
-          response:
-            'I am sorry to hear that you are having issues. Can you please provide more details?',
-          traceId,
-        };
-      case 'support':
-        return {
-          response:
-            'I am sorry to hear that you are having issues. Can you please provide more details?',
-          traceId,
-        };
-      case 'unknown':
-        return { response: 'I am sorry, but I cannot assist with that.', traceId };
+    // 2. Hard routing / early exits
+    if (category === 'spam') {
+      return {
+        category,
+        answer: {
+          role: 'assistant',
+          content: 'This channel is for support requests only. Your message looks like spam.',
+        },
+        ticket: null,
+      };
     }
+
+    if (category === 'wrong_company') {
+      return {
+        category,
+        answer: {
+          role: 'assistant',
+          content:
+            "It looks like you're trying to reach a different company. This is Pets.ai support.",
+        },
+        ticket: null,
+      };
+    }
+
+    // 3. Always extract ticket info
+    // We do this in parallel with generating the answer so the UI updates
+    const ticketPromise = extractTicketInfo(messages);
+
+    // 4. Generate answer using tools (RAG)
+    // We pass the result of the ticket extraction to the prompt if it's ready,
+    // but since we want to run them in parallel, we'll just let the model figure out what's missing
+    // based on the conversation history.
+    const answerPromise = generateSupportAnswer(messages);
+
+    const [ticket, answer] = await Promise.all([ticketPromise, answerPromise]);
+
+    // If the ticket is incomplete, we might want to ensure the model asked for the missing info.
+    // But for this simple tool-use demo, relying on the model's system prompt is usually enough.
+
+    return {
+      category,
+      answer,
+      // Retrieval status is now harder to expose since it's hidden inside the tool call.
+      // For this demo, we'll omit explicit retrieval status in the top-level result
+      // or we could capture it via a side-effect if we really needed to show it in the UI.
+      // For now, let's just return undefined or empty for back-compat.
+      retrieval: undefined,
+      ticket,
+    };
   });
 };
+
+async function generateSupportAnswer(messages: ModelMessage[]): Promise<ModelMessage> {
+  const modelName = flag('supportAgent.main.model');
+  const model = wrapAISDKModel(openai(modelName));
+
+  return await withSpan({ capability: 'support_agent', step: 'generate_answer' }, async () => {
+    const { text } = await generateText({
+      model,
+      tools: supportAgentTools,
+      stopWhen: stepCountIs(10),
+      messages: [
+        {
+          role: 'system',
+          content: `
+  You are a support assistant for Pets.ai.
+  
+  Your goal is to help the user resolve their issue.
+  
+  1. Analyze the conversation.
+  2. If you need information to answer the user's question, use the 'searchKnowledgeBase' tool.
+  3. If the user is reporting an issue but hasn't provided enough details (like which product, what the error is), ASK for those details.
+  4. Be helpful, concise, and professional.
+  
+  Do not make up information. If the knowledge base doesn't have the answer, say so.
+        `.trim(),
+        },
+        ...messages,
+      ],
+    });
+
+    return { role: 'assistant', content: text };
+  });
+}

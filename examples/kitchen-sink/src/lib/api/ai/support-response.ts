@@ -1,11 +1,9 @@
 import { Context, Hono } from 'hono';
-import {
-  generateSupportResponse,
-  SupportResponseRequest,
-} from '@/lib/capabilities/support-agent/support-agent';
+import { runSupportAgent } from '@/lib/capabilities/support-agent/support-agent';
+import { ModelMessage } from 'ai';
 
 interface SupportResponseBody {
-  content: string;
+  messages: ModelMessage[];
   context?: Record<string, string | number | boolean>;
 }
 
@@ -13,9 +11,8 @@ const validateRequestBody = (body: unknown): body is SupportResponseBody => {
   return (
     typeof body === 'object' &&
     body !== null &&
-    'content' in body &&
-    typeof (body as SupportResponseBody).content === 'string' &&
-    (body as SupportResponseBody).content.trim().length > 0
+    'messages' in body &&
+    Array.isArray((body as SupportResponseBody).messages)
   );
 };
 
@@ -26,21 +23,13 @@ const createSupportResponseHandler = () => async (c: Context) => {
     if (!validateRequestBody(body)) {
       return c.json(
         {
-          error: 'Invalid request: content is required and must be non-empty',
+          error: 'Invalid request: messages array is required',
         },
         400,
       );
     }
 
-    const request: SupportResponseRequest = {
-      content: body.content,
-      context: {
-        ...body.context,
-        'request.source': 'api',
-      },
-    };
-
-    const result = await generateSupportResponse(request);
+    const result = await runSupportAgent(body.messages);
 
     return c.json({
       success: true,

@@ -24,7 +24,7 @@ export const ticketInfoSchema = z.object({
 
 export type TicketInfo = z.infer<typeof ticketInfoSchema>;
 
-type ExtractTicketInfoResult = {
+export type ExtractTicketInfoResult = {
   ticketInfo: TicketInfo;
   status: {
     isComplete: boolean;

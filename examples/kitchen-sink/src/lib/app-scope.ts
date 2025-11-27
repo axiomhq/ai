@@ -19,6 +19,11 @@ const flagSchema = z.object({
         .enum(['gpt-4o-mini-2024-07-18', 'gpt-5-mini-2025-08-07', 'gpt-5-nano-2025-08-07'])
         .default('gpt-5-nano-2025-08-07'),
     }),
+    main: z.object({
+      model: z
+        .enum(['gpt-4o-mini-2024-07-18', 'gpt-5-mini-2025-08-07', 'gpt-5-nano-2025-08-07'])
+        .default('gpt-5-nano-2025-08-07'),
+    }),
   }),
 });
 

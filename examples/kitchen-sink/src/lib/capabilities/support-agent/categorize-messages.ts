@@ -12,7 +12,7 @@ export const messageCategories = [
   'unknown',
 ] as const;
 const messageCategoriesSchema = z.union(messageCategories.map((type) => z.literal(type)));
-type MessageCategory = z.infer<typeof messageCategoriesSchema>;
+export type MessageCategory = z.infer<typeof messageCategoriesSchema>;
 
 export const categorizeMessage = async (messages: ModelMessage[]): Promise<MessageCategory> => {
   const modelName = flag('supportAgent.categorizeMessage.model');
