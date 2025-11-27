@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kitchen Sink Example
+
+This example shows all components of the Axiom AI SDK working together: `axiom.config.ts`, instrumentation, app scope / flags, and evals.
 
 ## Getting Started
 
-First, run the development server:
+First, install the dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm i
+```
+
+Then, run the development server:
+
+```bash
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Running Evals
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To run the evaluations defined in the `evals/` directory:
 
-## Learn More
+```bash
+pnpm eval
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Axiom Features Showcase
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Here is a list of the `axiom` features demonstrated in this project and where you can find them:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Tracing & Instrumentation
+- **`wrapAISDKModel`**: Wraps the AI SDK model for tracing.
+  - [src/lib/capabilities/support-agent/support-agent.ts](src/lib/capabilities/support-agent/support-agent.ts)
+  - [src/lib/capabilities/support-agent/retrieve-from-knowledge-base.ts](src/lib/capabilities/support-agent/retrieve-from-knowledge-base.ts)
+  - [src/lib/capabilities/support-agent/categorize-messages.ts](src/lib/capabilities/support-agent/categorize-messages.ts)
+  - [src/lib/capabilities/support-agent/extract-ticket-info.ts](src/lib/capabilities/support-agent/extract-ticket-info.ts)
+- **`wrapTools`**: Wraps tools for tracing.
+  - [src/lib/capabilities/support-agent/support-agent.ts](src/lib/capabilities/support-agent/support-agent.ts)
+- **`withSpan`**: Creates a custom span for manual tracing.
+  - [src/lib/capabilities/support-agent/support-agent.ts](src/lib/capabilities/support-agent/support-agent.ts)
+  - [src/lib/capabilities/support-agent/categorize-messages.ts](src/lib/capabilities/support-agent/categorize-messages.ts)
+  - [src/lib/capabilities/support-agent/extract-ticket-info.ts](src/lib/capabilities/support-agent/extract-ticket-info.ts)
 
-## Deploy on Vercel
+### Configuration & App Scope
+- **`createAppScope`, `flag`, `pickFlags`**: Defines the application scope and configuration flags.
+  - [src/lib/app-scope.ts](src/lib/app-scope.ts) defines the schema and flags.
+  - Used throughout `src/lib/capabilities/support-agent/` to retrieve model names and configuration values.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Evaluations
+- **`Eval`, `Scorer`**: Defines evaluations and custom scoring logic.
+  - [evals/categorize-messages.eval.ts](evals/categorize-messages.eval.ts)
+  - [evals/extract-ticket-info.eval.ts](evals/extract-ticket-info.eval.ts)
+  - [evals/retrieve-from-knowledge-base.eval.ts](evals/retrieve-from-knowledge-base.eval.ts)
+  - [evals/support-agent-e2e-tool-use.eval.ts](evals/support-agent-e2e-tool-use.eval.ts)
