@@ -1,6 +1,12 @@
-import { flag, pickFlags } from '@/app-scope';
+import { pickFlags } from '@/app-scope';
 import { Eval, Scorer } from 'axiom/ai/evals';
 import { parrotOrAntiParrot } from './example';
+
+/**
+ * 🚨 This eval is very contrived for the sake of creating a minimal example.
+ *
+ * For something a bit more realistic, please take a look at the kitchen-sink example.
+ */
 
 const ExactMatch = Scorer(
   'ExactMatch',
