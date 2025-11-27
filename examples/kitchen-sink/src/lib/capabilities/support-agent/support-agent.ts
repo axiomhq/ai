@@ -8,9 +8,12 @@ import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-inf
 import { veryBadRAG } from './retrieve-from-knowledge-base';
 import { startActiveSpan } from '@/lib/utilities/start-active-span';
 
+type ToolCalls = Awaited<ReturnType<typeof generateText>>['toolCalls'];
+
 export type SupportAgentResult = {
   category: MessageCategory;
   answer: ModelMessage | null; // null when we short-circuit (spam, etc)
+  toolCalls?: ToolCalls;
   retrieval?: {
     status: string;
     documents: { id: string; title: string; body: string }[];
@@ -71,14 +74,15 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
     // based on the conversation history.
     const answerPromise = generateSupportAnswer(messages);
 
-    const [ticket, answer] = await Promise.all([ticketPromise, answerPromise]);
+    const [ticket, answerResult] = await Promise.all([ticketPromise, answerPromise]);
 
     // If the ticket is incomplete, we might want to ensure the model asked for the missing info.
     // But for this simple tool-use demo, relying on the model's system prompt is usually enough.
 
     return {
       category,
-      answer,
+      answer: answerResult.message,
+      toolCalls: answerResult.toolCalls,
       // Retrieval status is now harder to expose since it's hidden inside the tool call.
       // For this demo, we'll omit explicit retrieval status in the top-level result
       // or we could capture it via a side-effect if we really needed to show it in the UI.
@@ -89,12 +93,14 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
   });
 };
 
-async function generateSupportAnswer(messages: ModelMessage[]): Promise<ModelMessage> {
+async function generateSupportAnswer(
+  messages: ModelMessage[]
+): Promise<{ message: ModelMessage; toolCalls: ToolCalls }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
   return await withSpan({ capability: 'support_agent', step: 'generate_answer' }, async () => {
-    const { text } = await generateText({
+    const { text, toolCalls } = await generateText({
       model,
       tools: supportAgentTools,
       stopWhen: stepCountIs(10),
@@ -118,6 +124,6 @@ async function generateSupportAnswer(messages: ModelMessage[]): Promise<ModelMes
       ],
     });
 
-    return { role: 'assistant', content: text };
+    return { message: { role: 'assistant', content: text }, toolCalls };
   });
 }

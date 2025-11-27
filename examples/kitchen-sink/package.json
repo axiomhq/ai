@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "eval": "axiom eval"
+    "eval": "axiom eval **/*e2e*.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.72",
