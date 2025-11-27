@@ -181,10 +181,17 @@ async function registerEval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
+  opts.data;
   const collectionPromise:
     | readonly CollectionRecord<TInput, TExpected>[]
     | Promise<readonly CollectionRecord<TInput, TExpected>[]> =
-    typeof opts.data === 'function' ? (opts.data as Function)() : opts.data;
+    typeof opts.data === 'function'
+      ? (
+          opts.data as () =>
+            | readonly CollectionRecord<TInput, TExpected>[]
+            | Promise<readonly CollectionRecord<TInput, TExpected>[]>
+        )()
+      : opts.data;
   const user = getGitUserInfo();
 
   // check if user passed a specific baseline id to the CLI
