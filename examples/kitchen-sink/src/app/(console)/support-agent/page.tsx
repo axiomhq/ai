@@ -58,7 +58,7 @@ export default function SupportAgent() {
       try {
         const clientResponse = await apiClient.api['support-response'].$post({
           json: {
-            messages: newMessages as any,
+            messages: newMessages,
           },
         });
 
