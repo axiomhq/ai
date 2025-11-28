@@ -16,6 +16,7 @@ import {
   printRuntimeFlags,
   printOutOfScopeFlags,
   printTestCaseSuccessOrFailed,
+  printSuiteBox,
   type SuiteData,
 } from '../../src/evals/reporter.console-utils';
 import type { MetaWithCase, Case, Evaluation } from '../../src/evals/eval.types';
@@ -193,17 +194,27 @@ describe('reporter.console-utils', () => {
   });
 
   describe('calculateFlagDiff', () => {
-    it('returns empty if no baseline or flags', () => {
+    it('returns empty if no configFlags', () => {
       const suite = { baseline: null } as unknown as SuiteData;
       expect(calculateFlagDiff(suite)).toEqual([]);
     });
 
-    it('detects changes in scoped flags', () => {
+    it('returns empty if configFlags is empty', () => {
+      const suite = {
+        configFlags: [],
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': false },
+      } as unknown as SuiteData;
+      expect(calculateFlagDiff(suite)).toEqual([]);
+    });
+
+    it('detects changes from baseline only', () => {
       const suite = {
         configFlags: ['feature'],
-        flagConfig: { 'feature.enabled': true, 'other.flag': true },
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': true },
         baseline: {
-          flagConfig: { 'feature.enabled': false, 'other.flag': false },
+          flagConfig: { 'feature.enabled': false },
         },
       } as unknown as SuiteData;
 
@@ -213,19 +224,112 @@ describe('reporter.console-utils', () => {
         flag: 'feature.enabled',
         current: 'true',
         baseline: 'false',
+        default: 'true',
       });
+    });
+
+    it('detects changes from default only', () => {
+      const suite = {
+        configFlags: ['feature'],
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': false },
+        baseline: null,
+      } as unknown as SuiteData;
+
+      const diff = calculateFlagDiff(suite);
+      expect(diff).toHaveLength(1);
+      expect(diff[0]).toEqual({
+        flag: 'feature.enabled',
+        current: 'true',
+        baseline: undefined,
+        default: 'false',
+      });
+    });
+
+    it('detects changes from both baseline and default', () => {
+      const suite = {
+        configFlags: ['feature'],
+        flagConfig: { 'feature.model': '"gpt-5"' },
+        defaultFlagConfig: { 'feature.model': '"gpt-4o"' },
+        baseline: {
+          flagConfig: { 'feature.model': '"gpt-4"' },
+        },
+      } as unknown as SuiteData;
+
+      const diff = calculateFlagDiff(suite);
+      expect(diff).toHaveLength(1);
+      expect(diff[0]).toEqual({
+        flag: 'feature.model',
+        current: '"\\"gpt-5\\""',
+        baseline: '"\\"gpt-4\\""',
+        default: '"\\"gpt-4o\\""',
+      });
+    });
+
+    it('returns empty when same as both baseline and default', () => {
+      const suite = {
+        configFlags: ['feature'],
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': true },
+        baseline: {
+          flagConfig: { 'feature.enabled': true },
+        },
+      } as unknown as SuiteData;
+
+      expect(calculateFlagDiff(suite)).toEqual([]);
     });
 
     it('ignores changes outside configFlags scope', () => {
       const suite = {
         configFlags: ['feature'],
         flagConfig: { 'other.flag': true },
+        defaultFlagConfig: { 'other.flag': false },
         baseline: {
           flagConfig: { 'other.flag': false },
         },
       } as unknown as SuiteData;
 
       expect(calculateFlagDiff(suite)).toEqual([]);
+    });
+
+    it('handles flag missing from baseline', () => {
+      const suite = {
+        configFlags: ['feature'],
+        flagConfig: { 'feature.new': true },
+        defaultFlagConfig: { 'feature.new': false },
+        baseline: {
+          flagConfig: {},
+        },
+      } as unknown as SuiteData;
+
+      const diff = calculateFlagDiff(suite);
+      expect(diff).toHaveLength(1);
+      expect(diff[0]).toEqual({
+        flag: 'feature.new',
+        current: 'true',
+        baseline: undefined,
+        default: 'false',
+      });
+    });
+
+    it('handles flag missing from default', () => {
+      const suite = {
+        configFlags: ['feature'],
+        flagConfig: { 'feature.custom': true },
+        defaultFlagConfig: {},
+        baseline: {
+          flagConfig: { 'feature.custom': false },
+        },
+      } as unknown as SuiteData;
+
+      const diff = calculateFlagDiff(suite);
+      expect(diff).toHaveLength(1);
+      expect(diff[0]).toEqual({
+        flag: 'feature.custom',
+        current: 'true',
+        baseline: 'false',
+        default: undefined,
+      });
     });
   });
 
@@ -506,6 +610,180 @@ describe('reporter.console-utils', () => {
       expect(line).toContain('accuracy');
       expect(line).toContain('N/A');
       expect(line).toContain('(scorer not run)');
+    });
+  });
+
+  describe('printSuiteBox', () => {
+    const createBaseSuite = (overrides: Partial<SuiteData> = {}): SuiteData =>
+      ({
+        name: 'test-suite',
+        file: '/path/to/test.ts',
+        duration: '1.23s',
+        runId: 'run-123',
+        cases: [{ index: 0, scores: { accuracy: { score: 0.8 } } }],
+        configFlags: ['feature'],
+        flagConfig: {},
+        defaultFlagConfig: {},
+        baseline: null,
+        ...overrides,
+      }) as SuiteData;
+
+    const mockCalculateBaselineScorerAverage = (baseline: Evaluation, scorerName: string) => {
+      const scores: number[] = [];
+      for (const caseData of baseline.cases) {
+        if (caseData.scores[scorerName]) {
+          scores.push(caseData.scores[scorerName].value);
+        }
+      }
+      if (scores.length === 0) return null;
+      return scores.reduce((a, b) => a + b, 0) / scores.length;
+    };
+
+    it('prints config changes when different from baseline only', () => {
+      const { logger, getLines } = createMockLogger();
+
+      const suite = createBaseSuite({
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': true },
+        baseline: {
+          name: 'baseline',
+          version: 1,
+          cases: [],
+          flagConfig: { 'feature.enabled': false },
+        } as unknown as Evaluation,
+      });
+
+      const flagDiff = calculateFlagDiff(suite);
+
+      printSuiteBox({
+        suite,
+        scorerAverages: { accuracy: 0.8 },
+        calculateBaselineScorerAverage: mockCalculateBaselineScorerAverage,
+        flagDiff,
+        logger,
+      });
+
+      const lines = getLines().map(stripAnsi);
+      expect(lines.some((l) => l.includes('Config changes:'))).toBe(true);
+      expect(lines.some((l) => l.includes('feature.enabled: true'))).toBe(true);
+      expect(lines.some((l) => l.includes('default: true'))).toBe(true);
+      expect(lines.some((l) => l.includes('baseline: false'))).toBe(true);
+    });
+
+    it('prints config changes when different from default only (no baseline)', () => {
+      const { logger, getLines } = createMockLogger();
+
+      const suite = createBaseSuite({
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': false },
+        baseline: null,
+      });
+
+      const flagDiff = calculateFlagDiff(suite);
+
+      printSuiteBox({
+        suite,
+        scorerAverages: { accuracy: 0.8 },
+        calculateBaselineScorerAverage: mockCalculateBaselineScorerAverage,
+        flagDiff,
+        logger,
+      });
+
+      const lines = getLines().map(stripAnsi);
+      expect(lines.some((l) => l.includes('Config changes:'))).toBe(true);
+      expect(lines.some((l) => l.includes('feature.enabled: true'))).toBe(true);
+      expect(lines.some((l) => l.includes('default: false'))).toBe(true);
+      expect(lines.some((l) => l.includes('baseline:'))).toBe(false);
+    });
+
+    it('prints config changes when different from both baseline and default', () => {
+      const { logger, getLines } = createMockLogger();
+
+      const suite = createBaseSuite({
+        flagConfig: { 'feature.model': 'gpt-5' },
+        defaultFlagConfig: { 'feature.model': 'gpt-4o' },
+        baseline: {
+          name: 'baseline',
+          version: 1,
+          cases: [],
+          flagConfig: { 'feature.model': 'gpt-4' },
+        } as unknown as Evaluation,
+      });
+
+      const flagDiff = calculateFlagDiff(suite);
+
+      printSuiteBox({
+        suite,
+        scorerAverages: { accuracy: 0.8 },
+        calculateBaselineScorerAverage: mockCalculateBaselineScorerAverage,
+        flagDiff,
+        logger,
+      });
+
+      const lines = getLines().map(stripAnsi);
+      expect(lines.some((l) => l.includes('Config changes:'))).toBe(true);
+      expect(lines.some((l) => l.includes('feature.model:'))).toBe(true);
+      expect(lines.some((l) => l.includes('default:'))).toBe(true);
+      expect(lines.some((l) => l.includes('baseline:'))).toBe(true);
+    });
+
+    it('prints (none) when same as both baseline and default', () => {
+      const { logger, getOutput } = createMockLogger();
+
+      const suite = createBaseSuite({
+        flagConfig: { 'feature.enabled': true },
+        defaultFlagConfig: { 'feature.enabled': true },
+        baseline: {
+          name: 'baseline',
+          version: 1,
+          cases: [],
+          flagConfig: { 'feature.enabled': true },
+        } as unknown as Evaluation,
+      });
+
+      const flagDiff = calculateFlagDiff(suite);
+
+      printSuiteBox({
+        suite,
+        scorerAverages: { accuracy: 0.8 },
+        calculateBaselineScorerAverage: mockCalculateBaselineScorerAverage,
+        flagDiff,
+        logger,
+      });
+
+      const output = stripAnsi(getOutput());
+      expect(output).toContain('Config changes:');
+      expect(output).toContain('(none)');
+    });
+
+    it('shows baseline as <not set> when flag missing from baseline', () => {
+      const { logger, getLines } = createMockLogger();
+
+      const suite = createBaseSuite({
+        flagConfig: { 'feature.new': true },
+        defaultFlagConfig: { 'feature.new': false },
+        baseline: {
+          name: 'baseline',
+          version: 1,
+          cases: [],
+          flagConfig: {},
+        } as unknown as Evaluation,
+      });
+
+      const flagDiff = calculateFlagDiff(suite);
+
+      printSuiteBox({
+        suite,
+        scorerAverages: { accuracy: 0.8 },
+        calculateBaselineScorerAverage: mockCalculateBaselineScorerAverage,
+        flagDiff,
+        logger,
+      });
+
+      const lines = getLines().map(stripAnsi);
+      expect(lines.some((l) => l.includes('feature.new: true'))).toBe(true);
+      expect(lines.some((l) => l.includes('default: false'))).toBe(true);
+      expect(lines.some((l) => l.includes('baseline: <not set>'))).toBe(true);
     });
   });
 });

@@ -229,6 +229,7 @@ export type FlagDiff = {
   flag: string;
   current: string | undefined;
   baseline: string | undefined;
+  default: string | undefined;
 };
 
 export type OutOfScopeFlagAccess = {
