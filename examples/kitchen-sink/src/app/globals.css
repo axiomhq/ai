@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+
+:root {
+  --sidebar-width: 17.5rem;
+  --header-height: 3rem;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
