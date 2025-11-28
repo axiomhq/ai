@@ -1,5 +1,5 @@
 import type { TracerProvider } from '@opentelemetry/api';
-import { z } from 'zod';
+import { type z } from 'zod';
 import { AxiomCLIError } from '../util/errors';
 import { getAuthContext } from '../cli/auth';
 
