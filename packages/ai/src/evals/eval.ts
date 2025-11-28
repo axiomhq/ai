@@ -55,7 +55,7 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * Creates and registers an evaluation suite with the given name and parameters.
  *
  * This function sets up a complete evaluation pipeline that will run your {@link EvalTask}
- * against a dataset, score the results, and provide detailed {@link EvalCaseReport} reporting.
+ * against a collection, score the results, and provide detailed {@link EvalCaseReport} reporting.
  *
  *
  * @param name - Human-readable name for the evaluation suite
@@ -97,7 +97,7 @@ export function Eval<
   params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
-    data: () => Data | Promise<Data>;
+    data: Data | Promise<Data> | (() => Data | Promise<Data>);
     task: TaskFn;
     scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
   },
@@ -181,7 +181,17 @@ async function registerEval<
   TExpected extends string | Record<string, any>,
   TOutput extends string | Record<string, any>,
 >(evalName: string, opts: EvalParams<TInput, TExpected, TOutput>) {
-  const datasetPromise = opts.data();
+  opts.data;
+  const collectionPromise:
+    | readonly CollectionRecord<TInput, TExpected>[]
+    | Promise<readonly CollectionRecord<TInput, TExpected>[]> =
+    typeof opts.data === 'function'
+      ? (
+          opts.data as () =>
+            | readonly CollectionRecord<TInput, TExpected>[]
+            | Promise<readonly CollectionRecord<TInput, TExpected>[]>
+        )()
+      : opts.data;
   const user = getGitUserInfo();
 
   // check if user passed a specific baseline id to the CLI
@@ -206,7 +216,7 @@ async function registerEval<
   const result = await describe(
     evalName,
     async () => {
-      const dataset = await datasetPromise;
+      const collection = await collectionPromise;
 
       const evaluationApiClient = new EvaluationApiClient(axiomConfig, consoleUrl);
 
@@ -259,9 +269,9 @@ async function registerEval<
             [Attr.Eval.Version]: evalVersion,
             [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
             [Attr.Eval.Tags]: [],
-            [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get dataset split value from?
-            [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get dataset name from?
-            [Attr.Eval.Collection.Size]: dataset.length,
+            [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get collection split value from?
+            [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get collection name from?
+            [Attr.Eval.Collection.Size]: collection.length,
             // capability
             [Attr.Eval.Capability.Name]: opts.capability,
             [Attr.Eval.Step.Name]: opts.step ?? undefined,
@@ -295,7 +305,7 @@ async function registerEval<
             version: evalVersion,
             baselineId: baselineId ?? undefined,
             runId: runId,
-            totalCases: dataset.length,
+            totalCases: collection.length,
             config: { overrides: injectedOverrides },
             configTimeoutMs: timeoutMs,
             metadata: opts.metadata,
@@ -419,7 +429,7 @@ async function registerEval<
           await evaluationApiClient.updateEvaluation({
             id: evalId,
             status: 'completed',
-            totalCases: dataset.length,
+            totalCases: collection.length,
             successCases,
             erroredCases,
             durationMs,
@@ -430,7 +440,7 @@ async function registerEval<
       type CollectionRecordWithIndex = { index: number } & CollectionRecord<TInput, TExpected>;
 
       await it.concurrent.for(
-        dataset.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
+        collection.map((d, index) => ({ ...d, index }) satisfies CollectionRecordWithIndex),
       )('case', async (data, { task }) => {
         const start = performance.now();
         if (!suiteContext) {
