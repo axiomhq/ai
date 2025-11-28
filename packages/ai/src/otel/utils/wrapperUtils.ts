@@ -203,8 +203,8 @@ export function getTracer(): Tracer {
   const tracer = getGlobalTracer();
 
   if (isNoOpTracerProvider()) {
-    const DEBUG = process.env.AXIOM_DEBUG === 'true';
-    if (!DEBUG) {
+    const isDebug = process.env.AXIOM_DEBUG === 'true';
+    if (!isDebug) {
       console.warn(
         '[AxiomAI] No TracerProvider registered - spans will be no-op. ' +
           'Make sure to call initAxiomAI() after your OpenTelemetry SDK has started (sdk.start()).',

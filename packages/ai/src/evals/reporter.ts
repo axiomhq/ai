@@ -13,7 +13,6 @@ import {
   printOrphanedBaselineCases,
   getCaseFingerprint,
   printCaseResult,
-  printConfigEnd,
 } from './reporter.console-utils';
 import { resolveAxiomConnection, type AxiomConnectionResolvedConfig } from '../config/resolver';
 import { getConsoleUrl } from '../cli/commands/eval.command';
@@ -183,17 +182,13 @@ export class AxiomReporter implements Reporter {
         suite.registrationStatus?.status === 'failed' ? suite.registrationStatus.error : undefined,
     }));
 
-    const DEBUG = process.env.AXIOM_DEBUG === 'true';
+    const isDebug = process.env.AXIOM_DEBUG === 'true';
 
     printFinalReport({
       suiteData: this._suiteData,
       config: this._config,
       registrationStatus,
-      isDebug: DEBUG,
+      isDebug,
     });
-
-    if (DEBUG && this._endOfRunConfigEnd) {
-      printConfigEnd(this._endOfRunConfigEnd);
-    }
   }
 }

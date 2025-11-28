@@ -181,6 +181,13 @@ export interface AxiomConfig extends AxiomConfigBase {
    * but don't show them in autocomplete for now
    */
   [key: `$${string}`]: Partial<AxiomConfigBase> | undefined;
+
+  /**
+   * Run in debug mode without any network operations.
+   * When true, token and dataset validation is skipped.
+   * @internal Set by CLI --debug flag
+   */
+  debug?: boolean;
 }
 
 /**
@@ -256,28 +263,35 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
  * Validates and returns a fully resolved Axiom configuration.
  *
  * @param config - Partial configuration to validate
+ * @param options - Validation options
+ * @param options.debug - If true, skip token/dataset validation
  * @returns Fully resolved configuration with all required fields
  * @throws {AxiomCLIError} If required fields are missing or invalid
  * @internal
  */
-export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomConfig {
+export function validateConfig(
+  config: Partial<AxiomConfigBase> & { debug?: boolean },
+): ResolvedAxiomConfig {
   const errors: string[] = [];
+  const debug = process.env.AXIOM_DEBUG === 'true';
 
-  if (!config.eval?.token) {
-    errors.push(
-      'eval.token is required (set in axiom.config.ts or AXIOM_TOKEN environment variable)',
-    );
-  }
-  if (!config.eval?.dataset) {
-    errors.push(
-      'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
-    );
-  }
+  if (!debug) {
+    if (!config.eval?.token) {
+      errors.push(
+        'eval.token is required (set in axiom.config.ts or AXIOM_TOKEN environment variable)',
+      );
+    }
+    if (!config.eval?.dataset) {
+      errors.push(
+        'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
+      );
+    }
 
-  if (!config.eval?.url) {
-    console.log(
-      'eval.url was not specified. Defaulting to `https://api.axiom.co`. Please set it in axiom.config.ts or AXIOM_URL environment variable if you want to use a different endpoint.',
-    );
+    if (!config.eval?.url) {
+      console.log(
+        'eval.url was not specified. Defaulting to `https://api.axiom.co`. Please set it in axiom.config.ts or AXIOM_URL environment variable if you want to use a different endpoint.',
+      );
+    }
   }
 
   const instrumentation = config.eval?.instrumentation;
