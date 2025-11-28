@@ -24,6 +24,7 @@ export type SuiteData = {
   baseline: Evaluation | undefined | null;
   configFlags?: string[];
   flagConfig?: Record<string, any>;
+  defaultFlagConfig?: Record<string, any>;
   runId: string;
   orgId?: string;
   cases: Array<{
@@ -465,15 +466,17 @@ export function printSuiteBox({
     logger(`│  Baseline: ${c.gray('(none)')}`);
   }
 
-  if (suite.baseline) {
-    const hasConfigChanges = flagDiff.length > 0;
+  const hasConfigChanges = flagDiff.length > 0;
 
-    logger('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
-    if (hasConfigChanges) {
-      for (const { flag, current, baseline } of flagDiff) {
-        logger(
-          `│   • ${flag}: ${current ?? '<not set>'} ${c.gray(`(baseline: ${baseline ?? '<not set>'})`)}`,
-        );
+  logger('│  Config changes:', hasConfigChanges ? '' : c.gray('(none)'));
+  if (hasConfigChanges) {
+    for (const { flag, current, baseline, default: defaultVal } of flagDiff) {
+      logger(`│   • ${flag}: ${current ?? '<not set>'}`);
+      if (defaultVal !== undefined) {
+        logger(`│       ${c.gray(`default: ${defaultVal}`)}`);
+      }
+      if (suite.baseline) {
+        logger(`│       ${c.gray(`baseline: ${baseline ?? '<not set>'}`)}`);
       }
     }
   }
@@ -546,22 +549,29 @@ export function calculateBaselineScorerAverage(
 }
 
 /**
- * Calculate flag diff between current run and baseline (filtered by configFlags)
+ * Calculate flag diff between current run vs baseline and defaults (filtered by configFlags).
+ * Shows a diff if current differs from at least one of baseline or default.
  */
 export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
-  if (!suite.baseline || !suite.configFlags || suite.configFlags.length === 0) {
+  if (!suite.configFlags || suite.configFlags.length === 0) {
     return [];
   }
 
   const diffs: Array<FlagDiff> = [];
 
   const currentConfig = suite.flagConfig || {};
-  const baselineConfig = suite.baseline.flagConfig || {};
+  const baselineConfig = suite.baseline?.flagConfig || {};
+  const defaultConfig = suite.defaultFlagConfig || {};
 
   const currentFlat = flattenObject(currentConfig);
   const baselineFlat = flattenObject(baselineConfig);
+  const defaultFlat = flattenObject(defaultConfig);
 
-  const allKeys = new Set([...Object.keys(currentFlat), ...Object.keys(baselineFlat)]);
+  const allKeys = new Set([
+    ...Object.keys(currentFlat),
+    ...Object.keys(baselineFlat),
+    ...Object.keys(defaultFlat),
+  ]);
 
   for (const key of allKeys) {
     const isInScope = suite.configFlags.some((pattern) => key.startsWith(pattern));
@@ -569,12 +579,21 @@ export function calculateFlagDiff(suite: SuiteData): Array<FlagDiff> {
 
     const currentValue = currentFlat[key];
     const baselineValue = baselineFlat[key];
+    const defaultValue = defaultFlat[key];
 
-    if (JSON.stringify(currentValue) !== JSON.stringify(baselineValue)) {
+    const currentStr = currentValue !== undefined ? JSON.stringify(currentValue) : undefined;
+    const baselineStr = baselineValue !== undefined ? JSON.stringify(baselineValue) : undefined;
+    const defaultStr = defaultValue !== undefined ? JSON.stringify(defaultValue) : undefined;
+
+    const diffFromBaseline = suite.baseline && currentStr !== baselineStr;
+    const diffFromDefault = currentStr !== defaultStr;
+
+    if (diffFromBaseline || diffFromDefault) {
       diffs.push({
         flag: key,
-        current: currentValue !== undefined ? JSON.stringify(currentValue) : undefined,
-        baseline: baselineValue !== undefined ? JSON.stringify(baselineValue) : undefined,
+        current: currentStr,
+        baseline: suite.baseline ? baselineStr : undefined,
+        default: defaultStr,
       });
     }
   }
