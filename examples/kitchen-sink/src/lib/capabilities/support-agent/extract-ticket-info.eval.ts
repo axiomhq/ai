@@ -13,25 +13,25 @@ const ticketInfoMatch = Scorer(
     Object.keys(expected.ticketInfo).forEach((key) => {
       // @ts-expect-error keys not typesafe
       if (expected.ticketInfo[key] !== output.ticketInfo[key]) {
-        return 0;
+        return false;
       }
     });
 
     // Check isComplete
     if (expected.status.isComplete !== output.status.isComplete) {
-      return 0;
+      return false;
     }
 
     // Check missingFields
     if (expected.status.missingFields.length) {
       const outputMissing = new Set(output.status.missingFields);
       for (const field of expected.status.missingFields) {
-        if (!outputMissing.has(field)) return 0;
+        if (!outputMissing.has(field)) return false;
       }
       if (expected.status.missingFields.length !== output.status.missingFields.length) return 0;
     }
 
-    return 1;
+    return true;
   },
 );
 

@@ -11,7 +11,7 @@ import { parrotOrAntiParrot } from './example';
 const ExactMatch = Scorer(
   'ExactMatch',
   ({ output, expected }: { output: string; expected: string }) => {
-    return output === expected ? 1 : 0;
+    return output === expected ? true : false;
   },
 );
 

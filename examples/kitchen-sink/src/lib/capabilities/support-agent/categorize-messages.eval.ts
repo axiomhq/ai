@@ -3,7 +3,7 @@ import { categorizeMessage } from '@/lib/capabilities/support-agent/categorize-m
 import { Eval, Scorer } from 'axiom/ai/evals';
 
 const exactMatch = Scorer('exact-match', (args: { expected: string; output: string }) => {
-  return args.expected === args.output ? 1 : 0;
+  return args.expected === args.output ? true : false;
 });
 
 Eval('support-agent-categorize-messages', {

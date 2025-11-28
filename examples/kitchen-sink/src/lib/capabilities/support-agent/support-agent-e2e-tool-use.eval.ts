@@ -15,16 +15,16 @@ const toolUseMatch = Scorer(
     // 1. If we expect specific tools, ensure they were called.
     for (const tool of expected) {
       if (!actualSet.has(tool)) {
-        return 0;
+        return false;
       }
     }
 
     // 2. If we explicitly expect NO tools (empty array), ensure no tools were called.
     if (expected.length === 0 && actual.length > 0) {
-      return 0;
+      return false;
     }
 
-    return 1;
+    return true;
   },
 );
 
