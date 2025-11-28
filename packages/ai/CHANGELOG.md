@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.0](https://github.com/axiomhq/ai/compare/axiom-v0.31.1...axiom-v0.32.0) (2025-11-28)
+
+
+### Features
+
+* allow `data` to be just an array ([#171](https://github.com/axiomhq/ai/issues/171)) ([05cfa10](https://github.com/axiomhq/ai/commit/05cfa1091113b80d12c19241708cca670f5b92a1))
+* allow scorer functions to return boolean ([#170](https://github.com/axiomhq/ai/issues/170)) ([6c7ad7e](https://github.com/axiomhq/ai/commit/6c7ad7e1d17061947f4545ee84e49ba76521ffad))
+
 ## [0.31.1](https://github.com/axiomhq/ai/compare/axiom-v0.31.0...axiom-v0.31.1) (2025-11-26)
 
 
