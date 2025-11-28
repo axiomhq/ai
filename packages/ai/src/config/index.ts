@@ -181,13 +181,6 @@ export interface AxiomConfig extends AxiomConfigBase {
    * but don't show them in autocomplete for now
    */
   [key: `$${string}`]: Partial<AxiomConfigBase> | undefined;
-
-  /**
-   * Run in debug mode without any network operations.
-   * When true, token and dataset validation is skipped.
-   * @internal Set by CLI --debug flag
-   */
-  debug?: boolean;
 }
 
 /**
@@ -269,9 +262,7 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
  * @throws {AxiomCLIError} If required fields are missing or invalid
  * @internal
  */
-export function validateConfig(
-  config: Partial<AxiomConfigBase> & { debug?: boolean },
-): ResolvedAxiomConfig {
+export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomConfig {
   const errors: string[] = [];
   const debug = process.env.AXIOM_DEBUG === 'true';
 

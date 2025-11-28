@@ -96,7 +96,6 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               ...(options.dataset && { dataset: options.dataset }),
               ...(options.orgId && { orgId: options.orgId }),
             },
-            debug: options.debug,
           };
 
           if (isGlobPattern) {
