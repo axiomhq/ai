@@ -146,7 +146,7 @@ export interface AxiomConfigBase {
      * });
      * ```
      */
-    flagSchema?: z.ZodObject<any>;
+    flagSchema?: z.ZodObject<any> | null;
     /**
      * Optional hook to initialize application OpenTelemetry instrumentation.
      * Called before eval execution with resolved Axiom connection details.

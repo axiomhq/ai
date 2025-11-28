@@ -69,7 +69,7 @@ export const runVitest = async (
       ...opts.config.eval,
       // These can't be serialized, so we need to remove them
       instrumentation: null,
-      flagSchema: null as any,
+      flagSchema: null,
     },
   };
 
