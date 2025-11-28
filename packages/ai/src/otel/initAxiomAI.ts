@@ -85,8 +85,8 @@ export function getGlobalTracer(): Tracer {
 
   // Warn if initAxiomAI was never called
   if (!scope) {
-    const DEBUG = process.env.AXIOM_DEBUG === 'true';
-    if (!DEBUG) {
+    const isDebug = process.env.AXIOM_DEBUG === 'true';
+    if (!isDebug) {
       console.warn(
         '[AxiomAI] AXIOM_AI_SCOPE_KEY is undefined. This probably means that ' +
           'initAxiomAI() was never called. ' +
