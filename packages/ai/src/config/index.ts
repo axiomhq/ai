@@ -1,4 +1,5 @@
 import type { TracerProvider } from '@opentelemetry/api';
+import { z } from 'zod';
 import { AxiomCLIError } from '../util/errors';
 import { getAuthContext } from '../cli/auth';
 
@@ -125,6 +126,28 @@ export interface AxiomConfigBase {
    */
   eval?: AxiomConnectionConfig & {
     /**
+     * Zod schema for flag validation.
+     * When provided, CLI flags (--flag.*) are validated against this schema
+     * before eval execution begins.
+     *
+     * @example
+     * ```typescript
+     * import { z } from 'zod';
+     *
+     * export default defineConfig({
+     *   eval: {
+     *     flagSchema: z.object({
+     *       model: z.object({
+     *         temperature: z.number().min(0).max(2).default(0.7),
+     *         name: z.string().default('gpt-4o'),
+     *       }),
+     *     }),
+     *   }
+     * });
+     * ```
+     */
+    flagSchema?: z.ZodObject<any>;
+    /**
      * Optional hook to initialize application OpenTelemetry instrumentation.
      * Called before eval execution with resolved Axiom connection details.
      * Return your configured tracer provider/tracer (or void) after registering them.
@@ -244,6 +267,7 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
       orgId,
       token,
       dataset: process.env.AXIOM_DATASET,
+      flagSchema: undefined,
       instrumentation: null,
       include: [...DEFAULT_EVAL_INCLUDE],
       exclude: [],

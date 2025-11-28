@@ -67,8 +67,9 @@ export const runVitest = async (
     ...opts.config,
     eval: {
       ...opts.config.eval,
-      // function can't be serialized, so we need to remove it
+      // These can't be serialized, so we need to remove them
       instrumentation: null,
+      flagSchema: null as any,
     },
   };
 

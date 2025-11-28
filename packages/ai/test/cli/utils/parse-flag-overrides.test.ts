@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractOverrides } from '../../../src/cli/utils/parse-flag-overrides';
+import { extractOverrides, validateFlagOverrides } from '../../../src/cli/utils/parse-flag-overrides';
 import { readFileSync } from 'node:fs';
+import { z } from 'zod';
 
 vi.mock('node:fs', () => ({
   readFileSync: vi.fn(),
@@ -357,5 +358,94 @@ describe('extractOverrides', () => {
 
       expect(result.cleanedArgv).toEqual(['eval', 'test.eval.ts', '--watch']);
     });
+  });
+});
+
+describe('validateFlagOverrides', () => {
+  let mockConsoleError: any;
+  let mockProcessExit: any;
+
+  beforeEach(() => {
+    mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+  });
+
+  afterEach(() => {
+    mockConsoleError.mockRestore();
+    mockProcessExit.mockRestore();
+  });
+
+  const testSchema = z.object({
+    model: z.object({
+      temperature: z.number().min(0).max(2).default(0.7),
+      name: z.string().default('gpt-4o'),
+    }),
+    debug: z.boolean().default(false),
+  });
+
+  it('passes validation for valid flags', () => {
+    const overrides = {
+      'model.temperature': 0.9,
+      'model.name': 'gpt-4',
+      debug: true,
+    };
+
+    validateFlagOverrides(overrides, testSchema);
+
+    expect(mockProcessExit).not.toHaveBeenCalled();
+    expect(mockConsoleError).not.toHaveBeenCalled();
+  });
+
+  it('passes for empty overrides', () => {
+    validateFlagOverrides({}, testSchema);
+
+    expect(mockProcessExit).not.toHaveBeenCalled();
+  });
+
+  it('errors on invalid flag path', () => {
+    const overrides = {
+      'model.unknown': 'value',
+    };
+
+    validateFlagOverrides(overrides, testSchema);
+
+    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    expect(mockConsoleError).toHaveBeenCalledWith(
+      expect.stringContaining("flag 'model.unknown': Invalid flag path"),
+    );
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
+  });
+
+  it('errors on completely unknown namespace', () => {
+    const overrides = {
+      'unknown.flag': 'value',
+    };
+
+    validateFlagOverrides(overrides, testSchema);
+
+    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
+  });
+
+  it('errors on invalid value type', () => {
+    const overrides = {
+      'model.temperature': 'not-a-number',
+    };
+
+    validateFlagOverrides(overrides, testSchema);
+
+    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
+  });
+
+  it('errors on value out of range', () => {
+    const overrides = {
+      'model.temperature': 5, // max is 2
+    };
+
+    validateFlagOverrides(overrides, testSchema);
+
+    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
   });
 });
