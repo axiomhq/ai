@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { z } from 'zod';
 import { AxiomReporter } from '../../src/evals/reporter';
 import { calculateScorerAverages } from '../../src/evals/reporter.console-utils';
 import type { TestSuite, TestCase } from 'vitest/node';
@@ -22,6 +23,7 @@ describe('AxiomReporter', () => {
         url: 'https://test.axiom.co',
         token: 'test-token',
         dataset: 'test-dataset',
+        flagSchema: z.object({}).loose(),
         instrumentation: null,
         include: [],
         exclude: [],

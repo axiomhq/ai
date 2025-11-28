@@ -19,6 +19,11 @@ function customMerger(target: any, source: any): any {
     merged.eval.include = source.eval.include;
   }
 
+  // If source explicitly has eval.flagSchema, use it directly (defu mangles Zod objects)
+  if (source?.eval && 'flagSchema' in source.eval) {
+    merged.eval.flagSchema = source.eval.flagSchema;
+  }
+
   return merged;
 }
 
