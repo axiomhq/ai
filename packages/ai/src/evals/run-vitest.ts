@@ -73,7 +73,7 @@ export const runVitest = async (
   };
 
   if (opts.debug) {
-    console.log(c.bgWhite(c.blackBright(' Debug mode ')));
+    console.log(c.bgWhite(c.blackBright(' Debug mode enabled ')));
   }
 
   // Setup temp files for cross-worker name validation
