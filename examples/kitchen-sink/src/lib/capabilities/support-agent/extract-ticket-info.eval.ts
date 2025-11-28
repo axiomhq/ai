@@ -44,107 +44,105 @@ type TestCase = {
 Eval('support-agent-extract-ticket-info', {
   capability: 'support-agent',
   configFlags: pickFlags('supportAgent.extractTicketInfo'),
-  data: (): TestCase[] => {
-    return [
-      // 1. Complete Information (Happy Path)
-      {
-        input: 'The mobile app is crashing whenever I try to log in. It is blocking my work.',
-        expected: {
-          ticketInfo: {
-            intent: 'technical_issue',
-            product: 'mobile_app',
-          },
-          status: {
-            isComplete: true,
-            missingFields: [],
-          },
+  data: [
+    // 1. Complete Information (Happy Path)
+    {
+      input: 'The mobile app is crashing whenever I try to log in. It is blocking my work.',
+      expected: {
+        ticketInfo: {
+          intent: 'technical_issue',
+          product: 'mobile_app',
         },
-        purpose: 'happy_path_complete_info',
+        status: {
+          isComplete: true,
+          missingFields: [],
+        },
       },
+      purpose: 'happy_path_complete_info',
+    },
 
-      // 2. Partial Information (Missing Product)
-      {
-        input: 'I cannot see my dashboard.',
-        expected: {
-          ticketInfo: {
-            intent: 'technical_issue',
-            product: 'dashboard', // Inferred from "dashboard"
-          },
-          status: {
-            isComplete: true,
-            missingFields: [],
-          },
+    // 2. Partial Information (Missing Product)
+    {
+      input: 'I cannot see my dashboard.',
+      expected: {
+        ticketInfo: {
+          intent: 'technical_issue',
+          product: 'dashboard', // Inferred from "dashboard"
         },
-        purpose: 'inference_simple',
+        status: {
+          isComplete: true,
+          missingFields: [],
+        },
       },
+      purpose: 'inference_simple',
+    },
 
-      // 3. Partial Information (Missing Context)
-      {
-        input: 'It is not working.',
-        expected: {
-          ticketInfo: {
-            intent: 'technical_issue',
-            product: 'unknown',
-          },
-          status: {
-            isComplete: false,
-            missingFields: ['product'],
-          },
+    // 3. Partial Information (Missing Context)
+    {
+      input: 'It is not working.',
+      expected: {
+        ticketInfo: {
+          intent: 'technical_issue',
+          product: 'unknown',
         },
-        purpose: 'partial_info_missing_context',
+        status: {
+          isComplete: false,
+          missingFields: ['product'],
+        },
       },
+      purpose: 'partial_info_missing_context',
+    },
 
-      // 4. Billing Dispute
-      // Note: "subscription" is not in the product enum (mobile_app, dashboard, api), so it should be unknown
-      {
-        input: 'I was charged twice for my subscription.',
-        expected: {
-          ticketInfo: {
-            intent: 'billing_dispute',
-            product: 'unknown',
-          },
-          status: {
-            isComplete: false,
-            missingFields: ['product'],
-          },
+    // 4. Billing Dispute
+    // Note: "subscription" is not in the product enum (mobile_app, dashboard, api), so it should be unknown
+    {
+      input: 'I was charged twice for my subscription.',
+      expected: {
+        ticketInfo: {
+          intent: 'billing_dispute',
+          product: 'unknown',
         },
-        purpose: 'billing_partial_info',
+        status: {
+          isComplete: false,
+          missingFields: ['product'],
+        },
       },
+      purpose: 'billing_partial_info',
+    },
 
-      // 5. Feature Request
-      // Note: "desktop app" is not in product enum
-      {
-        input: 'Can you please add dark mode to the desktop app?',
-        expected: {
-          ticketInfo: {
-            intent: 'feature_request',
-            product: 'unknown',
-          },
-          status: {
-            isComplete: false,
-            missingFields: ['product'],
-          },
+    // 5. Feature Request
+    // Note: "desktop app" is not in product enum
+    {
+      input: 'Can you please add dark mode to the desktop app?',
+      expected: {
+        ticketInfo: {
+          intent: 'feature_request',
+          product: 'unknown',
         },
-        purpose: 'feature_request',
+        status: {
+          isComplete: false,
+          missingFields: ['product'],
+        },
       },
+      purpose: 'feature_request',
+    },
 
-      // 6. Adversarial / Ambiguous
-      {
-        input: 'My internet is down.',
-        expected: {
-          ticketInfo: {
-            intent: 'other', // Not our product
-            product: 'unknown',
-          },
-          status: {
-            isComplete: false,
-            missingFields: ['product'],
-          },
+    // 6. Adversarial / Ambiguous
+    {
+      input: 'My internet is down.',
+      expected: {
+        ticketInfo: {
+          intent: 'other', // Not our product
+          product: 'unknown',
         },
-        purpose: 'irrelevant_complaint',
+        status: {
+          isComplete: false,
+          missingFields: ['product'],
+        },
       },
-    ];
-  },
+      purpose: 'irrelevant_complaint',
+    },
+  ] satisfies TestCase[],
   task: async (task) => {
     return await extractTicketInfo([{ role: 'user', content: task.input }]);
   },

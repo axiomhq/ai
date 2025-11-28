@@ -18,7 +18,7 @@ const ExactMatch = Scorer(
 Eval('Minimal-Demo', {
   capability: 'minimal-demo',
   configFlags: pickFlags('minimalDemo'),
-  data: () => [
+  data: [
     { input: 'hello', expected: 'hello' },
     { input: 'world', expected: 'world' },
   ],

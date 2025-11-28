@@ -31,7 +31,7 @@ const toolUseMatch = Scorer(
 Eval('support-agent-e2e-tool-use', {
   capability: 'support-agent',
   configFlags: pickFlags('supportAgent'),
-  data: () => [
+  data: [
     {
       input: 'I forgot my password',
       expected: ['searchKnowledgeBase'],
