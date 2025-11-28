@@ -428,26 +428,24 @@ export function printSuiteBox({
     const paddedName = scorerName.padEnd(maxNameLength);
     const hasAllErrors = allCasesErrored(scorerName);
 
-    if (suite.baseline) {
-      const baselineAvg = calculateBaselineScorerAverage(suite.baseline, scorerName);
-      if (baselineAvg !== null) {
-        const currentPercent = hasAllErrors ? c.dim('N/A') : formatPercentage(avg);
-        const baselinePercent = formatPercentage(baselineAvg);
-        const { text: diffText, color: diffColor } = formatDiff(avg, baselineAvg);
+    const baselineAvg = suite.baseline
+      ? calculateBaselineScorerAverage(suite.baseline, scorerName)
+      : null;
 
-        const paddedBaseline = baselinePercent.padStart(7);
-        const paddedCurrent = hasAllErrors ? currentPercent : currentPercent.padStart(7);
-        const paddedDiff = hasAllErrors ? c.dim('(all cases failed)') : diffText.padStart(8);
+    if (baselineAvg !== null) {
+      const currentPercent = hasAllErrors ? c.dim('N/A') : formatPercentage(avg);
+      const baselinePercent = formatPercentage(baselineAvg);
+      const { text: diffText, color: diffColor } = formatDiff(avg, baselineAvg);
 
-        logger(
-          `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${hasAllErrors ? paddedCurrent : c.magentaBright(paddedCurrent)}  (${hasAllErrors ? paddedDiff : diffColor(paddedDiff)})`,
-        );
-      } else {
-        const currentPercent = hasAllErrors
-          ? c.red('N/A (all cases failed)')
-          : formatPercentage(avg);
-        logger(`│   • ${paddedName}  ${currentPercent}`);
-      }
+      const paddedBaseline = baselinePercent.padStart(7);
+      const paddedCurrent = hasAllErrors ? currentPercent : currentPercent.padStart(7);
+      const diffDisplay = hasAllErrors
+        ? c.dim('all cases failed')
+        : diffColor(diffText.padStart(8));
+
+      logger(
+        `│  ${paddedName}  ${c.blueBright(paddedBaseline)} → ${hasAllErrors ? paddedCurrent : c.magentaBright(paddedCurrent)}  (${diffDisplay})`,
+      );
     } else {
       const currentPercent = hasAllErrors ? c.red('N/A (all cases failed)') : formatPercentage(avg);
       logger(`│   • ${paddedName}  ${currentPercent}`);
