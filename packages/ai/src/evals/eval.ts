@@ -13,7 +13,6 @@ import type {
   EvalTask,
   InputOf,
   ExpectedOf,
-  OutputOf,
   EvaluationReport,
   EvalCaseReport,
   RuntimeFlagLog,
@@ -85,21 +84,16 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
 export function Eval<
   // Inference-friendly overload – no explicit generics required by callers.
   Data extends readonly CollectionRecord<any, any>[],
-  TaskFn extends (args: {
-    input: InputOf<Data>;
-    expected: ExpectedOf<Data>;
-  }) => string | Record<string, any> | Promise<string | Record<string, any>>,
+  TOutput,
   Name extends string = string,
   Capability extends string = string,
   Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: EvalParams<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>> & {
+  params: Omit<EvalParams<InputOf<Data>, ExpectedOf<Data>, TOutput>, 'data'> & {
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
     data: Data | Promise<Data> | (() => Data | Promise<Data>);
-    task: TaskFn;
-    scorers: ReadonlyArray<ScorerLike<InputOf<Data>, ExpectedOf<Data>, OutputOf<TaskFn>>>;
   },
 ): void;
 
@@ -107,15 +101,15 @@ export function Eval<
  * Explicit generics overload – allows users to pass explicit types.
  */
 export function Eval<
-  TInput extends string | Record<string, any>,
-  TExpected extends string | Record<string, any>,
-  TOutput extends string | Record<string, any>,
+  TInput,
+  TExpected,
+  TOutput,
   Name extends string = string,
   Capability extends string = string,
   Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: EvalParams<TInput, TExpected, TOutput> & {
+  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability' | 'step'> & {
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
   },
