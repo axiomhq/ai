@@ -123,6 +123,7 @@ export class AxiomReporter implements Reporter {
     }
 
     this._suiteData.push({
+      version: meta.evaluation.version,
       name: meta.evaluation.name,
       file: relativePath,
       duration: durationSeconds + 's',
