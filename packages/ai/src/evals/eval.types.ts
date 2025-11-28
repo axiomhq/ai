@@ -14,14 +14,8 @@ export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
 export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
   ...args: any
 ) => AsyncIterable<infer O>
-  ? O extends string | Record<string, any>
-    ? O
-    : never
-  : Awaited<ReturnType<TaskFn>> extends infer R
-    ? R extends string | Record<string, any>
-      ? R
-      : never
-    : never;
+  ? O
+  : Awaited<ReturnType<TaskFn>>;
 
 /**
  * Function type for evaluation tasks that process input data and produce output.
@@ -45,11 +39,7 @@ export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
  * };
  * ```
  */
-export type EvalTask<
-  TInput extends string | Record<string, any>,
-  TExpected extends string | Record<string, any>,
-  TOutput extends string | Record<string, any>,
-> = (args: {
+export type EvalTask<TInput, TExpected, TOutput> = (args: {
   input: TInput;
   expected: TExpected;
 }) => TOutput | Promise<TOutput> | AsyncIterable<TOutput>;
@@ -58,10 +48,7 @@ export type EvalTask<
  * Record type representing a single data point in an evaluation dataset.
  *
  */
-export type CollectionRecord<
-  TInput extends string | Record<string, any>,
-  TExpected extends string | Record<string, any>,
-> = {
+export type CollectionRecord<TInput, TExpected> = {
   /** The input data for the evaluation case */
   input: TInput;
   /** The expected output for comparison/validation */
@@ -77,11 +64,7 @@ export type CollectionRecord<
  * Results are captured in {@link EvalReport} format.
  *
  */
-export type EvalParams<
-  TInput extends string | Record<string, any>,
-  TExpected extends string | Record<string, any>,
-  TOutput extends string | Record<string, any>,
-> = {
+export type EvalParams<TInput, TExpected, TOutput> = {
   /** Dataset with input/expected pairs for evaluation, or a function that returns one */
   data:
     | readonly CollectionRecord<TInput, TExpected>[]
