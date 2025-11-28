@@ -256,8 +256,6 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
  * Validates and returns a fully resolved Axiom configuration.
  *
  * @param config - Partial configuration to validate
- * @param options - Validation options
- * @param options.debug - If true, skip token/dataset validation
  * @returns Fully resolved configuration with all required fields
  * @throws {AxiomCLIError} If required fields are missing or invalid
  * @internal
