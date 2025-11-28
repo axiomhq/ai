@@ -10,12 +10,12 @@ const ticketInfoMatch = Scorer(
     const { expected, output } = args;
 
     // Check ticketInfo
-    Object.keys(expected.ticketInfo).forEach((key) => {
+    for (const key of Object.keys(expected.ticketInfo)) {
       // @ts-expect-error keys not typesafe
       if (expected.ticketInfo[key] !== output.ticketInfo[key]) {
         return false;
       }
-    });
+    }
 
     // Check isComplete
     if (expected.status.isComplete !== output.status.isComplete) {
@@ -28,7 +28,7 @@ const ticketInfoMatch = Scorer(
       for (const field of expected.status.missingFields) {
         if (!outputMissing.has(field)) return false;
       }
-      if (expected.status.missingFields.length !== output.status.missingFields.length) return 0;
+      if (expected.status.missingFields.length !== output.status.missingFields.length) return false;
     }
 
     return true;
