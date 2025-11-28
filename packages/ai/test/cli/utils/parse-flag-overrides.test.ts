@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractOverrides, validateFlagOverrides } from '../../../src/cli/utils/parse-flag-overrides';
+import {
+  extractOverrides,
+  validateFlagOverrides,
+} from '../../../src/cli/utils/parse-flag-overrides';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
