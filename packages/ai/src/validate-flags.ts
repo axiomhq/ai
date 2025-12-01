@@ -2,6 +2,7 @@ import { type ZodObject } from 'zod';
 import { getGlobalFlagOverrides } from './evals/context/global-flags';
 import { formatZodErrors, generateFlagExamples } from './cli/utils/format-zod-errors';
 import { dotNotationToNested, isValidPath, parsePath } from './util/dot-path';
+import { makeDeepPartial } from './util/deep-partial-schema';
 
 /**
  * Validate CLI flag overrides against a schema early in eval execution.
@@ -33,9 +34,11 @@ function validateFlags(flagSchema: ZodObject<any>, globalOverrides: Record<strin
     }
   }
 
-  // Second pass: validate values using nested object approach
+  // Second pass: validate values using nested object approach with deep partial
+  // This allows providing only some flags without requiring all nested objects
   const nestedObject = dotNotationToNested(globalOverrides);
-  const result = flagSchema.strict().partial().safeParse(nestedObject);
+  const deepPartialSchema = makeDeepPartial(flagSchema);
+  const result = deepPartialSchema.safeParse(nestedObject);
 
   if (!result.success) {
     console.error('❌ Invalid CLI flags:');
