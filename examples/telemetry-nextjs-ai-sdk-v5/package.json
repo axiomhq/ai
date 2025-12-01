@@ -24,14 +24,15 @@
     "ai": "5.0.93",
     "axiom": "workspace:*",
     "next": "latest",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@types/node": "^22.15.29",
-    "@types/react": "^18.2.8",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "eslint": "catalog:",
     "typescript": "catalog:"
   }

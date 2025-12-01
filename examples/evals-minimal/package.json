@@ -1,0 +1,24 @@
+{
+  "name": "evals-minimal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "eval": "axiom eval .",
+    "eval:by-file": "axiom eval src/example.eval.ts",
+    "eval:by-glob": "axiom eval **/example*.ts",
+    "eval:by-name": "axiom eval \"Minimal\""
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.72",
+    "ai": "^5.0.102",
+    "axiom": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "catalog:"
+  }
+}
