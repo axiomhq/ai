@@ -7,6 +7,7 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { z } from 'zod';
 import type { ResolvedAxiomConfig } from '../../src/config/index';
 
 type Hook = NonNullable<ResolvedAxiomConfig['eval']['instrumentation']>;
@@ -28,6 +29,7 @@ const createConfig = (overrides: TestHookOverrides = {}) => {
       token: overrides.token ?? 'token-123',
       dataset: overrides.dataset ?? 'dataset-123',
       orgId: overrides.orgId ?? 'org-123',
+      flagSchema: z.object({}).loose(),
       instrumentation: hook,
       include: [],
       exclude: [],
