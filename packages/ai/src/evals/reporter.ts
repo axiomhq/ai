@@ -122,6 +122,8 @@ export class AxiomReporter implements Reporter {
       flagConfig = dotNotationToNested({ ...defaultsFlat, ...overridesFlat });
     }
 
+    const defaultFlagConfig = meta.evaluation.configEnd?.flags;
+
     this._suiteData.push({
       version: meta.evaluation.version,
       name: meta.evaluation.name,
@@ -130,6 +132,7 @@ export class AxiomReporter implements Reporter {
       baseline: suiteBaseline || null,
       configFlags: meta.evaluation.configFlags,
       flagConfig,
+      defaultFlagConfig,
       runId: meta.evaluation.runId,
       orgId: meta.evaluation.orgId,
       cases,

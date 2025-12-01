@@ -163,7 +163,7 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     expected: getCustomOrRegularString(data.attributes, Attr.Eval.Case.Expected),
     duration: duration,
     status: data.status.code,
-    scores: scores ? (typeof scores === 'string' ? JSON.parse(scores) : scores) : undefined,
+    scores: scores ? (typeof scores === 'string' ? JSON.parse(scores) : scores) : {}, // undefined would be more honest, but this lets us do like `baseline.scores[name]` without crashing
     runAt: item._time,
     spanId: data.span_id,
     traceId: data.trace_id,
