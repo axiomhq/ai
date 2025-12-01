@@ -620,7 +620,7 @@ export function printFinalReport({
 
   for (const suite of suiteData) {
     const scorerAverages = calculateScorerAverages(suite);
-    const flagDiff = suite.baseline ? calculateFlagDiff(suite) : [];
+    const flagDiff = calculateFlagDiff(suite);
     printSuiteBox({ suite, scorerAverages, calculateBaselineScorerAverage, flagDiff, logger });
     logger('');
   }
