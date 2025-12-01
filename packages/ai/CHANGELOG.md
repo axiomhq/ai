@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.32.0](https://github.com/axiomhq/ai/compare/axiom-v0.31.1...axiom-v0.32.0) (2025-12-01)
+
+
+### Features
+
+* allow `data` to be just an array ([#171](https://github.com/axiomhq/ai/issues/171)) ([05cfa10](https://github.com/axiomhq/ai/commit/05cfa1091113b80d12c19241708cca670f5b92a1))
+* allow scorer functions to return boolean ([#170](https://github.com/axiomhq/ai/issues/170)) ([6c7ad7e](https://github.com/axiomhq/ai/commit/6c7ad7e1d17061947f4545ee84e49ba76521ffad))
+* if there is one eval in the run, navigate to the eval instance directly ([#177](https://github.com/axiomhq/ai/issues/177)) ([e95e326](https://github.com/axiomhq/ai/commit/e95e326a35d6abc0bad26616552bd678c82173f9))
+* improve data/scorer types, again ([#173](https://github.com/axiomhq/ai/issues/173)) ([eeaeb6b](https://github.com/axiomhq/ai/commit/eeaeb6b52cb675896a6cfbdedc82ad1e5d98ca8a))
+* show config diff relative to defaults, not just baseline ([#174](https://github.com/axiomhq/ai/issues/174)) ([5ff3390](https://github.com/axiomhq/ai/commit/5ff3390c797c2b1b562cba9e541ec8cd5ec1629f))
+* validate flag schema when running evals ([#175](https://github.com/axiomhq/ai/issues/175)) ([1c48507](https://github.com/axiomhq/ai/commit/1c48507ffc4a271ed6cd3b326615714dde0d8081))
+
 ## [0.31.1](https://github.com/axiomhq/ai/compare/axiom-v0.31.0...axiom-v0.31.1) (2025-11-26)
 
 
