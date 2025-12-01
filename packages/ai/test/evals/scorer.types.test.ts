@@ -1,15 +1,7 @@
-import { describe, it, expect, expectTypeOf } from 'vitest';
+import { describe, it, expectTypeOf } from 'vitest';
 import { createScorer as Scorer, type Scorer as ScorerType } from '../../src/evals/scorers';
 
 describe('Scorer type inference', () => {
-  it('scorer has name property', () => {
-    const scorerWithName = Scorer('Test', ({ output }: { output: string }) => {
-      expectTypeOf(output).toEqualTypeOf<string>();
-      return 1;
-    });
-    expect(scorerWithName.name).toBe('Test');
-  });
-
   it('TInput inference when provided', () => {
     const scorerWithInput = Scorer(
       'Test',

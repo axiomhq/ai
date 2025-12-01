@@ -11,14 +11,14 @@ import { parrotOrAntiParrot } from './example';
 const ExactMatch = Scorer(
   'ExactMatch',
   ({ output, expected }: { output: string; expected: string }) => {
-    return output === expected ? 1 : 0;
+    return output === expected ? true : false;
   },
 );
 
 Eval('Minimal-Demo', {
   capability: 'minimal-demo',
   configFlags: pickFlags('minimalDemo'),
-  data: [
+  data: () => [
     { input: 'hello', expected: 'hello' },
     { input: 'world', expected: 'world' },
   ],

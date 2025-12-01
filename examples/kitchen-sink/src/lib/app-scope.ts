@@ -1,7 +1,7 @@
 import { createAppScope } from 'axiom/ai';
 import z from 'zod';
 
-const flagSchema = z.object({
+export const flagSchema = z.object({
   supportAgent: z.object({
     categorizeMessage: z.object({
       model: z

@@ -10,35 +10,35 @@ const ticketInfoMatch = Scorer(
     const { expected, output } = args;
 
     // Check ticketInfo
-    Object.keys(expected.ticketInfo).forEach((key) => {
+    for (const key of Object.keys(expected.ticketInfo)) {
       // @ts-expect-error keys not typesafe
       if (expected.ticketInfo[key] !== output.ticketInfo[key]) {
-        return 0;
+        return false;
       }
-    });
+    }
 
     // Check isComplete
     if (expected.status.isComplete !== output.status.isComplete) {
-      return 0;
+      return false;
     }
 
     // Check missingFields
     if (expected.status.missingFields.length) {
       const outputMissing = new Set(output.status.missingFields);
       for (const field of expected.status.missingFields) {
-        if (!outputMissing.has(field)) return 0;
+        if (!outputMissing.has(field)) return false;
       }
-      if (expected.status.missingFields.length !== output.status.missingFields.length) return 0;
+      if (expected.status.missingFields.length !== output.status.missingFields.length) return false;
     }
 
-    return 1;
+    return true;
   },
 );
 
 type TestCase = {
   input: string;
   expected: ExtractTicketInfoResult;
-  purpose: string;
+  metadata: { purpose: string };
 };
 
 Eval('support-agent-extract-ticket-info', {
@@ -58,7 +58,7 @@ Eval('support-agent-extract-ticket-info', {
           missingFields: [],
         },
       },
-      purpose: 'happy_path_complete_info',
+      metadata: { purpose: 'happy_path_complete_info' },
     },
 
     // 2. Partial Information (Missing Product)
@@ -74,7 +74,7 @@ Eval('support-agent-extract-ticket-info', {
           missingFields: [],
         },
       },
-      purpose: 'inference_simple',
+      metadata: { purpose: 'inference_simple' },
     },
 
     // 3. Partial Information (Missing Context)
@@ -90,7 +90,7 @@ Eval('support-agent-extract-ticket-info', {
           missingFields: ['product'],
         },
       },
-      purpose: 'partial_info_missing_context',
+      metadata: { purpose: 'partial_info_missing_context' },
     },
 
     // 4. Billing Dispute
@@ -107,7 +107,7 @@ Eval('support-agent-extract-ticket-info', {
           missingFields: ['product'],
         },
       },
-      purpose: 'billing_partial_info',
+      metadata: { purpose: 'billing_partial_info' },
     },
 
     // 5. Feature Request
@@ -124,7 +124,7 @@ Eval('support-agent-extract-ticket-info', {
           missingFields: ['product'],
         },
       },
-      purpose: 'feature_request',
+      metadata: { purpose: 'feature_request' },
     },
 
     // 6. Adversarial / Ambiguous
@@ -140,7 +140,7 @@ Eval('support-agent-extract-ticket-info', {
           missingFields: ['product'],
         },
       },
-      purpose: 'irrelevant_complaint',
+      metadata: { purpose: 'irrelevant_complaint' },
     },
   ] satisfies TestCase[],
   task: async (task) => {

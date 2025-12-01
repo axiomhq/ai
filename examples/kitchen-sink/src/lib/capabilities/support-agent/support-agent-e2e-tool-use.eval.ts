@@ -15,16 +15,16 @@ const toolUseMatch = Scorer(
     // 1. If we expect specific tools, ensure they were called.
     for (const tool of expected) {
       if (!actualSet.has(tool)) {
-        return 0;
+        return false;
       }
     }
 
     // 2. If we explicitly expect NO tools (empty array), ensure no tools were called.
     if (expected.length === 0 && actual.length > 0) {
-      return 0;
+      return false;
     }
 
-    return 1;
+    return true;
   },
 );
 
@@ -35,22 +35,22 @@ Eval('support-agent-e2e-tool-use', {
     {
       input: 'I forgot my password',
       expected: ['searchKnowledgeBase'],
-      purpose: 'knowledge_base_retrieval',
+      metadata: { purpose: 'knowledge_base_retrieval' },
     },
     {
       input: 'How do I reset my password?',
       expected: ['searchKnowledgeBase'],
-      purpose: 'knowledge_base_retrieval',
+      metadata: { purpose: 'knowledge_base_retrieval' },
     },
     {
       input: 'Hello, are you a bot?',
       expected: [],
-      purpose: 'chat_no_tool',
+      metadata: { purpose: 'chat_no_tool' },
     },
     {
       input: 'What is the weather like?',
       expected: [], // Should not trigger knowledge base for weather
-      purpose: 'irrelevant_no_tool',
+      metadata: { purpose: 'irrelevant_no_tool' },
     },
   ],
   task: async (task) => {

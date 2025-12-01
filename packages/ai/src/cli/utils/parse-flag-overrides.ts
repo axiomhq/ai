@@ -1,7 +1,8 @@
-import { type z, type ZodObject } from 'zod';
+import { type ZodObject, type z } from 'zod';
 import { formatZodErrors, generateFlagExamples } from './format-zod-errors.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { dotNotationToNested, isValidPath, parsePath } from '../../util/dot-path.js';
 
 export interface FlagOverrides {
   [key: string]: any;
@@ -37,7 +38,7 @@ function ensureNoSpaceSeparatedSyntax(
 /**
  * Extract and validate flag overrides using a Zod schema
  */
-export function extractAndValidateFlagOverrides<S extends ZodObject<any>>(
+export function extractAndValidateFlagOverrides<S extends z.ZodObject<any>>(
   argv: string[],
   flagSchema?: S,
 ): {
@@ -67,6 +68,50 @@ export function extractAndValidateFlagOverrides<S extends ZodObject<any>>(
   }
 
   return { cleanedArgv, overrides: overrides as any };
+}
+
+/**
+ * Validate already-parsed flag overrides against a Zod schema.
+ * Use this when you have flag overrides in dot-notation form (e.g., { 'model.temperature': 0.7 })
+ * and want to validate them against a schema before running evals.
+ *
+ * @param overrides - Flag overrides in dot-notation form
+ * @param flagSchema - Zod schema to validate against
+ */
+export function validateFlagOverrides(overrides: FlagOverrides, flagSchema?: unknown): void {
+  // No schema provided = no validation, any flags allowed
+  if (!flagSchema || Object.keys(overrides).length === 0) {
+    return;
+  }
+
+  const schema = flagSchema as any;
+
+  // First pass: check all paths exist in schema
+  for (const dotPath of Object.keys(overrides)) {
+    const segments = parsePath(dotPath);
+    if (!isValidPath(schema, segments)) {
+      console.error('❌ Invalid CLI flags:');
+      console.error(`  • flag '${dotPath}': Invalid flag path`);
+      process.exit(1);
+    }
+  }
+
+  // Second pass: validate values using nested object approach
+  const nestedObject = dotNotationToNested(overrides);
+  const result = schema.strict().partial().safeParse(nestedObject);
+
+  if (!result.success) {
+    console.error('❌ Invalid CLI flags:');
+    console.error(formatZodErrors(result.error));
+
+    const examples = generateFlagExamples(result.error);
+    if (examples.length > 0) {
+      console.error('\n💡 Valid examples:');
+      examples.forEach((example) => console.error(`  ${example}`));
+    }
+
+    process.exit(1);
+  }
 }
 
 /**
