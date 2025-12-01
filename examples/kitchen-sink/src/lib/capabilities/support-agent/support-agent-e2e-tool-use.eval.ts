@@ -31,26 +31,26 @@ const toolUseMatch = Scorer(
 Eval('support-agent-e2e-tool-use', {
   capability: 'support-agent',
   configFlags: pickFlags('supportAgent'),
-  data: () => [
+  data: [
     {
       input: 'I forgot my password',
       expected: ['searchKnowledgeBase'],
-      purpose: 'knowledge_base_retrieval',
+      metadata: { purpose: 'knowledge_base_retrieval' },
     },
     {
       input: 'How do I reset my password?',
       expected: ['searchKnowledgeBase'],
-      purpose: 'knowledge_base_retrieval',
+      metadata: { purpose: 'knowledge_base_retrieval' },
     },
     {
       input: 'Hello, are you a bot?',
       expected: [],
-      purpose: 'chat_no_tool',
+      metadata: { purpose: 'chat_no_tool' },
     },
     {
       input: 'What is the weather like?',
       expected: [], // Should not trigger knowledge base for weather
-      purpose: 'irrelevant_no_tool',
+      metadata: { purpose: 'irrelevant_no_tool' },
     },
   ],
   task: async (task) => {
