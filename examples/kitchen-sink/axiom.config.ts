@@ -4,14 +4,14 @@ import { flagSchema } from './src/lib/app-scope';
 
 export default defineConfig({
   eval: {
-    flagSchema,
-
     include: ['**/*.eval.{ts,js,mts,mjs,cts,cjs}'],
     exclude: [],
 
     dataset: process.env.NEXT_PUBLIC_AXIOM_DATASET,
     url: process.env.NEXT_PUBLIC_AXIOM_URL,
     token: process.env.AXIOM_TOKEN,
+
+    flagSchema,
 
     instrumentation: (env) => setupAppInstrumentation(env),
 
