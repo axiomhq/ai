@@ -8,6 +8,12 @@ import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './ind
 const buildConsoleUrl = (urlString: string) => {
   const url = new URL(urlString);
 
+  // Validates if the URL is an edge URL, e.g. https://eu-central-1.aws.edge.axiom.co and returns the app URL
+  const isEdgeUrl = url.host.includes('.edge.');
+  if (isEdgeUrl) {
+    return `${url.protocol}//app.${url.host.split('.edge.').at(-1)}`;
+  }
+
   return `${url.protocol}//app.${url.host.split('api.').at(-1)}`;
 };
 
