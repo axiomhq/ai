@@ -1,4 +1,5 @@
-import { type ZodObject, type ZodSchema, z } from 'zod';
+import { type ZodObject, type ZodSchema, type ZodType, z } from 'zod';
+import { getDef, getKind, getShape, isObjectSchema, unwrapTransparent } from './zod-internals';
 
 /**
  * Parse a dot notation path into segments.
@@ -14,12 +15,14 @@ export function parsePath(path: string): string[] {
  * Example: {"ui.theme": "dark", "config.name": "test"}
  * -> {ui: {theme: "dark"}, config: {name: "test"}}
  */
-export function dotNotationToNested(dotNotationObject: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {};
+export function dotNotationToNested(
+  dotNotationObject: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   for (const [dotPath, value] of Object.entries(dotNotationObject)) {
     const segments = parsePath(dotPath);
-    let current = result;
+    let current: Record<string, unknown> = result;
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
@@ -32,7 +35,7 @@ export function dotNotationToNested(dotNotationObject: Record<string, any>): Rec
         if (!(segment in current) || typeof current[segment] !== 'object') {
           current[segment] = {};
         }
-        current = current[segment];
+        current = current[segment] as Record<string, unknown>;
       }
     }
   }
@@ -45,14 +48,17 @@ export function dotNotationToNested(dotNotationObject: Record<string, any>): Rec
  * Example: {ui: {theme: "dark"}, config: {name: "test"}}
  * -> {"ui.theme": "dark", "config.name": "test"}
  */
-export function flattenObject(obj: Record<string, any>, prefix = ''): Record<string, any> {
-  const result: Record<string, any> = {};
+export function flattenObject(
+  obj: Record<string, unknown>,
+  prefix = '',
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
     const newKey = prefix ? `${prefix}.${key}` : key;
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      Object.assign(result, flattenObject(value, newKey));
+      Object.assign(result, flattenObject(value as Record<string, unknown>, newKey));
     } else {
       result[newKey] = value;
     }
@@ -64,27 +70,25 @@ export function flattenObject(obj: Record<string, any>, prefix = ''): Record<str
 /**
  * Check if a dot notation path exists in the schema.
  */
-export function isValidPath(schema: ZodObject<any>, segments: string[]): boolean {
-  let currentSchema = schema;
+export function isValidPath(schema: ZodObject<Record<string, ZodType>>, segments: string[]): boolean {
+  let currentSchema: ZodType = schema;
 
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
+    const shape = getShape(currentSchema);
 
-    if (!currentSchema.shape || !(segment in currentSchema.shape)) {
+    if (!shape || !(segment in shape)) {
       return false;
     }
 
     if (i < segments.length - 1) {
       // Not the last segment, should be a ZodObject
-      const nextSchema = currentSchema.shape[segment];
+      const nextSchema = shape[segment];
 
       // Handle wrapped schemas (ZodDefault, ZodOptional, etc.)
-      let unwrappedSchema = nextSchema;
-      while (unwrappedSchema?._def?.innerType || unwrappedSchema?._def?.schema) {
-        unwrappedSchema = unwrappedSchema._def.innerType || unwrappedSchema._def.schema;
-      }
+      const unwrappedSchema = unwrapTransparent(nextSchema);
 
-      if (!unwrappedSchema || unwrappedSchema._def?.type !== 'object') {
+      if (!isObjectSchema(unwrappedSchema)) {
         return false;
       }
 
@@ -98,13 +102,13 @@ export function isValidPath(schema: ZodObject<any>, segments: string[]): boolean
 /**
  * Get value at a specific path in a nested object.
  */
-export function getValueAtPath(obj: any, segments: string[]): any {
+export function getValueAtPath(obj: unknown, segments: string[]): unknown {
   let current = obj;
   for (const segment of segments) {
     if (current == null || typeof current !== 'object' || !(segment in current)) {
       return undefined;
     }
-    current = current[segment];
+    current = (current as Record<string, unknown>)[segment];
   }
   return current;
 }
@@ -113,29 +117,37 @@ export function getValueAtPath(obj: any, segments: string[]): any {
  * Helper function to traverse schema object to find the field schema at a specific path.
  */
 export function findSchemaAtPath(
-  rootSchema: ZodObject<any> | undefined,
+  rootSchema: ZodObject<Record<string, ZodType>> | undefined,
   segments: string[],
-): ZodSchema<any> | undefined {
+): ZodSchema | undefined {
   if (!rootSchema || segments.length === 0) return undefined;
 
-  let current: any = rootSchema;
+  let current: ZodType = rootSchema;
 
   // ZodObject root - start with the shape
   if (segments.length > 0) {
-    if (!current.shape || !(segments[0] in current.shape)) {
+    const rootShape = getShape(current);
+    if (!rootShape || !(segments[0] in rootShape)) {
       return undefined;
     }
-    current = current.shape[segments[0]];
+    current = rootShape[segments[0]];
+
     // Continue with remaining segments starting from index 1
     for (let i = 1; i < segments.length; i++) {
       const segment = segments[i];
-      if (!current || !current._def) {
+      const def = getDef(current);
+      if (!def) {
         return undefined;
       }
 
       // Handle ZodObject by accessing its shape
-      if (current._def.type === 'object' && current.shape) {
-        const nextSchema = current.shape[segment];
+      const kind = getKind(def);
+      if (kind === 'object') {
+        const shape = getShape(current);
+        if (!shape) {
+          return undefined;
+        }
+        const nextSchema = shape[segment];
         if (!nextSchema) {
           return undefined;
         }
@@ -144,10 +156,10 @@ export function findSchemaAtPath(
         return undefined;
       }
     }
-    return current;
+    return current as ZodSchema;
   }
 
-  return current;
+  return current as ZodSchema;
 }
 
 /**
@@ -162,7 +174,10 @@ export function findSchemaAtPath(
  * @param segments - Path segments (e.g. ['ui', 'theme', 'colors', 'primary'])
  * @returns A schema that validates the specific path with partial validation for siblings
  */
-export function buildSchemaForPath(rootSchema: ZodObject<any>, segments: string[]): ZodSchema<any> {
+export function buildSchemaForPath(
+  rootSchema: ZodObject<Record<string, ZodType>>,
+  segments: string[],
+): ZodSchema {
   const pathKey = segments.join('.');
 
   // Find the leaf schema for the target field
@@ -172,7 +187,7 @@ export function buildSchemaForPath(rootSchema: ZodObject<any>, segments: string[
   }
 
   // Build the schema from leaf back to root, making siblings optional at each level
-  let currentSchema = leafSchema;
+  let currentSchema: ZodSchema = leafSchema;
 
   // Work backwards through the segments
   for (let i = segments.length - 1; i >= 0; i--) {
