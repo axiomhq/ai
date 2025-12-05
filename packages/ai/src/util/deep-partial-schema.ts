@@ -1,5 +1,5 @@
 import { type ZodObject, type ZodType, z } from 'zod';
-import { getKind, getInnerType, isObjectSchema, getDefaultValue } from './zod-internals';
+import { getKind, getInnerType, getArrayElement, isObjectSchema, getDefaultValue } from './zod-internals';
 
 /**
  * Recursively makes all properties of a ZodObject schema optional (deep partial).
@@ -64,6 +64,17 @@ function makeDeepPartialField(fieldSchema: ZodType): ZodType {
       return (partialInner as ZodObject<Record<string, ZodType>>).default(defaultValue as any);
     }
     // Non-object with default - make optional to allow partial validation
+    return fieldSchema.optional();
+  }
+
+  // Array wrapper - deep partial the element type if it's an object
+  if (kind === 'array') {
+    const element = getArrayElement(fieldSchema);
+    if (element && isObjectSchema(element)) {
+      const partialElement = makeDeepPartial(element as ZodObject<Record<string, ZodType>>);
+      return z.array(partialElement).optional();
+    }
+    // Array of non-objects - just make optional
     return fieldSchema.optional();
   }
 

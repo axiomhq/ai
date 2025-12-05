@@ -205,6 +205,27 @@ describe('makeDeepPartial', () => {
       expect(partial.safeParse({ users: [] }).success).toBe(true);
       expect(partial.safeParse({ users: [{ name: 'Alice' }] }).success).toBe(true);
     });
+
+    it('deep partials object elements within arrays', () => {
+      const schema = z.object({
+        users: z.array(
+          z.object({
+            name: z.string(),
+            age: z.number(),
+            address: z.object({
+              city: z.string(),
+              zip: z.string(),
+            }),
+          }),
+        ),
+      });
+
+      const partial = makeDeepPartial(schema);
+
+      expect(partial.safeParse({ users: [{ name: 'Alice' }] }).success).toBe(true);
+      expect(partial.safeParse({ users: [{ address: { city: 'NYC' } }] }).success).toBe(true);
+      expect(partial.safeParse({ users: [{}] }).success).toBe(true);
+    });
   });
 
   describe('complex real-world schemas', () => {

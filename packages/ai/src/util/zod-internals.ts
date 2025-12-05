@@ -37,6 +37,7 @@ export type ZodKind =
 interface ZodInternalDef {
   type?: unknown;
   innerType?: ZodType<unknown>;
+  element?: ZodType<unknown>;
   defaultValue?: unknown;
   shape?: Record<string, ZodType<unknown>>;
   valueType?: ZodType<unknown>;
@@ -126,6 +127,14 @@ export function isObjectSchema(schema: unknown): schema is ZodObject<Record<stri
 export function getInnerType(schema: unknown): ZodType<unknown> | undefined {
   const def = getDef(schema);
   return def?.innerType;
+}
+
+/**
+ * Get the element type from array schemas.
+ */
+export function getArrayElement(schema: unknown): ZodType<unknown> | undefined {
+  const def = getDef(schema);
+  return def?.element;
 }
 
 /**
