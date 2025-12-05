@@ -1,5 +1,11 @@
 import { type ZodObject, type ZodType, z } from 'zod';
-import { getKind, getInnerType, getArrayElement, isObjectSchema, getDefaultValue } from './zod-internals';
+import {
+  getKind,
+  getInnerType,
+  getArrayElement,
+  isObjectSchema,
+  getDefaultValue,
+} from './zod-internals';
 
 /**
  * Recursively makes all properties of a ZodObject schema optional (deep partial).

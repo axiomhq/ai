@@ -48,10 +48,7 @@ export function dotNotationToNested(
  * Example: {ui: {theme: "dark"}, config: {name: "test"}}
  * -> {"ui.theme": "dark", "config.name": "test"}
  */
-export function flattenObject(
-  obj: Record<string, unknown>,
-  prefix = '',
-): Record<string, unknown> {
+export function flattenObject(obj: Record<string, unknown>, prefix = ''): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
@@ -70,7 +67,10 @@ export function flattenObject(
 /**
  * Check if a dot notation path exists in the schema.
  */
-export function isValidPath(schema: ZodObject<Record<string, ZodType>>, segments: string[]): boolean {
+export function isValidPath(
+  schema: ZodObject<Record<string, ZodType>>,
+  segments: string[],
+): boolean {
   let currentSchema: ZodType = schema;
 
   for (let i = 0; i < segments.length; i++) {
