@@ -11,6 +11,4 @@ export const flagSchema = z.object({
   }),
 });
 
-const { flag, pickFlags } = createAppScope({ flagSchema });
-
-export { flag, pickFlags };
+export const { flag, pickFlags } = createAppScope({ flagSchema });
