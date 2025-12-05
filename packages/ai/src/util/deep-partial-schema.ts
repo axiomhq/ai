@@ -72,13 +72,11 @@ function makeDeepPartialField(fieldSchema: ZodType): ZodType {
 
     if (inner && isObjectSchema(inner)) {
       const partialInner = makeDeepPartial(inner as ZodObject<Record<string, ZodType>>);
-      // Reapply the default on the deep-partialled object
-      return (partialInner as ZodObject<Record<string, ZodType>>).default(
-        defaultValue as Record<string, unknown>,
-      );
+      // Reapply the default on the deep-partialled object, preserving function references for lazy defaults
+      return (partialInner as ZodObject<Record<string, ZodType>>).default(defaultValue as any);
     }
-    // Non-object with default - keep the default (already optional-ish due to default)
-    return fieldSchema;
+    // Non-object with default - make optional to allow partial validation
+    return fieldSchema.optional();
   }
 
   // All other field types - just make optional

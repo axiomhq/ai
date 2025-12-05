@@ -12,6 +12,7 @@ import {
   isValidPath,
   getValueAtPath,
   buildSchemaForPath,
+  findSchemaAtPath,
 } from './util/dot-path';
 import {
   getDef,
@@ -396,42 +397,6 @@ export function createAppScope<
     validateCliFlags(flagSchemaConfig);
   }
 
-  // Helper function to traverse schema object to find the field schema at a specific path
-  function findSchemaAtPath(segments: string[]): ZodSchema<any> | undefined {
-    if (!flagSchemaConfig || segments.length === 0) return undefined;
-
-    let current: any = flagSchemaConfig;
-
-    // ZodObject root - start with the shape
-    if (segments.length > 0) {
-      if (!current.shape || !(segments[0] in current.shape)) {
-        return undefined;
-      }
-      current = current.shape[segments[0]];
-      // Continue with remaining segments starting from index 1
-      for (let i = 1; i < segments.length; i++) {
-        const segment = segments[i];
-        if (!current || !current._def) {
-          return undefined;
-        }
-
-        // Handle ZodObject by accessing its shape
-        if (current._def.type === 'object' && current.shape) {
-          const nextSchema = current.shape[segment];
-          if (!nextSchema) {
-            return undefined;
-          }
-          current = nextSchema;
-        } else {
-          return undefined;
-        }
-      }
-      return current;
-    }
-
-    return current;
-  }
-
   // Helper to check if a path represents a namespace access (no dots after first segment)
   function isNamespaceAccess(segments: string[]): boolean {
     if (!flagSchemaConfig || segments.length === 0) return false;
@@ -442,7 +407,7 @@ export function createAppScope<
     }
 
     // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
-    const schema = findSchemaAtPath(segments);
+    const schema = findSchemaAtPath(flagSchemaConfig, segments);
     return isObjectSchema(schema);
   }
 
@@ -519,7 +484,7 @@ export function createAppScope<
     const segments = parsePath(dotPath);
 
     // 1. Fast-path: validate directly with field-level schema
-    const fieldSchema = findSchemaAtPath(segments);
+    const fieldSchema = findSchemaAtPath(flagSchemaConfig, segments);
     if (fieldSchema) {
       const direct = (fieldSchema as ZodSchema<any>).safeParse(value);
       if (direct.success) return { ok: true, parsed: direct.data };
@@ -598,11 +563,11 @@ export function createAppScope<
         return undefined;
       }
 
-      const schemaForPath = findSchemaAtPath(segments);
+      const schemaForPath = findSchemaAtPath(flagSchemaConfig, segments);
 
       // If schema path doesn't exist, try extracting from parent object-level defaults
       if (!schemaForPath) {
-        const namespaceSchema = findSchemaAtPath([segments[0]]);
+        const namespaceSchema = findSchemaAtPath(flagSchemaConfig, [segments[0]]);
         if (namespaceSchema) {
           const namespaceObject = buildObjectWithDefaults(namespaceSchema);
           if (namespaceObject && typeof namespaceObject === 'object') {
@@ -629,7 +594,7 @@ export function createAppScope<
 
         // If no field-level default, try extracting from parent object-level default
         if (finalValue === undefined) {
-          const nsSchema = findSchemaAtPath([segments[0]]);
+          const nsSchema = findSchemaAtPath(flagSchemaConfig, [segments[0]]);
           if (nsSchema) {
             const nsObj = buildObjectWithDefaults(nsSchema);
             if (nsObj && typeof nsObj === 'object') {
