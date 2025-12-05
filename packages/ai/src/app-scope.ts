@@ -20,10 +20,10 @@ import {
   getInnerType,
   getShape,
   isObjectSchema,
+  assertNotZodV3,
 } from './util/zod-internals';
 import { trace } from '@opentelemetry/api';
 import { type z, type ZodObject, type ZodDefault, type ZodSchema } from 'zod';
-import type { $ZodObject } from 'zod/v4/core';
 import { toOtelAttribute } from './otel/utils/to-otel-attribute';
 import { Attr } from './otel';
 
@@ -32,8 +32,7 @@ type DefaultMaxDepth = 8;
 // Helper to recursively check if a schema has defaults (including nested objects)
 type HasDefaults<S> = S extends { _zod: { def: { defaultValue: unknown } } }
   ? true
-  : // v4 | v3
-    S extends $ZodObject<infer Shape> | ZodObject<infer Shape>
+  : S extends ZodObject<infer Shape>
     ? {
         [K in keyof Shape]: HasDefaults<Shape[K]>;
       } extends Record<keyof Shape, true>
@@ -381,6 +380,14 @@ export function createAppScope<
   // Store schemas for runtime validation
   const flagSchemaConfig = config?.flagSchema;
   const factSchemaConfig = config?.factSchema;
+
+  // Reject Zod v3 schemas
+  if (flagSchemaConfig) {
+    assertNotZodV3(flagSchemaConfig, 'flagSchema');
+  }
+  if (factSchemaConfig) {
+    assertNotZodV3(factSchemaConfig, 'factSchema');
+  }
 
   // reject union types
   if (flagSchemaConfig) {

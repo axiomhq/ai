@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
+import z3 from 'zod/v3';
 import {
   parsePath,
   dotNotationToNested,
@@ -9,6 +10,55 @@ import {
   findSchemaAtPath,
   buildSchemaForPath,
 } from '../../src/util/dot-path';
+import { isZodV3Schema, assertNotZodV3 } from '../../src/util/zod-internals';
+
+describe('isZodV3Schema', () => {
+  it('returns false for Zod v4 object schema', () => {
+    const schema = z.object({ foo: z.string() });
+    expect(isZodV3Schema(schema)).toBe(false);
+  });
+
+  it('returns false for Zod v4 string schema', () => {
+    const schema = z.string();
+    expect(isZodV3Schema(schema)).toBe(false);
+  });
+
+  it('returns true for Zod v3 object schema', () => {
+    const schema = z3.object({ foo: z3.string() });
+    expect(isZodV3Schema(schema)).toBe(true);
+  });
+
+  it('returns true for Zod v3 string schema', () => {
+    const schema = z3.string();
+    expect(isZodV3Schema(schema)).toBe(true);
+  });
+
+  it('returns false for null', () => {
+    expect(isZodV3Schema(null)).toBe(false);
+  });
+
+  it('returns false for undefined', () => {
+    expect(isZodV3Schema(undefined)).toBe(false);
+  });
+
+  it('returns false for plain object', () => {
+    expect(isZodV3Schema({ foo: 'bar' })).toBe(false);
+  });
+});
+
+describe('assertNotZodV3', () => {
+  it('does not throw for Zod v4 schema', () => {
+    const schema = z.object({ foo: z.string() });
+    expect(() => assertNotZodV3(schema, 'flagSchema')).not.toThrow();
+  });
+
+  it('throws for Zod v3 schema with helpful message', () => {
+    const schema = z3.object({ foo: z3.string() });
+    expect(() => assertNotZodV3(schema, 'flagSchema')).toThrow(
+      '[AxiomAI] Zod v3 schemas are not supported (detected in flagSchema). Please upgrade to Zod v4.',
+    );
+  });
+});
 
 describe('Zod internals characterization tests', () => {
   describe('Zod v4 schema structure', () => {

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { dotNotationToNested, isValidPath, parsePath } from '../../util/dot-path.js';
 import { makeDeepPartial } from '../../util/deep-partial-schema.js';
+import { assertNotZodV3 } from '../../util/zod-internals.js';
 
 export interface FlagOverrides {
   [key: string]: any;
@@ -46,6 +47,10 @@ export function extractAndValidateFlagOverrides<S extends z.ZodObject<any>>(
   cleanedArgv: string[];
   overrides: S extends ZodObject<any> ? z.output<S> : FlagOverrides;
 } {
+  if (flagSchema) {
+    assertNotZodV3(flagSchema, 'flagSchema');
+  }
+
   const { cleanedArgv, overrides } = extractOverrides(argv);
 
   if (flagSchema && Object.keys(overrides).length > 0) {
@@ -85,6 +90,8 @@ export function validateFlagOverrides(overrides: FlagOverrides, flagSchema?: unk
   if (!flagSchema || Object.keys(overrides).length === 0) {
     return;
   }
+
+  assertNotZodV3(flagSchema, 'flagSchema');
 
   const schema = flagSchema as any;
 

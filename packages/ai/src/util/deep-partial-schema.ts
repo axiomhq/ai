@@ -9,18 +9,6 @@ import { getKind, getInnerType, isObjectSchema, getDefaultValue } from './zod-in
  * provided, not require all nested objects to be fully specified.
  */
 export function makeDeepPartial(schema: ZodObject<Record<string, ZodType>>): ZodType {
-  // Use v3's public deepPartial() if available
-  const schemaAny = schema as unknown;
-  if (
-    typeof schemaAny === 'object' &&
-    schemaAny !== null &&
-    'deepPartial' in schemaAny &&
-    typeof (schemaAny as { deepPartial: unknown }).deepPartial === 'function'
-  ) {
-    return (schemaAny as { deepPartial: () => ZodType }).deepPartial();
-  }
-
-  // Manual implementation for v4 (or v3 without deepPartial)
   const shape = schema.shape;
   const newShape: Record<string, ZodType> = {};
 
