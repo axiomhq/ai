@@ -1,22 +1,22 @@
 import type { ZodObject, ZodType } from 'zod';
 
 /**
- * Detect if a schema is from Zod v3.
- * v3 schemas have `_def` but not `_zod`.
+ * Detect if a schema is from Zod v4.
+ * v4 schemas have `_zod`, v3 schemas only have `_def`.
  */
-export function isZodV3Schema(schema: unknown): boolean {
+export function isZodV4Schema(schema: unknown): boolean {
   if (!schema || typeof schema !== 'object') return false;
   const s = schema as Record<string, unknown>;
-  return '_def' in s && !('_zod' in s);
+  return '_zod' in s;
 }
 
 /**
- * Assert that a schema is not from Zod v3, throwing a helpful error if it is.
+ * Assert that a schema is from Zod v4, throwing a helpful error if it isn't.
  */
-export function assertNotZodV3(schema: unknown, context: string): void {
-  if (isZodV3Schema(schema)) {
+export function assertZodV4(schema: unknown, context: string): void {
+  if (!isZodV4Schema(schema)) {
     throw new Error(
-      `[AxiomAI] Zod v3 schemas are not supported (detected in ${context}). Please upgrade to Zod v4.`,
+      `[AxiomAI] Zod v4 schemas are required (detected in ${context}). Found unsupported Zod version.`,
     );
   }
 }

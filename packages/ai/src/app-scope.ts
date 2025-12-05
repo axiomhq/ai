@@ -20,7 +20,7 @@ import {
   getInnerType,
   getShape,
   isObjectSchema,
-  assertNotZodV3,
+  assertZodV4,
 } from './util/zod-internals';
 import { trace } from '@opentelemetry/api';
 import { type z, type ZodObject, type ZodDefault, type ZodSchema } from 'zod';
@@ -383,10 +383,10 @@ export function createAppScope<
 
   // Reject Zod v3 schemas
   if (flagSchemaConfig) {
-    assertNotZodV3(flagSchemaConfig, 'flagSchema');
+    assertZodV4(flagSchemaConfig, 'flagSchema');
   }
   if (factSchemaConfig) {
-    assertNotZodV3(factSchemaConfig, 'factSchema');
+    assertZodV4(factSchemaConfig, 'factSchema');
   }
 
   // reject union types

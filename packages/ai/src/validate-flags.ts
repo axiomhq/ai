@@ -3,7 +3,7 @@ import { getGlobalFlagOverrides } from './evals/context/global-flags';
 import { formatZodErrors, generateFlagExamples } from './cli/utils/format-zod-errors';
 import { dotNotationToNested, isValidPath, parsePath } from './util/dot-path';
 import { makeDeepPartial } from './util/deep-partial-schema';
-import { assertNotZodV3 } from './util/zod-internals';
+import { assertZodV4 } from './util/zod-internals';
 
 /**
  * Validate CLI flag overrides against a schema early in eval execution.
@@ -13,7 +13,7 @@ import { assertNotZodV3 } from './util/zod-internals';
  * @throws Error with helpful message if validation fails
  */
 export function validateCliFlags(flagSchema: ZodObject<any>): void {
-  assertNotZodV3(flagSchema, 'flagSchema');
+  assertZodV4(flagSchema, 'flagSchema');
   const globalOverrides = getGlobalFlagOverrides();
 
   if (Object.keys(globalOverrides).length === 0) {
