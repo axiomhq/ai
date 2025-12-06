@@ -11,7 +11,6 @@ import {
   calculateBaselineScorerAverage,
   calculateFlagDiff,
   printOrphanedBaselineCases,
-  printConfigEnd,
   printCaseResult,
   printRuntimeFlags,
   printOutOfScopeFlags,
@@ -359,22 +358,6 @@ describe('reporter.console-utils', () => {
       expect(output).toContain('Orphaned baseline cases:');
       expect(output).toContain('case 1: test input (score: {"accuracy":{"value":0.8}})');
       expect(output).toContain('accuracy   80.00%');
-    });
-  });
-
-  describe('printConfigEnd', () => {
-    it('prints config header and flags', () => {
-      const { logger, getOutput } = createMockLogger();
-      const configEnd = {
-        flags: { 'flag.a': true },
-        overrides: {},
-      };
-
-      printConfigEnd(configEnd, logger);
-      const output = stripAnsi(getOutput());
-
-      expect(output).toContain('Config');
-      expect(output).toContain('flag.a: true');
     });
   });
 

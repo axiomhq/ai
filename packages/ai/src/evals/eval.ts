@@ -649,8 +649,6 @@ async function registerEval<
             } finally {
               // Compute per-case runtime flags report and attach to span/meta
               try {
-                const DEBUG = process.env.AXIOM_DEBUG === 'true';
-
                 const accessedFlags: Record<string, any> = finalConfigSnapshot?.flags || {};
 
                 const accessed = Object.keys(accessedFlags);
@@ -669,7 +667,7 @@ async function registerEval<
                   }
                 }
 
-                if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
+                if (!isDebug && Object.keys(runtimeFlags).length > 0) {
                   const serialized = JSON.stringify(runtimeFlags);
                   caseSpan.setAttribute('eval.case.config.runtime_flags', serialized);
                 }

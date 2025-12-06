@@ -126,8 +126,8 @@ export function withSpan<Return, Capability extends string = string, Step extend
 
       // We don't warn for other non-recording cases (sampling=DROP, etc.) as those may be intentional
       if (providerIsNoOp) {
-        const DEBUG = process.env.AXIOM_DEBUG === 'true';
-        if (!DEBUG) {
+        const isDebug = process.env.AXIOM_DEBUG === 'true';
+        if (!isDebug) {
           console.warn(
             '[AxiomAI] No TracerProvider registered - spans are no-op. Make sure to call initAxiomAI() after your OpenTelemetry SDK has started.',
           );
