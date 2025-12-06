@@ -286,9 +286,9 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
  */
 export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomConfig {
   const errors: string[] = [];
-  const debug = process.env.AXIOM_DEBUG === 'true';
+  const isDebug = process.env.AXIOM_DEBUG === 'true';
 
-  if (!debug) {
+  if (!isDebug) {
     if (!config.eval?.token) {
       errors.push(
         'eval.token is required (set in axiom.config.ts or AXIOM_TOKEN environment variable)',
