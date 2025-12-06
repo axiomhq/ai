@@ -11,8 +11,6 @@ import type {
   CollectionRecord,
   EvalParams,
   EvalTask,
-  InputOf,
-  ExpectedOf,
   EvaluationReport,
   EvalCaseReport,
   RuntimeFlagLog,
@@ -82,25 +80,6 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * ```
  */
 export function Eval<
-  // Inference-friendly overload – no explicit generics required by callers.
-  Data extends readonly CollectionRecord<any, any>[],
-  TOutput,
-  Name extends string = string,
-  Capability extends string = string,
-  Step extends string = string,
->(
-  name: ValidateName<Name>,
-  params: Omit<EvalParams<InputOf<Data>, ExpectedOf<Data>, TOutput>, 'data'> & {
-    capability: ValidateName<Capability>;
-    step?: ValidateName<Step> | undefined;
-    data: Data | Promise<Data> | (() => Data | Promise<Data>);
-  },
-): void;
-
-/**
- * Explicit generics overload – allows users to pass explicit types.
- */
-export function Eval<
   TInput,
   TExpected,
   TOutput,
@@ -113,12 +92,7 @@ export function Eval<
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
   },
-): void;
-
-/**
- * Implementation
- */
-export function Eval(name: string, params: any): void {
+): void {
   // Record eval name for validation
   recordName('eval', name);
   recordName('capability', params.capability);
