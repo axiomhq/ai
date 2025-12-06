@@ -3,7 +3,7 @@ import { customAlphabet } from 'nanoid';
 import { runVitest } from '../../evals/run-vitest';
 import { lstatSync } from 'node:fs';
 import { runEvalWithContext } from '../utils/eval-context-runner';
-import type { FlagOverrides } from '../utils/parse-flag-overrides';
+import { validateFlagOverrides, type FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
 import { AxiomCLIError } from '../../util/errors';
@@ -85,6 +85,9 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
 
           // Load config file first to get defaults
           const { config: loadedConfig } = await loadConfig('.');
+
+          // Validate CLI flags against schema
+          validateFlagOverrides(flagOverrides, loadedConfig.eval.flagSchema);
 
           // Override config with CLI options if provided
           const config = {

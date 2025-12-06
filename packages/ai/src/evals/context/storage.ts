@@ -73,9 +73,7 @@ export function getEvalContext<
 export function updateEvalContext(flags?: Record<string, any>, facts?: Record<string, any>) {
   const current = EVAL_CONTEXT.get();
   if (!current) {
-    if (process.env.NODE_ENV !== 'test') {
-      console.warn('updateEvalContext called outside of evaluation context');
-    }
+    // Silently return - this is expected when running capabilities outside of eval
     return;
   }
 
