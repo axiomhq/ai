@@ -54,15 +54,11 @@ export interface SpanLease {
  * @returns The numeric value, or undefined if the input is not a valid number
  */
 export function ensureNumber(value: unknown): number | undefined {
-  if (typeof value === 'number') {
-    return Number.isNaN(value) || !Number.isFinite(value) || value < 0 ? undefined : value;
-  }
-  if (typeof value === 'string') {
-    if (value.trim() === '') return undefined;
-    const n = Number(value);
-    return Number.isNaN(n) || !Number.isFinite(n) || n < 0 ? undefined : n;
-  }
-  return undefined;
+  const v =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : undefined;
+  if (Number.isNaN(v)) return undefined;
+  if (v === Infinity || v === -Infinity) return undefined;
+  return v;
 }
 
 /**
