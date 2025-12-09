@@ -48,6 +48,23 @@ export interface SpanLease {
 }
 
 /**
+ * Safely converts a value to a number, handling string inputs from providers.
+ * Some AI providers may return token counts as strings instead of numbers.
+ *
+ * @returns The numeric value, or undefined if the input is not a valid number
+ */
+export function ensureNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? undefined : value;
+  }
+  if (typeof value === 'string') {
+    const n = Number(value);
+    return Number.isNaN(n) ? undefined : n;
+  }
+  return undefined;
+}
+
+/**
  * Classifies errors into low-cardinality types for OpenTelemetry error.type attribute
  * Reference: OTel spec § 7.22.5 for error.type guidelines
  *
@@ -472,8 +489,8 @@ export function setResponseAttributes(
 
   if (response.usage) {
     // Handle both V1 and V2 usage formats
-    const inputTokens = response.usage.inputTokens ?? response.usage.promptTokens;
-    const outputTokens = response.usage.outputTokens ?? response.usage.completionTokens;
+    const inputTokens = ensureNumber(response.usage.inputTokens ?? response.usage.promptTokens);
+    const outputTokens = ensureNumber(response.usage.outputTokens ?? response.usage.completionTokens);
 
     if (inputTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
