@@ -55,11 +55,12 @@ export interface SpanLease {
  */
 export function ensureNumber(value: unknown): number | undefined {
   if (typeof value === 'number') {
-    return Number.isNaN(value) ? undefined : value;
+    return Number.isNaN(value) || !Number.isFinite(value) || value < 0 ? undefined : value;
   }
   if (typeof value === 'string') {
+    if (value.trim() === '') return undefined;
     const n = Number(value);
-    return Number.isNaN(n) ? undefined : n;
+    return Number.isNaN(n) || !Number.isFinite(n) || n < 0 ? undefined : n;
   }
   return undefined;
 }
