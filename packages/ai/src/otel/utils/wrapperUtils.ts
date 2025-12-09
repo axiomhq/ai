@@ -490,7 +490,9 @@ export function setResponseAttributes(
   if (response.usage) {
     // Handle both V1 and V2 usage formats
     const inputTokens = ensureNumber(response.usage.inputTokens ?? response.usage.promptTokens);
-    const outputTokens = ensureNumber(response.usage.outputTokens ?? response.usage.completionTokens);
+    const outputTokens = ensureNumber(
+      response.usage.outputTokens ?? response.usage.completionTokens,
+    );
 
     if (inputTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
