@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.33.0](https://github.com/axiomhq/ai/compare/axiom-v0.32.0...axiom-v0.33.0) (2025-12-10)
+
+
+### Features
+
+* cast tokens to number ([#186](https://github.com/axiomhq/ai/issues/186)) ([b718360](https://github.com/axiomhq/ai/commit/b7183605cd5da0ef1cf462c807097d573d157ac3))
+* put `eval.case.metadata` on case span ([#184](https://github.com/axiomhq/ai/issues/184)) ([33ad844](https://github.com/axiomhq/ai/commit/33ad8446dae985549d854f4d3bb7bb812b1b58b4))
+* show all flag validation failures ([#178](https://github.com/axiomhq/ai/issues/178)) ([51dce37](https://github.com/axiomhq/ai/commit/51dce375126360ff5dc9f415b188bd2e2e7efd38))
+
 ## [0.32.0](https://github.com/axiomhq/ai/compare/axiom-v0.31.1...axiom-v0.32.0) (2025-12-01)
 
 
