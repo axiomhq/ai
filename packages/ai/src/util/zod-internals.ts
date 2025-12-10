@@ -27,10 +27,14 @@ export type ZodKind =
   | 'optional'
   | 'default'
   | 'nullable'
+  | 'readonly'
+  | 'prefault'
+  | 'nonoptional'
+  | 'catch'
   | 'array'
   | 'record'
   | 'union'
-  | 'discriminatedUnion'
+  | 'discriminatedunion'
   | 'other';
 
 /** Minimal internal def shape we access (Zod v4) */
@@ -71,6 +75,21 @@ function getDefRawType(def: ZodInternalDef | undefined): string | undefined {
   return typeof raw === 'string' ? raw : String(raw);
 }
 
+const KNOWN_KINDS = new Set<ZodKind>([
+  'object',
+  'optional',
+  'default',
+  'nullable',
+  'readonly',
+  'prefault',
+  'nonoptional',
+  'catch',
+  'array',
+  'record',
+  'union',
+  'discriminatedunion',
+]);
+
 /**
  * Get the normalized ZodKind from a schema or def (Zod v4).
  */
@@ -85,27 +104,7 @@ export function getKind(schemaOrDef: unknown): ZodKind | undefined {
   if (!raw) return undefined;
 
   const normalized = raw.toLowerCase();
-
-  switch (normalized) {
-    case 'object':
-      return 'object';
-    case 'optional':
-      return 'optional';
-    case 'default':
-      return 'default';
-    case 'nullable':
-      return 'nullable';
-    case 'array':
-      return 'array';
-    case 'record':
-      return 'record';
-    case 'union':
-      return 'union';
-    case 'discriminatedunion':
-      return 'discriminatedUnion';
-    default:
-      return 'other';
-  }
+  return KNOWN_KINDS.has(normalized as ZodKind) ? (normalized as ZodKind) : 'other';
 }
 
 /**
@@ -160,6 +159,16 @@ export function getDefaultValue(schema: unknown): unknown {
   return def?.defaultValue;
 }
 
+const TRANSPARENT_WRAPPERS = [
+  'optional',
+  'nullable',
+  'default',
+  'readonly',
+  'prefault',
+  'nonoptional',
+  'catch', // transparent for schema structure, but alters error behavior
+];
+
 /**
  * Unwrap transparent wrappers (optional, nullable, default) to get the core schema.
  * Useful when you need to check the underlying type.
@@ -171,7 +180,7 @@ export function unwrapTransparent(schema: ZodType<unknown>): ZodType<unknown> {
     const kind = getKind(current);
     if (!kind) break;
 
-    if (kind === 'optional' || kind === 'nullable' || kind === 'default') {
+    if (TRANSPARENT_WRAPPERS.includes(kind)) {
       const inner = getInnerType(current);
       if (!inner) break;
       current = inner;

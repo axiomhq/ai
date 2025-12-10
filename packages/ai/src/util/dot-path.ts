@@ -1,5 +1,5 @@
 import { type ZodObject, type ZodSchema, type ZodType, z } from 'zod';
-import { getDef, getKind, getShape, isObjectSchema, unwrapTransparent } from './zod-internals';
+import { getDef, getShape, isObjectSchema, unwrapTransparent } from './zod-internals';
 
 /**
  * Parse a dot notation path into segments.
@@ -140,21 +140,20 @@ export function findSchemaAtPath(
         return undefined;
       }
 
-      // Handle ZodObject by accessing its shape
-      const kind = getKind(def);
-      if (kind === 'object') {
-        const shape = getShape(current);
-        if (!shape) {
-          return undefined;
-        }
-        const nextSchema = shape[segment];
-        if (!nextSchema) {
-          return undefined;
-        }
-        current = nextSchema;
-      } else {
+      // Unwrap transparent wrappers (ZodDefault, ZodOptional, ZodNullable, etc.)
+      current = unwrapTransparent(current);
+      if (!isObjectSchema(current)) {
         return undefined;
       }
+      const shape = getShape(current);
+      if (!shape) {
+        return undefined;
+      }
+      const nextSchema = shape[segment];
+      if (!nextSchema) {
+        return undefined;
+      }
+      current = nextSchema;
     }
     return current as ZodSchema;
   }

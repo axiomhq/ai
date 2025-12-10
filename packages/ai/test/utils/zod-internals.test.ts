@@ -10,7 +10,7 @@ import {
   findSchemaAtPath,
   buildSchemaForPath,
 } from '../../src/util/dot-path';
-import { isZodV4Schema, assertZodV4 } from '../../src/util/zod-internals';
+import { isZodV4Schema, assertZodV4, getKind, unwrapTransparent } from '../../src/util/zod-internals';
 
 describe('isZodV4Schema', () => {
   it('returns true for Zod v4 object schema', () => {
@@ -57,6 +57,55 @@ describe('assertZodV4', () => {
     expect(() => assertZodV4(schema, 'flagSchema')).toThrow(
       '[AxiomAI] Zod v4 schemas are required (detected in flagSchema). Found unsupported Zod version.',
     );
+  });
+});
+
+describe('getKind', () => {
+  it('returns "readonly" for readonly wrapper', () => {
+    const schema = z.string().readonly();
+    expect(getKind(schema)).toBe('readonly');
+  });
+
+  it('returns "catch" for catch wrapper', () => {
+    const schema = z.string().catch('fallback');
+    expect(getKind(schema)).toBe('catch');
+  });
+
+  it('returns "prefault" for prefault wrapper', () => {
+    const schema = z.string().prefault('prefault-value');
+    expect(getKind(schema)).toBe('prefault');
+  });
+
+  it('returns "nonoptional" for nonoptional wrapper', () => {
+    const schema = z.string().optional().nonoptional();
+    expect(getKind(schema)).toBe('nonoptional');
+  });
+});
+
+describe('unwrapTransparent', () => {
+  it('unwraps readonly to get inner type', () => {
+    const inner = z.object({ foo: z.string() });
+    const schema = inner.readonly();
+    expect(unwrapTransparent(schema)).toBe(inner);
+  });
+
+  it('unwraps catch to get inner type', () => {
+    const inner = z.string();
+    const schema = inner.catch('fallback');
+    expect(unwrapTransparent(schema)).toBe(inner);
+  });
+
+  it('unwraps prefault to get inner type', () => {
+    const inner = z.string();
+    const schema = inner.prefault('prefault-value');
+    expect(unwrapTransparent(schema)).toBe(inner);
+  });
+
+  it('unwraps nonoptional to get inner type', () => {
+    const inner = z.string().optional();
+    const schema = inner.nonoptional();
+    const unwrapped = unwrapTransparent(schema);
+    expect((unwrapped as any)._zod?.def?.type).toBe('string');
   });
 });
 

@@ -206,7 +206,7 @@ function assertNoUnions(schema: unknown, path = 'schema'): void {
   }
 
   // Hard-fail on unions
-  if (kind === 'union' || kind === 'discriminatedUnion') {
+  if (kind === 'union' || kind === 'discriminatedunion') {
     throw new Error(`[AxiomAI] Union types are not supported in flag schemas (found at "${path}")`);
   }
 
@@ -519,6 +519,12 @@ export function createAppScope<
     return { ok: true, parsed: value };
   }
 
+  function hasUndefinedLeaves(obj: unknown): boolean {
+    if (obj === undefined) return true;
+    if (obj === null || typeof obj !== 'object') return false;
+    return Object.values(obj).some((v) => (typeof v === 'object' && v !== null ? hasUndefinedLeaves(v) : v === undefined));
+  }
+
   /**
    * Get flag value with dot notation path support and schema validation.
    * All flag fields must have .default() values in the schema.
@@ -590,6 +596,21 @@ export function createAppScope<
       // Check if this is a namespace access (returning whole objects)
       else if (isNamespaceAccess(segments)) {
         finalValue = buildObjectWithDefaults(schemaForPath);
+
+        // If buildObjectWithDefaults fails or returns incomplete object, try extracting from parent defaults
+        if (finalValue === undefined || hasUndefinedLeaves(finalValue)) {
+          const nsSchema = findSchemaAtPath(flagSchemaConfig, [segments[0]]);
+          if (nsSchema) {
+            const nsObj = buildObjectWithDefaults(nsSchema);
+            if (nsObj && typeof nsObj === 'object') {
+              const extracted = getValueAtPath(nsObj, segments.slice(1));
+              if (extracted !== undefined) {
+                finalValue = extracted;
+              }
+            }
+          }
+        }
+
         if (finalValue === undefined) {
           console.error(`[AxiomAI] Invalid flag: "${path}"`);
           return undefined;
