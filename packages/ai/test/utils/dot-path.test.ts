@@ -1,4 +1,4 @@
-import { isValidPath } from '../../src/util/dot-path';
+import { isValidPath, findSchemaAtPath } from '../../src/util/dot-path';
 import { describe, expect, it } from 'vitest';
 import z from 'zod';
 
@@ -39,5 +39,31 @@ describe('isValidPath', () => {
 
   it('should handle empty path array', () => {
     expect(isValidPath(z.object({ foo: z.string() }), [])).toBe(true);
+  });
+});
+
+describe('findSchemaAtPath', () => {
+  it('should find schema through optional-wrapped intermediate objects', () => {
+    const schema = z.object({
+      foo: z.optional(z.object({ bar: z.number() })),
+    });
+    const result = findSchemaAtPath(schema, ['foo', 'bar']);
+    expect(result).toBeDefined();
+  });
+
+  it('should find schema through nullable-wrapped intermediate objects', () => {
+    const schema = z.object({
+      foo: z.nullable(z.object({ bar: z.string() })),
+    });
+    const result = findSchemaAtPath(schema, ['foo', 'bar']);
+    expect(result).toBeDefined();
+  });
+
+  it('should find schema through default-wrapped intermediate objects', () => {
+    const schema = z.object({
+      foo: z.object({ bar: z.boolean() }).default({ bar: true }),
+    });
+    const result = findSchemaAtPath(schema, ['foo', 'bar']);
+    expect(result).toBeDefined();
   });
 });
