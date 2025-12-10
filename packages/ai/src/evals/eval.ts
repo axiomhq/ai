@@ -458,6 +458,7 @@ async function registerEval<
                 typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
               [Attr.Eval.Case.Expected]:
                 typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
+              [Attr.Eval.Case.Metadata]: data.metadata ? JSON.stringify(data.metadata) : undefined,
               // user info
               [Attr.Eval.User.Name]: user?.name,
               [Attr.Eval.User.Email]: user?.email,
@@ -597,6 +598,7 @@ async function registerEval<
                 expected: data.expected,
                 input: data.input,
                 output: output,
+                metadata: data.metadata,
                 scores,
                 status: 'success',
                 errors: [],
@@ -635,6 +637,7 @@ async function registerEval<
                 expected: data.expected,
                 input: data.input,
                 output: String(e),
+                metadata: data.metadata,
                 scores: failedScores,
                 status: 'fail',
                 errors: [error],

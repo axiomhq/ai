@@ -36,6 +36,7 @@ import {
   determineOutputTypeV2,
   classifyToolError,
   createStreamChildSpan,
+  ensureNumber,
   type GenAiSpanContextV1,
   type GenAiSpanContextV2,
 } from './utils/wrapperUtils';
@@ -415,26 +416,14 @@ async function setPostCallAttributesV1(
     span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
   }
 
-  if (result.usage?.promptTokens) {
-    if (Number.isNaN(result.usage.promptTokens)) {
-      console.warn(
-        'usage.promptTokens is NaN. You might need to enable `compatibility: strict`. See: https://github.com/vercel/ai/discussions/1882',
-        result.usage.promptTokens,
-      );
-    } else {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.promptTokens);
-    }
+  const inputTokens = ensureNumber(result.usage?.promptTokens);
+  if (inputTokens !== undefined) {
+    span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
   }
 
-  if (result.usage?.completionTokens) {
-    if (Number.isNaN(result.usage.completionTokens)) {
-      console.warn(
-        'usage.completionTokens is NaN. You might need to enable `compatibility: strict`. See: https://github.com/vercel/ai/discussions/1882',
-        result.usage.completionTokens,
-      );
-    } else {
-      span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.completionTokens);
-    }
+  const outputTokens = ensureNumber(result.usage?.completionTokens);
+  if (outputTokens !== undefined) {
+    span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
   }
 
   if (result.finishReason) {
@@ -512,11 +501,14 @@ async function setPostCallAttributesV2(
       span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
     }
 
-    if (result.usage?.inputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, result.usage.inputTokens);
+    const inputTokens = ensureNumber(result.usage?.inputTokens);
+    if (inputTokens !== undefined) {
+      span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
     }
-    if (result.usage?.outputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.OutputTokens, result.usage.outputTokens);
+
+    const outputTokens = ensureNumber(result.usage?.outputTokens);
+    if (outputTokens !== undefined) {
+      span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
     }
   }
 
