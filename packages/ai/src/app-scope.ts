@@ -522,7 +522,9 @@ export function createAppScope<
   function hasUndefinedLeaves(obj: unknown): boolean {
     if (obj === undefined) return true;
     if (obj === null || typeof obj !== 'object') return false;
-    return Object.values(obj).some((v) => (typeof v === 'object' && v !== null ? hasUndefinedLeaves(v) : v === undefined));
+    return Object.values(obj).some((v) =>
+      typeof v === 'object' && v !== null ? hasUndefinedLeaves(v) : v === undefined,
+    );
   }
 
   /**

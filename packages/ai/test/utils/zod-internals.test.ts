@@ -10,7 +10,12 @@ import {
   findSchemaAtPath,
   buildSchemaForPath,
 } from '../../src/util/dot-path';
-import { isZodV4Schema, assertZodV4, getKind, unwrapTransparent } from '../../src/util/zod-internals';
+import {
+  isZodV4Schema,
+  assertZodV4,
+  getKind,
+  unwrapTransparent,
+} from '../../src/util/zod-internals';
 
 describe('isZodV4Schema', () => {
   it('returns true for Zod v4 object schema', () => {
