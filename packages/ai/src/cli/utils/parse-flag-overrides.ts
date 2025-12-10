@@ -1,4 +1,4 @@
-import { type ZodObject, type z } from 'zod';
+import { type ZodError, type ZodObject, type z } from 'zod';
 import { formatZodErrors, generateFlagExamples } from './format-zod-errors.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -77,32 +77,48 @@ export function extractAndValidateFlagOverrides<S extends z.ZodObject<any>>(
   return { cleanedArgv, overrides: overrides as any };
 }
 
+export type FlagValidationError =
+  | { type: 'invalid_path'; path: string }
+  | { type: 'invalid_value'; zodError: ZodError };
+
+export interface FlagValidationResult {
+  success: boolean;
+  errors: FlagValidationError[];
+}
+
 /**
  * Validate already-parsed flag overrides against a Zod schema.
- * Use this when you have flag overrides in dot-notation form (e.g., { 'model.temperature': 0.7 })
- * and want to validate them against a schema before running evals.
+ * Returns validation result without side effects (no console output, no process.exit).
  *
- * @param overrides - Flag overrides in dot-notation form
+ * @param overrides - Flag overrides in dot-notation form (e.g., { 'model.temperature': 0.7 })
  * @param flagSchema - Zod schema to validate against
+ * @returns Validation result with any errors found
  */
-export function validateFlagOverrides(overrides: FlagOverrides, flagSchema?: unknown): void {
+export function collectFlagValidationErrors(
+  overrides: FlagOverrides,
+  flagSchema?: unknown,
+): FlagValidationResult {
   // No schema provided = no validation, any flags allowed
   if (!flagSchema || Object.keys(overrides).length === 0) {
-    return;
+    return { success: true, errors: [] };
   }
 
   assertZodV4(flagSchema, 'flagSchema');
 
   const schema = flagSchema as any;
+  const errors: FlagValidationError[] = [];
 
   // First pass: check all paths exist in schema
   for (const dotPath of Object.keys(overrides)) {
     const segments = parsePath(dotPath);
     if (!isValidPath(schema, segments)) {
-      console.error('❌ Invalid CLI flags:');
-      console.error(`  • flag '${dotPath}': Invalid flag path`);
-      process.exit(1);
+      errors.push({ type: 'invalid_path', path: dotPath });
     }
+  }
+
+  // If there are invalid paths, don't proceed to value validation
+  if (errors.length > 0) {
+    return { success: false, errors };
   }
 
   // Second pass: validate values using nested object approach with deep partial
@@ -112,16 +128,47 @@ export function validateFlagOverrides(overrides: FlagOverrides, flagSchema?: unk
   const result = deepPartialSchema.safeParse(nestedObject);
 
   if (!result.success) {
-    console.error('❌ Invalid CLI flags:');
-    console.error(formatZodErrors(result.error));
+    errors.push({ type: 'invalid_value', zodError: result.error });
+  }
 
-    const examples = generateFlagExamples(result.error);
-    if (examples.length > 0) {
-      console.error('\n💡 Valid examples:');
-      examples.forEach((example) => console.error(`  ${example}`));
+  return { success: errors.length === 0, errors };
+}
+
+/**
+ * Print flag validation errors to console and exit.
+ */
+export function printFlagValidationErrorsAndExit(errors: FlagValidationError[]): never {
+  console.error('❌ Invalid CLI flags:');
+
+  for (const error of errors) {
+    if (error.type === 'invalid_path') {
+      console.error(`  • flag '${error.path}': Invalid flag path`);
+    } else {
+      console.error(formatZodErrors(error.zodError));
+
+      const examples = generateFlagExamples(error.zodError);
+      if (examples.length > 0) {
+        console.error('\n💡 Valid examples:');
+        examples.forEach((example) => console.error(`  ${example}`));
+      }
     }
+  }
 
-    process.exit(1);
+  process.exit(1);
+}
+
+/**
+ * Validate already-parsed flag overrides against a Zod schema.
+ * Use this when you have flag overrides in dot-notation form (e.g., { 'model.temperature': 0.7 })
+ * and want to validate them against a schema before running evals.
+ *
+ * @param overrides - Flag overrides in dot-notation form
+ * @param flagSchema - Zod schema to validate against
+ */
+export function validateFlagOverrides(overrides: FlagOverrides, flagSchema?: unknown): void {
+  const result = collectFlagValidationErrors(overrides, flagSchema);
+  if (!result.success) {
+    printFlagValidationErrorsAndExit(result.errors);
   }
 }
 

@@ -190,6 +190,8 @@ export type EvalCaseReport = {
   output: string | Record<string, any>;
   /** Expected output for comparison */
   expected: string | Record<string, any>;
+  /** Optional metadata for the case */
+  metadata?: Record<string, any>;
   /** Array of {@link Score} results from all scorers that were run */
   scores: Record<string, ScoreWithName>;
   /** Any errors that occurred during evaluation */

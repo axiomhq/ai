@@ -4,6 +4,7 @@ import {
   withSpanHandling,
   createStreamChildSpan,
   classifyToolError,
+  ensureNumber,
 } from '../../../src/otel/utils/wrapperUtils';
 import { Attr } from '../../../src/otel/semconv/attributes';
 
@@ -586,6 +587,121 @@ describe('wrapperUtils error handling', () => {
         expect(mockChildSpan.end).toHaveBeenCalled();
         expect(mockChildSpan.setAttribute).toHaveBeenCalledWith(Attr.Error.Type, 'unknown');
       });
+    });
+  });
+});
+
+describe('ensureNumber', () => {
+  describe('valid number inputs', () => {
+    it('should return positive integers as-is', () => {
+      expect(ensureNumber(42)).toBe(42);
+      expect(ensureNumber(0)).toBe(0);
+      expect(ensureNumber(123456789)).toBe(123456789);
+    });
+
+    it('should return negative numbers as-is', () => {
+      expect(ensureNumber(-1)).toBe(-1);
+      expect(ensureNumber(-999)).toBe(-999);
+    });
+
+    it('should return floating point numbers as-is', () => {
+      expect(ensureNumber(3.14)).toBe(3.14);
+      expect(ensureNumber(-0.5)).toBe(-0.5);
+    });
+  });
+
+  describe('valid string inputs', () => {
+    it('should convert numeric strings to numbers', () => {
+      expect(ensureNumber('123')).toBe(123);
+      expect(ensureNumber('0')).toBe(0);
+      expect(ensureNumber('-456')).toBe(-456);
+    });
+
+    it('should convert floating point strings to numbers', () => {
+      expect(ensureNumber('3.14')).toBe(3.14);
+      expect(ensureNumber('-0.5')).toBe(-0.5);
+    });
+
+    it('should handle strings with leading/trailing whitespace', () => {
+      expect(ensureNumber('  123  ')).toBe(123);
+      expect(ensureNumber('\t42\n')).toBe(42);
+    });
+  });
+
+  describe('NaN values', () => {
+    it('should return undefined for NaN number', () => {
+      expect(ensureNumber(NaN)).toBeUndefined();
+    });
+
+    it('should return undefined for NaN-producing strings', () => {
+      expect(ensureNumber('NaN')).toBeUndefined();
+    });
+  });
+
+  describe('invalid string inputs', () => {
+    it('should return undefined for non-numeric strings', () => {
+      expect(ensureNumber('abc')).toBeUndefined();
+      expect(ensureNumber('hello world')).toBeUndefined();
+      expect(ensureNumber('12abc')).toBeUndefined();
+    });
+
+    it('should convert empty strings to 0 (JavaScript Number behavior)', () => {
+      expect(ensureNumber('')).toBe(0);
+    });
+
+    it('should convert whitespace-only strings to 0 (JavaScript Number behavior)', () => {
+      expect(ensureNumber('   ')).toBe(0);
+      expect(ensureNumber('\t\n')).toBe(0);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should return Infinity values as-is', () => {
+      expect(ensureNumber(Infinity)).toBeUndefined();
+      expect(ensureNumber(-Infinity)).toBeUndefined();
+    });
+
+    it('should convert Infinity strings', () => {
+      expect(ensureNumber('Infinity')).toBeUndefined();
+      expect(ensureNumber('-Infinity')).toBeUndefined();
+    });
+
+    it('should handle very large numbers', () => {
+      expect(ensureNumber(Number.MAX_SAFE_INTEGER)).toBe(Number.MAX_SAFE_INTEGER);
+      expect(ensureNumber(String(Number.MAX_SAFE_INTEGER))).toBe(Number.MAX_SAFE_INTEGER);
+    });
+
+    it('should handle zero edge cases', () => {
+      expect(ensureNumber(-0)).toBe(-0);
+      expect(ensureNumber('0')).toBe(0);
+      expect(ensureNumber('-0')).toBe(-0);
+    });
+  });
+
+  describe('null and undefined inputs', () => {
+    it('should return undefined for null', () => {
+      expect(ensureNumber(null)).toBeUndefined();
+    });
+
+    it('should return undefined for undefined', () => {
+      expect(ensureNumber(undefined)).toBeUndefined();
+    });
+  });
+
+  describe('other invalid types', () => {
+    it('should return undefined for objects', () => {
+      expect(ensureNumber({})).toBeUndefined();
+      expect(ensureNumber({ value: 42 })).toBeUndefined();
+    });
+
+    it('should return undefined for arrays', () => {
+      expect(ensureNumber([])).toBeUndefined();
+      expect(ensureNumber([42])).toBeUndefined();
+    });
+
+    it('should return undefined for booleans', () => {
+      expect(ensureNumber(true)).toBeUndefined();
+      expect(ensureNumber(false)).toBeUndefined();
     });
   });
 });
