@@ -44,18 +44,43 @@ const withKindAndId = <T extends FeedbackType>(input: FeedbackInput<T>, kind: T[
   }) as T;
 
 type FeedbackConfig = {
-  readonly url: string;
+  readonly token: string;
+  readonly dataset: string;
+  readonly url?: string;
+};
+
+type FeedbackSettings = {
+  readonly onError?: (error: Error) => void;
 };
 
 type SendFeedback = (correlation: Correlation, feedback: FeedbackType) => Promise<void>;
 
-const createFeedbackClient = (config: FeedbackConfig): SendFeedback => {
+const createFeedbackClient = (config: FeedbackConfig, settings?: FeedbackSettings): SendFeedback => {
+  const baseUrl = config.url ?? 'https://api.axiom.co';
+
   return async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
-    console.log('[axiom/feedback] sendFeedback called', {
-      url: config.url,
-      correlation,
-      feedback,
-    });
+    const payload = {
+      ...correlation,
+      ...feedback,
+    };
+
+    try {
+      const response = await fetch(`${baseUrl}/v1/ingest/${config.dataset}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.token}`,
+        },
+        body: JSON.stringify([payload]),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        settings?.onError?.(new Error(`Failed to send feedback to Axiom: ${response.status} ${text}`));
+      }
+    } catch (error) {
+      settings?.onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
   };
 };
 
@@ -102,6 +127,7 @@ export type {
   Correlation,
   FeedbackType,
   FeedbackConfig,
+  FeedbackSettings,
   SendFeedback,
   NumericalFeedback,
   BooleanFeedback,
