@@ -78,7 +78,7 @@ const createFeedbackClient = (
       id: crypto.randomUUID(),
       ...feedbackFields,
       correlation,
-      metadata,
+      ...(metadata !== undefined && { metadata }),
     };
 
     try {
