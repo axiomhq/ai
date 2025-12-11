@@ -7,7 +7,7 @@ import {
   SpanStatusCode,
   type AttributeValue,
 } from '@opentelemetry/api';
-import { Attr, SCHEMA_BASE_URL, SCHEMA_VERSION } from '../semconv/attributes';
+import { Attr, SCHEMA_URL } from '../semconv/attributes';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
 import { createStartActiveSpan } from '../startActiveSpan';
 
@@ -260,7 +260,7 @@ export function setScopeAttributes(span: Span): void {
  */
 export function setAxiomBaseAttributes(span: Span): void {
   span.setAttributes({
-    [Attr.Axiom.GenAI.SchemaURL]: `${SCHEMA_BASE_URL}${SCHEMA_VERSION}`,
+    [Attr.Axiom.GenAI.SchemaURL]: SCHEMA_URL,
     [Attr.Axiom.GenAI.SDK.Name]: packageJson.name,
     [Attr.Axiom.GenAI.SDK.Version]: packageJson.version,
   });

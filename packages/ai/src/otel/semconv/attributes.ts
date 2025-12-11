@@ -97,8 +97,7 @@ import {
   GEN_AI_PROVIDER_NAME_VALUE_X_AI,
 } from '@opentelemetry/semantic-conventions/incubating';
 
-export const SCHEMA_VERSION = '0.0.2';
-export const SCHEMA_BASE_URL = 'https://axiom.co/ai/schemas/';
+export { SCHEMA_VERSION, SCHEMA_BASE_URL, SCHEMA_URL } from '../../schema';
 
 /**
  * PROPRIETARY ATTRIBUTES (o11y)

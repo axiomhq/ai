@@ -1,3 +1,5 @@
+import { SCHEMA_URL } from './schema';
+
 type Correlation = {
   readonly traceId: string;
   readonly capability: string;
@@ -7,7 +9,6 @@ type Correlation = {
 };
 
 type FeedbackBase = {
-  readonly id: string;
   readonly name: string;
   readonly metadata?: Record<string, unknown>;
 };
@@ -33,13 +34,12 @@ type EventFeedback = FeedbackBase & {
 
 type FeedbackType = NumericalFeedback | BooleanFeedback | TextFeedback | EventFeedback;
 
-type FeedbackInput<T extends FeedbackType> = Omit<T, 'id' | 'kind'>;
+type FeedbackInput<T extends FeedbackType> = Omit<T, 'kind'>;
 type BaseFeedbackInput = FeedbackInput<EventFeedback>;
 
-const withKindAndId = <T extends FeedbackType>(input: FeedbackInput<T>, kind: T['kind']): T =>
+const withKind = <T extends FeedbackType>(input: FeedbackInput<T>, kind: T['kind']): T =>
   ({
     ...input,
-    id: crypto.randomUUID(),
     kind,
   }) as T;
 
@@ -59,9 +59,14 @@ const createFeedbackClient = (config: FeedbackConfig, settings?: FeedbackSetting
   const baseUrl = config.url ?? 'https://api.axiom.co';
 
   return async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
+    const { metadata, ...feedbackFields } = feedback;
+
     const payload = {
-      ...correlation,
-      ...feedback,
+      schemaUrl: SCHEMA_URL,
+      id: crypto.randomUUID(),
+      ...feedbackFields,
+      correlation,
+      metadata,
     };
 
     try {
@@ -89,7 +94,7 @@ const thumbsFeedback = ({
   value,
   metadata,
 }: BaseFeedbackInput & { readonly value: 'up' | 'down' }): NumericalFeedback =>
-  withKindAndId({ name, value: value === 'up' ? 1 : -1, metadata }, 'numerical');
+  withKind({ name, value: value === 'up' ? 1 : -1, metadata }, 'numerical');
 
 const thumbsUpFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
   thumbsFeedback({ ...input, value: 'up' });
@@ -99,17 +104,17 @@ const thumbsDownFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
 
 const enumFeedback = <T extends string>(
   input: BaseFeedbackInput & { readonly value: T }
-): TextFeedback => withKindAndId(input, 'text');
+): TextFeedback => withKind(input, 'text');
 
 const numericalFeedback = (input: FeedbackInput<NumericalFeedback>): NumericalFeedback =>
-  withKindAndId(input, 'numerical');
+  withKind(input, 'numerical');
 
 const boolFeedback = (input: FeedbackInput<BooleanFeedback>): BooleanFeedback =>
-  withKindAndId(input, 'boolean');
+  withKind(input, 'boolean');
 
-const textFeedback = (input: FeedbackInput<TextFeedback>): TextFeedback => withKindAndId(input, 'text');
+const textFeedback = (input: FeedbackInput<TextFeedback>): TextFeedback => withKind(input, 'text');
 
-const eventFeedback = (input: FeedbackInput<EventFeedback>): EventFeedback => withKindAndId(input, 'event');
+const eventFeedback = (input: FeedbackInput<EventFeedback>): EventFeedback => withKind(input, 'event');
 
 const Feedback = {
   event: eventFeedback,

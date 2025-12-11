@@ -8,7 +8,11 @@ import { apiClient } from '@/lib/api/api-client';
 import { Button } from '@/components/button';
 import { createFeedbackClient, Feedback } from 'axiom/ai/experimental_feedback';
 
-const sendFeedback = createFeedbackClient({ url: '/api/feedback' });
+const sendFeedback = createFeedbackClient({
+  url: 'https://api.dev.axiomtestlabs.co',
+  dataset: 'axiom-feedback-dev',
+  token: process.env.NEXT_PUBLIC_FEEDBACK_TOKEN!,
+});
 
 // Types mirroring the server response
 type MessageCategory = 'support' | 'complaint' | 'wrong_company' | 'spam' | 'unknown';
