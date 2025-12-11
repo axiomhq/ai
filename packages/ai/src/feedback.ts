@@ -74,7 +74,10 @@ const createFeedbackClient = (
   const baseUrl = config.url ?? 'https://api.axiom.co';
   const url = `${baseUrl}${getSuffix(baseUrl, config.dataset)}`;
 
-  const sendFeedback: SendFeedback = async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
+  const sendFeedback: SendFeedback = async (
+    correlation: Correlation,
+    feedback: FeedbackType,
+  ): Promise<void> => {
     const { metadata, ...feedbackFields } = feedback;
 
     const payload = {
