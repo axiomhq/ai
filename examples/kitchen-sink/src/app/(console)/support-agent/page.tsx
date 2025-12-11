@@ -10,7 +10,7 @@ import { ChatMessage } from './chat-message';
 import { AgentInternals } from './agent-internals';
 import { useSupportChat } from './use-support-chat';
 
-const sendFeedback = createFeedbackClient({
+const { sendFeedback } = createFeedbackClient({
   url: 'https://api.dev.axiomtestlabs.co',
   dataset: 'axiom-feedback-dev',
   token: process.env.NEXT_PUBLIC_FEEDBACK_TOKEN!,

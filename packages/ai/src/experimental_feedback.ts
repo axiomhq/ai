@@ -63,14 +63,18 @@ function getSuffix(baseUrl: string, dataset: string) {
   return `/v1/datasets/${dataset}/ingest`;
 }
 
+type FeedbackClient = {
+  readonly sendFeedback: SendFeedback;
+};
+
 const createFeedbackClient = (
   config: FeedbackConfig,
   settings?: FeedbackSettings,
-): SendFeedback => {
+): FeedbackClient => {
   const baseUrl = config.url ?? 'https://api.axiom.co';
   const url = `${baseUrl}${getSuffix(baseUrl, config.dataset)}`;
 
-  return async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
+  const sendFeedback: SendFeedback = async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
     const { metadata, ...feedbackFields } = feedback;
 
     const payload = {
@@ -102,6 +106,8 @@ const createFeedbackClient = (
       settings?.onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   };
+
+  return { sendFeedback };
 };
 
 const thumbsFeedback = ({
@@ -149,6 +155,7 @@ export type {
   FeedbackType,
   FeedbackConfig,
   FeedbackSettings,
+  FeedbackClient,
   SendFeedback,
   NumericalFeedback,
   BooleanFeedback,
