@@ -55,7 +55,10 @@ type FeedbackSettings = {
 
 type SendFeedback = (correlation: Correlation, feedback: FeedbackType) => Promise<void>;
 
-const createFeedbackClient = (config: FeedbackConfig, settings?: FeedbackSettings): SendFeedback => {
+const createFeedbackClient = (
+  config: FeedbackConfig,
+  settings?: FeedbackSettings,
+): SendFeedback => {
   const baseUrl = config.url ?? 'https://api.axiom.co';
 
   return async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
@@ -70,7 +73,6 @@ const createFeedbackClient = (config: FeedbackConfig, settings?: FeedbackSetting
     };
 
     try {
-      const response = await fetch(`${baseUrl}/v1/ingest/${config.dataset}`, {
       // TODO: maybe use axiom-js for this?
       // TODO: discriminate between edge and non edge
       const response = await fetch(`${baseUrl}/v1/datasets/${config.dataset}/ingest`, {
@@ -84,7 +86,9 @@ const createFeedbackClient = (config: FeedbackConfig, settings?: FeedbackSetting
 
       if (!response.ok) {
         const text = await response.text();
-        settings?.onError?.(new Error(`Failed to send feedback to Axiom: ${response.status} ${text}`));
+        settings?.onError?.(
+          new Error(`Failed to send feedback to Axiom: ${response.status} ${text}`),
+        );
       }
     } catch (error) {
       settings?.onError?.(error instanceof Error ? error : new Error(String(error)));
@@ -106,7 +110,7 @@ const thumbsDownFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
   thumbsFeedback({ ...input, value: 'down' });
 
 const enumFeedback = <T extends string>(
-  input: BaseFeedbackInput & { readonly value: T }
+  input: BaseFeedbackInput & { readonly value: T },
 ): TextFeedback => withKind(input, 'text');
 
 const numericalFeedback = (input: FeedbackInput<NumericalFeedback>): NumericalFeedback =>
@@ -117,7 +121,8 @@ const boolFeedback = (input: FeedbackInput<BooleanFeedback>): BooleanFeedback =>
 
 const textFeedback = (input: FeedbackInput<TextFeedback>): TextFeedback => withKind(input, 'text');
 
-const eventFeedback = (input: FeedbackInput<EventFeedback>): EventFeedback => withKind(input, 'event');
+const eventFeedback = (input: FeedbackInput<EventFeedback>): EventFeedback =>
+  withKind(input, 'event');
 
 const Feedback = {
   event: eventFeedback,
