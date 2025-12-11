@@ -71,6 +71,9 @@ const createFeedbackClient = (config: FeedbackConfig, settings?: FeedbackSetting
 
     try {
       const response = await fetch(`${baseUrl}/v1/ingest/${config.dataset}`, {
+      // TODO: maybe use axiom-js for this?
+      // TODO: discriminate between edge and non edge
+      const response = await fetch(`${baseUrl}/v1/datasets/${config.dataset}/ingest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
