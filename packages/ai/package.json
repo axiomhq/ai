@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "rm -rf dist && tsup && chmod +x dist/bin.js",
+    "build": "tsup && chmod +x dist/bin.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
