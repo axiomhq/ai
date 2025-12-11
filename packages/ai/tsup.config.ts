@@ -34,7 +34,7 @@ export default defineConfig([
   // Client-compatible modules (no Node.js shims) - runs first with clean
   {
     ...sharedConfig,
-    entry: ['src/experimental_feedback.ts'],
+    entry: ['src/feedback.ts'],
     clean: true,
     shims: false,
   },

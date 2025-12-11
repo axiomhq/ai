@@ -5,7 +5,7 @@ import { Text } from '@/components/text';
 import { Field } from '@base-ui-components/react/field';
 import { Form } from '@base-ui-components/react/form';
 import { Button } from '@/components/button';
-import { createFeedbackClient, Feedback } from 'axiom/ai/experimental_feedback';
+import { createFeedbackClient, Feedback } from 'axiom/ai/feedback';
 import { ChatMessage } from './chat-message';
 import { AgentInternals } from './agent-internals';
 import { useSupportChat } from './use-support-chat';

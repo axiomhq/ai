@@ -2,7 +2,7 @@ import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
 import { generateText, ModelMessage, stepCountIs, tool } from 'ai';
 import { withSpan, wrapAISDKModel, wrapTools } from 'axiom/ai';
-import type { Correlation } from 'axiom/ai/experimental_feedback';
+import type { Correlation } from 'axiom/ai/feedback';
 import z from 'zod';
 import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';

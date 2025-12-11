@@ -56,14 +56,14 @@
         "default": "./dist/config.cjs"
       }
     },
-    "./ai/experimental_feedback": {
+    "./ai/feedback": {
       "import": {
-        "types": "./dist/experimental_feedback.d.ts",
-        "default": "./dist/experimental_feedback.js"
+        "types": "./dist/feedback.d.ts",
+        "default": "./dist/feedback.js"
       },
       "require": {
-        "types": "./dist/experimental_feedback.d.cts",
-        "default": "./dist/experimental_feedback.cjs"
+        "types": "./dist/feedback.d.cts",
+        "default": "./dist/feedback.cjs"
       }
     }
   },
