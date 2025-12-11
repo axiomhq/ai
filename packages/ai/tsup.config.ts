@@ -1,3 +1,13 @@
+/**
+ * Build Configuration
+ *
+ * We use two separate tsup builds to handle client vs server module requirements:
+ * - Client modules (feedback.ts): Built without Node.js shims for browser compatibility
+ * - Server modules: Built with Node.js shims for dual ESM/CJS support
+ *
+ * The build script cleans dist/ externally before running tsup, so both configs
+ * use clean: false to avoid any ordering dependencies between builds.
+ */
 import { defineConfig } from 'tsup';
 import pkg from './package.json';
 
@@ -31,14 +41,14 @@ const sharedConfig = {
 };
 
 export default defineConfig([
-  // Client-compatible modules (no Node.js shims) - runs first with clean
+  // Client-compatible modules (no Node.js shims)
   {
     ...sharedConfig,
     entry: ['src/feedback.ts'],
-    clean: true,
+    clean: false,
     shims: false,
   },
-  // Server-side modules (with Node.js shims) - runs after, no clean
+  // Server-side modules (with Node.js shims)
   {
     ...sharedConfig,
     entry: [
