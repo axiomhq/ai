@@ -38,7 +38,7 @@ const supportAgentTools = wrapTools({
 });
 
 export const runSupportAgent = async (messages: ModelMessage[]): Promise<SupportAgentResult> => {
-  return startActiveSpan('support_agent', null, async () => {
+  return startActiveSpan('support-agent', null, async () => {
     // 1. Categorize
     const category = await categorizeMessage(messages);
 
@@ -102,7 +102,7 @@ async function generateSupportAnswer(
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: 'support_agent', step: 'generate_answer' }, async (span) => {
+  return await withSpan({ capability: 'support-agent', step: 'generate-answer' }, async (span) => {
     const { text, toolCalls } = await generateText({
       model,
       tools: supportAgentTools,
