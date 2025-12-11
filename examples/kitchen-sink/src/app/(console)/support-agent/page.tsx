@@ -6,7 +6,7 @@ import { Field } from '@base-ui-components/react/field';
 import { Form } from '@base-ui-components/react/form';
 import { apiClient } from '@/lib/api/api-client';
 import { Button } from '@/components/button';
-import { createFeedbackClient, Feedback } from 'axiom/ai/feedback';
+import { createFeedbackClient, Feedback } from 'axiom/ai/experimental_feedback';
 
 const sendFeedback = createFeedbackClient({ url: '/api/feedback' });
 
@@ -54,7 +54,7 @@ export default function SupportAgent() {
         traceId: `message-${messageIndex}`,
         capability: 'support-agent',
       },
-      Feedback.thumbs({ name: 'response-quality', value })
+      Feedback.thumbs({ name: 'response-quality', value }),
     );
   };
 
