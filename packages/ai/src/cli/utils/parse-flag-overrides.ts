@@ -3,6 +3,8 @@ import { formatZodErrors, generateFlagExamples } from './format-zod-errors.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { dotNotationToNested, isValidPath, parsePath } from '../../util/dot-path.js';
+import { makeDeepPartial } from '../../util/deep-partial-schema.js';
+import { assertZodV4 } from '../../util/zod-internals.js';
 
 export interface FlagOverrides {
   [key: string]: any;
@@ -45,11 +47,16 @@ export function extractAndValidateFlagOverrides<S extends z.ZodObject<any>>(
   cleanedArgv: string[];
   overrides: S extends ZodObject<any> ? z.output<S> : FlagOverrides;
 } {
+  if (flagSchema) {
+    assertZodV4(flagSchema, 'flagSchema');
+  }
+
   const { cleanedArgv, overrides } = extractOverrides(argv);
 
   if (flagSchema && Object.keys(overrides).length > 0) {
-    // Use strict partial schema - reject unknown keys
-    const result = flagSchema.strict().partial().safeParse(overrides);
+    // Use deep partial schema - allows partial nested objects
+    const deepPartialSchema = makeDeepPartial(flagSchema as ZodObject<any>);
+    const result = deepPartialSchema.safeParse(overrides);
 
     if (!result.success) {
       console.error('❌ Invalid flags:');
@@ -96,6 +103,8 @@ export function collectFlagValidationErrors(
     return { success: true, errors: [] };
   }
 
+  assertZodV4(flagSchema, 'flagSchema');
+
   const schema = flagSchema as any;
   const errors: FlagValidationError[] = [];
 
@@ -112,9 +121,11 @@ export function collectFlagValidationErrors(
     return { success: false, errors };
   }
 
-  // Second pass: validate values using nested object approach
+  // Second pass: validate values using nested object approach with deep partial
+  // This allows providing only some flags without requiring all nested objects
   const nestedObject = dotNotationToNested(overrides);
-  const result = schema.strict().partial().safeParse(nestedObject);
+  const deepPartialSchema = makeDeepPartial(schema);
+  const result = deepPartialSchema.safeParse(nestedObject);
 
   if (!result.success) {
     errors.push({ type: 'invalid_value', zodError: result.error });

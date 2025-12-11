@@ -509,4 +509,30 @@ describe('validateFlagOverrides', () => {
     expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
     expect(mockProcessExit).toHaveBeenCalledWith(1);
   });
+
+  it('allows partial nested objects without requiring sibling properties', () => {
+    const nestedSchema = z.object({
+      supportAgent: z.object({
+        categorizeMessage: z.object({
+          model: z.enum(['gpt-4o-mini', 'gpt-5-mini']).default('gpt-4o-mini'),
+        }),
+        retrieveFromKnowledgeBase: z.object({
+          model: z.enum(['gpt-4o-mini', 'gpt-5-mini']).default('gpt-4o-mini'),
+          maxDocuments: z.number().default(1),
+        }),
+        extractTicketInfo: z.object({
+          model: z.enum(['gpt-4o-mini', 'gpt-5-mini']).default('gpt-4o-mini'),
+        }),
+      }),
+    });
+
+    const overrides = {
+      'supportAgent.categorizeMessage.model': 'gpt-5-mini',
+    };
+
+    validateFlagOverrides(overrides, nestedSchema);
+
+    expect(mockProcessExit).not.toHaveBeenCalled();
+    expect(mockConsoleError).not.toHaveBeenCalled();
+  });
 });

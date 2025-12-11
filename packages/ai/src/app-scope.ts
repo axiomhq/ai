@@ -12,10 +12,18 @@ import {
   isValidPath,
   getValueAtPath,
   buildSchemaForPath,
+  findSchemaAtPath,
 } from './util/dot-path';
+import {
+  getDef,
+  getKind,
+  getInnerType,
+  getShape,
+  isObjectSchema,
+  assertZodV4,
+} from './util/zod-internals';
 import { trace } from '@opentelemetry/api';
 import { type z, type ZodObject, type ZodDefault, type ZodSchema } from 'zod';
-import type { $ZodObject } from 'zod/v4/core';
 import { toOtelAttribute } from './otel/utils/to-otel-attribute';
 import { Attr } from './otel';
 
@@ -24,8 +32,7 @@ type DefaultMaxDepth = 8;
 // Helper to recursively check if a schema has defaults (including nested objects)
 type HasDefaults<S> = S extends { _zod: { def: { defaultValue: unknown } } }
   ? true
-  : // v4 | v3
-    S extends $ZodObject<infer Shape> | ZodObject<infer Shape>
+  : S extends ZodObject<infer Shape>
     ? {
         [K in keyof Shape]: HasDefaults<Shape[K]>;
       } extends Record<keyof Shape, true>
@@ -186,47 +193,39 @@ export function isPickedFlag(flagPath: string, pickedFlags?: string[]): boolean 
 }
 
 // Helper to recursively validate that schemas don't contain union types
-function assertNoUnions(schema: any, path = 'schema'): void {
+function assertNoUnions(schema: unknown, path = 'schema'): void {
   if (!schema) return;
 
-  // Handle both Zod v4 (_zod.def) and v3 (_def) structures
-  const def = schema._zod?.def || schema._def;
-
-  if (!def) return;
+  const kind = getKind(schema);
+  if (!kind) return;
 
   // Unwrap transparent containers
-  const { type: typeName, innerType } = def;
-
-  if (
-    typeName === 'default' ||
-    typeName === 'optional' ||
-    typeName === 'nullable' // ||
-    // typeName === 'effects'
-  ) {
+  if (kind === 'default' || kind === 'optional' || kind === 'nullable') {
+    const innerType = getInnerType(schema);
     return assertNoUnions(innerType, path);
   }
 
   // Hard-fail on unions
-  if (typeName === 'union' || typeName === 'discriminatedUnion') {
+  if (kind === 'union' || kind === 'discriminatedunion') {
     throw new Error(`[AxiomAI] Union types are not supported in flag schemas (found at "${path}")`);
   }
 
   // Recurse into compound types
-  if (typeName === 'object') {
-    // Handle both v3 (.shape) and v4 (def.shape) structures
-    const shape = def.shape || schema.shape;
+  if (kind === 'object') {
+    const shape = getShape(schema);
     if (shape) {
       for (const [k, v] of Object.entries(shape)) {
         assertNoUnions(v, `${path}.${k}`);
       }
     }
-  } else if (typeName === 'array') {
-    const arrayType = def.type || def.innerType || (schema._def && schema._def.type);
-    if (arrayType) {
-      assertNoUnions(arrayType, `${path}[]`);
+  } else if (kind === 'array') {
+    const innerType = getInnerType(schema);
+    if (innerType) {
+      assertNoUnions(innerType, `${path}[]`);
     }
-  } else if (typeName === 'record') {
-    const valueType = def.valueType || (schema._def && schema._def.valueType);
+  } else if (kind === 'record') {
+    const def = getDef(schema);
+    const valueType = def?.valueType;
     if (valueType) {
       assertNoUnions(valueType, `${path}{}`);
     }
@@ -238,33 +237,32 @@ function assertNoUnions(schema: any, path = 'schema'): void {
  * Throws with a detailed error message listing all paths missing defaults.
  * TODO: this should probably be in an adapter, not the core lib...
  */
-function ensureAllDefaults(schema: any, path = ''): void {
+function ensureAllDefaults(schema: unknown, path = ''): void {
   const missingDefaults: string[] = [];
 
-  function checkDefaults(current: any, currentPath: string): void {
+  function checkDefaults(current: unknown, currentPath: string): void {
     if (!current) return;
 
-    const def = current.def || current._def;
-    if (!def) return;
+    const kind = getKind(current);
+    if (!kind) return;
 
-    const { type: typeName, innerType, defaultValue } = def;
-
-    // Check if this schema has a default at this level
-    const hasDefault = defaultValue !== undefined;
+    const def = getDef(current);
+    const hasDefault = def?.defaultValue !== undefined;
 
     // Unwrap transparent containers and check their inner type
-    if (typeName === 'default') {
+    if (kind === 'default') {
       // This has a default, we're done - no need to check inner type
       return;
     }
 
-    if (typeName === 'optional' || typeName === 'nullable') {
+    if (kind === 'optional' || kind === 'nullable') {
       // Transparent wrappers - check inner type
+      const innerType = getInnerType(current);
       return checkDefaults(innerType, currentPath);
     }
 
     // ZodRecord is not allowed
-    if (typeName === 'record') {
+    if (kind === 'record') {
       throw new Error(
         `[AxiomAI] ZodRecord is not supported in flag schemas (found at "${currentPath || 'root'}")\n` +
           `All flag fields must have known keys and defaults. Consider using z.object() instead.`,
@@ -273,13 +271,13 @@ function ensureAllDefaults(schema: any, path = ''): void {
 
     // For objects: if there's an object-level default, we're good
     // Otherwise, recursively check all fields
-    if (typeName === 'object') {
+    if (kind === 'object') {
       if (hasDefault) {
         // Object-level default covers all nested fields
         return;
       }
 
-      const shape = def.shape || current.shape;
+      const shape = getShape(current);
       if (shape) {
         for (const [k, v] of Object.entries(shape)) {
           const nextPath = currentPath ? `${currentPath}.${k}` : k;
@@ -291,7 +289,7 @@ function ensureAllDefaults(schema: any, path = ''): void {
 
     // For arrays: arrays are leaf types (no per-index access)
     // Just check if the array schema itself has a default
-    if (typeName === 'array') {
+    if (kind === 'array') {
       if (!hasDefault) {
         missingDefaults.push(currentPath || 'root');
       }
@@ -383,6 +381,14 @@ export function createAppScope<
   const flagSchemaConfig = config?.flagSchema;
   const factSchemaConfig = config?.factSchema;
 
+  // Reject Zod v3 schemas
+  if (flagSchemaConfig) {
+    assertZodV4(flagSchemaConfig, 'flagSchema');
+  }
+  if (factSchemaConfig) {
+    assertZodV4(factSchemaConfig, 'factSchema');
+  }
+
   // reject union types
   if (flagSchemaConfig) {
     assertNoUnions(flagSchemaConfig, 'flagSchema');
@@ -398,42 +404,6 @@ export function createAppScope<
     validateCliFlags(flagSchemaConfig);
   }
 
-  // Helper function to traverse schema object to find the field schema at a specific path
-  function findSchemaAtPath(segments: string[]): ZodSchema<any> | undefined {
-    if (!flagSchemaConfig || segments.length === 0) return undefined;
-
-    let current: any = flagSchemaConfig;
-
-    // ZodObject root - start with the shape
-    if (segments.length > 0) {
-      if (!current.shape || !(segments[0] in current.shape)) {
-        return undefined;
-      }
-      current = current.shape[segments[0]];
-      // Continue with remaining segments starting from index 1
-      for (let i = 1; i < segments.length; i++) {
-        const segment = segments[i];
-        if (!current || !current._def) {
-          return undefined;
-        }
-
-        // Handle ZodObject by accessing its shape
-        if (current._def.type === 'object' && current.shape) {
-          const nextSchema = current.shape[segment];
-          if (!nextSchema) {
-            return undefined;
-          }
-          current = nextSchema;
-        } else {
-          return undefined;
-        }
-      }
-      return current;
-    }
-
-    return current;
-  }
-
   // Helper to check if a path represents a namespace access (no dots after first segment)
   function isNamespaceAccess(segments: string[]): boolean {
     if (!flagSchemaConfig || segments.length === 0) return false;
@@ -444,20 +414,19 @@ export function createAppScope<
     }
 
     // For nested paths (like 'app.ui.layout'), need to check if the path points to an object schema
-    const schema = findSchemaAtPath(segments);
-    return Boolean(schema?._def?.type === 'object');
+    const schema = findSchemaAtPath(flagSchemaConfig, segments);
+    return isObjectSchema(schema);
   }
 
   // Helper function to check if a schema has complete defaults at runtime
   // This mirrors the compile-time AllFieldsHaveDefaults<> type
 
   // Recursively build object with all defaults from a Zod schema
-  function buildObjectWithDefaults(schema: any): unknown {
+  function buildObjectWithDefaults(schema: unknown): unknown {
     if (!schema) return undefined;
 
-    // Handle both v3 and v4 structures
-    const def = schema._zod?.def || schema._def;
-    if (!def) return undefined;
+    const kind = getKind(schema);
+    if (!kind) return undefined;
 
     // `directDefault`: default for the entire object
     // If this is not present, we try to construct the defaults from child fields (recursively)
@@ -467,8 +436,8 @@ export function createAppScope<
     }
 
     // We can only collect defaults from child fields if we're dealing with an object (for a scalar, there are no children)
-    if (def.type === 'object') {
-      const shape = def.shape || schema.shape;
+    if (kind === 'object') {
+      const shape = getShape(schema);
       if (shape) {
         const result: Record<string, unknown> = {};
 
@@ -485,15 +454,14 @@ export function createAppScope<
     return undefined;
   }
 
-  function extractDefault(schema: any): unknown {
-    if (!schema || !schema._def) return undefined;
+  function extractDefault(schema: unknown): unknown {
+    if (!schema) return undefined;
 
     // Unwrap transparent containers first, checking for defaults at each level
-    let current: any = schema;
+    let current: unknown = schema;
 
-    while (current) {
-      // Handle both v3 and v4 structures
-      const def = current._zod?.def || current._def;
+    for (let i = 0; i < 10; i++) {
+      const def = getDef(current);
       if (!def) break;
 
       // Check for default value at current level
@@ -502,10 +470,9 @@ export function createAppScope<
       }
 
       // Unwrap one level if possible
-      if (def.innerType) {
-        current = def.innerType;
-      } else if (def.schema) {
-        current = def.schema;
+      const inner = getInnerType(current);
+      if (inner) {
+        current = inner;
       } else {
         // No more wrapping, stop here
         break;
@@ -524,7 +491,7 @@ export function createAppScope<
     const segments = parsePath(dotPath);
 
     // 1. Fast-path: validate directly with field-level schema
-    const fieldSchema = findSchemaAtPath(segments);
+    const fieldSchema = findSchemaAtPath(flagSchemaConfig, segments);
     if (fieldSchema) {
       const direct = (fieldSchema as ZodSchema<any>).safeParse(value);
       if (direct.success) return { ok: true, parsed: direct.data };
@@ -550,6 +517,14 @@ export function createAppScope<
 
     // 4. If nested validation failed but the namespace is valid, allow it for backward compatibility
     return { ok: true, parsed: value };
+  }
+
+  function hasUndefinedLeaves(obj: unknown): boolean {
+    if (obj === undefined) return true;
+    if (obj === null || typeof obj !== 'object') return false;
+    return Object.values(obj).some((v) =>
+      typeof v === 'object' && v !== null ? hasUndefinedLeaves(v) : v === undefined,
+    );
   }
 
   /**
@@ -603,11 +578,11 @@ export function createAppScope<
         return undefined;
       }
 
-      const schemaForPath = findSchemaAtPath(segments);
+      const schemaForPath = findSchemaAtPath(flagSchemaConfig, segments);
 
       // If schema path doesn't exist, try extracting from parent object-level defaults
       if (!schemaForPath) {
-        const namespaceSchema = findSchemaAtPath([segments[0]]);
+        const namespaceSchema = findSchemaAtPath(flagSchemaConfig, [segments[0]]);
         if (namespaceSchema) {
           const namespaceObject = buildObjectWithDefaults(namespaceSchema);
           if (namespaceObject && typeof namespaceObject === 'object') {
@@ -623,6 +598,21 @@ export function createAppScope<
       // Check if this is a namespace access (returning whole objects)
       else if (isNamespaceAccess(segments)) {
         finalValue = buildObjectWithDefaults(schemaForPath);
+
+        // If buildObjectWithDefaults fails or returns incomplete object, try extracting from parent defaults
+        if (finalValue === undefined || hasUndefinedLeaves(finalValue)) {
+          const nsSchema = findSchemaAtPath(flagSchemaConfig, [segments[0]]);
+          if (nsSchema) {
+            const nsObj = buildObjectWithDefaults(nsSchema);
+            if (nsObj && typeof nsObj === 'object') {
+              const extracted = getValueAtPath(nsObj, segments.slice(1));
+              if (extracted !== undefined) {
+                finalValue = extracted;
+              }
+            }
+          }
+        }
+
         if (finalValue === undefined) {
           console.error(`[AxiomAI] Invalid flag: "${path}"`);
           return undefined;
@@ -634,7 +624,7 @@ export function createAppScope<
 
         // If no field-level default, try extracting from parent object-level default
         if (finalValue === undefined) {
-          const nsSchema = findSchemaAtPath([segments[0]]);
+          const nsSchema = findSchemaAtPath(flagSchemaConfig, [segments[0]]);
           if (nsSchema) {
             const nsObj = buildObjectWithDefaults(nsSchema);
             if (nsObj && typeof nsObj === 'object') {

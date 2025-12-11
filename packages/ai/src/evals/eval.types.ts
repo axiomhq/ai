@@ -1,15 +1,6 @@
 import type { TaskMeta } from 'vitest';
 import type { ScoreWithName, ScorerLike } from './scorers';
 
-// Type utilities for automatic inference
-/** Extract the input type from CollectionRecord[] */
-export type InputOf<Data extends readonly CollectionRecord<any, any>[]> =
-  Data[number] extends CollectionRecord<infer I, any> ? I : never;
-
-/** Extract the expected type from CollectionRecord[] */
-export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
-  Data[number] extends CollectionRecord<any, infer E> ? E : never;
-
 /** Extract the output type from a task function */
 export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
   ...args: any

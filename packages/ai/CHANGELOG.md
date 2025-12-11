@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.34.0](https://github.com/axiomhq/ai/compare/axiom-v0.33.0...axiom-v0.34.0) (2025-12-10)
+
+
+### Features
+
+* simplify `Eval` types, better validation error ([#185](https://github.com/axiomhq/ai/issues/185)) ([bc57d16](https://github.com/axiomhq/ai/commit/bc57d166017490bb54ec77f41bec2a192211b89f))
+
+
+### Bug Fixes
+
+* passing partial objects for flags crashes cli ([#179](https://github.com/axiomhq/ai/issues/179)) ([fe9af39](https://github.com/axiomhq/ai/commit/fe9af39af1dbfc4a03479e38eb6e0541c2e2818a))
+
 ## [0.33.0](https://github.com/axiomhq/ai/compare/axiom-v0.32.0...axiom-v0.33.0) (2025-12-10)
 
 
