@@ -55,11 +55,20 @@ type FeedbackSettings = {
 
 type SendFeedback = (correlation: Correlation, feedback: FeedbackType) => Promise<void>;
 
+function getSuffix(baseUrl: string, dataset: string) {
+  if (baseUrl.includes('edge.axiom')) {
+    return `/v1/ingest/${dataset}`;
+  }
+
+  return `/v1/datasets/${dataset}/ingest`;
+}
+
 const createFeedbackClient = (
   config: FeedbackConfig,
   settings?: FeedbackSettings,
 ): SendFeedback => {
   const baseUrl = config.url ?? 'https://api.axiom.co';
+  const url = `${baseUrl}${getSuffix(baseUrl, config.dataset)}`;
 
   return async (correlation: Correlation, feedback: FeedbackType): Promise<void> => {
     const { metadata, ...feedbackFields } = feedback;
@@ -74,14 +83,13 @@ const createFeedbackClient = (
 
     try {
       // TODO: maybe use axiom-js for this?
-      // TODO: discriminate between edge and non edge
-      const response = await fetch(`${baseUrl}/v1/datasets/${config.dataset}/ingest`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${config.token}`,
         },
-        body: JSON.stringify([payload]),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

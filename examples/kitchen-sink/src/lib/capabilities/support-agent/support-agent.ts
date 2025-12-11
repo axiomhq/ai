@@ -2,6 +2,7 @@ import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
 import { generateText, ModelMessage, stepCountIs, tool } from 'ai';
 import { withSpan, wrapAISDKModel, wrapTools } from 'axiom/ai';
+import type { Correlation } from 'axiom/ai/experimental_feedback';
 import z from 'zod';
 import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
@@ -19,6 +20,7 @@ export type SupportAgentResult = {
     documents: { id: string; title: string; body: string }[];
   };
   ticket: ExtractTicketInfoResult | null;
+  correlation?: Correlation;
 };
 
 const supportAgentTools = wrapTools({
@@ -89,17 +91,18 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
       // For now, let's just return undefined or empty for back-compat.
       retrieval: undefined,
       ticket,
+      correlation: answerResult.correlation,
     };
   });
 };
 
 async function generateSupportAnswer(
   messages: ModelMessage[],
-): Promise<{ message: ModelMessage; toolCalls: ToolCalls }> {
+): Promise<{ message: ModelMessage; toolCalls: ToolCalls; correlation: Correlation }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: 'support_agent', step: 'generate_answer' }, async () => {
+  return await withSpan({ capability: 'support_agent', step: 'generate_answer' }, async (span) => {
     const { text, toolCalls } = await generateText({
       model,
       tools: supportAgentTools,
@@ -124,6 +127,13 @@ async function generateSupportAnswer(
       ],
     });
 
-    return { message: { role: 'assistant', content: text }, toolCalls };
+    const traceId = span.spanContext().traceId;
+    const spanId = span.spanContext().spanId;
+
+    return {
+      message: { role: 'assistant', content: text },
+      toolCalls,
+      correlation: { traceId, spanId, capability: 'support-agent' },
+    };
   });
 }
