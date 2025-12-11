@@ -6,6 +6,9 @@ import { Field } from '@base-ui-components/react/field';
 import { Form } from '@base-ui-components/react/form';
 import { apiClient } from '@/lib/api/api-client';
 import { Button } from '@/components/button';
+import { createFeedbackClient, Feedback } from 'axiom/ai/feedback';
+
+const sendFeedback = createFeedbackClient({ url: '/api/feedback' });
 
 // Types mirroring the server response
 type MessageCategory = 'support' | 'complaint' | 'wrong_company' | 'spam' | 'unknown';
@@ -42,6 +45,18 @@ export default function SupportAgent() {
   const [result, setResult] = useState<SupportAgentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up' | 'down'>>({});
+
+  const handleFeedback = async (messageIndex: number, value: 'up' | 'down') => {
+    setFeedbackGiven((prev) => ({ ...prev, [messageIndex]: value }));
+    await sendFeedback(
+      {
+        traceId: `message-${messageIndex}`,
+        capability: 'support-agent',
+      },
+      Feedback.thumbs({ name: 'response-quality', value })
+    );
+  };
 
   const handleSupportResponse = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +125,41 @@ export default function SupportAgent() {
             >
               {msg.content}
             </div>
-            <span className="text-xs text-gray-400 mt-1 capitalize">{msg.role}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-gray-400 capitalize">{msg.role}</span>
+              {msg.role === 'assistant' && (
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleFeedback(idx, 'up')}
+                    disabled={feedbackGiven[idx] !== undefined}
+                    className={`text-sm px-1.5 py-0.5 rounded transition-colors ${
+                      feedbackGiven[idx] === 'up'
+                        ? 'bg-green-100 text-green-700'
+                        : feedbackGiven[idx] === 'down'
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'hover:bg-gray-100 text-gray-500'
+                    }`}
+                    title="Good response"
+                  >
+                    👍
+                  </button>
+                  <button
+                    onClick={() => handleFeedback(idx, 'down')}
+                    disabled={feedbackGiven[idx] !== undefined}
+                    className={`text-sm px-1.5 py-0.5 rounded transition-colors ${
+                      feedbackGiven[idx] === 'down'
+                        ? 'bg-red-100 text-red-700'
+                        : feedbackGiven[idx] === 'up'
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'hover:bg-gray-100 text-gray-500'
+                    }`}
+                    title="Poor response"
+                  >
+                    👎
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
         {isLoading && (
