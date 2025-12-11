@@ -7,7 +7,8 @@ import {
   SpanStatusCode,
   type AttributeValue,
 } from '@opentelemetry/api';
-import { Attr, SCHEMA_URL } from '../semconv/attributes';
+import { Attr } from '../semconv/attributes';
+import { SCHEMA_URL } from '../../schema';
 import { WITHSPAN_BAGGAGE_KEY } from '../withSpanBaggageKey';
 import { createStartActiveSpan } from '../startActiveSpan';
 
