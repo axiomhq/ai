@@ -23,9 +23,9 @@
     "@opentelemetry/semantic-conventions": "^1.34.0",
     "ai": "5.0.93",
     "axiom": "workspace:*",
-    "next": "latest",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "next": "^16.0.9",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "zod": "catalog:"
   },
   "devDependencies": {
