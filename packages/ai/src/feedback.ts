@@ -1,4 +1,5 @@
 import { SCHEMA_URL } from './schema';
+import { getSuffix } from './util/feedback';
 
 type Correlation = {
   readonly traceId: string;
@@ -54,14 +55,6 @@ type FeedbackSettings = {
 };
 
 type SendFeedback = (correlation: Correlation, feedback: FeedbackType) => Promise<void>;
-
-function getSuffix(baseUrl: string, dataset: string) {
-  if (baseUrl.includes('edge.axiom')) {
-    return `/v1/ingest/${dataset}`;
-  }
-
-  return `/v1/datasets/${dataset}/ingest`;
-}
 
 type FeedbackClient = {
   readonly sendFeedback: SendFeedback;
