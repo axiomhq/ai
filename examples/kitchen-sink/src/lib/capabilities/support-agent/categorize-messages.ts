@@ -18,7 +18,7 @@ export const categorizeMessage = async (messages: ModelMessage[]): Promise<Messa
   const modelName = flag('supportAgent.categorizeMessage.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: 'support_agent', step: 'categorize_message' }, async () => {
+  return await withSpan({ capability: 'support-agent', step: 'categorize-message' }, async () => {
     const text = `<instructions>
 Please analyze the following series of messages. For the final user message, classify it as one of the following categories: ${messageCategories.join(', ')}.
     

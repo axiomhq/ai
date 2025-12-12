@@ -55,6 +55,16 @@
         "types": "./dist/config.d.cts",
         "default": "./dist/config.cjs"
       }
+    },
+    "./ai/feedback": {
+      "import": {
+        "types": "./dist/feedback.d.ts",
+        "default": "./dist/feedback.js"
+      },
+      "require": {
+        "types": "./dist/feedback.d.cts",
+        "default": "./dist/feedback.cjs"
+      }
     }
   },
   "keywords": [
