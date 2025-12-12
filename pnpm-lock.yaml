@@ -131,6 +131,65 @@ importers:
         specifier: ^5
         version: 5.9.2
 
+  examples/review-analysis:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^2.0.72
+        version: 2.0.72(zod@4.1.5)
+      ai:
+        specifier: ^5.0.102
+        version: 5.0.102(zod@4.1.5)
+      axiom:
+        specifier: workspace:*
+        version: link:../../packages/ai
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.5
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.20.4
+      typescript:
+        specifier: ^5
+        version: 5.9.2
+
+  examples/review-assistant:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^2.0.72
+        version: 2.0.72(zod@4.1.5)
+      '@hono/node-server':
+        specifier: ^1.19.6
+        version: 1.19.6(hono@4.10.6)
+      ai:
+        specifier: ^5.0.102
+        version: 5.0.102(zod@4.1.5)
+      axiom:
+        specifier: workspace:*
+        version: link:../../packages/ai
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      hono:
+        specifier: ^4.10.6
+        version: 4.10.6
+      tsx:
+        specifier: ^4.20.4
+        version: 4.20.4
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.5
+    devDependencies:
+      '@types/node':
+        specifier: ^22
+        version: 22.17.2
+      typescript:
+        specifier: ^5
+        version: 5.9.2
+
   examples/telemetry-express:
     dependencies:
       '@ai-sdk/openai':
@@ -284,7 +343,7 @@ importers:
         version: link:../../packages/ai
       next:
         specifier: latest
-        version: 16.1.0-canary.2(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.1.0-canary.10(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -351,7 +410,7 @@ importers:
         version: link:../../packages/ai
       next:
         specifier: latest
-        version: 16.1.0-canary.2(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 16.1.0-canary.10(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -980,6 +1039,12 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  '@hono/node-server@1.19.6':
+    resolution: {integrity: sha512-Shz/KjlIeAhfiuE93NDKVdZ7HdBVLQAfdbaXEaoAVO3ic9ibRSLGIQGkcBbFyuLr+7/1D5ZCINM8B+6IvXeMtw==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
+
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
     engines: {node: '>=18.18.0'}
@@ -1220,8 +1285,8 @@ packages:
   '@next/env@16.0.4':
     resolution: {integrity: sha512-FDPaVoB1kYhtOz6Le0Jn2QV7RZJ3Ngxzqri7YX4yu3Ini+l5lciR7nA9eNDpKTmDm7LWZtxSju+/CQnwRBn2pA==}
 
-  '@next/env@16.1.0-canary.2':
-    resolution: {integrity: sha512-HKrr0SBoCkFHHItHZwdwdmnGqkR8Me3ptWTfI0FkJZVx1FfyA7AZILzgd1sgImd6eXcnk3kb/NVfQ4hmvvTruA==}
+  '@next/env@16.1.0-canary.10':
+    resolution: {integrity: sha512-YbPKreQNXf907NdN6AMARZjnNv9eMb/xs2PsW0FUew9MD3XI8tzHuXq97K2FG8UJCKXB5QWCVwoDZmn6Z47tTA==}
 
   '@next/eslint-plugin-next@16.0.4':
     resolution: {integrity: sha512-0emoVyL4Z5NEkRNb63ko/BqLC9OFULcY7mJ3lSerBCqgh/UFcjnvodyikV2bTl7XygwcamJxJAfxCo1oAVfH6g==}
@@ -1232,8 +1297,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@next/swc-darwin-arm64@16.1.0-canary.2':
-    resolution: {integrity: sha512-vXJ2/HY9Gu636ZuonD+AI+F+RDo/ruqXy0EyC107SuJIU97GliN1r4+eVXa84GdNPojPY7UkJ+ksWOTe1jVchw==}
+  '@next/swc-darwin-arm64@16.1.0-canary.10':
+    resolution: {integrity: sha512-IyzlDfqMUjHcFerupuaKXSRCA6hJ0snRm9gaH7RIS0pRD5z2+foM9ajCogjLGyweaphfO6QoMYxgfjpgcvEKKg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -1244,8 +1309,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@next/swc-darwin-x64@16.1.0-canary.2':
-    resolution: {integrity: sha512-ilvPJ3C+OLq4tG6FqYFqvznBAFOy5gLGW+PYrrbLKx0i63Wgm2LMR50hCFxgR3JxnWLjx5iWN7WF3KLSWxKUxQ==}
+  '@next/swc-darwin-x64@16.1.0-canary.10':
+    resolution: {integrity: sha512-AIjbgmTuzi+pps099y5siIPSbVHP0ATBzhQRT/ZlVdxBgz18l9k046el+Qw9uXKAU18yE8A06SqcY0jWyQu8Pg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -1257,8 +1322,8 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-arm64-gnu@16.1.0-canary.2':
-    resolution: {integrity: sha512-9yQvrJwezXK4LpnuyN+7GiUFWH7Fjq6NgKsQcBfyMbsGwBdZ58ZhDDjRNFFmH/N0z9FqpX90wHpp3oMCRxWQQw==}
+  '@next/swc-linux-arm64-gnu@16.1.0-canary.10':
+    resolution: {integrity: sha512-35S6WOSqt5N5O32+H73YpTy7hMHy5kW+Gc8Ga6ehRI4l+OujZ8PoEWVYwlgJjdcerg8ke0ajBJLLpAu/K5uNiQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -1271,8 +1336,8 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@next/swc-linux-arm64-musl@16.1.0-canary.2':
-    resolution: {integrity: sha512-8JFlki9yZPYoW2YILF+CIGCSC6o5/hiAiziVB+7xmP6gUDMbI8J28tjQJXY2da4r1N+vRtFWC+bAMHPK5gt8Pg==}
+  '@next/swc-linux-arm64-musl@16.1.0-canary.10':
+    resolution: {integrity: sha512-ozuBXBju2YDOu/VpTLV7ltNaLcek8Q7eI2jwC/LxMDP9QPYi6QTuOBS7tUYFMk70DT01r8DIH47C0aZmATHyAQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -1285,8 +1350,8 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-x64-gnu@16.1.0-canary.2':
-    resolution: {integrity: sha512-OcR8vklPkjZy+z6HhB6K/SQzUKlCBqP3N3n4t+yJFDn+BWctM6+UTvfN0xcSZXSAx0FliCuYCnpCbmHWCgzAJQ==}
+  '@next/swc-linux-x64-gnu@16.1.0-canary.10':
+    resolution: {integrity: sha512-+Pjqnd4gQzjIJ4w33zn+uGQwbjkPzuqvNYq3kx1TesW5OeGxf3S6HlbASSqQ3a6GBfSQmjKdOfKjUVVGaiiZTQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -1299,8 +1364,8 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@next/swc-linux-x64-musl@16.1.0-canary.2':
-    resolution: {integrity: sha512-1DRRadvIONBfS8ehdIRnPOuFqTvz/PONJGhPtupy4t2KXD5dPRZ0TW+mTqTIS3i7f7a72rS4DH/jci/q8AryQw==}
+  '@next/swc-linux-x64-musl@16.1.0-canary.10':
+    resolution: {integrity: sha512-iuOZLXCuTXvQI2IlCVPX1Joypxerao15ROvUVaOo/dk15EEDe0cY7kxyoBwLeoVWAHnjet5RZC4fISQdM1Hp0w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -1312,8 +1377,8 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@next/swc-win32-arm64-msvc@16.1.0-canary.2':
-    resolution: {integrity: sha512-l4VMrwqvVnWtToRJhs9KY27bG26D+qUrbkzk8DWQC6Vc+cqTjgf7fAJOr6s0N99yFuzFA/ZoPloeOp1mTXNrkA==}
+  '@next/swc-win32-arm64-msvc@16.1.0-canary.10':
+    resolution: {integrity: sha512-wtFIVVlyT6OpQKqn0KFY2Ci1GZorEsj4mYCqXnjsaZOKtDPFrdV6ep1rTti2j8j9z+LS0ZM5EK2+GTjMo/Z3Ag==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
@@ -1324,8 +1389,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@next/swc-win32-x64-msvc@16.1.0-canary.2':
-    resolution: {integrity: sha512-UMrWJoAf2j/oaaX6JWOJIyCMUy8K+NVLQaCVHZiqGqvodD2m8Q0AYTB3RdAZt4z+r7iNveB/mCUbg/xqBkWHow==}
+  '@next/swc-win32-x64-msvc@16.1.0-canary.10':
+    resolution: {integrity: sha512-KN/CZeUlY4gEUlbxcg4vlUtIzZtu8d0JVajqCNfigs7ArYFg7gYtPEYimyz73FRVd0rCAap1tIlLDHMSeUBt6w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -4052,6 +4117,7 @@ packages:
   next@16.0.4:
     resolution: {integrity: sha512-vICcxKusY8qW7QFOzTvnRL1ejz2ClTqDKtm1AcUjm2mPv/lVAdgpGNsftsPRIDJOXOjRQO68i1dM8Lp8GZnqoA==}
     engines: {node: '>=20.9.0'}
+    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
@@ -4070,8 +4136,8 @@ packages:
       sass:
         optional: true
 
-  next@16.1.0-canary.2:
-    resolution: {integrity: sha512-P1BjzhzCSccHCpJzzxQnsvmKcYPdTa1RvDbYOZ/WUPjD9yuflI1g+XbfdUzIGUjyHrknlEAAqw4X9tVZK9WECg==}
+  next@16.1.0-canary.10:
+    resolution: {integrity: sha512-VCBY2HD1zCQi05hCO9q8b8sSoqdOnbeCCHQk8vGE8iiPQGxaiSfrfF1D+OibNLsaL+vtMfy4X3ngpvjUDByOHg==}
     engines: {node: '>=20.9.0'}
     hasBin: true
     peerDependencies:
@@ -5594,6 +5660,10 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
+  '@hono/node-server@1.19.6(hono@4.10.6)':
+    dependencies:
+      hono: 4.10.6
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.6':
@@ -5788,7 +5858,7 @@ snapshots:
 
   '@next/env@16.0.4': {}
 
-  '@next/env@16.1.0-canary.2': {}
+  '@next/env@16.1.0-canary.10': {}
 
   '@next/eslint-plugin-next@16.0.4':
     dependencies:
@@ -5797,49 +5867,49 @@ snapshots:
   '@next/swc-darwin-arm64@16.0.4':
     optional: true
 
-  '@next/swc-darwin-arm64@16.1.0-canary.2':
+  '@next/swc-darwin-arm64@16.1.0-canary.10':
     optional: true
 
   '@next/swc-darwin-x64@16.0.4':
     optional: true
 
-  '@next/swc-darwin-x64@16.1.0-canary.2':
+  '@next/swc-darwin-x64@16.1.0-canary.10':
     optional: true
 
   '@next/swc-linux-arm64-gnu@16.0.4':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@16.1.0-canary.2':
+  '@next/swc-linux-arm64-gnu@16.1.0-canary.10':
     optional: true
 
   '@next/swc-linux-arm64-musl@16.0.4':
     optional: true
 
-  '@next/swc-linux-arm64-musl@16.1.0-canary.2':
+  '@next/swc-linux-arm64-musl@16.1.0-canary.10':
     optional: true
 
   '@next/swc-linux-x64-gnu@16.0.4':
     optional: true
 
-  '@next/swc-linux-x64-gnu@16.1.0-canary.2':
+  '@next/swc-linux-x64-gnu@16.1.0-canary.10':
     optional: true
 
   '@next/swc-linux-x64-musl@16.0.4':
     optional: true
 
-  '@next/swc-linux-x64-musl@16.1.0-canary.2':
+  '@next/swc-linux-x64-musl@16.1.0-canary.10':
     optional: true
 
   '@next/swc-win32-arm64-msvc@16.0.4':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@16.1.0-canary.2':
+  '@next/swc-win32-arm64-msvc@16.1.0-canary.10':
     optional: true
 
   '@next/swc-win32-x64-msvc@16.0.4':
     optional: true
 
-  '@next/swc-win32-x64-msvc@16.1.0-canary.2':
+  '@next/swc-win32-x64-msvc@16.1.0-canary.10':
     optional: true
 
   '@nodelib/fs.scandir@2.1.5':
@@ -6108,7 +6178,7 @@ snapshots:
   '@opentelemetry/instrumentation-amqplib@0.49.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6126,7 +6196,7 @@ snapshots:
   '@opentelemetry/instrumentation-aws-sdk@0.54.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/propagation-utils': 0.31.3(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
@@ -6153,7 +6223,7 @@ snapshots:
   '@opentelemetry/instrumentation-connect@0.46.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
       '@types/connect': 3.4.38
@@ -6185,7 +6255,7 @@ snapshots:
   '@opentelemetry/instrumentation-express@0.51.1(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6203,7 +6273,7 @@ snapshots:
   '@opentelemetry/instrumentation-fastify@0.47.1(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6212,7 +6282,7 @@ snapshots:
   '@opentelemetry/instrumentation-fs@0.22.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
     transitivePeerDependencies:
       - supports-color
@@ -6242,7 +6312,7 @@ snapshots:
   '@opentelemetry/instrumentation-hapi@0.49.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6296,7 +6366,7 @@ snapshots:
   '@opentelemetry/instrumentation-koa@0.50.2(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6329,7 +6399,7 @@ snapshots:
   '@opentelemetry/instrumentation-mongoose@0.49.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6381,7 +6451,7 @@ snapshots:
   '@opentelemetry/instrumentation-pg@0.54.1(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
       '@opentelemetry/sql-common': 0.41.0(@opentelemetry/api@1.9.0)
@@ -6394,7 +6464,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/api-logs': 0.202.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
     transitivePeerDependencies:
       - supports-color
@@ -6420,7 +6490,7 @@ snapshots:
   '@opentelemetry/instrumentation-restify@0.48.2(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
     transitivePeerDependencies:
@@ -6461,7 +6531,7 @@ snapshots:
   '@opentelemetry/instrumentation-undici@0.13.2(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.202.0(@opentelemetry/api@1.9.0)
     transitivePeerDependencies:
       - supports-color
@@ -6587,35 +6657,35 @@ snapshots:
   '@opentelemetry/resource-detector-alibaba-cloud@0.31.3(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
 
   '@opentelemetry/resource-detector-aws@2.3.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
 
   '@opentelemetry/resource-detector-azure@0.9.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
 
   '@opentelemetry/resource-detector-container@0.7.3(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
 
   '@opentelemetry/resource-detector-gcp@0.36.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.38.0
       gcp-metadata: 6.1.1
@@ -6778,7 +6848,7 @@ snapshots:
   '@opentelemetry/sql-common@0.41.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -8994,48 +9064,50 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.1.0-canary.2(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  next@16.1.0-canary.10(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@next/env': 16.1.0-canary.2
+      '@next/env': 16.1.0-canary.10
       '@swc/helpers': 0.5.15
+      baseline-browser-mapping: 2.8.31
       caniuse-lite: 1.0.30001735
       postcss: 8.4.31
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       styled-jsx: 5.1.6(react@18.3.1)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.1.0-canary.2
-      '@next/swc-darwin-x64': 16.1.0-canary.2
-      '@next/swc-linux-arm64-gnu': 16.1.0-canary.2
-      '@next/swc-linux-arm64-musl': 16.1.0-canary.2
-      '@next/swc-linux-x64-gnu': 16.1.0-canary.2
-      '@next/swc-linux-x64-musl': 16.1.0-canary.2
-      '@next/swc-win32-arm64-msvc': 16.1.0-canary.2
-      '@next/swc-win32-x64-msvc': 16.1.0-canary.2
+      '@next/swc-darwin-arm64': 16.1.0-canary.10
+      '@next/swc-darwin-x64': 16.1.0-canary.10
+      '@next/swc-linux-arm64-gnu': 16.1.0-canary.10
+      '@next/swc-linux-arm64-musl': 16.1.0-canary.10
+      '@next/swc-linux-x64-gnu': 16.1.0-canary.10
+      '@next/swc-linux-x64-musl': 16.1.0-canary.10
+      '@next/swc-win32-arm64-msvc': 16.1.0-canary.10
+      '@next/swc-win32-x64-msvc': 16.1.0-canary.10
       '@opentelemetry/api': 1.9.0
       sharp: 0.34.4
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.1.0-canary.2(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  next@16.1.0-canary.10(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
-      '@next/env': 16.1.0-canary.2
+      '@next/env': 16.1.0-canary.10
       '@swc/helpers': 0.5.15
+      baseline-browser-mapping: 2.8.31
       caniuse-lite: 1.0.30001735
       postcss: 8.4.31
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       styled-jsx: 5.1.6(@babel/core@7.28.5)(react@19.2.0)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.1.0-canary.2
-      '@next/swc-darwin-x64': 16.1.0-canary.2
-      '@next/swc-linux-arm64-gnu': 16.1.0-canary.2
-      '@next/swc-linux-arm64-musl': 16.1.0-canary.2
-      '@next/swc-linux-x64-gnu': 16.1.0-canary.2
-      '@next/swc-linux-x64-musl': 16.1.0-canary.2
-      '@next/swc-win32-arm64-msvc': 16.1.0-canary.2
-      '@next/swc-win32-x64-msvc': 16.1.0-canary.2
+      '@next/swc-darwin-arm64': 16.1.0-canary.10
+      '@next/swc-darwin-x64': 16.1.0-canary.10
+      '@next/swc-linux-arm64-gnu': 16.1.0-canary.10
+      '@next/swc-linux-arm64-musl': 16.1.0-canary.10
+      '@next/swc-linux-x64-gnu': 16.1.0-canary.10
+      '@next/swc-linux-x64-musl': 16.1.0-canary.10
+      '@next/swc-win32-arm64-msvc': 16.1.0-canary.10
+      '@next/swc-win32-x64-msvc': 16.1.0-canary.10
       '@opentelemetry/api': 1.9.0
       sharp: 0.34.4
     transitivePeerDependencies:
