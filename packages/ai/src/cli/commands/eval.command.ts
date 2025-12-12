@@ -66,7 +66,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
       .option('-u, --url <AXIOM URL>', 'axiom url', getDefaultUrl)
       .option('-o, --org-id <ORG ID>', 'axiom organization id', getDefaultOrgId)
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
-      .option('--debug', 'run locally without sending to Axiom or loading baselines', false)
+      .option('--debug', 'run locally without any network operations', false)
       .option('--list', 'list evaluations and test cases without running them', false)
       /** Hides the option from the help output, but still allows it to be passed */
       .addOption(new Option('-c, --console-url <URL>', 'console url override').hideHelp())

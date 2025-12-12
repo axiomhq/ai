@@ -286,22 +286,25 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
  */
 export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomConfig {
   const errors: string[] = [];
+  const isDebug = process.env.AXIOM_DEBUG === 'true';
 
-  if (!config.eval?.token) {
-    errors.push(
-      'eval.token is required (set in axiom.config.ts or AXIOM_TOKEN environment variable)',
-    );
-  }
-  if (!config.eval?.dataset) {
-    errors.push(
-      'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
-    );
-  }
+  if (!isDebug) {
+    if (!config.eval?.token) {
+      errors.push(
+        'eval.token is required (set in axiom.config.ts or AXIOM_TOKEN environment variable)',
+      );
+    }
+    if (!config.eval?.dataset) {
+      errors.push(
+        'eval.dataset is required (set in axiom.config.ts or AXIOM_DATASET environment variable)',
+      );
+    }
 
-  if (!config.eval?.url) {
-    console.log(
-      'eval.url was not specified. Defaulting to `https://api.axiom.co`. Please set it in axiom.config.ts or AXIOM_URL environment variable if you want to use a different endpoint.',
-    );
+    if (!config.eval?.url) {
+      console.log(
+        'eval.url was not specified. Defaulting to `https://api.axiom.co`. Please set it in axiom.config.ts or AXIOM_URL environment variable if you want to use a different endpoint.',
+      );
+    }
   }
 
   const instrumentation = config.eval?.instrumentation;

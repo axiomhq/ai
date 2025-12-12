@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.1](https://github.com/axiomhq/ai/compare/axiom-v0.34.0...axiom-v0.34.1) (2025-12-11)
+
+
+### Bug Fixes
+
+* skip token/dataset validation in debug mode ([#176](https://github.com/axiomhq/ai/issues/176)) ([453d3b6](https://github.com/axiomhq/ai/commit/453d3b68e548229c3dabb0e647cd058f9df84095))
+
 ## [0.34.0](https://github.com/axiomhq/ai/compare/axiom-v0.33.0...axiom-v0.34.0) (2025-12-10)
 
 
