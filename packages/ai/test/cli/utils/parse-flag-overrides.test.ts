@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  collectFlagValidationErrors,
   extractOverrides,
   validateFlagOverrides,
 } from '../../../src/cli/utils/parse-flag-overrides';
@@ -364,6 +365,105 @@ describe('extractOverrides', () => {
   });
 });
 
+describe('collectFlagValidationErrors', () => {
+  const testSchema = z.object({
+    model: z.object({
+      temperature: z.number().min(0).max(2).default(0.7),
+      name: z.string().default('gpt-4o'),
+    }),
+    debug: z.boolean().default(false),
+  });
+
+  it('returns success for valid flags', () => {
+    const overrides = {
+      'model.temperature': 0.9,
+      'model.name': 'gpt-4',
+      debug: true,
+    };
+
+    const result = collectFlagValidationErrors(overrides, testSchema);
+
+    expect(result.success).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('returns success for empty overrides', () => {
+    const result = collectFlagValidationErrors({}, testSchema);
+
+    expect(result.success).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('returns success when no schema provided', () => {
+    const result = collectFlagValidationErrors({ 'any.path': 'value' });
+
+    expect(result.success).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('returns error for invalid flag path', () => {
+    const overrides = {
+      'model.unknown': 'value',
+    };
+
+    const result = collectFlagValidationErrors(overrides, testSchema);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual([{ type: 'invalid_path', path: 'model.unknown' }]);
+  });
+
+  it('returns error for completely unknown namespace', () => {
+    const overrides = {
+      'unknown.flag': 'value',
+    };
+
+    const result = collectFlagValidationErrors(overrides, testSchema);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual([{ type: 'invalid_path', path: 'unknown.flag' }]);
+  });
+
+  it('returns all invalid path errors, not just the first', () => {
+    const overrides = {
+      'model.unknown': 'value',
+      'another.invalid': 123,
+      'third.bad.path': true,
+    };
+
+    const result = collectFlagValidationErrors(overrides, testSchema);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toHaveLength(3);
+    expect(result.errors).toContainEqual({ type: 'invalid_path', path: 'model.unknown' });
+    expect(result.errors).toContainEqual({ type: 'invalid_path', path: 'another.invalid' });
+    expect(result.errors).toContainEqual({ type: 'invalid_path', path: 'third.bad.path' });
+  });
+
+  it('returns error for invalid value type', () => {
+    const overrides = {
+      'model.temperature': 'not-a-number',
+    };
+
+    const result = collectFlagValidationErrors(overrides, testSchema);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('invalid_value');
+  });
+
+  it('returns error for value out of range', () => {
+    const overrides = {
+      'model.temperature': 5, // max is 2
+    };
+
+    const result = collectFlagValidationErrors(overrides, testSchema);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('invalid_value');
+  });
+});
+
 describe('validateFlagOverrides', () => {
   let mockConsoleError: any;
   let mockProcessExit: any;
@@ -386,7 +486,7 @@ describe('validateFlagOverrides', () => {
     debug: z.boolean().default(false),
   });
 
-  it('passes validation for valid flags', () => {
+  it('does not exit for valid flags', () => {
     const overrides = {
       'model.temperature': 0.9,
       'model.name': 'gpt-4',
@@ -399,13 +499,7 @@ describe('validateFlagOverrides', () => {
     expect(mockConsoleError).not.toHaveBeenCalled();
   });
 
-  it('passes for empty overrides', () => {
-    validateFlagOverrides({}, testSchema);
-
-    expect(mockProcessExit).not.toHaveBeenCalled();
-  });
-
-  it('errors on invalid flag path', () => {
+  it('prints errors and exits on invalid flags', () => {
     const overrides = {
       'model.unknown': 'value',
     };
@@ -413,42 +507,32 @@ describe('validateFlagOverrides', () => {
     validateFlagOverrides(overrides, testSchema);
 
     expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
-    expect(mockConsoleError).toHaveBeenCalledWith(
-      expect.stringContaining("flag 'model.unknown': Invalid flag path"),
-    );
     expect(mockProcessExit).toHaveBeenCalledWith(1);
   });
 
-  it('errors on completely unknown namespace', () => {
+  it('allows partial nested objects without requiring sibling properties', () => {
+    const nestedSchema = z.object({
+      supportAgent: z.object({
+        categorizeMessage: z.object({
+          model: z.enum(['gpt-4o-mini', 'gpt-5-mini']).default('gpt-4o-mini'),
+        }),
+        retrieveFromKnowledgeBase: z.object({
+          model: z.enum(['gpt-4o-mini', 'gpt-5-mini']).default('gpt-4o-mini'),
+          maxDocuments: z.number().default(1),
+        }),
+        extractTicketInfo: z.object({
+          model: z.enum(['gpt-4o-mini', 'gpt-5-mini']).default('gpt-4o-mini'),
+        }),
+      }),
+    });
+
     const overrides = {
-      'unknown.flag': 'value',
+      'supportAgent.categorizeMessage.model': 'gpt-5-mini',
     };
 
-    validateFlagOverrides(overrides, testSchema);
+    validateFlagOverrides(overrides, nestedSchema);
 
-    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
-    expect(mockProcessExit).toHaveBeenCalledWith(1);
-  });
-
-  it('errors on invalid value type', () => {
-    const overrides = {
-      'model.temperature': 'not-a-number',
-    };
-
-    validateFlagOverrides(overrides, testSchema);
-
-    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
-    expect(mockProcessExit).toHaveBeenCalledWith(1);
-  });
-
-  it('errors on value out of range', () => {
-    const overrides = {
-      'model.temperature': 5, // max is 2
-    };
-
-    validateFlagOverrides(overrides, testSchema);
-
-    expect(mockConsoleError).toHaveBeenCalledWith('❌ Invalid CLI flags:');
-    expect(mockProcessExit).toHaveBeenCalledWith(1);
+    expect(mockProcessExit).not.toHaveBeenCalled();
+    expect(mockConsoleError).not.toHaveBeenCalled();
   });
 });

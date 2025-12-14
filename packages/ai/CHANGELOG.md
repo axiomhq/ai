@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.34.1](https://github.com/axiomhq/ai/compare/axiom-v0.34.0...axiom-v0.34.1) (2025-12-11)
+
+
+### Bug Fixes
+
+* skip token/dataset validation in debug mode ([#176](https://github.com/axiomhq/ai/issues/176)) ([453d3b6](https://github.com/axiomhq/ai/commit/453d3b68e548229c3dabb0e647cd058f9df84095))
+
+## [0.34.0](https://github.com/axiomhq/ai/compare/axiom-v0.33.0...axiom-v0.34.0) (2025-12-10)
+
+
+### Features
+
+* simplify `Eval` types, better validation error ([#185](https://github.com/axiomhq/ai/issues/185)) ([bc57d16](https://github.com/axiomhq/ai/commit/bc57d166017490bb54ec77f41bec2a192211b89f))
+
+
+### Bug Fixes
+
+* passing partial objects for flags crashes cli ([#179](https://github.com/axiomhq/ai/issues/179)) ([fe9af39](https://github.com/axiomhq/ai/commit/fe9af39af1dbfc4a03479e38eb6e0541c2e2818a))
+
+## [0.33.0](https://github.com/axiomhq/ai/compare/axiom-v0.32.0...axiom-v0.33.0) (2025-12-10)
+
+
+### Features
+
+* cast tokens to number ([#186](https://github.com/axiomhq/ai/issues/186)) ([b718360](https://github.com/axiomhq/ai/commit/b7183605cd5da0ef1cf462c807097d573d157ac3))
+* put `eval.case.metadata` on case span ([#184](https://github.com/axiomhq/ai/issues/184)) ([33ad844](https://github.com/axiomhq/ai/commit/33ad8446dae985549d854f4d3bb7bb812b1b58b4))
+* show all flag validation failures ([#178](https://github.com/axiomhq/ai/issues/178)) ([51dce37](https://github.com/axiomhq/ai/commit/51dce375126360ff5dc9f415b188bd2e2e7efd38))
+
 ## [0.32.0](https://github.com/axiomhq/ai/compare/axiom-v0.31.1...axiom-v0.32.0) (2025-12-01)
 
 

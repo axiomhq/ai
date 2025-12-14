@@ -3,7 +3,6 @@ import c from 'tinyrainbow';
 import type {
   Case,
   Evaluation,
-  EvaluationReport,
   FlagDiff,
   MetaWithCase,
   MetaWithEval,
@@ -13,7 +12,6 @@ import type {
 } from './eval.types';
 import type { TestSuite, TestCase } from 'vitest/node';
 import type { Score } from './scorers';
-import { deepEqual } from '../util/deep-equal';
 import { flattenObject } from '../util/dot-path';
 import type { AxiomConnectionResolvedConfig } from '../config/resolver';
 
@@ -305,56 +303,6 @@ export function printOrphanedBaselineCases(
 export function printConfigHeader(logger: Logger = console.log) {
   logger('');
   logger(' ', c.bgWhite(c.blackBright(' Config ')));
-}
-
-export function printConfigEnd(
-  configEnd: EvaluationReport['configEnd'],
-  logger: Logger = console.log,
-) {
-  printConfigHeader(logger);
-  maybePrintFlags(configEnd, logger);
-}
-
-export function maybePrintFlags(
-  configEnd: EvaluationReport['configEnd'],
-  logger: Logger = console.log,
-) {
-  const defaults = configEnd?.flags ?? {};
-  const overrides = configEnd?.overrides ?? {};
-
-  const defaultKeys = Object.keys(defaults);
-  const overrideKeys = Object.keys(overrides);
-
-  const allKeys = Array.from(new Set([...defaultKeys, ...overrideKeys])).sort();
-  if (allKeys.length === 0) {
-    return;
-  }
-
-  for (const key of allKeys) {
-    const hasDefault = key in defaults;
-    const hasOverride = key in overrides;
-
-    if (hasDefault && hasOverride) {
-      const defVal = defaults[key];
-      const ovVal = overrides[key];
-      const changed = !deepEqual(ovVal, defVal);
-      const ovText = truncate(stringify(ovVal), 80);
-      const defText = truncate(stringify(defVal), 80);
-      if (changed) {
-        logger('   ', `${key}: ${ovText} ${c.dim(`(overridden by CLI, original: ${defText})`)}`);
-      } else {
-        logger('   ', `${key}: ${defText}`);
-      }
-    } else if (hasOverride) {
-      const ovText = truncate(stringify(overrides[key]), 80);
-      logger('   ', `${key}: ${ovText} ${c.dim('(added by CLI)')}`);
-    } else if (hasDefault) {
-      const defText = truncate(stringify(defaults[key]), 80);
-      logger('   ', `${key}: ${defText}`);
-    }
-  }
-
-  logger('');
 }
 
 export function printResultLink(

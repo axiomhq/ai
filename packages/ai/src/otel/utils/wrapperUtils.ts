@@ -48,6 +48,20 @@ export interface SpanLease {
 }
 
 /**
+ * Safely converts a value to a number, handling string inputs from providers.
+ * Some AI providers may return token counts as strings instead of numbers.
+ *
+ * @returns The numeric value, or undefined if the input is not a valid number
+ */
+export function ensureNumber(value: unknown): number | undefined {
+  const v =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : undefined;
+  if (Number.isNaN(v)) return undefined;
+  if (v === Infinity || v === -Infinity) return undefined;
+  return v;
+}
+
+/**
  * Classifies errors into low-cardinality types for OpenTelemetry error.type attribute
  * Reference: OTel spec § 7.22.5 for error.type guidelines
  *
@@ -203,8 +217,8 @@ export function getTracer(): Tracer {
   const tracer = getGlobalTracer();
 
   if (isNoOpTracerProvider()) {
-    const DEBUG = process.env.AXIOM_DEBUG === 'true';
-    if (!DEBUG) {
+    const isDebug = process.env.AXIOM_DEBUG === 'true';
+    if (!isDebug) {
       console.warn(
         '[AxiomAI] No TracerProvider registered - spans will be no-op. ' +
           'Make sure to call initAxiomAI() after your OpenTelemetry SDK has started (sdk.start()).',
@@ -472,8 +486,10 @@ export function setResponseAttributes(
 
   if (response.usage) {
     // Handle both V1 and V2 usage formats
-    const inputTokens = response.usage.inputTokens ?? response.usage.promptTokens;
-    const outputTokens = response.usage.outputTokens ?? response.usage.completionTokens;
+    const inputTokens = ensureNumber(response.usage.inputTokens ?? response.usage.promptTokens);
+    const outputTokens = ensureNumber(
+      response.usage.outputTokens ?? response.usage.completionTokens,
+    );
 
     if (inputTokens !== undefined) {
       span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);

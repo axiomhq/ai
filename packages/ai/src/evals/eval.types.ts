@@ -1,15 +1,6 @@
 import type { TaskMeta } from 'vitest';
 import type { ScoreWithName, ScorerLike } from './scorers';
 
-// Type utilities for automatic inference
-/** Extract the input type from CollectionRecord[] */
-export type InputOf<Data extends readonly CollectionRecord<any, any>[]> =
-  Data[number] extends CollectionRecord<infer I, any> ? I : never;
-
-/** Extract the expected type from CollectionRecord[] */
-export type ExpectedOf<Data extends readonly CollectionRecord<any, any>[]> =
-  Data[number] extends CollectionRecord<any, infer E> ? E : never;
-
 /** Extract the output type from a task function */
 export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (
   ...args: any
@@ -190,6 +181,8 @@ export type EvalCaseReport = {
   output: string | Record<string, any>;
   /** Expected output for comparison */
   expected: string | Record<string, any>;
+  /** Optional metadata for the case */
+  metadata?: Record<string, any>;
   /** Array of {@link Score} results from all scorers that were run */
   scores: Record<string, ScoreWithName>;
   /** Any errors that occurred during evaluation */

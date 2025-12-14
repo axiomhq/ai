@@ -11,8 +11,6 @@ import type {
   CollectionRecord,
   EvalParams,
   EvalTask,
-  InputOf,
-  ExpectedOf,
   EvaluationReport,
   EvalCaseReport,
   RuntimeFlagLog,
@@ -82,25 +80,6 @@ const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 1
  * ```
  */
 export function Eval<
-  // Inference-friendly overload – no explicit generics required by callers.
-  Data extends readonly CollectionRecord<any, any>[],
-  TOutput,
-  Name extends string = string,
-  Capability extends string = string,
-  Step extends string = string,
->(
-  name: ValidateName<Name>,
-  params: Omit<EvalParams<InputOf<Data>, ExpectedOf<Data>, TOutput>, 'data'> & {
-    capability: ValidateName<Capability>;
-    step?: ValidateName<Step> | undefined;
-    data: Data | Promise<Data> | (() => Data | Promise<Data>);
-  },
-): void;
-
-/**
- * Explicit generics overload – allows users to pass explicit types.
- */
-export function Eval<
   TInput,
   TExpected,
   TOutput,
@@ -113,12 +92,7 @@ export function Eval<
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
   },
-): void;
-
-/**
- * Implementation
- */
-export function Eval(name: string, params: any): void {
+): void {
   // Record eval name for validation
   recordName('eval', name);
   recordName('capability', params.capability);
@@ -458,6 +432,7 @@ async function registerEval<
                 typeof data.input === 'string' ? data.input : JSON.stringify(data.input),
               [Attr.Eval.Case.Expected]:
                 typeof data.expected === 'string' ? data.expected : JSON.stringify(data.expected),
+              [Attr.Eval.Case.Metadata]: data.metadata ? JSON.stringify(data.metadata) : undefined,
               // user info
               [Attr.Eval.User.Name]: user?.name,
               [Attr.Eval.User.Email]: user?.email,
@@ -597,6 +572,7 @@ async function registerEval<
                 expected: data.expected,
                 input: data.input,
                 output: output,
+                metadata: data.metadata,
                 scores,
                 status: 'success',
                 errors: [],
@@ -635,6 +611,7 @@ async function registerEval<
                 expected: data.expected,
                 input: data.input,
                 output: String(e),
+                metadata: data.metadata,
                 scores: failedScores,
                 status: 'fail',
                 errors: [error],
@@ -649,8 +626,6 @@ async function registerEval<
             } finally {
               // Compute per-case runtime flags report and attach to span/meta
               try {
-                const DEBUG = process.env.AXIOM_DEBUG === 'true';
-
                 const accessedFlags: Record<string, any> = finalConfigSnapshot?.flags || {};
 
                 const accessed = Object.keys(accessedFlags);
@@ -669,7 +644,7 @@ async function registerEval<
                   }
                 }
 
-                if (!DEBUG && Object.keys(runtimeFlags).length > 0) {
+                if (!isDebug && Object.keys(runtimeFlags).length > 0) {
                   const serialized = JSON.stringify(runtimeFlags);
                   caseSpan.setAttribute('eval.case.config.runtime_flags', serialized);
                 }
