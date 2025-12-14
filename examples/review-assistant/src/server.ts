@@ -1,3 +1,12 @@
+import { setupTracing } from '@/instrumentation';
+
+setupTracing({
+  url: process.env['AXIOM_URL'] || 'https://api.axiom.co',
+  token: process.env['AXIOM_TOKEN']!,
+  dataset: process.env['AXIOM_DATASET']!,
+  serviceName: 'review-assistant',
+});
+
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { assistant } from '@/capabilities/assistant';
