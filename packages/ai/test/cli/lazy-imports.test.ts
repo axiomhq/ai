@@ -1,32 +1,59 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 describe('CLI lazy imports', () => {
   const distDir = resolve(__dirname, '../../dist');
 
-  it('bin.js should not statically import vitest modules', () => {
-    // Read the built bin.js and check it doesn't have static vitest imports
-    // Dynamic imports (inside functions) are fine, but top-level imports would
-    // cause "Cannot find package 'vitest'" errors when running via npx
-    const binJs = readFileSync(resolve(distDir, 'bin.js'), 'utf-8');
+  it('bin.js import chain should not include vitest', () => {
+    // This test prevents regressions where vitest gets statically imported
+    // in the CLI startup path, breaking `npx axiom login` etc.
+    //
+    // The fix is to use dynamic imports for vitest-dependent code:
+    //   const { runVitest } = await import('../../evals/run-vitest');
 
-    // Check for static import statements of vitest
-    // These patterns would indicate vitest is eagerly loaded at module init time
-    const staticVitestImport = /^import\s+.*from\s+['"]vitest/m;
-    const staticVitestNodeImport = /^import\s+.*from\s+['"]vitest\/node/m;
+    const allChunks = readdirSync(distDir)
+      .filter((f) => f.endsWith('.js') && !f.endsWith('.cjs'))
+      .map((f) => ({
+        name: f,
+        content: readFileSync(resolve(distDir, f), 'utf-8'),
+      }));
 
-    expect(binJs).not.toMatch(staticVitestImport);
-    expect(binJs).not.toMatch(staticVitestNodeImport);
-  });
+    // Find chunks that import vitest
+    const vitestChunks = new Set(
+      allChunks
+        .filter((c) => /from\s+['"]vitest/.test(c.content))
+        .map((c) => `./${c.name}`),
+    );
 
-  it('bin.js should not statically import run-vitest chunk', () => {
-    const binJs = readFileSync(resolve(distDir, 'bin.js'), 'utf-8');
+    // Follow static import chain from bin.js
+    const visited = new Set<string>();
+    const toVisit = ['./bin.js'];
 
-    // The run-vitest module should only be dynamically imported
-    // If it appears as a static import, vitest will be loaded eagerly
-    const staticRunVitestImport = /^import\s+.*run-vitest/m;
+    while (toVisit.length > 0) {
+      const current = toVisit.pop()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
 
-    expect(binJs).not.toMatch(staticRunVitestImport);
+      const chunk = allChunks.find((c) => `./${c.name}` === current);
+      if (!chunk) continue;
+
+      // Find static imports (top-level imports, not dynamic import())
+      // Matches both single-line and multi-line import statements
+      const staticImports = chunk.content.matchAll(/from\s+['"](\.\/[^'"]+)['"]/g);
+      for (const match of staticImports) {
+        // Skip dynamic imports like: import("./chunk.js")
+        const beforeFrom = chunk.content.slice(0, match.index);
+        const lastLine = beforeFrom.slice(beforeFrom.lastIndexOf('\n'));
+        if (lastLine.includes('import(')) continue;
+
+        toVisit.push(match[1]);
+      }
+    }
+
+    // Check if any visited chunk imports vitest
+    const vitestInChain = [...visited].filter((v) => vitestChunks.has(v));
+
+    expect(vitestInChain).toEqual([]);
   });
 });
