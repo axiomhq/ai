@@ -86,7 +86,7 @@
     "nanoid": "^5.1.5",
     "open": "^10.1.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "catalog:"
+    "vitest": "^4.0.0"
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
