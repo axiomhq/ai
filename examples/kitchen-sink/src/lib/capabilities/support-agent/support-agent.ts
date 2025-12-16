@@ -1,13 +1,13 @@
 import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
+import { startActiveSpan } from '@/lib/utilities/start-active-span';
 import { generateText, ModelMessage, stepCountIs, tool } from 'ai';
 import { withSpan, wrapAISDKModel, wrapTools } from 'axiom/ai';
-import type { Correlation } from 'axiom/ai/feedback';
+import type { Links } from 'axiom/ai/feedback';
 import z from 'zod';
 import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
 import { veryBadRAG } from './retrieve-from-knowledge-base';
-import { startActiveSpan } from '@/lib/utilities/start-active-span';
 
 type ToolCalls = Awaited<ReturnType<typeof generateText>>['toolCalls'];
 
@@ -20,7 +20,7 @@ export type SupportAgentResult = {
     documents: { id: string; title: string; body: string }[];
   };
   ticket: ExtractTicketInfoResult | null;
-  correlation?: Correlation;
+  links?: Links;
 };
 
 const supportAgentTools = wrapTools({
@@ -91,14 +91,14 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
       // For now, let's just return undefined or empty for back-compat.
       retrieval: undefined,
       ticket,
-      correlation: answerResult.correlation,
+      links: answerResult.links,
     };
   });
 };
 
 async function generateSupportAnswer(
   messages: ModelMessage[],
-): Promise<{ message: ModelMessage; toolCalls: ToolCalls; correlation: Correlation }> {
+): Promise<{ message: ModelMessage; toolCalls: ToolCalls; links: Links }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
@@ -133,7 +133,7 @@ async function generateSupportAnswer(
     return {
       message: { role: 'assistant', content: text },
       toolCalls,
-      correlation: { traceId, spanId, capability: 'support-agent' },
+      links: { traceId, spanId, capability: 'support-agent' },
     };
   });
 }

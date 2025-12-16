@@ -13,7 +13,7 @@ import { useSupportChat } from './use-support-chat';
 const { sendFeedback } = createFeedbackClient({
   url: process.env.NEXT_PUBLIC_AXIOM_URL,
   dataset: process.env.NEXT_PUBLIC_AXIOM_FEEDBACK_DATASET!,
-  token: process.env.NEXT_PUBLIC_FEEDBACK_TOKEN!,
+  token: process.env.NEXT_PUBLIC_AXIOM_FEEDBACK_TOKEN!,
 });
 
 export default function SupportAgent() {
@@ -21,9 +21,9 @@ export default function SupportAgent() {
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up' | 'down'>>({});
 
   const handleFeedback = async (messageIndex: number, value: 'up' | 'down') => {
-    if (!result?.correlation) return;
+    if (!result?.links) return;
     setFeedbackGiven((prev) => ({ ...prev, [messageIndex]: value }));
-    await sendFeedback(result.correlation, Feedback.thumbs({ name: 'response-quality', value }));
+    await sendFeedback(result.links, Feedback.thumb({ name: 'response-quality', value }));
   };
 
   return (

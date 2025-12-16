@@ -2,16 +2,19 @@ import { SCHEMA_URL } from './schema';
 import { errorToString } from './util/errors';
 import { getSuffix } from './util/feedback';
 
-type Correlation = {
+type Links = {
   readonly traceId: string;
   readonly capability: string;
   readonly step?: string;
   readonly spanId?: string;
   readonly conversationId?: string;
+  readonly userId?: string;
 };
 
 type FeedbackBase = {
   readonly name: string;
+  readonly message?: string;
+  readonly category?: string;
   readonly metadata?: Record<string, unknown>;
 };
 
@@ -55,7 +58,7 @@ type FeedbackSettings = {
   readonly onError?: (error: Error) => void;
 };
 
-type SendFeedback = (correlation: Correlation, feedback: FeedbackType) => Promise<void>;
+type SendFeedback = (links: Links, feedback: FeedbackType) => Promise<void>;
 
 type FeedbackClient = {
   readonly sendFeedback: SendFeedback;
@@ -69,16 +72,24 @@ const createFeedbackClient = (
   const url = `${baseUrl}${getSuffix(baseUrl, config.dataset)}`;
 
   const sendFeedback: SendFeedback = async (
-    correlation: Correlation,
+    links: Links,
     feedback: FeedbackType,
   ): Promise<void> => {
     const { metadata, ...feedbackFields } = feedback;
+
+    const { traceId, spanId, conversationId, ...restLinks } = links;
+    const serializedLinks = {
+      trace_id: traceId,
+      ...restLinks,
+      ...(spanId !== undefined && { span_id: spanId }),
+      ...(conversationId !== undefined && { conversation_id: conversationId }),
+    };
 
     const payload = {
       schemaUrl: SCHEMA_URL,
       id: crypto.randomUUID(),
       ...feedbackFields,
-      correlation,
+      links: serializedLinks,
       ...(metadata !== undefined && { metadata }),
     };
 
@@ -153,12 +164,12 @@ const Feedback = {
 
 export type {
   BooleanFeedback,
-  Correlation,
   EventFeedback,
   FeedbackClient,
   FeedbackConfig,
   FeedbackSettings,
   FeedbackType,
+  Links,
   NumericalFeedback,
   SendFeedback,
   TextFeedback,
