@@ -20,10 +20,16 @@ export default function SupportAgent() {
   const { input, setInput, messages, result, error, isLoading, handleSubmit } = useSupportChat();
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up' | 'down'>>({});
 
-  const handleFeedback = async (messageIndex: number, value: 'up' | 'down') => {
-    if (!result?.links) return;
+  const handleFeedback = async (messageIndex: number, value: 'up' | 'down', message: string) => {
+    if (!result?.links) {
+      console.warn('Cannot send feedback: no links available', { result });
+      return;
+    }
     setFeedbackGiven((prev) => ({ ...prev, [messageIndex]: value }));
-    await sendFeedback(result.links, Feedback.thumb({ name: 'response-quality', value }));
+    await sendFeedback(
+      result.links,
+      Feedback.thumb({ name: 'response-quality', value, message: message || undefined }),
+    );
   };
 
   return (
@@ -43,7 +49,7 @@ export default function SupportAgent() {
             key={idx}
             message={msg}
             feedback={feedbackGiven[idx]}
-            onFeedback={(value) => handleFeedback(idx, value)}
+            onFeedback={(value, message) => handleFeedback(idx, value, message)}
           />
         ))}
         {isLoading && (

@@ -23,6 +23,11 @@ type NumericalFeedback = FeedbackBase & {
   readonly value: number;
 };
 
+type ThumbFeedback = FeedbackBase & {
+  readonly kind: 'thumb';
+  readonly value: -1 | 1;
+};
+
 type BooleanFeedback = FeedbackBase & {
   readonly kind: 'boolean';
   readonly value: boolean;
@@ -37,7 +42,12 @@ type EventFeedback = FeedbackBase & {
   readonly kind: 'event';
 };
 
-type FeedbackType = NumericalFeedback | BooleanFeedback | TextFeedback | EventFeedback;
+type FeedbackType =
+  | NumericalFeedback
+  | ThumbFeedback
+  | BooleanFeedback
+  | TextFeedback
+  | EventFeedback;
 
 type FeedbackInput<T extends FeedbackType> = Omit<T, 'kind'>;
 type BaseFeedbackInput = FeedbackInput<EventFeedback>;
@@ -126,14 +136,16 @@ const createFeedbackClient = (
 const thumbFeedback = ({
   name,
   value,
+  message,
+  category,
   metadata,
-}: BaseFeedbackInput & { readonly value: 'up' | 'down' }): NumericalFeedback =>
-  withKind({ name, value: value === 'up' ? 1 : -1, metadata }, 'numerical');
+}: BaseFeedbackInput & { readonly value: 'up' | 'down' }): ThumbFeedback =>
+  withKind({ name, value: value === 'up' ? 1 : -1, message, category, metadata }, 'thumb');
 
-const thumbUpFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
+const thumbUpFeedback = (input: BaseFeedbackInput): ThumbFeedback =>
   thumbFeedback({ ...input, value: 'up' });
 
-const thumbDownFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
+const thumbDownFeedback = (input: BaseFeedbackInput): ThumbFeedback =>
   thumbFeedback({ ...input, value: 'down' });
 
 const enumFeedback = <T extends string>(
@@ -173,6 +185,7 @@ export type {
   NumericalFeedback,
   SendFeedback,
   TextFeedback,
+  ThumbFeedback,
 };
 
 export { createFeedbackClient, Feedback };

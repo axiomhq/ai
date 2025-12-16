@@ -38,7 +38,13 @@ const supportAgentTools = wrapTools({
 });
 
 export const runSupportAgent = async (messages: ModelMessage[]): Promise<SupportAgentResult> => {
-  return startActiveSpan('support-agent', null, async () => {
+  return startActiveSpan('support-agent', null, async (span) => {
+    const links: Links = {
+      traceId: span.spanContext().traceId,
+      spanId: span.spanContext().spanId,
+      capability: 'support-agent',
+    };
+
     // 1. Categorize
     const category = await categorizeMessage(messages);
 
@@ -51,6 +57,7 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
           content: 'This channel is for support requests only. Your message looks like spam.',
         },
         ticket: null,
+        links,
       };
     }
 
@@ -63,6 +70,7 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
             "It looks like you're trying to reach a different company. This is Pets.ai support.",
         },
         ticket: null,
+        links,
       };
     }
 
