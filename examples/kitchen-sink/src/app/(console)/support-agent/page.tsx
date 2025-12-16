@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { Button } from '@/components/button';
 import { Text } from '@/components/text';
 import { Field } from '@base-ui-components/react/field';
 import { Form } from '@base-ui-components/react/form';
-import { Button } from '@/components/button';
 import { createFeedbackClient, Feedback } from 'axiom/ai/feedback';
-import { ChatMessage } from './chat-message';
+import { useState } from 'react';
 import { AgentInternals } from './agent-internals';
+import { ChatMessage } from './chat-message';
 import { useSupportChat } from './use-support-chat';
 
 const { sendFeedback } = createFeedbackClient({
-  url: 'https://api.dev.axiomtestlabs.co',
-  dataset: 'axiom-feedback-dev',
+  url: process.env.NEXT_PUBLIC_AXIOM_URL,
+  dataset: process.env.NEXT_PUBLIC_AXIOM_FEEDBACK_DATASET!,
   token: process.env.NEXT_PUBLIC_FEEDBACK_TOKEN!,
 });
 
