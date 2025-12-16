@@ -1,6 +1,5 @@
 import { Command, Argument, Option } from 'commander';
 import { customAlphabet } from 'nanoid';
-import { runVitest } from '../../evals/run-vitest';
 import { lstatSync } from 'node:fs';
 import { runEvalWithContext } from '../utils/eval-context-runner';
 import { validateFlagOverrides, type FlagOverrides } from '../utils/parse-flag-overrides';
@@ -136,6 +135,23 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           const runId = createRunId();
 
           consoleUrl = options.consoleUrl;
+
+          // Dynamic import to avoid loading vitest at CLI startup (breaks `npx axiom login`)
+          let runVitestModule;
+          try {
+            runVitestModule = await import('../../evals/run-vitest');
+          } catch (err: unknown) {
+            if (
+              err &&
+              typeof err === 'object' &&
+              'code' in err &&
+              (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND')
+            ) {
+              throw new AxiomCLIError('Failed to load vitest.');
+            }
+            throw err;
+          }
+          const { runVitest } = runVitestModule;
 
           await runEvalWithContext(flagOverrides, async () => {
             return runVitest('.', {
