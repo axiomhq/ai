@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.2](https://github.com/axiomhq/ai/compare/axiom-v0.34.1...axiom-v0.34.2) (2025-12-16)
+
+
+### Bug Fixes
+
+* `npx axiom login` fails due to vitest ([#195](https://github.com/axiomhq/ai/issues/195)) ([81973cf](https://github.com/axiomhq/ai/commit/81973cfaa08ba526f774bbc73d03c495c0083221))
+
 ## [0.34.1](https://github.com/axiomhq/ai/compare/axiom-v0.34.0...axiom-v0.34.1) (2025-12-11)
 
 
