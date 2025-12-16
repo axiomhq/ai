@@ -1,4 +1,5 @@
 import { SCHEMA_URL } from './schema';
+import { errorToString } from './util/errors';
 import { getSuffix } from './util/feedback';
 
 type Correlation = {
@@ -99,7 +100,12 @@ const createFeedbackClient = (
         );
       }
     } catch (error) {
-      settings?.onError?.(error instanceof Error ? error : new Error(String(error)));
+      const e = error instanceof Error ? error : new Error(errorToString(error));
+      if (settings?.onError) {
+        settings.onError(e);
+      } else {
+        console.error(e);
+      }
     }
   };
 
@@ -147,16 +153,16 @@ const Feedback = {
 };
 
 export type {
+  BooleanFeedback,
   Correlation,
-  FeedbackType,
+  EventFeedback,
+  FeedbackClient,
   FeedbackConfig,
   FeedbackSettings,
-  FeedbackClient,
-  SendFeedback,
+  FeedbackType,
   NumericalFeedback,
-  BooleanFeedback,
+  SendFeedback,
   TextFeedback,
-  EventFeedback,
 };
 
 export { createFeedbackClient, Feedback };
