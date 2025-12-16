@@ -112,18 +112,18 @@ const createFeedbackClient = (
   return { sendFeedback };
 };
 
-const thumbsFeedback = ({
+const thumbFeedback = ({
   name,
   value,
   metadata,
 }: BaseFeedbackInput & { readonly value: 'up' | 'down' }): NumericalFeedback =>
   withKind({ name, value: value === 'up' ? 1 : -1, metadata }, 'numerical');
 
-const thumbsUpFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
-  thumbsFeedback({ ...input, value: 'up' });
+const thumbUpFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
+  thumbFeedback({ ...input, value: 'up' });
 
-const thumbsDownFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
-  thumbsFeedback({ ...input, value: 'down' });
+const thumbDownFeedback = (input: BaseFeedbackInput): NumericalFeedback =>
+  thumbFeedback({ ...input, value: 'down' });
 
 const enumFeedback = <T extends string>(
   input: BaseFeedbackInput & { readonly value: T },
@@ -145,11 +145,10 @@ const Feedback = {
   numerical: numericalFeedback,
   bool: boolFeedback,
   text: textFeedback,
-  thumbs: thumbsFeedback,
   enum: enumFeedback,
-  thumb: thumbsFeedback,
-  thumbUp: thumbsUpFeedback,
-  thumbDown: thumbsDownFeedback,
+  thumb: thumbFeedback,
+  thumbUp: thumbUpFeedback,
+  thumbDown: thumbDownFeedback,
 };
 
 export type {
