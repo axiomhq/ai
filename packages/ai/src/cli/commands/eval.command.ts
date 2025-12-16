@@ -147,9 +147,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               'code' in err &&
               (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND')
             ) {
-              throw new AxiomCLIError(
-                'The eval command requires vitest. Please install it with: `npm install -D vitest` or the equivalent for your package manager.',
-              );
+              throw new AxiomCLIError('Failed to load vitest.');
             }
             throw err;
           }
