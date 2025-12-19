@@ -19,17 +19,17 @@ describe('getSuffix', () => {
 describe('Feedback helpers', () => {
   describe('thumbs', () => {
     it('should return numerical feedback with value 1 for thumbs up', () => {
-      const result = Feedback.thumbs({ name: 'rating', value: 'up' });
+      const result = Feedback.thumb({ name: 'rating', value: 'up' });
       expect(result).toEqual({ kind: 'numerical', name: 'rating', value: 1 });
     });
 
     it('should return numerical feedback with value -1 for thumbs down', () => {
-      const result = Feedback.thumbs({ name: 'rating', value: 'down' });
+      const result = Feedback.thumb({ name: 'rating', value: 'down' });
       expect(result).toEqual({ kind: 'numerical', name: 'rating', value: -1 });
     });
 
     it('should preserve metadata', () => {
-      const result = Feedback.thumbs({ name: 'rating', value: 'up', metadata: { userId: '123' } });
+      const result = Feedback.thumb({ name: 'rating', value: 'up', metadata: { userId: '123' } });
       expect(result).toEqual({
         kind: 'numerical',
         name: 'rating',
