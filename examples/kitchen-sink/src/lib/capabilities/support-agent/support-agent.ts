@@ -1,12 +1,13 @@
 import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
+import { startActiveSpan } from '@/lib/utilities/start-active-span';
 import { generateText, ModelMessage, stepCountIs, tool } from 'ai';
 import { withSpan, wrapAISDKModel, wrapTools } from 'axiom/ai';
+import type { Links } from 'axiom/ai/feedback';
 import z from 'zod';
 import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
 import { veryBadRAG } from './retrieve-from-knowledge-base';
-import { startActiveSpan } from '@/lib/utilities/start-active-span';
 
 type ToolCalls = Awaited<ReturnType<typeof generateText>>['toolCalls'];
 
@@ -19,6 +20,7 @@ export type SupportAgentResult = {
     documents: { id: string; title: string; body: string }[];
   };
   ticket: ExtractTicketInfoResult | null;
+  links?: Links;
 };
 
 const supportAgentTools = wrapTools({
@@ -36,7 +38,13 @@ const supportAgentTools = wrapTools({
 });
 
 export const runSupportAgent = async (messages: ModelMessage[]): Promise<SupportAgentResult> => {
-  return startActiveSpan('support_agent', null, async () => {
+  return startActiveSpan('support-agent', null, async (span) => {
+    const links: Links = {
+      traceId: span.spanContext().traceId,
+      spanId: span.spanContext().spanId,
+      capability: 'support-agent',
+    };
+
     // 1. Categorize
     const category = await categorizeMessage(messages);
 
@@ -49,6 +57,7 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
           content: 'This channel is for support requests only. Your message looks like spam.',
         },
         ticket: null,
+        links,
       };
     }
 
@@ -61,6 +70,7 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
             "It looks like you're trying to reach a different company. This is Pets.ai support.",
         },
         ticket: null,
+        links,
       };
     }
 
@@ -89,17 +99,18 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
       // For now, let's just return undefined or empty for back-compat.
       retrieval: undefined,
       ticket,
+      links: answerResult.links,
     };
   });
 };
 
 async function generateSupportAnswer(
   messages: ModelMessage[],
-): Promise<{ message: ModelMessage; toolCalls: ToolCalls }> {
+): Promise<{ message: ModelMessage; toolCalls: ToolCalls; links: Links }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: 'support_agent', step: 'generate_answer' }, async () => {
+  return await withSpan({ capability: 'support-agent', step: 'generate-answer' }, async (span) => {
     const { text, toolCalls } = await generateText({
       model,
       tools: supportAgentTools,
@@ -124,6 +135,13 @@ async function generateSupportAnswer(
       ],
     });
 
-    return { message: { role: 'assistant', content: text }, toolCalls };
+    const traceId = span.spanContext().traceId;
+    const spanId = span.spanContext().spanId;
+
+    return {
+      message: { role: 'assistant', content: text },
+      toolCalls,
+      links: { traceId, spanId, capability: 'support-agent' },
+    };
   });
 }

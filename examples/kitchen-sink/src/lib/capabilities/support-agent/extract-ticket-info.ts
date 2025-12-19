@@ -39,7 +39,7 @@ export const extractTicketInfo = async (
   const model = wrapAISDKModel(openai(modelName));
 
   const llmRes = await withSpan(
-    { capability: 'support_agent', step: 'extract_ticket_info' },
+    { capability: 'support-agent', step: 'extract-ticket-info' },
     async () => {
       return await generateObject({
         model,
