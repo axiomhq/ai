@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/axiomhq/ai/compare/axiom-v0.34.2...axiom-v0.35.0) (2025-12-19)
+
+
+### Features
+
+* feedback ([#190](https://github.com/axiomhq/ai/issues/190)) ([13056da](https://github.com/axiomhq/ai/commit/13056dac032d38480598d2948b1a878767edf45f))
+
 ## [0.34.2](https://github.com/axiomhq/ai/compare/axiom-v0.34.1...axiom-v0.34.2) (2025-12-16)
 
 
