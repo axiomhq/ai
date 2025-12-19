@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { Feedback } from '../../src/feedback';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFeedbackClient, Feedback } from '../../src/feedback';
 import { getSuffix } from '../../src/util/feedback';
 
 describe('getSuffix', () => {
@@ -85,6 +85,46 @@ describe('Feedback helpers', () => {
     it('should return text feedback for enum values', () => {
       const result = Feedback.enum({ name: 'category', value: 'bug' });
       expect(result).toEqual({ kind: 'text', name: 'category', value: 'bug' });
+    });
+  });
+});
+
+describe('createFeedbackClient', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true })),
+    );
+    vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid-1234' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('exact shape', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.thumbUp({ name: 'rating' }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+
+      id: 'test-uuid-1234',
+      kind: 'thumb',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'rating',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: 1,
     });
   });
 });

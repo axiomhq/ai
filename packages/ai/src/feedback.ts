@@ -100,9 +100,7 @@ const createFeedbackClient = (
       id: crypto.randomUUID(),
       ...feedbackFields,
       links: serializedLinks,
-      attributes: {
-        gen_ai: { operation: { name: 'feedback' } },
-      },
+      event: 'feedback',
       ...(metadata !== undefined && { metadata }),
     };
 
