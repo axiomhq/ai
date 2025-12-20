@@ -95,14 +95,13 @@ describe('createFeedbackClient', () => {
       'fetch',
       vi.fn(() => Promise.resolve({ ok: true })),
     );
-    vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid-1234' });
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('exact shape', async () => {
+  it('thumbUp', async () => {
     const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
     await client.sendFeedback(
       { traceId: 'trace-123', capability: 'test-cap' },
@@ -116,7 +115,7 @@ describe('createFeedbackClient', () => {
     expect(body).toEqual({
       event: 'feedback',
 
-      id: 'test-uuid-1234',
+      id: expect.any(String),
       kind: 'thumb',
       links: {
         capability: 'test-cap',
@@ -125,6 +124,180 @@ describe('createFeedbackClient', () => {
       name: 'rating',
       schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
       value: 1,
+    });
+  });
+
+  it('thumbDown', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.thumbDown({ name: 'rating' }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'thumb',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'rating',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: -1,
+    });
+  });
+
+  it('thumb', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.thumb({ name: 'rating', value: 'up' }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'thumb',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'rating',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: 1,
+    });
+  });
+
+  it('numerical', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.numerical({ name: 'score', value: 42 }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'numerical',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'score',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: 42,
+    });
+  });
+
+  it('bool', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.bool({ name: 'verified', value: true }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'boolean',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'verified',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: true,
+    });
+  });
+
+  it('text', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.text({ name: 'comment', value: 'Great!' }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'text',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'comment',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: 'Great!',
+    });
+  });
+
+  it('event', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.event({ name: 'clicked' }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'event',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'clicked',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+    });
+  });
+
+  it('enum', async () => {
+    const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.enum({ name: 'category', value: 'bug' }),
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+
+    expect(body).toEqual({
+      event: 'feedback',
+      id: expect.any(String),
+      kind: 'text',
+      links: {
+        capability: 'test-cap',
+        trace_id: 'trace-123',
+      },
+      name: 'category',
+      schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: 'bug',
     });
   });
 });
