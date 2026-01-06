@@ -327,7 +327,9 @@ describe('createFeedbackClient', () => {
     it('should pass error and context on non-ok response', async () => {
       vi.stubGlobal(
         'fetch',
-        vi.fn(() => Promise.resolve({ ok: false, status: 401, text: () => Promise.resolve('Unauthorized') })),
+        vi.fn(() =>
+          Promise.resolve({ ok: false, status: 401, text: () => Promise.resolve('Unauthorized') }),
+        ),
       );
 
       const onError = vi.fn();
