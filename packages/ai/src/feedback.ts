@@ -136,8 +136,8 @@ type FeedbackParamsBoolean = Omit<FeedbackInputBoolean, 'kind'>;
 /** Parameters for creating a text feedback (excludes `kind`). */
 type FeedbackParamsText = Omit<FeedbackInputText, 'kind'>;
 
-/** Parameters for creating a signal feedback (excludes `kind`). */
-type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind'>;
+/** Parameters for creating a signal feedback (excludes `kind` and `value`). */
+type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind' | 'value'>;
 
 /** Base parameters shared by all feedback types (name, message, category, metadata). */
 type FeedbackParamsBase = FeedbackInputBase;
@@ -277,7 +277,7 @@ const boolFeedback = (input: FeedbackParamsBoolean): FeedbackInputBoolean =>
 const textFeedback = (input: FeedbackParamsText): FeedbackInputText => withKind(input, 'text');
 
 const signalFeedback = (input: FeedbackParamsSignal): FeedbackInputSignal =>
-  withKind(input, 'signal');
+  withKind({ ...input, value: null }, 'signal');
 
 /**
  * Helper functions for creating feedback input objects.
