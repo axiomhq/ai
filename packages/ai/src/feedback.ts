@@ -33,12 +33,22 @@ type FeedbackCoreSignal = {
   readonly kind: 'signal';
 };
 
+/** Feedback with a numeric value (e.g., rating 1-5). */
 type FeedbackInputNumerical = FeedbackInputBase & FeedbackCoreNumerical;
+
+/** Feedback with a thumbs up (+1) or thumbs down (-1) value. */
 type FeedbackInputThumb = FeedbackInputBase & FeedbackCoreThumb;
+
+/** Feedback with a boolean value (true/false). */
 type FeedbackInputBoolean = FeedbackInputBase & FeedbackCoreBoolean;
+
+/** Feedback with a free-form text value. */
 type FeedbackInputText = FeedbackInputBase & FeedbackCoreText;
+
+/** Feedback without a value, used to signal an event occurred. */
 type FeedbackInputSignal = FeedbackInputBase & FeedbackCoreSignal;
 
+/** Union of all feedback input types. Discriminated on `kind`. */
 type FeedbackInput =
   | FeedbackInputNumerical
   | FeedbackInputThumb
@@ -46,12 +56,19 @@ type FeedbackInput =
   | FeedbackInputText
   | FeedbackInputSignal;
 
+/** Links that associate feedback with a trace and other context. */
 type FeedbackLinks = {
+  /** The trace ID to associate this feedback with. */
   readonly traceId: string;
+  /** The capability (feature/component) this feedback relates to. */
   readonly capability: string;
+  /** Optional step within the capability. */
   readonly step?: string;
+  /** Optional span ID for more granular linking. */
   readonly spanId?: string;
+  /** Optional conversation ID for conversational contexts. */
   readonly conversationId?: string;
+  /** Optional user ID of the person providing feedback. */
   readonly userId?: string;
 };
 
@@ -75,12 +92,22 @@ type FeedbackEventBase = {
   readonly event: 'feedback';
 };
 
+/** Serialized numerical feedback event payload. */
 type FeedbackEventNumerical = FeedbackEventBase & FeedbackCoreNumerical;
+
+/** Serialized thumb feedback event payload. */
 type FeedbackEventThumb = FeedbackEventBase & FeedbackCoreThumb;
+
+/** Serialized boolean feedback event payload. */
 type FeedbackEventBoolean = FeedbackEventBase & FeedbackCoreBoolean;
+
+/** Serialized text feedback event payload. */
 type FeedbackEventText = FeedbackEventBase & FeedbackCoreText;
+
+/** Serialized signal feedback event payload. */
 type FeedbackEventSignal = FeedbackEventBase & FeedbackCoreSignal;
 
+/** Union of all serialized feedback event payloads. Discriminated on `kind`. */
 type FeedbackEvent =
   | FeedbackEventNumerical
   | FeedbackEventThumb
@@ -88,11 +115,26 @@ type FeedbackEvent =
   | FeedbackEventText
   | FeedbackEventSignal;
 
-type _FeedbackInputWithoutKind<T extends FeedbackInput> = Omit<T, 'kind'>;
-type _BaseFeedbackInput = _FeedbackInputWithoutKind<FeedbackInputSignal>;
+/** Parameters for creating a numerical feedback (excludes `kind`). */
+type FeedbackParamsNumerical = Omit<FeedbackInputNumerical, 'kind'>;
+
+/** Parameters for creating a thumb feedback (excludes `kind`). */
+type FeedbackParamsThumb = Omit<FeedbackInputThumb, 'kind'>;
+
+/** Parameters for creating a boolean feedback (excludes `kind`). */
+type FeedbackParamsBoolean = Omit<FeedbackInputBoolean, 'kind'>;
+
+/** Parameters for creating a text feedback (excludes `kind`). */
+type FeedbackParamsText = Omit<FeedbackInputText, 'kind'>;
+
+/** Parameters for creating a signal feedback (excludes `kind`). */
+type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind'>;
+
+/** Base parameters shared by all feedback types (name, message, category, metadata). */
+type FeedbackParamsBase = FeedbackParamsSignal;
 
 const withKind = <T extends FeedbackInput>(
-  input: _FeedbackInputWithoutKind<T>,
+  input: Omit<T, 'kind'>,
   kind: T['kind'],
 ): T =>
   ({
@@ -100,27 +142,49 @@ const withKind = <T extends FeedbackInput>(
     kind,
   }) as T;
 
+/** Configuration for connecting to the Axiom feedback API. */
 type FeedbackConfig = {
+  /** Axiom API token with ingest permissions. */
   readonly token: string;
+  /** Axiom dataset to send feedback to. */
   readonly dataset: string;
+  /** Optional custom Axiom API URL. Defaults to https://api.axiom.co. */
   readonly url?: string;
 };
 
+/** Context provided to error handlers when feedback submission fails. */
 type FeedbackErrorContext = {
   readonly links: FeedbackLinks;
   readonly feedback: FeedbackInput;
 };
 
+/** Optional settings for the feedback client. */
 type FeedbackSettings = {
+  /** Called when feedback submission fails. If not provided, errors are logged to console. */
   readonly onError?: (error: Error) => void;
 };
 
+/** Function signature for sending feedback. */
 type SendFeedbackFn = (links: FeedbackLinks, feedback: FeedbackInput) => Promise<void>;
 
+/** Client for sending feedback to Axiom. */
 type FeedbackClient = {
+  /** Sends feedback associated with the given links. */
   readonly sendFeedback: SendFeedbackFn;
 };
 
+/**
+ * Creates a feedback client for sending user feedback to Axiom.
+ *
+ * @example
+ * ```ts
+ * const client = createFeedbackClient({ token: 'xaat-...', dataset: 'feedback' });
+ * await client.sendFeedback(
+ *   { traceId: '...', capability: 'chat' },
+ *   Feedback.thumbUp({ name: 'response-quality' })
+ * );
+ * ```
+ */
 const createFeedbackClient = (
   config: FeedbackConfig,
   settings?: FeedbackSettings,
@@ -187,42 +251,56 @@ const thumbFeedback = ({
   message,
   category,
   metadata,
-}: _BaseFeedbackInput & { readonly value: 'up' | 'down' }): FeedbackInputThumb =>
+}: FeedbackParamsBase & { readonly value: 'up' | 'down' }): FeedbackInputThumb =>
   withKind({ name, value: value === 'up' ? 1 : -1, message, category, metadata }, 'thumb');
 
-const thumbUpFeedback = (input: _BaseFeedbackInput): FeedbackInputThumb =>
+const thumbUpFeedback = (input: FeedbackParamsBase): FeedbackInputThumb =>
   thumbFeedback({ ...input, value: 'up' });
 
-const thumbDownFeedback = (input: _BaseFeedbackInput): FeedbackInputThumb =>
+const thumbDownFeedback = (input: FeedbackParamsBase): FeedbackInputThumb =>
   thumbFeedback({ ...input, value: 'down' });
 
 const enumFeedback = <T extends string>(
-  input: _BaseFeedbackInput & { readonly value: T },
+  input: FeedbackParamsBase & { readonly value: T },
 ): FeedbackInputText => withKind(input, 'text');
 
-const numericalFeedback = (
-  input: _FeedbackInputWithoutKind<FeedbackInputNumerical>,
-): FeedbackInputNumerical => withKind(input, 'numerical');
+const numericalFeedback = (input: FeedbackParamsNumerical): FeedbackInputNumerical =>
+  withKind(input, 'numerical');
 
-const boolFeedback = (
-  input: _FeedbackInputWithoutKind<FeedbackInputBoolean>,
-): FeedbackInputBoolean => withKind(input, 'boolean');
+const boolFeedback = (input: FeedbackParamsBoolean): FeedbackInputBoolean =>
+  withKind(input, 'boolean');
 
-const textFeedback = (input: _FeedbackInputWithoutKind<FeedbackInputText>): FeedbackInputText =>
-  withKind(input, 'text');
+const textFeedback = (input: FeedbackParamsText): FeedbackInputText => withKind(input, 'text');
 
-const signalFeedback = (
-  input: _FeedbackInputWithoutKind<FeedbackInputSignal>,
-): FeedbackInputSignal => withKind(input, 'signal');
+const signalFeedback = (input: FeedbackParamsSignal): FeedbackInputSignal =>
+  withKind(input, 'signal');
 
+/**
+ * Helper functions for creating feedback input objects.
+ *
+ * @example
+ * ```ts
+ * Feedback.thumbUp({ name: 'response-quality' })
+ * Feedback.numerical({ name: 'rating', value: 4 })
+ * Feedback.signal({ name: 'completed' })
+ * ```
+ */
 const Feedback = {
+  /** Creates a signal feedback (no value, just indicates an event occurred). */
   signal: signalFeedback,
+  /** Creates a numerical feedback with a numeric value. */
   numerical: numericalFeedback,
+  /** Creates a boolean feedback with a true/false value. */
   bool: boolFeedback,
+  /** Creates a text feedback with a free-form string value. */
   text: textFeedback,
+  /** Creates a text feedback from a string enum value. */
   enum: enumFeedback,
+  /** Creates a thumb feedback with 'up' or 'down' value. */
   thumb: thumbFeedback,
+  /** Creates a thumbs up (+1) feedback. */
   thumbUp: thumbUpFeedback,
+  /** Creates a thumbs down (-1) feedback. */
   thumbDown: thumbDownFeedback,
 };
 
@@ -235,6 +313,13 @@ export type {
   FeedbackInputNumerical,
   FeedbackInputText,
   FeedbackInputThumb,
+  // params (for creating feedback)
+  FeedbackParamsBase,
+  FeedbackParamsBoolean,
+  FeedbackParamsNumerical,
+  FeedbackParamsSignal,
+  FeedbackParamsText,
+  FeedbackParamsThumb,
   // union event
   FeedbackEvent,
   // individual events
