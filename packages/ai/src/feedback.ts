@@ -93,22 +93,30 @@ type FeedbackEventBase = {
   readonly event: 'feedback';
 };
 
-/** Serialized number feedback event payload. */
-type FeedbackEventNumber = FeedbackEventBase & FeedbackCoreNumber;
+type FeedbackEventPayloadNumber = FeedbackEventBase & FeedbackCoreNumber;
+type FeedbackEventPayloadThumb = FeedbackEventBase & FeedbackCoreThumb;
+type FeedbackEventPayloadBoolean = FeedbackEventBase & FeedbackCoreBoolean;
+type FeedbackEventPayloadText = FeedbackEventBase & FeedbackCoreText;
+type FeedbackEventPayloadSignal = FeedbackEventBase & FeedbackCoreSignal;
 
-/** Serialized thumb feedback event payload. */
-type FeedbackEventThumb = FeedbackEventBase & FeedbackCoreThumb;
+type FeedbackEventPayload =
+  | FeedbackEventPayloadNumber
+  | FeedbackEventPayloadThumb
+  | FeedbackEventPayloadBoolean
+  | FeedbackEventPayloadText
+  | FeedbackEventPayloadSignal;
 
-/** Serialized boolean feedback event payload. */
-type FeedbackEventBoolean = FeedbackEventBase & FeedbackCoreBoolean;
+type FeedbackEventStoredBase = FeedbackEventBase & {
+  readonly _time: string;
+};
 
-/** Serialized text feedback event payload. */
-type FeedbackEventText = FeedbackEventBase & FeedbackCoreText;
+type FeedbackEventNumber = FeedbackEventStoredBase & FeedbackCoreNumber;
+type FeedbackEventThumb = FeedbackEventStoredBase & FeedbackCoreThumb;
+type FeedbackEventBoolean = FeedbackEventStoredBase & FeedbackCoreBoolean;
+type FeedbackEventText = FeedbackEventStoredBase & FeedbackCoreText;
+type FeedbackEventSignal = FeedbackEventStoredBase & FeedbackCoreSignal;
 
-/** Serialized signal feedback event payload. */
-type FeedbackEventSignal = FeedbackEventBase & FeedbackCoreSignal;
-
-/** Union of all serialized feedback event payloads. Discriminated on `kind`. */
+/** Union of all feedback event types as returned from Axiom queries. Discriminated on `kind`. */
 type FeedbackEvent =
   | FeedbackEventNumber
   | FeedbackEventThumb
@@ -201,7 +209,7 @@ const createFeedbackClient = (
       ...(conversationId !== undefined && { conversation_id: conversationId }),
     };
 
-    const payload: FeedbackEvent = {
+    const payload: FeedbackEventPayload = {
       schemaUrl: SCHEMA_URL,
       id: crypto.randomUUID(),
       ...feedbackFields,
