@@ -64,8 +64,13 @@ type FeedbackConfig = {
   readonly url?: string;
 };
 
+type FeedbackErrorContext = {
+  readonly links: Links;
+  readonly feedback: FeedbackType;
+};
+
 type FeedbackSettings = {
-  readonly onError?: (error: Error) => void;
+  readonly onError?: (error: Error, context: FeedbackErrorContext) => void;
 };
 
 type SendFeedback = (links: Links, feedback: FeedbackType) => Promise<void>;
@@ -119,12 +124,13 @@ const createFeedbackClient = (
         const text = await response.text();
         settings?.onError?.(
           new Error(`Failed to send feedback to Axiom: ${response.status} ${text}`),
+          { links, feedback },
         );
       }
     } catch (error) {
       const e = error instanceof Error ? error : new Error(errorToString(error));
       if (settings?.onError) {
-        settings.onError(e);
+        settings.onError(e, { links, feedback });
       } else {
         console.error(e);
       }
@@ -180,6 +186,7 @@ export type {
   EventFeedback,
   FeedbackClient,
   FeedbackConfig,
+  FeedbackErrorContext,
   FeedbackSettings,
   FeedbackType,
   Links,
