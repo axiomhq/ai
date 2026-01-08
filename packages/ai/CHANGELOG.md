@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.36.0](https://github.com/axiomhq/ai/compare/axiom-v0.35.0...axiom-v0.36.0) (2026-01-08)
+
+
+### Features
+
+* better feedback types, naming, and jsdoc ([#203](https://github.com/axiomhq/ai/issues/203)) ([5836944](https://github.com/axiomhq/ai/commit/583694420f88f11c506e60c0b6d4b0e964a098dd))
+* **feedback:** pass context to onError callback ([#202](https://github.com/axiomhq/ai/issues/202)) ([d1d7eff](https://github.com/axiomhq/ai/commit/d1d7eff02ec4cfa477b2bffbb1d122325dca82bb))
+
 ## [0.35.0](https://github.com/axiomhq/ai/compare/axiom-v0.34.2...axiom-v0.35.0) (2025-12-19)
 
 
