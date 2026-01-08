@@ -176,8 +176,8 @@ type FeedbackClient = {
  * @example
  * ```ts
  * const client = createFeedbackClient({ token: 'xaat-...', dataset: 'feedback' });
- * await client.sendFeedback(
- *   { traceId: '...', capability: 'chat' },
+ * void client.sendFeedback(
+ *   { traceId: '...', capability: 'support-agent' },
  *   Feedback.thumbUp({ name: 'response-quality' })
  * );
  * ```
