@@ -55,7 +55,7 @@ describe('Feedback helpers', () => {
 
   describe('numerical', () => {
     it('should return numerical feedback', () => {
-      const result = Feedback.numerical({ name: 'score', value: 42 });
+      const result = Feedback.number({ name: 'score', value: 42 });
       expect(result).toEqual({ kind: 'numerical', name: 'score', value: 42 });
     });
   });
@@ -181,7 +181,7 @@ describe('createFeedbackClient', () => {
     const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
     await client.sendFeedback(
       { traceId: 'trace-123', capability: 'test-cap' },
-      Feedback.numerical({ name: 'score', value: 42 }),
+      Feedback.number({ name: 'score', value: 42 }),
     );
 
     expect(fetch).toHaveBeenCalledTimes(1);
