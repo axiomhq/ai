@@ -300,4 +300,54 @@ describe('createFeedbackClient', () => {
       value: 'bug',
     });
   });
+
+  describe('onError', () => {
+    it('should pass error and context on fetch failure', async () => {
+      const networkError = new Error('Network error');
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.reject(networkError)),
+      );
+
+      const onError = vi.fn();
+      const client = createFeedbackClient(
+        { token: 'test-token', dataset: 'test-dataset' },
+        { onError },
+      );
+
+      const links = { traceId: 'trace-123', capability: 'test-cap' };
+      const feedback = Feedback.thumbUp({ name: 'rating' });
+
+      await client.sendFeedback(links, feedback);
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledWith(networkError, { links, feedback });
+    });
+
+    it('should pass error and context on non-ok response', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({ ok: false, status: 401, text: () => Promise.resolve('Unauthorized') }),
+        ),
+      );
+
+      const onError = vi.fn();
+      const client = createFeedbackClient(
+        { token: 'test-token', dataset: 'test-dataset' },
+        { onError },
+      );
+
+      const links = { traceId: 'trace-456', capability: 'my-cap', spanId: 'span-789' };
+      const feedback = Feedback.number({ name: 'score', value: 5 });
+
+      await client.sendFeedback(links, feedback);
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledWith(
+        new Error('Failed to send feedback to Axiom: 401 Unauthorized'),
+        { links, feedback },
+      );
+    });
+  });
 });

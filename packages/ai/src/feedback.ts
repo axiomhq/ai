@@ -149,16 +149,13 @@ type FeedbackConfig = {
   readonly url?: string;
 };
 
-/** Context provided to error handlers when feedback submission fails. */
 type FeedbackErrorContext = {
   readonly links: FeedbackLinks;
   readonly feedback: FeedbackInput;
 };
 
-/** Optional settings for the feedback client. */
 type FeedbackSettings = {
-  /** Called when feedback submission fails. If not provided, errors are logged to console. */
-  readonly onError?: (error: Error) => void;
+  readonly onError?: (error: Error, context: FeedbackErrorContext) => void;
 };
 
 /** Function signature for sending feedback. */
@@ -227,12 +224,13 @@ const createFeedbackClient = (
         const text = await response.text();
         settings?.onError?.(
           new Error(`Failed to send feedback to Axiom: ${response.status} ${text}`),
+          { links, feedback },
         );
       }
     } catch (error) {
       const e = error instanceof Error ? error : new Error(errorToString(error));
       if (settings?.onError) {
-        settings.onError(e);
+        settings.onError(e, { links, feedback });
       } else {
         console.error(e);
       }
