@@ -18,12 +18,12 @@ describe('getSuffix', () => {
 
 describe('Feedback helpers', () => {
   describe('thumb', () => {
-    it('should return numerical feedback with value 1 for thumbs up', () => {
+    it('should return number feedback with value 1 for thumbs up', () => {
       const result = Feedback.thumb({ name: 'rating', value: 'up' });
       expect(result).toEqual({ kind: 'thumb', name: 'rating', value: 1 });
     });
 
-    it('should return numerical feedback with value -1 for thumbs down', () => {
+    it('should return number feedback with value -1 for thumbs down', () => {
       const result = Feedback.thumb({ name: 'rating', value: 'down' });
       expect(result).toEqual({ kind: 'thumb', name: 'rating', value: -1 });
     });
@@ -40,23 +40,23 @@ describe('Feedback helpers', () => {
   });
 
   describe('thumbUp', () => {
-    it('should return numerical feedback with value 1', () => {
+    it('should return number feedback with value 1', () => {
       const result = Feedback.thumbUp({ name: 'helpful' });
       expect(result).toEqual({ kind: 'thumb', name: 'helpful', value: 1 });
     });
   });
 
   describe('thumbDown', () => {
-    it('should return numerical feedback with value -1', () => {
+    it('should return number feedback with value -1', () => {
       const result = Feedback.thumbDown({ name: 'helpful' });
       expect(result).toEqual({ kind: 'thumb', name: 'helpful', value: -1 });
     });
   });
 
-  describe('numerical', () => {
-    it('should return numerical feedback', () => {
-      const result = Feedback.numerical({ name: 'score', value: 42 });
-      expect(result).toEqual({ kind: 'numerical', name: 'score', value: 42 });
+  describe('number', () => {
+    it('should return number feedback', () => {
+      const result = Feedback.number({ name: 'score', value: 42 });
+      expect(result).toEqual({ kind: 'number', name: 'score', value: 42 });
     });
   });
 
@@ -74,10 +74,10 @@ describe('Feedback helpers', () => {
     });
   });
 
-  describe('event', () => {
-    it('should return event feedback', () => {
-      const result = Feedback.event({ name: 'clicked' });
-      expect(result).toEqual({ kind: 'event', name: 'clicked' });
+  describe('signal', () => {
+    it('should return signal feedback', () => {
+      const result = Feedback.signal({ name: 'clicked' });
+      expect(result).toEqual({ kind: 'signal', name: 'clicked' });
     });
   });
 
@@ -177,11 +177,11 @@ describe('createFeedbackClient', () => {
     });
   });
 
-  it('numerical', async () => {
+  it('number', async () => {
     const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
     await client.sendFeedback(
       { traceId: 'trace-123', capability: 'test-cap' },
-      Feedback.numerical({ name: 'score', value: 42 }),
+      Feedback.number({ name: 'score', value: 42 }),
     );
 
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -191,7 +191,7 @@ describe('createFeedbackClient', () => {
     expect(body).toEqual({
       event: 'feedback',
       id: expect.any(String),
-      kind: 'numerical',
+      kind: 'number',
       links: {
         capability: 'test-cap',
         trace_id: 'trace-123',
@@ -252,11 +252,11 @@ describe('createFeedbackClient', () => {
     });
   });
 
-  it('event', async () => {
+  it('signal', async () => {
     const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
     await client.sendFeedback(
       { traceId: 'trace-123', capability: 'test-cap' },
-      Feedback.event({ name: 'clicked' }),
+      Feedback.signal({ name: 'clicked' }),
     );
 
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -266,7 +266,7 @@ describe('createFeedbackClient', () => {
     expect(body).toEqual({
       event: 'feedback',
       id: expect.any(String),
-      kind: 'event',
+      kind: 'signal',
       links: {
         capability: 'test-cap',
         trace_id: 'trace-123',
@@ -339,7 +339,7 @@ describe('createFeedbackClient', () => {
       );
 
       const links = { traceId: 'trace-456', capability: 'my-cap', spanId: 'span-789' };
-      const feedback = Feedback.numerical({ name: 'score', value: 5 });
+      const feedback = Feedback.number({ name: 'score', value: 5 });
 
       await client.sendFeedback(links, feedback);
 

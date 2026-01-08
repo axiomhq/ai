@@ -3,7 +3,7 @@ import { openai } from '@/lib/openai';
 import { startActiveSpan } from '@/lib/utilities/start-active-span';
 import { generateText, ModelMessage, stepCountIs, tool } from 'ai';
 import { withSpan, wrapAISDKModel, wrapTools } from 'axiom/ai';
-import type { Links } from 'axiom/ai/feedback';
+import type { FeedbackLinks } from 'axiom/ai/feedback';
 import z from 'zod';
 import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
@@ -20,7 +20,7 @@ export type SupportAgentResult = {
     documents: { id: string; title: string; body: string }[];
   };
   ticket: ExtractTicketInfoResult | null;
-  links?: Links;
+  links?: FeedbackLinks;
 };
 
 const supportAgentTools = wrapTools({
@@ -39,7 +39,7 @@ const supportAgentTools = wrapTools({
 
 export const runSupportAgent = async (messages: ModelMessage[]): Promise<SupportAgentResult> => {
   return startActiveSpan('support-agent', null, async (span) => {
-    const links: Links = {
+    const links: FeedbackLinks = {
       traceId: span.spanContext().traceId,
       spanId: span.spanContext().spanId,
       capability: 'support-agent',
@@ -106,7 +106,7 @@ export const runSupportAgent = async (messages: ModelMessage[]): Promise<Support
 
 async function generateSupportAnswer(
   messages: ModelMessage[],
-): Promise<{ message: ModelMessage; toolCalls: ToolCalls; links: Links }> {
+): Promise<{ message: ModelMessage; toolCalls: ToolCalls; links: FeedbackLinks }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
