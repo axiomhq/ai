@@ -77,7 +77,7 @@ describe('Feedback helpers', () => {
   describe('signal', () => {
     it('should return signal feedback', () => {
       const result = Feedback.signal({ name: 'clicked' });
-      expect(result).toEqual({ kind: 'signal', name: 'clicked' });
+      expect(result).toEqual({ kind: 'signal', name: 'clicked', value: null });
     });
   });
 
@@ -273,6 +273,7 @@ describe('createFeedbackClient', () => {
       },
       name: 'clicked',
       schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: null,
     });
   });
 

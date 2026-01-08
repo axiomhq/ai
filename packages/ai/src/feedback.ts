@@ -31,6 +31,7 @@ type FeedbackCoreText = {
 
 type FeedbackCoreSignal = {
   readonly kind: 'signal';
+  readonly value: null;
 };
 
 /** Feedback with a number value (e.g., similarity, 0-1). */
@@ -92,22 +93,30 @@ type FeedbackEventBase = {
   readonly event: 'feedback';
 };
 
-/** Serialized number feedback event payload. */
-type FeedbackEventNumber = FeedbackEventBase & FeedbackCoreNumber;
+type FeedbackEventPayloadNumber = FeedbackEventBase & FeedbackCoreNumber;
+type FeedbackEventPayloadThumb = FeedbackEventBase & FeedbackCoreThumb;
+type FeedbackEventPayloadBoolean = FeedbackEventBase & FeedbackCoreBoolean;
+type FeedbackEventPayloadText = FeedbackEventBase & FeedbackCoreText;
+type FeedbackEventPayloadSignal = FeedbackEventBase & FeedbackCoreSignal;
 
-/** Serialized thumb feedback event payload. */
-type FeedbackEventThumb = FeedbackEventBase & FeedbackCoreThumb;
+type FeedbackEventPayload =
+  | FeedbackEventPayloadNumber
+  | FeedbackEventPayloadThumb
+  | FeedbackEventPayloadBoolean
+  | FeedbackEventPayloadText
+  | FeedbackEventPayloadSignal;
 
-/** Serialized boolean feedback event payload. */
-type FeedbackEventBoolean = FeedbackEventBase & FeedbackCoreBoolean;
+type FeedbackEventStoredBase = FeedbackEventBase & {
+  readonly _time: string;
+};
 
-/** Serialized text feedback event payload. */
-type FeedbackEventText = FeedbackEventBase & FeedbackCoreText;
+type FeedbackEventNumber = FeedbackEventStoredBase & FeedbackCoreNumber;
+type FeedbackEventThumb = FeedbackEventStoredBase & FeedbackCoreThumb;
+type FeedbackEventBoolean = FeedbackEventStoredBase & FeedbackCoreBoolean;
+type FeedbackEventText = FeedbackEventStoredBase & FeedbackCoreText;
+type FeedbackEventSignal = FeedbackEventStoredBase & FeedbackCoreSignal;
 
-/** Serialized signal feedback event payload. */
-type FeedbackEventSignal = FeedbackEventBase & FeedbackCoreSignal;
-
-/** Union of all serialized feedback event payloads. Discriminated on `kind`. */
+/** Union of all feedback event types as returned from Axiom queries. Discriminated on `kind`. */
 type FeedbackEvent =
   | FeedbackEventNumber
   | FeedbackEventThumb
@@ -127,11 +136,11 @@ type FeedbackParamsBoolean = Omit<FeedbackInputBoolean, 'kind'>;
 /** Parameters for creating a text feedback (excludes `kind`). */
 type FeedbackParamsText = Omit<FeedbackInputText, 'kind'>;
 
-/** Parameters for creating a signal feedback (excludes `kind`). */
-type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind'>;
+/** Parameters for creating a signal feedback (excludes `kind` and `value`). */
+type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind' | 'value'>;
 
 /** Base parameters shared by all feedback types (name, message, category, metadata). */
-type FeedbackParamsBase = FeedbackParamsSignal;
+type FeedbackParamsBase = FeedbackInputBase;
 
 const withKind = <T extends FeedbackInput>(input: Omit<T, 'kind'>, kind: T['kind']): T =>
   ({
@@ -200,7 +209,7 @@ const createFeedbackClient = (
       ...(conversationId !== undefined && { conversation_id: conversationId }),
     };
 
-    const payload: FeedbackEvent = {
+    const payload: FeedbackEventPayload = {
       schemaUrl: SCHEMA_URL,
       id: crypto.randomUUID(),
       ...feedbackFields,
@@ -268,7 +277,7 @@ const boolFeedback = (input: FeedbackParamsBoolean): FeedbackInputBoolean =>
 const textFeedback = (input: FeedbackParamsText): FeedbackInputText => withKind(input, 'text');
 
 const signalFeedback = (input: FeedbackParamsSignal): FeedbackInputSignal =>
-  withKind(input, 'signal');
+  withKind({ ...input, value: null }, 'signal');
 
 /**
  * Helper functions for creating feedback input objects.
