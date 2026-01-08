@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/axiomhq/ai/compare/axiom-v0.36.0...axiom-v0.37.0) (2026-01-08)
+
+
+### Features
+
+* more improvements to feedback types ([#205](https://github.com/axiomhq/ai/issues/205)) ([9af3fc4](https://github.com/axiomhq/ai/commit/9af3fc46f2489e23d8919c3fe4a8c3882bbdc47c))
+
 ## [0.36.0](https://github.com/axiomhq/ai/compare/axiom-v0.35.0...axiom-v0.36.0) (2026-01-08)
 
 
