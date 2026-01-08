@@ -92,7 +92,7 @@ type FeedbackEventBase = {
   readonly event: 'feedback';
 };
 
-/** Serialized numeber feedback event payload. */
+/** Serialized number feedback event payload. */
 type FeedbackEventNumber = FeedbackEventBase & FeedbackCoreNumber;
 
 /** Serialized thumb feedback event payload. */
