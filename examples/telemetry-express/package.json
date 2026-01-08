@@ -32,7 +32,7 @@
     "@opentelemetry/sdk-trace-base": "^2.0.1",
     "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@opentelemetry/semantic-conventions": "^1.36.0",
-    "ai": "5.0.93",
+    "ai": "5.0.52",
     "axiom": "workspace:*",
     "dotenv": "^17.2.0",
     "express": "^5.0.0"
