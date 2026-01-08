@@ -31,6 +31,7 @@ type FeedbackCoreText = {
 
 type FeedbackCoreSignal = {
   readonly kind: 'signal';
+  readonly value: null;
 };
 
 /** Feedback with a number value (e.g., similarity, 0-1). */
@@ -131,7 +132,7 @@ type FeedbackParamsText = Omit<FeedbackInputText, 'kind'>;
 type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind'>;
 
 /** Base parameters shared by all feedback types (name, message, category, metadata). */
-type FeedbackParamsBase = FeedbackParamsSignal;
+type FeedbackParamsBase = FeedbackInputBase;
 
 const withKind = <T extends FeedbackInput>(input: Omit<T, 'kind'>, kind: T['kind']): T =>
   ({
