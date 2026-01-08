@@ -76,7 +76,7 @@ describe('Feedback helpers', () => {
 
   describe('event', () => {
     it('should return event feedback', () => {
-      const result = Feedback.event({ name: 'clicked' });
+      const result = Feedback.signal({ name: 'clicked' });
       expect(result).toEqual({ kind: 'event', name: 'clicked' });
     });
   });
@@ -256,7 +256,7 @@ describe('createFeedbackClient', () => {
     const client = createFeedbackClient({ token: 'test-token', dataset: 'test-dataset' });
     await client.sendFeedback(
       { traceId: 'trace-123', capability: 'test-cap' },
-      Feedback.event({ name: 'clicked' }),
+      Feedback.signal({ name: 'clicked' }),
     );
 
     expect(fetch).toHaveBeenCalledTimes(1);
