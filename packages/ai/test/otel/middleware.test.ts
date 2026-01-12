@@ -6,12 +6,19 @@ import {
   generateText as generateTextV5,
 } from 'aiv5';
 import {
+  wrapLanguageModel as wrapLanguageModelV6,
+  streamText as streamTextV6,
+  generateText as generateTextV6,
+} from 'aiv6';
+import {
   axiomAIMiddlewareV1,
   axiomAIMiddlewareV2,
+  axiomAIMiddlewareV3,
   axiomAIMiddleware,
 } from '../../src/otel/middleware';
 import { createMockProvider } from '../vercel/mock-provider-v1/mock-provider';
 import { createMockProvider as createMockProviderV2 } from '../vercel/mock-provider-v2/mock-provider-v2';
+import { createMockProvider as createMockProviderV3 } from '../vercel/mock-provider-v3/mock-provider-v3';
 import { createOtelTestSetup } from '../helpers/otel-test-setup';
 import { withSpan } from 'src';
 import { trace } from '@opentelemetry/api';
@@ -62,6 +69,25 @@ const middlewareVariants = [
       chunks,
       finishReason: 'stop' as const,
       usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+    }),
+  },
+  {
+    version: 'V3',
+    createProvider: createMockProviderV3,
+    wrapModel: wrapLanguageModelV6 as any,
+    streamText: streamTextV6 as any,
+    generateText: generateTextV6 as any,
+    middleware: () => axiomAIMiddlewareV3() as any,
+    // V3 response shape - structured token usage, object finish reason with raw
+    createGenerateResponse: (text: string) => ({
+      content: [{ type: 'text' as const, text }],
+      finishReason: { unified: 'stop' as const, raw: undefined },
+      usage: { inputTokens: { total: 15 }, outputTokens: { total: 25 } },
+    }),
+    createStreamResponse: (chunks: string[]) => ({
+      chunks,
+      finishReason: { unified: 'stop' as const, raw: undefined },
+      usage: { inputTokens: { total: 10 }, outputTokens: { total: 20 } },
     }),
   },
 ];
@@ -392,6 +418,45 @@ describe('Axiom Telemetry Middleware', () => {
         expect(parentSpan!.endTime).toBeDefined();
         expect(parentSpan!.endTime[0]).toBeGreaterThan(0);
       });
+
+      it('should set token usage attributes BEFORE span.end() is called (V3)', async () => {
+        const mockProvider = createMockProviderV3();
+        mockProvider.addStreamResponse('claude-3-stream', {
+          chunks: ['Streaming', ' response!'],
+          finishReason: { unified: 'stop', raw: undefined },
+          usage: { inputTokens: { total: 15 }, outputTokens: { total: 25 } },
+        });
+
+        const baseModel = mockProvider.languageModel('claude-3-stream');
+        const instrumentedModel = wrapLanguageModelV6({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV3(),
+        });
+
+        const result = streamTextV6({
+          model: instrumentedModel,
+          prompt: 'Test V3 streaming',
+        });
+
+        let fullText = '';
+        for await (const chunk of result.textStream) {
+          fullText += chunk;
+        }
+
+        expect(fullText).toBe('Streaming response!');
+
+        const spans = otelTestSetup.getSpans();
+        expect(spans.length).toBeGreaterThan(0);
+
+        const parentSpan = spans.find((s) => s.name === 'chat claude-3-stream');
+        expect(parentSpan).toBeDefined();
+
+        // Token attributes must be present - V3 uses structured usage with .total
+        expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(15);
+        expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(25);
+        expect(parentSpan!.endTime).toBeDefined();
+        expect(parentSpan!.endTime[0]).toBeGreaterThan(0);
+      });
     });
 
     describe('manualEnd flag behavior', () => {
@@ -516,11 +581,40 @@ describe('Axiom Telemetry Middleware', () => {
       expect(spans[0].name).toBe('chat gpt-4');
     });
 
+    it('should automatically choose V3 middleware for V3 model', async () => {
+      const mockProvider = createMockProviderV3();
+      mockProvider.addLanguageModelResponse('gpt-4', {
+        content: [{ type: 'text', text: 'Hello from unified V3 test!' }],
+        finishReason: { unified: 'stop', raw: undefined },
+        usage: { inputTokens: { total: 15 }, outputTokens: { total: 25 } },
+      });
+
+      const baseModel = mockProvider.languageModel('gpt-4');
+      const instrumentedModel = wrapLanguageModelV6({
+        model: baseModel,
+        middleware: [axiomAIMiddleware({ model: baseModel })],
+      });
+
+      const result = await generateTextV6({
+        model: instrumentedModel,
+        prompt: 'Test prompt',
+      });
+
+      expect(result.text).toBe('Hello from unified V3 test!');
+
+      const spans = otelTestSetup.getSpans();
+      expect(spans).toHaveLength(1);
+      expect(spans[0].name).toBe('chat gpt-4');
+      // V3 uses structured token usage with .total
+      expect(spans[0].attributes['gen_ai.usage.input_tokens']).toBe(15);
+      expect(spans[0].attributes['gen_ai.usage.output_tokens']).toBe(25);
+    });
+
     it('should return noop middleware for unsupported model versions', () => {
       const mockModel = {
-        specificationVersion: 'v3' as any, // Hypothetical future version
+        specificationVersion: 'v99' as any, // Hypothetical future version
         provider: 'mock',
-        modelId: 'test-v3',
+        modelId: 'test-v99',
       };
 
       // Capture console output
@@ -537,7 +631,7 @@ describe('Axiom Telemetry Middleware', () => {
         expect(middleware).toEqual({});
         expect('wrapGenerate' in middleware).toBe(false);
         expect('wrapStream' in middleware).toBe(false);
-        expect(warningMessage).toContain('Unsupported model specification version: "v3"');
+        expect(warningMessage).toContain('Unsupported model specification version: "v99"');
       } finally {
         // Restore console.warn
         console.warn = originalWarn;
@@ -547,7 +641,7 @@ describe('Axiom Telemetry Middleware', () => {
     it('should allow normal model operation with noop middleware for unsupported versions', async () => {
       // Create a mock model with unsupported version but complete interface
       const mockUnsupportedModel = {
-        specificationVersion: 'v3' as any,
+        specificationVersion: 'v99' as any,
         provider: 'mock-future',
         modelId: 'future-model',
         defaultObjectGenerationMode: 'json' as const,

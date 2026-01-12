@@ -77,7 +77,7 @@ describe('Dual Version Support', () => {
 
     it('should handle unsupported models gracefully', () => {
       const unsupportedModel = {
-        specificationVersion: 'v3', // Future version
+        specificationVersion: 'v99', // Future version
         provider: 'test',
         modelId: 'test-model',
       } as any;

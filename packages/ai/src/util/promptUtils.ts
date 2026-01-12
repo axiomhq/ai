@@ -1,6 +1,7 @@
 import type { LanguageModelV1FunctionToolCall } from '@ai-sdk/providerv1';
 import type { NormalizedToolCall } from '../otel/utils/normalized';
 import type { LanguageModelV2Prompt } from '@ai-sdk/providerv2';
+import type { LanguageModelV3Prompt } from '@ai-sdk/providerv3';
 import type { OpenAIMessage } from '../otel/vercelTypes';
 
 export type ToolResultMap = Map<string, unknown>;
@@ -138,6 +139,53 @@ export function extractToolResultsFromPromptV2(
       for (const part of message.content) {
         // In V2, tool result parts have toolCallId and result properties
         if (part.toolCallId && part.output !== undefined) {
+          const toolName = idToName.get(part.toolCallId);
+          if (toolName) {
+            results.set(toolName, part.output);
+          }
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Extracts tool results from a V3 prompt structure.
+ *
+ * V3 prompts are very similar to V2 but with slightly different typing:
+ * - Tool calls are in assistant messages as 'tool-call' parts
+ * - Tool results are in 'tool' role messages as 'tool-result' parts with 'output' property
+ * - Also includes 'tool-approval-response' parts which we skip
+ *
+ * @param prompt - The V3 prompt array
+ * @returns Map of tool names to their results
+ */
+export function extractToolResultsFromPromptV3(
+  prompt: LanguageModelV3Prompt,
+): Map<string, unknown> {
+  const idToName = new Map<string, string>();
+  const results = new Map<string, unknown>();
+
+  // 1. Collect tool-call ids → names from assistant messages
+  for (const message of prompt) {
+    if (message.role === 'assistant' && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part.type === 'tool-call') {
+          idToName.set(part.toolCallId, part.toolName);
+        }
+      }
+    }
+  }
+
+  // 2. Collect tool results from tool role messages
+  for (const message of prompt) {
+    if (message.role === 'tool' && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        // In V3, tool result parts have toolCallId and output properties
+        // Skip tool-approval-response parts
+        if (part.type === 'tool-result' && part.toolCallId && part.output !== undefined) {
           const toolName = idToName.get(part.toolCallId);
           if (toolName) {
             results.set(toolName, part.output);
