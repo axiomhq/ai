@@ -5,7 +5,6 @@ import { getSuffix } from './util/feedback';
 type FeedbackInputBase = {
   readonly name: string;
   readonly message?: string;
-  readonly category?: string;
   readonly metadata?: Record<string, unknown>;
 };
 
@@ -87,7 +86,6 @@ type FeedbackEventBase = {
   readonly id: string;
   readonly name: string;
   readonly message?: string;
-  readonly category?: string;
   readonly metadata?: Record<string, unknown>;
   readonly links: FeedbackLinksSerialized;
   readonly event: 'feedback';
@@ -139,7 +137,7 @@ type FeedbackParamsText = Omit<FeedbackInputText, 'kind'>;
 /** Parameters for creating a signal feedback (excludes `kind` and `value`). */
 type FeedbackParamsSignal = Omit<FeedbackInputSignal, 'kind' | 'value'>;
 
-/** Base parameters shared by all feedback types (name, message, category, metadata). */
+/** Base parameters shared by all feedback types (name, message, metadata). */
 type FeedbackParamsBase = FeedbackInputBase;
 
 const withKind = <T extends FeedbackInput>(input: Omit<T, 'kind'>, kind: T['kind']): T =>
@@ -253,10 +251,9 @@ const thumbFeedback = ({
   name,
   value,
   message,
-  category,
   metadata,
 }: FeedbackParamsBase & { readonly value: 'up' | 'down' }): FeedbackInputThumb =>
-  withKind({ name, value: value === 'up' ? 1 : -1, message, category, metadata }, 'thumb');
+  withKind({ name, value: value === 'up' ? 1 : -1, message, metadata }, 'thumb');
 
 const thumbUpFeedback = (input: FeedbackParamsBase): FeedbackInputThumb =>
   thumbFeedback({ ...input, value: 'up' });
