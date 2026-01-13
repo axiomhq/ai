@@ -224,7 +224,9 @@ export class MockProvider {
     };
   }
 
-  private createMockStream(response: MockStreamResponse): ReadableStream<LanguageModelV3StreamPart> {
+  private createMockStream(
+    response: MockStreamResponse,
+  ): ReadableStream<LanguageModelV3StreamPart> {
     const config = this.config;
     const toV3Usage = this.toV3Usage.bind(this);
 
@@ -304,7 +306,10 @@ export function createMockProvider(config?: MockProviderConfig): MockProvider {
 
 // Predefined response builders with V3 structures
 export const mockResponses = {
-  text: (text: string, options?: Partial<MockLanguageModelResponse>): MockLanguageModelResponse => ({
+  text: (
+    text: string,
+    options?: Partial<MockLanguageModelResponse>,
+  ): MockLanguageModelResponse => ({
     content: [{ type: 'text', text }],
     finishReason: { unified: 'stop', raw: undefined },
     usage: {
