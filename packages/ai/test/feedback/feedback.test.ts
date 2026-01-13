@@ -77,7 +77,7 @@ describe('Feedback helpers', () => {
   describe('signal', () => {
     it('should return signal feedback', () => {
       const result = Feedback.signal({ name: 'clicked' });
-      expect(result).toEqual({ kind: 'signal', name: 'clicked' });
+      expect(result).toEqual({ kind: 'signal', name: 'clicked', value: null });
     });
   });
 
@@ -273,6 +273,7 @@ describe('createFeedbackClient', () => {
       },
       name: 'clicked',
       schemaUrl: 'https://axiom.co/ai/schemas/0.0.2',
+      value: null,
     });
   });
 
@@ -349,5 +350,44 @@ describe('createFeedbackClient', () => {
         { links, feedback },
       );
     });
+  });
+});
+
+describe('createFeedbackClient with missing config', () => {
+  it('should return noop client and log error when token is missing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const client = createFeedbackClient({ token: '', dataset: 'test-dataset' });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Feedback] Missing config: token. Feedback disabled.',
+    );
+
+    await client.sendFeedback(
+      { traceId: 'trace-123', capability: 'test-cap' },
+      Feedback.thumbUp({ name: 'rating' }),
+    );
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    consoleError.mockRestore();
+  });
+
+  it('should return noop client and log error when dataset is missing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    createFeedbackClient({ token: 'test-token', dataset: '' });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Feedback] Missing config: dataset. Feedback disabled.',
+    );
+    consoleError.mockRestore();
+  });
+
+  it('should return noop client and log error when both are missing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    createFeedbackClient({ token: '', dataset: '' });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Feedback] Missing config: token, dataset. Feedback disabled.',
+    );
+    consoleError.mockRestore();
   });
 });
