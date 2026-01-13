@@ -176,6 +176,10 @@ type FeedbackClient = {
   readonly sendFeedback: SendFeedbackFn;
 };
 
+const createNoopFeedbackClient = (): FeedbackClient => ({
+  sendFeedback: async () => {},
+});
+
 /**
  * Creates a feedback client for sending user feedback to Axiom.
  *
@@ -192,6 +196,12 @@ const createFeedbackClient = (
   config: FeedbackConfig,
   settings?: FeedbackSettings,
 ): FeedbackClient => {
+  if (!config.token || !config.dataset) {
+    const missing = [!config.token && 'token', !config.dataset && 'dataset'].filter(Boolean);
+    console.error(`[Feedback] Missing config: ${missing.join(', ')}. Feedback disabled.`);
+    return createNoopFeedbackClient();
+  }
+
   const baseUrl = config.url ?? 'https://api.axiom.co';
   const url = `${baseUrl}${getSuffix(baseUrl, config.dataset)}`;
 
