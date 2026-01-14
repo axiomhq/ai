@@ -6,3 +6,5 @@ node_modules/
 .DS_Store
 axiom-*.tgz
 coverage
+.next
+next-env.d.ts
