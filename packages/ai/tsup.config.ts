@@ -47,7 +47,7 @@ export default defineConfig([
       'src/evals.ts',
       'src/config.ts',
       'src/evals/custom-runner.ts',
-      'src/evals/aggregations.entry.ts',
+      'src/evals/aggregations.ts',
     ],
     noExternal: ['handlebars'],
     clean: false,

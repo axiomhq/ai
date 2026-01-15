@@ -48,12 +48,12 @@
     },
     "./ai/evals/aggregations": {
       "import": {
-        "types": "./dist/evals/aggregations.entry.d.ts",
-        "default": "./dist/evals/aggregations.entry.js"
+        "types": "./dist/evals/aggregations.d.ts",
+        "default": "./dist/evals/aggregations.js"
       },
       "require": {
-        "types": "./dist/evals/aggregations.entry.d.cts",
-        "default": "./dist/evals/aggregations.entry.cjs"
+        "types": "./dist/evals/aggregations.d.cts",
+        "default": "./dist/evals/aggregations.cjs"
       }
     },
     "./ai/config": {
