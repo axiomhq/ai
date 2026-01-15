@@ -131,7 +131,7 @@ Based on the design document and codebase analysis, here's the implementation ch
 - [ ] Test trace attributes include new fields
 
 ### 8.3 End-to-end test
-- [ ] Create example eval with trials in `examples/evals-minimal/`
+- [x] Create example eval with trials in `examples/evals-minimal/`
 - [ ] Verify trace shape matches design doc
 
 ---
