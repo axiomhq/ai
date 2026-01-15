@@ -8,7 +8,7 @@ This is a reference example for using Axiom with the Vercel AI SDK v6 with Next.
 
 ## How to use
 
-You will need an Axiom dataset and API key, so gead ahead and create those on [Axiom's Console](https://app.axiom.co/datasets).
+You will need an Axiom dataset and API key, so go ahead and create those on [Axiom's Console](https://app.axiom.co/datasets).
 
 Then prepare your environment variables
 
