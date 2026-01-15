@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.38.0](https://github.com/axiomhq/ai/compare/axiom-v0.37.0...axiom-v0.38.0) (2026-01-15)
+
+
+### Features
+
+* **feedback:** return noop client when config is missing ([#207](https://github.com/axiomhq/ai/issues/207)) ([abb4f2c](https://github.com/axiomhq/ai/commit/abb4f2cb38f33a8a126dc2457fc962af43801b99))
+* remove `category` from feedback in sdk ([#209](https://github.com/axiomhq/ai/issues/209)) ([0a72aad](https://github.com/axiomhq/ai/commit/0a72aadd1778bbfeb2725e43a356c44632f04f93))
+* support ai sdk v6 / LanguageModelV3 ([#208](https://github.com/axiomhq/ai/issues/208)) ([0f2f4f8](https://github.com/axiomhq/ai/commit/0f2f4f8cef0b7993477e04131a080c46d1894568))
+
 ## [0.37.0](https://github.com/axiomhq/ai/compare/axiom-v0.36.0...axiom-v0.37.0) (2026-01-08)
 
 
