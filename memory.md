@@ -43,6 +43,10 @@
 - All aggregation functions exported from `@axiomhq/ai/evals`
 - ScorerOptions type exported
 
+### Phase 9: Documentation & Examples ✅
+- Updated example.eval.ts with trials demo (Minimal-Demo-Trials)
+- JSDoc examples added for all aggregation functions
+
 ## Remaining Tasks
 
 ### Phase 4.3: runTask helper (optional)
@@ -50,10 +54,6 @@
 
 ### Phase 8.2: Integration Tests
 - Need real eval execution tests to verify span hierarchy
-
-### Phase 9: Documentation & Examples
-- Update example.eval.ts with trials demo
-- Add JSDoc examples
 
 ## Usage Example
 

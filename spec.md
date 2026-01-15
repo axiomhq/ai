@@ -139,13 +139,13 @@ Based on the design document and codebase analysis, here's the implementation ch
 ## Phase 9: Documentation & Examples
 
 ### 9.1 Update examples
-- [ ] Update [example.eval.ts](file:///Users/cje/dev/axiom/ai/packages/ai/examples/evals-minimal/src/example.eval.ts) to demonstrate trials
-- [ ] Add example with multiple scorers using different aggregations
+- [x] Update [example.eval.ts](file:///Users/cje/dev/axiom/ai/packages/ai/examples/evals-minimal/src/example.eval.ts) to demonstrate trials
+- [x] Add example with multiple scorers using different aggregations
 
 ### 9.2 JSDoc comments
-- [ ] Document `trials` option on `EvalParams`
-- [ ] Document aggregation option on `Scorer`
-- [ ] Document each aggregation function with examples
+- [x] Document `trials` option on `EvalParams`
+- [x] Document aggregation option on `Scorer`
+- [x] Document each aggregation function with examples
 
 ---
 
