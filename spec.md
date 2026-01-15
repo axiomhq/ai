@@ -102,11 +102,11 @@ Based on the design document and codebase analysis, here's the implementation ch
 ## Phase 7: Exports & Public API
 
 ### 7.1 Update public exports
-- [ ] Export aggregation functions from `@axiomhq/ai/evals/aggregations` (new entry point)
+- [x] Export aggregation functions from `@axiomhq/ai/evals/aggregations` (new entry point)
 - [x] Alternatively, export from `@axiomhq/ai/evals` main entry
 - [x] Update [evals.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals.ts) exports
 - [x] Export `ScorerOptions` type
-- [ ] Update package.json exports map if adding new subpath
+- [x] Update package.json exports map if adding new subpath
 
 ---
 

@@ -52,6 +52,11 @@
 ### Phase 4.3: runTask helper (optional)
 - Add trialIndex parameter to runTask (not critical since trial span is parent)
 
+### Phase 7.1: Aggregations subpath export ✅
+- Added `axiom/ai/evals/aggregations` entry point
+- Created `aggregations.entry.ts` for re-exports
+- Updated `package.json` exports map and `tsup.config.ts`
+
 ### Phase 8.2: Integration Tests
 - Need real eval execution tests to verify span hierarchy
 
