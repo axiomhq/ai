@@ -14,6 +14,11 @@ export interface EvalBuilder<
   ): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput>;
   withModel(model: string): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput>;
   withTimeout(timeout: number): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput>;
+  /**
+   * Set the number of times to run each case.
+   * Each trial runs the task independently, and scores are aggregated per scorer.
+   */
+  withTrials(trials: number): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput>;
   run(suffix?: string): void; // registers with Vitest
 }
 
@@ -33,6 +38,7 @@ class EvalBuilderImpl<
       flags?: Partial<AllowedFlags>;
       model?: string;
       timeout?: number;
+      trials?: number;
     } = {},
   ) {}
 
@@ -59,6 +65,13 @@ class EvalBuilderImpl<
     });
   }
 
+  withTrials(trials: number): EvalBuilder<AllowedFlags, TInput, TExpected, TOutput> {
+    return new EvalBuilderImpl<AllowedFlags, TInput, TExpected, TOutput>(this.name, this.params, {
+      ...this.overrides,
+      trials,
+    });
+  }
+
   run(suffix = ''): void {
     if (this.hasRun) {
       throw new Error(`Eval "${this.name}" has already been run. Create a new builder instance.`);
@@ -70,6 +83,7 @@ class EvalBuilderImpl<
       ...this.params,
       ...(this.overrides.model && { model: this.overrides.model }),
       ...(this.overrides.timeout && { timeout: this.overrides.timeout }),
+      ...(this.overrides.trials && { trials: this.overrides.trials }),
     };
 
     // If flags are overridden, wrap the task to set flag context

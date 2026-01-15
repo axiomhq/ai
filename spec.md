@@ -84,9 +84,9 @@ Based on the design document and codebase analysis, here's the implementation ch
 ## Phase 5: Update Builder API
 
 ### 5.1 Extend `defineEval` builder
-- [ ] Add `withTrials(count: number)` method to `EvalBuilder` interface in [builder.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/builder.ts)
-- [ ] Implement builder method in `EvalBuilderImpl`
-- [ ] Pass trials to underlying `Eval()` call
+- [x] Add `withTrials(count: number)` method to `EvalBuilder` interface in [builder.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/builder.ts)
+- [x] Implement builder method in `EvalBuilderImpl`
+- [x] Pass trials to underlying `Eval()` call
 - [ ] Write tests for builder with trials
 
 ---
@@ -104,9 +104,9 @@ Based on the design document and codebase analysis, here's the implementation ch
 
 ### 7.1 Update public exports
 - [ ] Export aggregation functions from `@axiomhq/ai/evals/aggregations` (new entry point)
-- [ ] Alternatively, export from `@axiomhq/ai/evals` main entry
-- [ ] Update [evals.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals.ts) exports
-- [ ] Export `ScorerOptions` type
+- [x] Alternatively, export from `@axiomhq/ai/evals` main entry
+- [x] Update [evals.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals.ts) exports
+- [x] Export `ScorerOptions` type
 - [ ] Update package.json exports map if adding new subpath
 
 ---
@@ -114,12 +114,12 @@ Based on the design document and codebase analysis, here's the implementation ch
 ## Phase 8: Tests
 
 ### 8.1 Unit tests
-- [ ] Test `Mean` aggregation with various score arrays
-- [ ] Test `Median` aggregation with odd/even length arrays
-- [ ] Test `PassAtK` with threshold edge cases (exactly at threshold, below, above)
-- [ ] Test `PassHatK` with all pass, partial fail, all fail scenarios
-- [ ] Test scorer with aggregation option attached correctly
-- [ ] Test backward compatibility: scorer without options
+- [x] Test `Mean` aggregation with various score arrays
+- [x] Test `Median` aggregation with odd/even length arrays
+- [x] Test `PassAtK` with threshold edge cases (exactly at threshold, below, above)
+- [x] Test `PassHatK` with all pass, partial fail, all fail scenarios
+- [x] Test scorer with aggregation option attached correctly
+- [x] Test backward compatibility: scorer without options
 
 ### 8.2 Integration tests
 - [ ] Test eval with `trials: 1` emits single trial span
