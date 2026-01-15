@@ -19,26 +19,26 @@ Based on the design document and codebase analysis, here's the implementation ch
 - [x] Write tests for all aggregation functions in `packages/ai/test/evals/aggregations.test.ts`
 
 ### 1.2 Extend type definitions
-- [ ] Add `trials?: number` option to `EvalParams` in [eval.types.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.types.ts#L58-L78)
-- [ ] Add `aggregation?: Aggregation` option to scorer configuration in `createScorer`
-- [ ] Create `ScorerOptions` type with `aggregation` field
-- [ ] Update `Scorer` type to support options parameter
-- [ ] Add `trialIndex: number` to scorer function arguments type
-- [ ] Update `ScoreWithName` to support trial scores array: `trials?: number[]`
-- [ ] Add `aggregation?: string` and `threshold?: number` to score types
+- [x] Add `trials?: number` option to `EvalParams` in [eval.types.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.types.ts#L58-L78)
+- [x] Add `aggregation?: Aggregation` option to scorer configuration in `createScorer`
+- [x] Create `ScorerOptions` type with `aggregation` field
+- [x] Update `Scorer` type to support options parameter
+- [x] Add `trialIndex: number` to scorer function arguments type
+- [x] Update `ScoreWithName` to support trial scores array: `trials?: number[]`
+- [x] Add `aggregation?: string` and `threshold?: number` to score types
 - [ ] Add `TrialResult` type for per-trial execution results
-- [ ] Write type tests in `packages/ai/test/evals/scorer.types.test.ts`
+- [x] Write type tests in `packages/ai/test/evals/scorer.types.test.ts`
 
 ---
 
 ## Phase 2: Scorer Factory Updates
 
 ### 2.1 Extend `createScorer` to accept options
-- [ ] Update `createScorer` signature in [scorer.factory.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/scorer.factory.ts#L21-L73) to accept optional third parameter `options?: ScorerOptions`
-- [ ] Attach `aggregation` config to scorer function object (similar to how `name` is attached)
+- [x] Update `createScorer` signature in [scorer.factory.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/scorer.factory.ts#L21-L73) to accept optional third parameter `options?: ScorerOptions`
+- [x] Attach `aggregation` config to scorer function object (similar to how `name` is attached)
 - [ ] Default aggregation to `Mean()` when not specified
-- [ ] Ensure backward compatibility: existing scorers without options still work
-- [ ] Write tests for scorer with aggregation options in `packages/ai/test/evals/scorer.test.ts`
+- [x] Ensure backward compatibility: existing scorers without options still work
+- [x] Write tests for scorer with aggregation options in `packages/ai/test/evals/scorer.test.ts`
 
 ---
 
