@@ -1,5 +1,6 @@
 import { pickFlags } from '@/app-scope';
-import { Eval, Scorer, Mean, PassAtK } from 'axiom/ai/evals';
+import { Eval, Scorer } from 'axiom/ai/evals';
+import { Mean, PassHatK } from 'axiom/ai/evals/aggregations';
 import { parrotOrAntiParrot } from './example';
 
 /**
@@ -46,7 +47,7 @@ const ExactMatchPassAtK = Scorer(
   ({ output, expected }: { output: string; expected: string }) => {
     return output === expected ? 1 : 0;
   },
-  { aggregation: PassAtK({ threshold: 1 }) },
+  { aggregation: PassHatK({ threshold: 1 }) },
 );
 
 Eval('Minimal-Demo-Trials', {
@@ -56,6 +57,7 @@ Eval('Minimal-Demo-Trials', {
   data: () => [
     { input: 'hello', expected: 'hello' },
     { input: 'world', expected: 'world' },
+    { input: 'foo', expected: 'bar' },
   ],
   task: async ({ input }) => {
     return await parrotOrAntiParrot(input);
