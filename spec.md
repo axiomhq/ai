@@ -45,12 +45,12 @@ Based on the design document and codebase analysis, here's the implementation ch
 ## Phase 3: Span Attributes for Trials
 
 ### 3.1 Add new OTel attributes
-- [ ] Add `ATTR_EVAL_TRIALS` (`eval.trials`) in [eval_proposal.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/otel/semconv/eval_proposal.ts)
-- [ ] Add `ATTR_EVAL_TRIAL_INDEX` (`eval.trial.index`)
-- [ ] Add `ATTR_EVAL_CASE_TRIALS` (`eval.case.trials`)
-- [ ] Add `ATTR_EVAL_SCORE_AGGREGATION` (`eval.score.aggregation`)
-- [ ] Add `ATTR_EVAL_SCORE_TRIALS` (`eval.score.trials`) for raw trial scores array
-- [ ] Export new attributes in [attributes.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/otel/semconv/attributes.ts) under `Attr.Eval`
+- [x] Add `ATTR_EVAL_TRIALS` (`eval.trials`) in [eval_proposal.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/otel/semconv/eval_proposal.ts)
+- [x] Add `ATTR_EVAL_TRIAL_INDEX` (`eval.trial.index`)
+- [x] Add `ATTR_EVAL_CASE_TRIALS` (`eval.case.trials`)
+- [x] Add `ATTR_EVAL_SCORE_AGGREGATION` (`eval.score.aggregation`)
+- [x] Add `ATTR_EVAL_SCORE_TRIALS` (`eval.score.trials`) for raw trial scores array
+- [x] Export new attributes in [attributes.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/otel/semconv/attributes.ts) under `Attr.Eval`
 
 ---
 
