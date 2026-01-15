@@ -18,7 +18,8 @@ import type {
   Evaluation,
   OutOfScopeFlagAccess,
 } from './eval.types';
-import type { ScoreWithName, ScorerLike } from './scorers';
+import type { ScoreWithName, ScorerLike, Scorer } from './scorers';
+import { Mean, type Aggregation } from './aggregations';
 import { EvaluationApiClient, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';
@@ -440,124 +441,177 @@ async function registerEval<
           },
           async (caseSpan) => {
             const caseContext = trace.setSpan(context.active(), caseSpan);
+            const trials = Math.max(1, opts.trials ?? 1);
+
+            // Set case-level trials attribute
+            caseSpan.setAttribute(Attr.Eval.Case.Trials, trials);
 
             try {
-              const result = await runTask(
-                caseContext,
-                {
-                  id: evalId,
-                  version: evalVersion,
-                  name: evalName,
-                },
-                {
-                  index: data.index,
-                  input: data.input,
-                  expected: data.expected,
-                  scorers: opts.scorers,
-                  task: opts.task,
-                  metadata: opts.metadata,
-                  configFlags: opts.configFlags,
-                  capability: opts.capability,
-                  step: opts.step,
-                },
-              );
-              const { output, duration } = result;
-              outOfScopeFlags = result.outOfScopeFlags;
+              // Accumulators for per-trial scores
+              const perScorerTrials: Record<string, Array<number | null>> = {};
+              let lastOutput: TOutput | undefined;
+              let totalDuration = 0;
 
-              finalConfigSnapshot = {
-                flags: result.finalFlags || {},
-                pickedFlags: opts.configFlags,
-                overrides: result.overrides,
-              };
+              // Run each trial
+              for (let trialIndex = 0; trialIndex < trials; trialIndex++) {
+                await startActiveSpan(
+                  `trial ${trialIndex}`,
+                  {
+                    attributes: {
+                      [Attr.GenAI.Operation.Name]: 'eval.trial',
+                      [Attr.Eval.Trial.Index]: trialIndex,
+                      [Attr.Eval.ID]: evalId,
+                      [Attr.Eval.Name]: evalName,
+                      [Attr.Eval.Version]: evalVersion,
+                    },
+                  },
+                  async (trialSpan) => {
+                    const trialContext = trace.setSpan(context.active(), trialSpan);
 
-              const scoreList: ScoreWithName[] = await Promise.all(
-                opts.scorers.map(async (scorer) => {
-                  const scorerName = getScorerName(scorer);
-                  return startActiveSpan(
-                    `score ${scorerName}`,
-                    {
-                      attributes: {
-                        [Attr.GenAI.Operation.Name]: 'eval.score',
-                        [Attr.Eval.ID]: evalId,
-                        [Attr.Eval.Name]: evalName,
-                        [Attr.Eval.Version]: evalVersion,
+                    const result = await runTask(
+                      trialContext,
+                      {
+                        id: evalId,
+                        version: evalVersion,
+                        name: evalName,
                       },
-                    },
-                    async (scorerSpan) => {
-                      const scorerStart = performance.now();
-                      try {
-                        const result = await scorer({
-                          input: data.input,
-                          output: output,
-                          expected: data.expected,
-                        });
+                      {
+                        index: data.index,
+                        input: data.input,
+                        expected: data.expected,
+                        scorers: opts.scorers,
+                        task: opts.task,
+                        metadata: opts.metadata,
+                        configFlags: opts.configFlags,
+                        capability: opts.capability,
+                        step: opts.step,
+                      },
+                    );
+                    const { output, duration } = result;
+                    lastOutput = output;
+                    totalDuration += duration;
+                    outOfScopeFlags = result.outOfScopeFlags;
 
-                        const duration = Math.round(performance.now() - scorerStart);
-                        const scoreValue = result.score as number;
-                        const metadata = Object.assign(
-                          { duration, startedAt: scorerStart },
-                          result.metadata,
+                    finalConfigSnapshot = {
+                      flags: result.finalFlags || {},
+                      pickedFlags: opts.configFlags,
+                      overrides: result.overrides,
+                    };
+
+                    // Run scorers inside the trial span
+                    await Promise.all(
+                      opts.scorers.map(async (scorer) => {
+                        const scorerName = getScorerName(scorer);
+                        return startActiveSpan(
+                          `score ${scorerName}`,
+                          {
+                            attributes: {
+                              [Attr.GenAI.Operation.Name]: 'eval.score',
+                              [Attr.Eval.ID]: evalId,
+                              [Attr.Eval.Name]: evalName,
+                              [Attr.Eval.Version]: evalVersion,
+                              [Attr.Eval.Trial.Index]: trialIndex,
+                            },
+                          },
+                          async (scorerSpan) => {
+                            const scorerStart = performance.now();
+                            try {
+                              const result = await scorer({
+                                input: data.input,
+                                output: output,
+                                expected: data.expected,
+                                trialIndex,
+                              });
+
+                              const scoreDuration = Math.round(performance.now() - scorerStart);
+                              const scoreValue = result.score as number;
+                              const metadata = Object.assign(
+                                { duration: scoreDuration, startedAt: scorerStart },
+                                result.metadata,
+                              );
+
+                              // Collect per-trial score
+                              (perScorerTrials[scorerName] ??= []).push(scoreValue);
+
+                              // Get aggregation config for span attributes
+                              const aggregation: Aggregation =
+                                (scorer as Scorer).aggregation ?? Mean();
+
+                              scorerSpan.setAttributes({
+                                [Attr.Eval.Score.Name]: scorerName,
+                                [Attr.Eval.Score.Value]: scoreValue,
+                                [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                [Attr.Eval.Score.Aggregation]: aggregation.type,
+                              });
+
+                              if (metadata.error) {
+                                const msg = errorToString(metadata.error);
+                                scorerSpan.setStatus({
+                                  code: SpanStatusCode.ERROR,
+                                  message: msg,
+                                });
+                              }
+                            } catch (error) {
+                              const scorerDuration = Math.round(performance.now() - scorerStart);
+                              console.error(
+                                `ERROR: scorer ${scorerName} failed. Cause: \n`,
+                                error,
+                              );
+                              const msg = errorToString(error);
+                              const metadata = {
+                                duration: scorerDuration,
+                                startedAt: scorerStart,
+                                error: msg,
+                              };
+
+                              // Collect null for failed scorer
+                              (perScorerTrials[scorerName] ??= []).push(null);
+
+                              scorerSpan.setAttributes({
+                                [Attr.Eval.Score.Name]: scorerName,
+                                [Attr.Eval.Score.Value]: undefined,
+                                [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                              });
+
+                              scorerSpan.setStatus({
+                                code: SpanStatusCode.ERROR,
+                                message: msg,
+                              });
+                            } finally {
+                              scorerSpan.end();
+                            }
+                          },
+                          trialContext,
                         );
+                      }),
+                    );
+                  },
+                  caseContext,
+                );
+              }
 
-                        scorerSpan.setAttributes({
-                          [Attr.Eval.Score.Name]: scorerName,
-                          [Attr.Eval.Score.Value]: scoreValue,
-                          [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                        });
+              // Aggregate scores across trials
+              const scores: Record<string, ScoreWithName> = {};
+              for (const scorer of opts.scorers) {
+                const scorerName = getScorerName(scorer);
+                const trialsArr = perScorerTrials[scorerName] ?? [];
+                const aggregation: Aggregation = (scorer as Scorer).aggregation ?? Mean();
 
-                        if (metadata.error) {
-                          const msg = errorToString(metadata.error);
+                // Filter out nulls for aggregation
+                const numeric = trialsArr.filter((x): x is number => typeof x === 'number');
+                const aggregatedValue = numeric.length > 0 ? aggregation.aggregate(numeric) : 0;
 
-                          scorerSpan.setStatus({
-                            code: SpanStatusCode.ERROR,
-                            message: msg,
-                          });
-                        }
+                scores[scorerName] = {
+                  name: scorerName,
+                  score: aggregatedValue,
+                  trials: trialsArr.map((x) => x ?? 0),
+                  aggregation: aggregation.type,
+                  threshold: aggregation.threshold,
+                  metadata: {},
+                };
+              }
 
-                        return {
-                          name: scorerName,
-                          score: scoreValue,
-                          metadata: Object.assign(
-                            { duration, startedAt: scorerStart },
-                            result.metadata,
-                          ),
-                        };
-                      } catch (error) {
-                        const scorerDuration = Math.round(performance.now() - scorerStart);
-                        console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
-                        const msg = errorToString(error);
-                        const metadata = {
-                          duration: scorerDuration,
-                          startedAt: scorerStart,
-                          error: msg,
-                        };
-
-                        scorerSpan.setAttributes({
-                          [Attr.Eval.Score.Name]: scorerName,
-                          [Attr.Eval.Score.Value]: undefined,
-                          [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                        });
-
-                        scorerSpan.setStatus({
-                          code: SpanStatusCode.ERROR,
-                          message: msg,
-                        });
-
-                        return {
-                          name: scorerName,
-                          score: null,
-                          metadata,
-                        };
-                      } finally {
-                        scorerSpan.end();
-                      }
-                    },
-                    caseContext,
-                  );
-                }),
-              );
-
-              const scores = Object.fromEntries(scoreList.map((s) => [s.name, s]));
+              const output = lastOutput!;
 
               caseSpan.setAttributes({
                 [Attr.Eval.Case.Output]:
@@ -576,7 +630,7 @@ async function registerEval<
                 scores,
                 status: 'success',
                 errors: [],
-                duration,
+                duration: totalDuration,
                 startedAt: start,
                 outOfScopeFlags,
                 pickedFlags: opts.configFlags,
@@ -594,9 +648,11 @@ async function registerEval<
               // Populate scores with error metadata for all scorers that didn't run
               const failedScores: Record<string, ScoreWithName> = {};
               for (const scorer of opts.scorers) {
-                failedScores[scorer.name] = {
-                  name: scorer.name,
+                const scorerName = getScorerName(scorer);
+                failedScores[scorerName] = {
+                  name: scorerName,
                   score: 0,
+                  trials: [],
                   metadata: {
                     duration: 0,
                     startedAt: start,

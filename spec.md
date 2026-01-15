@@ -57,23 +57,23 @@ Based on the design document and codebase analysis, here's the implementation ch
 ## Phase 4: Eval Execution Loop with Trials
 
 ### 4.1 Implement trial loop in `registerEval`
-- [ ] Extract `trials` count from `EvalParams` (default to `1`)
-- [ ] Refactor case execution in [eval.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.ts#L410-L660) to loop over trials
-- [ ] Create trial span wrapper with `gen_ai.operation.name: "eval.trial"` and `eval.trial.index`
-- [ ] Always emit trial spans, even when `trials: 1` (per design doc)
-- [ ] Move task execution inside trial loop
-- [ ] Move scorer execution inside trial loop
-- [ ] Pass `trialIndex` to scorer function
-- [ ] Collect per-trial scores for each scorer
-- [ ] Set `eval.case.trials` attribute on case span
+- [x] Extract `trials` count from `EvalParams` (default to `1`)
+- [x] Refactor case execution in [eval.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.ts#L410-L660) to loop over trials
+- [x] Create trial span wrapper with `gen_ai.operation.name: "eval.trial"` and `eval.trial.index`
+- [x] Always emit trial spans, even when `trials: 1` (per design doc)
+- [x] Move task execution inside trial loop
+- [x] Move scorer execution inside trial loop
+- [x] Pass `trialIndex` to scorer function
+- [x] Collect per-trial scores for each scorer
+- [x] Set `eval.case.trials` attribute on case span
 
 ### 4.2 Implement score aggregation
-- [ ] After all trials complete, aggregate scores per scorer using configured aggregation
-- [ ] Store raw trial scores in `eval.case.scores[name].trials` array
-- [ ] Store aggregated value in `eval.case.scores[name].value`
-- [ ] Store aggregation type in `eval.case.scores[name].aggregation`
-- [ ] Store threshold (if applicable) in `eval.case.scores[name].threshold`
-- [ ] Set `eval.score.aggregation` and `eval.score.threshold` on scorer spans
+- [x] After all trials complete, aggregate scores per scorer using configured aggregation
+- [x] Store raw trial scores in `eval.case.scores[name].trials` array
+- [x] Store aggregated value in `eval.case.scores[name].value`
+- [x] Store aggregation type in `eval.case.scores[name].aggregation`
+- [x] Store threshold (if applicable) in `eval.case.scores[name].threshold`
+- [x] Set `eval.score.aggregation` and `eval.score.threshold` on scorer spans
 
 ### 4.3 Update `runTask` helper
 - [ ] Add `trialIndex` parameter to `runTask` in [eval.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.ts#L710-L786)
