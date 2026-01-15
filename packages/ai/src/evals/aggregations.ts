@@ -62,11 +62,14 @@ export const Median = (): Aggregation<'median'> => ({
  * // scores [0.5, 0.6, 0.7] => 0 (none >= 0.8)
  * ```
  */
-export const PassAtK = (opts: { threshold: number }): Aggregation<'pass@k'> => ({
-  type: 'pass@k' as const,
-  threshold: opts.threshold,
-  aggregate: (scores: number[]) => (scores.some((s) => s >= opts.threshold) ? 1 : 0),
-});
+export const PassAtK = (opts: { threshold?: number } = {}): Aggregation<'pass@k'> => {
+  const threshold = opts.threshold ?? 1;
+  return {
+    type: 'pass@k' as const,
+    threshold,
+    aggregate: (scores: number[]) => (scores.some((s) => s >= threshold) ? 1 : 0),
+  };
+};
 
 /**
  * Returns 1 if all trial scores meet or exceed the threshold, 0 otherwise.
@@ -81,11 +84,14 @@ export const PassAtK = (opts: { threshold: number }): Aggregation<'pass@k'> => (
  * // scores [0.95, 0.85, 0.91] => 0 (0.85 < 0.9)
  * ```
  */
-export const PassHatK = (opts: { threshold: number }): Aggregation<'pass^k'> => ({
-  type: 'pass^k' as const,
-  threshold: opts.threshold,
-  aggregate: (scores: number[]) => (scores.every((s) => s >= opts.threshold) ? 1 : 0),
-});
+export const PassHatK = (opts: { threshold?: number } = {}): Aggregation<'pass^k'> => {
+  const threshold = opts.threshold ?? 1;
+  return {
+    type: 'pass^k' as const,
+    threshold,
+    aggregate: (scores: number[]) => (scores.every((s) => s >= threshold) ? 1 : 0),
+  };
+};
 
 /**
  * User-friendly alias for PassAtK.
