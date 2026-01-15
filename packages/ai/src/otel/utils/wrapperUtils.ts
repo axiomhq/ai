@@ -16,9 +16,10 @@ import { getGlobalTracer } from '../initAxiomAI';
 import packageJson from '../../../package.json';
 import type { OpenAIMessage } from '../vercelTypes';
 import type { LanguageModelV2Prompt } from '@ai-sdk/providerv2';
+import type { LanguageModelV3Prompt } from '@ai-sdk/providerv3';
 
 /**
- * Common span context discriminated union for V1 and V2
+ * Common span context discriminated union for V1, V2 and V3
  */
 type GenAiSpanContext =
   | {
@@ -33,10 +34,16 @@ type GenAiSpanContext =
       version: 'v2';
       originalPrompt: OpenAIMessage[];
       originalV2Prompt?: LanguageModelV2Prompt;
+    }
+  | {
+      version: 'v3';
+      originalPrompt: OpenAIMessage[];
+      originalV3Prompt?: LanguageModelV3Prompt;
     };
 
 export type GenAiSpanContextV1 = Extract<GenAiSpanContext, { version: 'v1' }>;
 export type GenAiSpanContextV2 = Extract<GenAiSpanContext, { version: 'v2' }>;
+export type GenAiSpanContextV3 = Extract<GenAiSpanContext, { version: 'v3' }>;
 
 /**
  * SpanLease represents ownership of a span's lifecycle
@@ -388,21 +395,23 @@ function recordSpanError(span: Span, err: unknown): void {
 }
 
 /**
- * Common span handling logic for both V1 and V2
+ * Common span handling logic for V1, V2 and V3
  * Returns a SpanLease that indicates whether the middleware owns the span
  */
 export async function withSpanHandling<T>(
   modelId: string,
   operation: (span: Span, context: GenAiSpanContext, lease: SpanLease) => Promise<T>,
-  options?: { streaming?: boolean; version?: 'v1' | 'v2' },
+  options?: { streaming?: boolean; version?: 'v1' | 'v2' | 'v3' },
 ): Promise<T> {
   const bag = propagation.getActiveBaggage();
   const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
   const spanContext: GenAiSpanContext =
-    options?.version === 'v2'
-      ? { version: 'v2', originalPrompt: [], originalV2Prompt: undefined }
-      : { version: 'v1', originalPrompt: [], rawCall: undefined };
+    options?.version === 'v3'
+      ? { version: 'v3', originalPrompt: [], originalV3Prompt: undefined }
+      : options?.version === 'v2'
+        ? { version: 'v2', originalPrompt: [], originalV2Prompt: undefined }
+        : { version: 'v1', originalPrompt: [], rawCall: undefined };
 
   const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 
@@ -536,6 +545,25 @@ export function determineOutputTypeV1(options: {
  * Determines output type from response format - V2 version
  */
 export function determineOutputTypeV2(options: {
+  responseFormat?: { type?: string };
+}): string | undefined {
+  if (options.responseFormat?.type) {
+    switch (options.responseFormat.type) {
+      case 'json':
+        return Attr.GenAI.Output.Type_Values.Json;
+      case 'text':
+        return Attr.GenAI.Output.Type_Values.Text;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Determines output type from response format - V3 version
+ * V3 uses the same response format structure as V2
+ */
+export function determineOutputTypeV3(options: {
   responseFormat?: { type?: string };
 }): string | undefined {
   if (options.responseFormat?.type) {

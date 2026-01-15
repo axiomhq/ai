@@ -12,6 +12,14 @@ import {
   type LanguageModelV2ResponseMetadata,
 } from '@ai-sdk/providerv2';
 
+import {
+  type LanguageModelV3StreamPart,
+  type LanguageModelV3ToolCall,
+  type LanguageModelV3FinishReason,
+  type LanguageModelV3Usage,
+  type LanguageModelV3ResponseMetadata,
+} from '@ai-sdk/providerv3';
+
 import { currentUnixTime } from '../../util/currentUnixTime';
 
 // V1-specific aggregators (the original ones)
@@ -164,6 +172,101 @@ export class StreamStatsV2 {
   }
 
   feed(chunk: LanguageModelV2StreamPart): void {
+    // Track time to first token on any chunk
+    if (this.timeToFirstToken === undefined) {
+      this.timeToFirstToken = currentUnixTime() - this.startTime;
+    }
+
+    switch (chunk.type) {
+      case 'response-metadata':
+        this._responseMetadata = {
+          id: chunk.id,
+          modelId: chunk.modelId,
+          timestamp: chunk.timestamp,
+        };
+        break;
+      case 'finish':
+        this._usage = chunk.usage;
+        this._finishReason = chunk.finishReason;
+        break;
+    }
+  }
+
+  get result() {
+    return {
+      response: this._responseMetadata,
+      finishReason: this._finishReason,
+      usage: this._usage,
+    };
+  }
+
+  get firstTokenTime(): number | undefined {
+    return this.timeToFirstToken;
+  }
+}
+
+// V3-specific aggregators
+export class ToolCallAggregatorV3 {
+  private readonly calls: Record<string, LanguageModelV3ToolCall> = {};
+  private readonly pendingInputs: Record<string, { toolName: string; input: string }> = {};
+
+  handleChunk(chunk: LanguageModelV3StreamPart): void {
+    switch (chunk.type) {
+      case 'tool-call':
+        this.calls[chunk.toolCallId] = chunk;
+        break;
+      case 'tool-input-start':
+        this.pendingInputs[chunk.id] = { toolName: chunk.toolName, input: '' };
+        break;
+      case 'tool-input-delta':
+        if (this.pendingInputs[chunk.id]) {
+          this.pendingInputs[chunk.id].input += chunk.delta;
+        }
+        break;
+      case 'tool-input-end':
+        // Tool input streaming completed - the full tool-call chunk will follow
+        break;
+    }
+  }
+
+  get result(): LanguageModelV3ToolCall[] {
+    return Object.values(this.calls);
+  }
+}
+
+export class TextAggregatorV3 {
+  private content = '';
+
+  feed(chunk: LanguageModelV3StreamPart): void {
+    switch (chunk.type) {
+      case 'text-start':
+        this.content = '';
+        break;
+      case 'text-delta':
+        this.content += chunk.delta;
+        break;
+      case 'text-end':
+        break;
+    }
+  }
+
+  get text(): string | undefined {
+    return this.content || undefined;
+  }
+}
+
+export class StreamStatsV3 {
+  private startTime: number;
+  private timeToFirstToken?: number;
+  private _usage?: LanguageModelV3Usage;
+  private _finishReason?: LanguageModelV3FinishReason;
+  private _responseMetadata?: LanguageModelV3ResponseMetadata;
+
+  constructor() {
+    this.startTime = currentUnixTime();
+  }
+
+  feed(chunk: LanguageModelV3StreamPart): void {
     // Track time to first token on any chunk
     if (this.timeToFirstToken === undefined) {
       this.timeToFirstToken = currentUnixTime() - this.startTime;
