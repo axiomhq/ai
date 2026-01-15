@@ -17,6 +17,7 @@
 ### Phase 2: Scorer Factory Updates ✅
 - `createScorer` accepts optional `options?: ScorerOptions` parameter
 - Aggregation config attached to scorer function object
+- Default aggregation is `Mean()` when not specified (applied in eval loop)
 
 ### Phase 3: OTel Span Attributes ✅
 - Added ATTR_EVAL_TRIALS, ATTR_EVAL_TRIAL_INDEX, ATTR_EVAL_CASE_TRIALS
@@ -32,6 +33,11 @@
 
 ### Phase 5: Builder API ✅
 - Added `withTrials(count: number)` to EvalBuilder interface
+- Tests in `packages/ai/test/evals/builder.test.ts`
+
+### Phase 6: Case Report Types ✅
+- Updated `Case` type with trials info (trials, aggregation, threshold in scores)
+- `EvalCaseReport` scores field already uses `ScoreWithName` which has trial fields
 
 ### Phase 7: Exports ✅
 - All aggregation functions exported from `@axiomhq/ai/evals`
@@ -41,9 +47,6 @@
 
 ### Phase 4.3: runTask helper (optional)
 - Add trialIndex parameter to runTask (not critical since trial span is parent)
-
-### Phase 6: Case Report Types
-- Update EvalCaseReport scores field type (partially done through ScoreWithName)
 
 ### Phase 8.2: Integration Tests
 - Need real eval execution tests to verify span hierarchy

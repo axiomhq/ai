@@ -26,7 +26,6 @@ Based on the design document and codebase analysis, here's the implementation ch
 - [x] Add `trialIndex: number` to scorer function arguments type
 - [x] Update `ScoreWithName` to support trial scores array: `trials?: number[]`
 - [x] Add `aggregation?: string` and `threshold?: number` to score types
-- [ ] Add `TrialResult` type for per-trial execution results
 - [x] Write type tests in `packages/ai/test/evals/scorer.types.test.ts`
 
 ---
@@ -36,7 +35,7 @@ Based on the design document and codebase analysis, here's the implementation ch
 ### 2.1 Extend `createScorer` to accept options
 - [x] Update `createScorer` signature in [scorer.factory.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/scorer.factory.ts#L21-L73) to accept optional third parameter `options?: ScorerOptions`
 - [x] Attach `aggregation` config to scorer function object (similar to how `name` is attached)
-- [ ] Default aggregation to `Mean()` when not specified
+- [x] Default aggregation to `Mean()` when not specified
 - [x] Ensure backward compatibility: existing scorers without options still work
 - [x] Write tests for scorer with aggregation options in `packages/ai/test/evals/scorer.test.ts`
 
@@ -87,16 +86,16 @@ Based on the design document and codebase analysis, here's the implementation ch
 - [x] Add `withTrials(count: number)` method to `EvalBuilder` interface in [builder.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/builder.ts)
 - [x] Implement builder method in `EvalBuilderImpl`
 - [x] Pass trials to underlying `Eval()` call
-- [ ] Write tests for builder with trials
+- [x] Write tests for builder with trials
 
 ---
 
 ## Phase 6: Case Report Updates
 
 ### 6.1 Update `EvalCaseReport` type
-- [ ] Update `scores` field type in [eval.types.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.types.ts#L173-L200) to include `trials`, `aggregation`, `threshold`
-- [ ] Update `task.meta.case` assignment to include new score format
-- [ ] Update `Case` type to include trial information
+- [x] Update `scores` field type in [eval.types.ts](file:///Users/cje/dev/axiom/ai/packages/ai/src/evals/eval.types.ts#L173-L200) to include `trials`, `aggregation`, `threshold`
+- [x] Update `task.meta.case` assignment to include new score format
+- [x] Update `Case` type to include trial information
 
 ---
 
