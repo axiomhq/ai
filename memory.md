@@ -1,28 +1,29 @@
-# Trials Feature Implementation Status
+# Trials Feature Implementation
 
-## Completed
+## Status: Complete ✅
 
-All phases (1-9) are complete. See spec.md for full checklist.
+All phases (1-9) in spec.md are complete. All checks pass:
+- `pnpm build` ✅
+- `pnpm test` ✅  
+- `pnpm format:check` ✅
+- `pnpm lint` ✅
+- `pnpm typecheck` ✅
 
-Key completed items:
-- Aggregation functions: Mean, Median, PassAtK, PassHatK + aliases
-- Trials support in Eval() with configurable count
-- Scorer aggregation options with trialIndex passed to scorer function
-- Trial spans in OTel output with proper hierarchy (eval → case → trial → task + scorers)
-- Builder API `.withTrials()`
-- Exports from both `axiom/ai/evals` and `axiom/ai/evals/aggregations`
-- Example in evals-minimal with trials demo
-- Full test coverage for aggregations, scorer, and builder
+## Summary
 
-## Design Decisions
+The trials feature enables running evaluations multiple times with different aggregation strategies per scorer. See [trials-api-options.md](docs/design/trials-api-options.md) for the full design.
 
-- Phase 4.3 (runTask with trialIndex): Skipped as unnecessary - task already runs under trial span, so trial context is implicit via parent span hierarchy
-- Phase 8.2-8.3 (Integration tests): Implementation verified via code review and example in evals-minimal; deep OTel integration tests deferred as the core logic is covered by unit tests
+### Key Files
+- `packages/ai/src/evals/aggregations.ts` - Mean, Median, PassAtK, PassHatK + aliases
+- `packages/ai/src/evals/scorer.factory.ts` - Scorer with aggregation option
+- `packages/ai/src/evals/eval.ts` - Trial loop implementation
+- `packages/ai/src/evals/builder.ts` - `.withTrials()` method
+- `examples/evals-minimal/src/example.eval.ts` - Usage example
 
-## Usage Example
+### Usage
 
 ```typescript
-import { Eval, Scorer, Mean, PassAtK } from 'axiom/ai/evals';
+import { Eval, Scorer, Mean, PassAtK } from '@axiomhq/ai/evals';
 
 Eval('my-eval', {
   trials: 3,
