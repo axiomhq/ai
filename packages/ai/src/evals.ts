@@ -9,14 +9,3 @@ export { type Score, type ScorerOptions } from './evals/scorers';
 export { createScorer as Scorer } from './evals/scorer.factory';
 
 export type { Evaluation, Case, Chat, Task } from './evals/eval.types';
-
-// Aggregation functions for trials
-export {
-  Mean,
-  Median,
-  PassAtK,
-  PassHatK,
-  AtLeastOneTrialPasses,
-  AllTrialsPass,
-  type Aggregation,
-} from './evals/aggregations';
