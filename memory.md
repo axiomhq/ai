@@ -2,63 +2,25 @@
 
 ## Completed
 
-### Phase 1: Core Types & Aggregation Functions ✅
-- Created `packages/ai/src/evals/aggregations.ts` with Mean, Median, PassAtK, PassHatK
-- User-friendly aliases: AtLeastOneTrialPasses, AllTrialsPass
-- Tests in `packages/ai/test/evals/aggregations.test.ts`
+All core phases (1-9) are complete. See spec.md for full checklist.
 
-### Phase 1.2: Extended Type Definitions ✅  
-- Added `trials?: number` to EvalParams
-- Added `ScorerOptions` type with aggregation field
-- Updated `Scorer` type with aggregation property
-- Added `trialIndex` to scorer function arguments
-- Extended `ScoreWithName` with trials, aggregation, threshold
-
-### Phase 2: Scorer Factory Updates ✅
-- `createScorer` accepts optional `options?: ScorerOptions` parameter
-- Aggregation config attached to scorer function object
-- Default aggregation is `Mean()` when not specified (applied in eval loop)
-
-### Phase 3: OTel Span Attributes ✅
-- Added ATTR_EVAL_TRIALS, ATTR_EVAL_TRIAL_INDEX, ATTR_EVAL_CASE_TRIALS
-- Added ATTR_EVAL_SCORE_AGGREGATION, ATTR_EVAL_SCORE_TRIALS
-- Exported in Attr.Eval object
-
-### Phase 4: Eval Execution Loop ✅
-- Trial loop wraps task+scorer execution
-- Always emits trial spans (even when trials=1)
-- Collects per-trial scores and aggregates at case level
-- Passes trialIndex to scorer functions
-- Default aggregation is Mean()
-
-### Phase 5: Builder API ✅
-- Added `withTrials(count: number)` to EvalBuilder interface
-- Tests in `packages/ai/test/evals/builder.test.ts`
-
-### Phase 6: Case Report Types ✅
-- Updated `Case` type with trials info (trials, aggregation, threshold in scores)
-- `EvalCaseReport` scores field already uses `ScoreWithName` which has trial fields
-
-### Phase 7: Exports ✅
-- All aggregation functions exported from `@axiomhq/ai/evals`
-- ScorerOptions type exported
-
-### Phase 9: Documentation & Examples ✅
-- Updated example.eval.ts with trials demo (Minimal-Demo-Trials)
-- JSDoc examples added for all aggregation functions
+Key completed items:
+- Aggregation functions: Mean, Median, PassAtK, PassHatK + aliases
+- Trials support in Eval() with configurable count
+- Scorer aggregation options
+- Trial spans in OTel output
+- Builder API `.withTrials()`
+- Exports from both `axiom/ai/evals` and `axiom/ai/evals/aggregations`
+- Example in evals-minimal with trials demo
 
 ## Remaining Tasks
 
 ### Phase 4.3: runTask helper (optional)
 - Add trialIndex parameter to runTask (not critical since trial span is parent)
 
-### Phase 7.1: Aggregations subpath export ✅
-- Added `axiom/ai/evals/aggregations` entry point
-- Created `aggregations.entry.ts` for re-exports
-- Updated `package.json` exports map and `tsup.config.ts`
-
-### Phase 8.2: Integration Tests
+### Phase 8.2-8.3: Integration Tests
 - Need real eval execution tests to verify span hierarchy
+- Requires mocking OTel exporter and running actual evals
 
 ## Usage Example
 
