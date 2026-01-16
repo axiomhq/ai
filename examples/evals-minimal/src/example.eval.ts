@@ -51,7 +51,7 @@ const ExactMatchPassAtK = Scorer(
 );
 
 Eval('Minimal-Demo-Trials', {
-  capability: 'minimal-demo-trials',
+  capability: 'minimal-demo',
   configFlags: pickFlags('minimalDemo'),
   trials: 3,
   data: () => [
