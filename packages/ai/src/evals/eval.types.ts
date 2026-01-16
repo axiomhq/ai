@@ -75,6 +75,11 @@ export type EvalParams<TInput, TExpected, TOutput> = {
   timeout?: number;
   /** Optional reduction of flag namespace */
   configFlags?: string[];
+  /**
+   * Number of times to run each case. Defaults to 1.
+   * Each trial runs the task independently, and scores are aggregated per scorer.
+   */
+  trials?: number;
 };
 
 // Discriminated-union type for per-case runtime flags (console/meta only)
@@ -127,8 +132,16 @@ export type Case = {
       name: string;
       value: number;
       metadata: Record<string, any>;
+      /** Per-trial scores when running multiple trials */
+      trials?: number[];
+      /** Aggregation type used (e.g., 'mean', 'pass@k') */
+      aggregation?: string;
+      /** Threshold for pass-based aggregations */
+      threshold?: number;
     }
   >;
+  /** Number of trials run for this case */
+  trials?: number;
   runAt: string;
   spanId: string;
   traceId: string;

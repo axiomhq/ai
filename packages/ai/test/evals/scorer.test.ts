@@ -1,11 +1,33 @@
 import { describe, it, expect } from 'vitest';
 import { Attr } from '../../src/otel/semconv/attributes';
 import { Scorer } from '../../src/evals';
+import { Mean, PassAtK } from '../../src/evals/aggregations';
 
 describe('Scorer runtime behavior', () => {
   it('scorer has name property', () => {
     const scorerWithName = Scorer('Test', () => 1);
     expect((scorerWithName as any).name).toBe('Test');
+  });
+
+  it('scorer accepts aggregation option', () => {
+    const scorer = Scorer('with-agg', () => 1, { aggregation: Mean() });
+    expect((scorer as any).name).toBe('with-agg');
+    expect((scorer as any).aggregation).toBeDefined();
+    expect((scorer as any).aggregation.type).toBe('mean');
+  });
+
+  it('scorer aggregation has working aggregate function', () => {
+    const scorer = Scorer('pass-at-k', () => 1, { aggregation: PassAtK({ threshold: 0.8 }) });
+    const agg = (scorer as any).aggregation;
+    expect(agg.type).toBe('pass@k');
+    expect(agg.threshold).toBe(0.8);
+    expect(agg.aggregate([0.5, 0.9, 0.7])).toBe(1);
+    expect(agg.aggregate([0.5, 0.6, 0.7])).toBe(0);
+  });
+
+  it('scorer without aggregation option has no aggregation property', () => {
+    const scorer = Scorer('no-agg', () => 1);
+    expect((scorer as any).aggregation).toBeUndefined();
   });
 
   it('boolean return value is normalized to 1/0 with metadata', async () => {
