@@ -6,7 +6,7 @@ on:
 
 env:
   PNPM_VERSION: 10.16.1
-  NODE_VERSION: 22
+  NODE_VERSION: 24
 
 
 name: release-ai-sdk-on-tag
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -43,6 +43,4 @@ jobs:
         run: pnpm pack
       - name: Publish to Package Registry
         working-directory: packages/ai
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AXIOM_TOKEN }}
-        run: pnpm publish --access public --no-git-checks
+        run: pnpm publish --access public --no-git-checks --provenance
