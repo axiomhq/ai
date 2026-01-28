@@ -3,6 +3,7 @@ import { openai } from '@/lib/openai';
 import { generateText, ModelMessage } from 'ai';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import z from 'zod';
+import { CAPABILITY_NAME } from './support-agent';
 
 export const messageCategories = [
   'support',
@@ -18,7 +19,9 @@ export const categorizeMessage = async (messages: ModelMessage[]): Promise<Messa
   const modelName = flag('supportAgent.categorizeMessage.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: 'support-agent', step: 'categorize-message' }, async () => {
+  return await withSpan(
+    { capability: CAPABILITY_NAME, step: 'categorize-message' },
+    async () => {
     const text = `<instructions>
 Please analyze the following series of messages. For the final user message, classify it as one of the following categories: ${messageCategories.join(', ')}.
     
@@ -42,5 +45,6 @@ ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
     }
 
     return parsed.data;
-  });
+    },
+  );
 };
