@@ -45,7 +45,7 @@ export const runSupportAgent = async (
 ): Promise<SupportAgentResult> => {
   return startActiveSpan(CAPABILITY_NAME, null, async (span) => {
     if (conversationId) {
-      span.setAttribute('conversation.id', conversationId);
+      span.setAttribute('gen_ai.conversation.id', conversationId);
     }
 
     const links: FeedbackLinks = {
