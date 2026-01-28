@@ -93,17 +93,25 @@ type WithSpanMeta = {
  * res.end();
  * ```
  */
+/**
+ * Options for withSpan configuration.
+ */
+export type WithSpanOptions = {
+  /** Custom OpenTelemetry tracer instance */
+  tracer?: Tracer;
+  /** Timeout for abandoned streams (default: 600,000ms / 10 minutes) */
+  timeoutMs?: number;
+  /** Redaction policy to override global policy for this span */
+  redactionPolicy?: AxiomAIRedactionPolicy;
+};
+
 export function withSpan<Return, Capability extends string = string, Step extends string = string>(
   meta: WithSpanMeta & {
     capability: ValidateName<Capability>;
     step: ValidateName<Step>;
   },
   fn: (span: Span) => Promise<Return>,
-  opts?: {
-    tracer?: Tracer;
-    timeoutMs?: number;
-    redactionPolicy?: AxiomAIRedactionPolicy;
-  },
+  opts?: WithSpanOptions,
 ): Promise<Return> {
   const tracer = opts?.tracer ?? getTracer();
 

@@ -3,6 +3,7 @@
 Axiom AI SDK provides
 - an API to wrap your AI calls with observability instrumentation.
 - offline evals
+- online evals
 
 ## Install
 
