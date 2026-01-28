@@ -9,6 +9,8 @@ import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
 import { veryBadRAG } from './retrieve-from-knowledge-base';
 
+export const CAPABILITY_NAME = 'gabriel-support-agent';
+
 type ToolCalls = Awaited<ReturnType<typeof generateText>>['toolCalls'];
 
 export type SupportAgentResult = {
@@ -37,12 +39,19 @@ const supportAgentTools = wrapTools({
   }),
 });
 
-export const runSupportAgent = async (messages: ModelMessage[]): Promise<SupportAgentResult> => {
-  return startActiveSpan('support-agent', null, async (span) => {
+export const runSupportAgent = async (
+  messages: ModelMessage[],
+  conversationId?: string
+): Promise<SupportAgentResult> => {
+  return startActiveSpan(CAPABILITY_NAME, null, async (span) => {
+    if (conversationId) {
+      span.setAttribute('conversation.id', conversationId);
+    }
+
     const links: FeedbackLinks = {
       traceId: span.spanContext().traceId,
       spanId: span.spanContext().spanId,
-      capability: 'support-agent',
+      capability: CAPABILITY_NAME,
     };
 
     // 1. Categorize
@@ -110,7 +119,7 @@ async function generateSupportAnswer(
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: 'support-agent', step: 'generate-answer' }, async (span) => {
+  return await withSpan({ capability: CAPABILITY_NAME, step: 'generate-answer' }, async (span) => {
     const { text, toolCalls } = await generateText({
       model,
       tools: supportAgentTools,
@@ -141,7 +150,7 @@ async function generateSupportAnswer(
     return {
       message: { role: 'assistant', content: text },
       toolCalls,
-      links: { traceId, spanId, capability: 'support-agent' },
+      links: { traceId, spanId, capability: CAPABILITY_NAME },
     };
   });
 }

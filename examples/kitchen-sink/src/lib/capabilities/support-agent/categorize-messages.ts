@@ -4,6 +4,7 @@ import { generateText, ModelMessage } from 'ai';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import { onlineEval } from 'axiom/ai/evals/online';
 import z from 'zod';
+import { CAPABILITY_NAME } from './support-agent';
 import { validCategoryScorer, formatConfidenceScorer } from './online-scorers';
 
 export const messageCategories = [
@@ -25,7 +26,7 @@ export const categorizeMessage = async (messages: ModelMessage[]): Promise<Messa
   const evalInput = lastUserMessage?.content ?? '';
 
   return await withSpan(
-    { capability: 'support-agent', step: 'categorize-message' },
+    { capability: CAPABILITY_NAME, step: 'categorize-message' },
     async () => {
       const text = `<instructions>
 Please analyze the following series of messages. For the final user message, classify it as one of the following categories: ${messageCategories.join(', ')}.
@@ -50,7 +51,7 @@ ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
       // Online evaluation: monitor classification quality in production
       // Active span is auto-linked. Fire-and-forget — doesn't block response.
       void onlineEval(
-        { capability: 'support-agent', step: 'categorize-message' },
+        { capability: CAPABILITY_NAME, step: 'categorize-message' },
         {
           input: evalInput,
           output: result,

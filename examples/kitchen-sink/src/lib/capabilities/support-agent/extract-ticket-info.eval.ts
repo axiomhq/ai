@@ -2,6 +2,7 @@ import { Eval } from 'axiom/ai/evals';
 import { Scorer } from 'axiom/ai/evals/scorers';
 import { pickFlags } from '@/lib/app-scope';
 import { extractTicketInfo } from '@/lib/capabilities/support-agent/extract-ticket-info';
+import { CAPABILITY_NAME } from '@/lib/capabilities/support-agent/support-agent';
 
 type ExtractTicketInfoResult = Awaited<ReturnType<typeof extractTicketInfo>>;
 
@@ -52,7 +53,7 @@ type TestCase = {
 };
 
 Eval('support-agent-extract-ticket-info-trials', {
-  capability: 'support-agent',
+  capability: CAPABILITY_NAME,
   configFlags: pickFlags('supportAgent.extractTicketInfo'),
   data: [
     // 1. Complete Information (Happy Path)

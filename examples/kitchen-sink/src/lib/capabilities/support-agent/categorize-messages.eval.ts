@@ -1,5 +1,6 @@
 import { pickFlags } from '@/lib/app-scope';
 import { categorizeMessage } from '@/lib/capabilities/support-agent/categorize-messages';
+import { CAPABILITY_NAME } from '@/lib/capabilities/support-agent/support-agent';
 import { Eval } from 'axiom/ai/evals';
 import { Scorer } from 'axiom/ai/evals/scorers';
 
@@ -7,8 +8,8 @@ const exactMatch = Scorer('exact-match', (args: { expected: string; output: stri
   return args.expected === args.output ? true : false;
 });
 
-Eval('support-agent-categorize-messages', {
-  capability: 'support-agent',
+Eval('categorize-messages', {
+  capability: CAPABILITY_NAME,
   configFlags: pickFlags('supportAgent.categorizeMessage'),
   data: [
     // Basic Happy Path
