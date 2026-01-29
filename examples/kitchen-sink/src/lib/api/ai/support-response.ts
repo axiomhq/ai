@@ -4,6 +4,7 @@ import { ModelMessage } from 'ai';
 
 interface SupportResponseBody {
   messages: ModelMessage[];
+  conversationId?: string;
   context?: Record<string, string | number | boolean>;
 }
 
@@ -29,7 +30,7 @@ const createSupportResponseHandler = () => async (c: Context) => {
       );
     }
 
-    const result = await runSupportAgent(body.messages);
+    const result = await runSupportAgent(body.messages, body.conversationId);
 
     return c.json({
       success: true,

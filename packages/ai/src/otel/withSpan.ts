@@ -22,6 +22,8 @@ type WithSpanMeta = {
   capability: string;
   /** Specific step within the capability (e.g., 'generate_response', 'summarize', 'extract') */
   step: string;
+  /** Optional conversation ID to correlate spans across a multi-turn conversation */
+  conversationId?: string;
 };
 
 /**
@@ -143,6 +145,10 @@ export function withSpan<Return, Capability extends string = string, Step extend
       // Store serialized redaction policy if provided
       ...(opts?.redactionPolicy && {
         [WITHSPAN_REDACTION_POLICY_KEY]: { value: JSON.stringify(opts.redactionPolicy) },
+      }),
+      // Store conversation ID if provided
+      ...(meta.conversationId && {
+        conversationId: { value: meta.conversationId },
       }),
     });
 
