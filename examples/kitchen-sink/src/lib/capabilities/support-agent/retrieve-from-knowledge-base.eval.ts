@@ -2,7 +2,7 @@ import { Eval } from 'axiom/ai/evals';
 import { Scorer } from 'axiom/ai/evals/scorers';
 import { pickFlags } from '@/lib/app-scope';
 import { veryBadRAG } from '@/lib/capabilities/support-agent/retrieve-from-knowledge-base';
-import { CAPABILITY_NAME } from '@/lib/capabilities/support-agent/support-agent';
+import { SUPPORT_AGENT_CAPABILITY_NAME } from '@/lib/capabilities/support-agent/support-agent';
 
 const strictRetrievalMatch = Scorer(
   'strict-retrieval-match',
@@ -26,7 +26,7 @@ const strictRetrievalMatch = Scorer(
 );
 
 Eval('retrieve-from-knowledge-base', {
-  capability: CAPABILITY_NAME,
+  capability: SUPPORT_AGENT_CAPABILITY_NAME,
   configFlags: pickFlags('supportAgent.retrieveFromKnowledgeBase'),
   data: [
     // Happy Path

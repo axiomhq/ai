@@ -4,7 +4,7 @@ import { generateText, ModelMessage } from 'ai';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import { onlineEval } from 'axiom/ai/evals/online';
 import z from 'zod';
-import { CAPABILITY_NAME } from './support-agent';
+import { SUPPORT_AGENT_CAPABILITY_NAME } from './support-agent';
 import { validCategoryScorer, formatConfidenceScorer } from './online-scorers';
 
 export const messageCategories = [
@@ -17,7 +17,10 @@ export const messageCategories = [
 const messageCategoriesSchema = z.union(messageCategories.map((type) => z.literal(type)));
 export type MessageCategory = z.infer<typeof messageCategoriesSchema>;
 
-export const categorizeMessage = async (messages: ModelMessage[]): Promise<MessageCategory> => {
+export const categorizeMessage = async (
+  messages: ModelMessage[],
+  conversationId?: string,
+): Promise<MessageCategory> => {
   const modelName = flag('supportAgent.categorizeMessage.model');
   const model = wrapAISDKModel(openai(modelName));
 
@@ -26,7 +29,7 @@ export const categorizeMessage = async (messages: ModelMessage[]): Promise<Messa
   const evalInput = lastUserMessage?.content ?? '';
 
   return await withSpan(
-    { capability: CAPABILITY_NAME, step: 'categorize-message' },
+    { capability: SUPPORT_AGENT_CAPABILITY_NAME, step: 'categorize-message', conversationId },
     async () => {
       const text = `<instructions>
 Please analyze the following series of messages. For the final user message, classify it as one of the following categories: ${messageCategories.join(', ')}.
@@ -51,7 +54,7 @@ ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
       // Online evaluation: monitor classification quality in production
       // Active span is auto-linked. Fire-and-forget — doesn't block response.
       void onlineEval(
-        { capability: CAPABILITY_NAME, step: 'categorize-message' },
+        { capability: SUPPORT_AGENT_CAPABILITY_NAME, step: 'categorize-message' },
         {
           input: evalInput,
           output: result,
