@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api/api-client';
 import type { SupportAgentResult } from '@/lib/capabilities/support-agent/support-agent';
+import type { StoredMessage } from '@/lib/conversations';
 
-export type ModelMessage = { role: 'user' | 'assistant' | 'system'; content: string };
+export type ModelMessage = StoredMessage;
 
 type UseSupportChatOptions = {
   conversationId: string | null;
@@ -73,7 +74,12 @@ export function useSupportChat({
         setResult(agentResult);
 
         if (agentResult.answer) {
-          const updatedMessages = [...newMessages, agentResult.answer as ModelMessage];
+          const assistantMessage: ModelMessage = {
+            role: 'assistant',
+            content: agentResult.answer.content as string,
+            links: agentResult.links,
+          };
+          const updatedMessages = [...newMessages, assistantMessage];
           setLocalMessages(updatedMessages);
           setMessages(conversationId, updatedMessages);
         }

@@ -9,10 +9,20 @@ export type Conversation = {
   updatedAt: number;
 };
 
-type ConversationMessages = {
+export type FeedbackLinksData = {
+  traceId: string;
+  spanId?: string;
+  capability: string;
+  conversationId?: string;
+};
+
+export type StoredMessage = {
   role: 'user' | 'assistant' | 'system';
   content: string;
-}[];
+  links?: FeedbackLinksData;
+};
+
+type ConversationMessages = StoredMessage[];
 
 const CONVERSATIONS_KEY = 'kitchen-sink:conversations';
 const MESSAGES_KEY_PREFIX = 'kitchen-sink:messages:';
