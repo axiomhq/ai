@@ -3,7 +3,7 @@ import { openai } from '@/lib/openai';
 import { generateObject, ModelMessage } from 'ai';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import z from 'zod';
-import { CAPABILITY_NAME } from './support-agent';
+import { SUPPORT_AGENT_CAPABILITY_NAME } from './support-agent';
 
 const intents = [
   'billing_dispute',
@@ -35,12 +35,13 @@ export type ExtractTicketInfoResult = {
 
 export const extractTicketInfo = async (
   messages: ModelMessage[],
+  conversationId?: string,
 ): Promise<ExtractTicketInfoResult> => {
   const modelName = flag('supportAgent.extractTicketInfo.model');
   const model = wrapAISDKModel(openai(modelName));
 
   const llmRes = await withSpan(
-    { capability: CAPABILITY_NAME, step: 'extract-ticket-info' },
+    { capability: SUPPORT_AGENT_CAPABILITY_NAME, step: 'extract-ticket-info', conversationId },
     async () => {
       return await generateObject({
         model,
