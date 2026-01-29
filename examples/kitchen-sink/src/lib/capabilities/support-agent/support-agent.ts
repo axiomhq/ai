@@ -9,7 +9,7 @@ import { categorizeMessage, MessageCategory } from './categorize-messages';
 import { extractTicketInfo, ExtractTicketInfoResult } from './extract-ticket-info';
 import { veryBadRAG } from './retrieve-from-knowledge-base';
 
-export const CAPABILITY_NAME = 'gabriel-support-agent';
+export const SUPPORT_AGENT_CAPABILITY_NAME = 'support-agent';
 
 type ToolCalls = Awaited<ReturnType<typeof generateText>>['toolCalls'];
 
@@ -41,21 +41,18 @@ const supportAgentTools = wrapTools({
 
 export const runSupportAgent = async (
   messages: ModelMessage[],
-  conversationId?: string
+  conversationId?: string,
 ): Promise<SupportAgentResult> => {
-  return startActiveSpan(CAPABILITY_NAME, null, async (span) => {
-    if (conversationId) {
-      span.setAttribute('gen_ai.conversation.id', conversationId);
-    }
-
+  return startActiveSpan(SUPPORT_AGENT_CAPABILITY_NAME, null, async (span) => {
     const links: FeedbackLinks = {
       traceId: span.spanContext().traceId,
       spanId: span.spanContext().spanId,
-      capability: CAPABILITY_NAME,
+      capability: SUPPORT_AGENT_CAPABILITY_NAME,
+      conversationId,
     };
 
     // 1. Categorize
-    const category = await categorizeMessage(messages);
+    const category = await categorizeMessage(messages, conversationId);
 
     // 2. Hard routing / early exits
     if (category === 'spam') {
@@ -85,13 +82,13 @@ export const runSupportAgent = async (
 
     // 3. Always extract ticket info
     // We do this in parallel with generating the answer so the UI updates
-    const ticketPromise = extractTicketInfo(messages);
+    const ticketPromise = extractTicketInfo(messages, conversationId);
 
     // 4. Generate answer using tools (RAG)
     // We pass the result of the ticket extraction to the prompt if it's ready,
     // but since we want to run them in parallel, we'll just let the model figure out what's missing
     // based on the conversation history.
-    const answerPromise = generateSupportAnswer(messages);
+    const answerPromise = generateSupportAnswer(messages, conversationId);
 
     const [ticket, answerResult] = await Promise.all([ticketPromise, answerPromise]);
 
@@ -115,19 +112,22 @@ export const runSupportAgent = async (
 
 async function generateSupportAnswer(
   messages: ModelMessage[],
+  conversationId?: string,
 ): Promise<{ message: ModelMessage; toolCalls: ToolCalls; links: FeedbackLinks }> {
   const modelName = flag('supportAgent.main.model');
   const model = wrapAISDKModel(openai(modelName));
 
-  return await withSpan({ capability: CAPABILITY_NAME, step: 'generate-answer' }, async (span) => {
-    const { text, toolCalls } = await generateText({
-      model,
-      tools: supportAgentTools,
-      stopWhen: stepCountIs(10),
-      messages: [
-        {
-          role: 'system',
-          content: `
+  return await withSpan(
+    { capability: SUPPORT_AGENT_CAPABILITY_NAME, step: 'generate-answer', conversationId },
+    async (span) => {
+      const { text, toolCalls } = await generateText({
+        model,
+        tools: supportAgentTools,
+        stopWhen: stepCountIs(10),
+        messages: [
+          {
+            role: 'system',
+            content: `
   You are a support assistant for Pets.ai.
   
   Your goal is to help the user resolve their issue.
@@ -139,18 +139,19 @@ async function generateSupportAnswer(
   
   Do not make up information. If the knowledge base doesn't have the answer, say so.
         `.trim(),
-        },
-        ...messages,
-      ],
-    });
+          },
+          ...messages,
+        ],
+      });
 
-    const traceId = span.spanContext().traceId;
-    const spanId = span.spanContext().spanId;
+      const traceId = span.spanContext().traceId;
+      const spanId = span.spanContext().spanId;
 
-    return {
-      message: { role: 'assistant', content: text },
-      toolCalls,
-      links: { traceId, spanId, capability: CAPABILITY_NAME },
-    };
-  });
+      return {
+        message: { role: 'assistant', content: text },
+        toolCalls,
+        links: { traceId, spanId, capability: SUPPORT_AGENT_CAPABILITY_NAME, conversationId },
+      };
+    },
+  );
 }

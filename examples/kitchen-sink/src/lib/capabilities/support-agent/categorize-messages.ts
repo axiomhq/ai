@@ -3,7 +3,7 @@ import { openai } from '@/lib/openai';
 import { generateText, ModelMessage } from 'ai';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import z from 'zod';
-import { CAPABILITY_NAME } from './support-agent';
+import { SUPPORT_AGENT_CAPABILITY_NAME } from './support-agent';
 
 export const messageCategories = [
   'support',
@@ -15,14 +15,17 @@ export const messageCategories = [
 const messageCategoriesSchema = z.union(messageCategories.map((type) => z.literal(type)));
 export type MessageCategory = z.infer<typeof messageCategoriesSchema>;
 
-export const categorizeMessage = async (messages: ModelMessage[]): Promise<MessageCategory> => {
+export const categorizeMessage = async (
+  messages: ModelMessage[],
+  conversationId?: string,
+): Promise<MessageCategory> => {
   const modelName = flag('supportAgent.categorizeMessage.model');
   const model = wrapAISDKModel(openai(modelName));
 
   return await withSpan(
-    { capability: CAPABILITY_NAME, step: 'categorize-message' },
+    { capability: SUPPORT_AGENT_CAPABILITY_NAME, step: 'categorize-message', conversationId },
     async () => {
-    const text = `<instructions>
+      const text = `<instructions>
 Please analyze the following series of messages. For the final user message, classify it as one of the following categories: ${messageCategories.join(', ')}.
     
 Reply only with the category name.
@@ -31,20 +34,20 @@ Reply only with the category name.
 ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
 </messages>    
     `;
-    const response = await generateText({
-      model: model,
-      messages: [{ role: 'system', content: text }],
-    });
+      const response = await generateText({
+        model: model,
+        messages: [{ role: 'system', content: text }],
+      });
 
-    const trimmed = response.text.trim().toLowerCase();
+      const trimmed = response.text.trim().toLowerCase();
 
-    const parsed = messageCategoriesSchema.safeParse(trimmed);
+      const parsed = messageCategoriesSchema.safeParse(trimmed);
 
-    if (parsed.error) {
-      return 'unknown';
-    }
+      if (parsed.error) {
+        return 'unknown';
+      }
 
-    return parsed.data;
+      return parsed.data;
     },
   );
 };

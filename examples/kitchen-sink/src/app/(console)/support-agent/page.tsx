@@ -80,9 +80,7 @@ export default function SupportAgent() {
         <Text variant="subtitle">Respond to Pets.ai customer support requests.</Text>
 
         {currentId && (
-          <div className="text-xs text-gray-400 mb-4 font-mono">
-            Conversation: {currentId}
-          </div>
+          <div className="text-xs text-gray-400 mb-4 font-mono">Conversation: {currentId}</div>
         )}
 
         {!currentId ? (
