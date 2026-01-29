@@ -40,15 +40,16 @@ export default function SupportAgent() {
 
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up' | 'down'>>({});
 
-  const handleFeedback = async (messageIndex: number, value: 'up' | 'down', message: string) => {
-    if (!result?.links) {
-      console.warn('Cannot send feedback: no links available', { result });
+  const handleFeedback = async (messageIndex: number, value: 'up' | 'down', feedbackMessage: string) => {
+    const msg = messages[messageIndex];
+    if (!msg?.links) {
+      console.warn('Cannot send feedback: no links available for message', { messageIndex, msg });
       return;
     }
     setFeedbackGiven((prev) => ({ ...prev, [messageIndex]: value }));
     await sendFeedback(
-      result.links,
-      Feedback.thumb({ name: 'response-quality', value, message: message || undefined }),
+      msg.links,
+      Feedback.thumb({ name: 'response-quality', value, message: feedbackMessage || undefined }),
     );
   };
 
