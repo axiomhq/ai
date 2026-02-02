@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.1](https://github.com/axiomhq/ai/compare/axiom-v0.38.0...axiom-v0.38.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* eval output gets json.stringified even if it's a string already ([#221](https://github.com/axiomhq/ai/issues/221)) ([107e1ad](https://github.com/axiomhq/ai/commit/107e1ad02c4e3f4003c5224abaf570ef16dd0a18))
+
 ## [0.38.0](https://github.com/axiomhq/ai/compare/axiom-v0.37.0...axiom-v0.38.0) (2026-01-15)
 
 
