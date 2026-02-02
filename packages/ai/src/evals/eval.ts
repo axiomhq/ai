@@ -809,7 +809,7 @@ const runTask = async <
           const duration = Math.round(performance.now() - start);
           // set task output
           taskSpan.setAttributes({
-            [Attr.Eval.Task.Output]: JSON.stringify(output),
+            [Attr.Eval.Task.Output]: typeof output === 'string' ? output : JSON.stringify(output),
           });
 
           // Get out-of-scope flags from the evaluation context
