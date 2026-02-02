@@ -316,6 +316,7 @@ async function registerEval<
                 error: errorToString(instrumentationError),
               }
             : { status: 'success' },
+          trials: opts.trials,
         };
 
         suiteStart = performance.now();

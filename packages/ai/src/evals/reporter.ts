@@ -142,7 +142,7 @@ export class AxiomReporter implements Reporter {
     printEvalNameAndFileName(testSuite, meta);
     printBaselineNameAndVersion(meta);
 
-    printTestCaseCountStartDuration(testSuite, this.startTime, durationSeconds);
+    printTestCaseCountStartDuration(testSuite, this.startTime, durationSeconds, meta.evaluation.trials);
 
     const matchedBaselineIndices = new Set<number>();
     const baselineCasesByFingerprint = new Map<string, Case[]>();

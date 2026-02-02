@@ -257,6 +257,8 @@ export type EvaluationReport = {
     overrides?: Record<string, any>;
   };
   registrationStatus?: RegistrationStatus;
+  /** Number of trials per case (only shown if > 1) */
+  trials?: number;
 };
 
 export type MetaWithEval = TaskMeta & { evaluation: EvaluationReport };

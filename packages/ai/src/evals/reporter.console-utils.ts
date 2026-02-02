@@ -137,10 +137,12 @@ export function printTestCaseCountStartDuration(
   testSuite: TestSuite,
   startTime: number,
   duration: string,
+  trials?: number,
   logger: Logger = console.log,
 ) {
   logger(' ');
-  logger(' ', c.dim('Cases'), testSuite.children.size);
+  const trialsLabel = trials && trials > 1 ? ` (${trials} trials each)` : '';
+  logger(' ', c.dim('Cases'), `${testSuite.children.size}${trialsLabel}`);
   logger(' ', c.dim('Start at'), new Date(startTime).toTimeString());
   logger(' ', c.dim('Duration'), `${duration}s`);
 }
