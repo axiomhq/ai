@@ -110,7 +110,7 @@ describe('PassHatK aggregation', () => {
   });
 
   it('handles empty array', () => {
-    expect(PassHatK({ threshold: 0.5 }).aggregate([])).toBe(1);
+    expect(PassHatK({ threshold: 0.5 }).aggregate([])).toBe(0);
   });
 });
 
