@@ -89,7 +89,8 @@ export const PassHatK = (opts: { threshold?: number } = {}): Aggregation<'pass^k
   return {
     type: 'pass^k' as const,
     threshold,
-    aggregate: (scores: number[]) => (scores.every((s) => s >= threshold) ? 1 : 0),
+    aggregate: (scores: number[]) =>
+      scores.length === 0 ? 0 : scores.every((s) => s >= threshold) ? 1 : 0,
   };
 };
 

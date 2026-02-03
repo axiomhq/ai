@@ -192,8 +192,8 @@ export function printTestCaseScores(
     if (baselineCase?.scores[k]) {
       const baselineScoreValue = baselineCase.scores[k].value;
       const rawBaseline = formatPercentage(baselineScoreValue);
-      const paddedBaseline = rawBaseline.padStart(7);
-      const coloredBaseline = c.blueBright(paddedBaseline);
+      const paddedBaseline = rawBaseline === 'N/A' ? rawBaseline : rawBaseline.padStart(7);
+      const coloredBaseline = rawBaseline === 'N/A' ? c.dim(paddedBaseline) : c.blueBright(paddedBaseline);
 
       const { text: diffText, color: diffColor } = formatDiff(v, baselineScoreValue);
       const paddedDiff = diffText.padStart(8);
