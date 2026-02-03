@@ -42,8 +42,8 @@ const ExactMatchMean = Scorer(
   { aggregation: Mean() },
 );
 
-const ExactMatchPassAtK = Scorer(
-  'ExactMatch-PassAtK',
+const ExactMatchPassHatK = Scorer(
+  'ExactMatch-PassHatK',
   ({ output, expected }: { output: string; expected: string }) => {
     return output === expected ? 1 : 0;
   },
@@ -62,5 +62,5 @@ Eval('Minimal-Demo-Trials', {
   task: async ({ input }) => {
     return await parrotOrAntiParrot(input);
   },
-  scorers: [ExactMatchMean, ExactMatchPassAtK],
+  scorers: [ExactMatchMean, ExactMatchPassHatK],
 });
