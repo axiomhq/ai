@@ -56,4 +56,24 @@ describe('span names', () => {
       'gen_ai.usage.output_tokens': 20,
     });
   });
+
+  it('should set gen_ai.conversation.id from withSpan metadata', async () => {
+    const mockProvider = createMockProvider();
+    mockProvider.addLanguageModelResponse('test', mockResponses.text('Hello, world!'));
+    const model = wrapAISDKModel(mockProvider.languageModel('model-name'));
+
+    await withSpan(
+      { capability: 'test-capability', step: 'test-step', conversationId: 'conv-123' },
+      async () => {
+        return await generateText({
+          model,
+          prompt: 'Hello, world!',
+        });
+      },
+    );
+
+    const spans = otelTestSetup.getSpans();
+    expect(spans.length).toBe(1);
+    expect(spans[0].attributes['gen_ai.conversation.id']).toBe('conv-123');
+  });
 });

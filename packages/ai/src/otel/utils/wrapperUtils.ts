@@ -260,6 +260,11 @@ export function setScopeAttributes(span: Span): void {
     if (step) {
       span.setAttribute(Attr.GenAI.Step.Name, step);
     }
+
+    const conversationId = bag.getEntry('conversationId')?.value;
+    if (conversationId) {
+      span.setAttribute(Attr.GenAI.Conversation.ID, conversationId);
+    }
   }
 }
 
