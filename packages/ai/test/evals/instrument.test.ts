@@ -15,6 +15,7 @@ type Hook = NonNullable<ResolvedAxiomConfig['eval']['instrumentation']>;
 interface TestHookOverrides {
   hook?: Hook | null;
   url?: string;
+  edgeUrl?: string;
   token?: string | undefined;
   dataset?: string;
   orgId?: string | undefined;
@@ -26,6 +27,7 @@ const createConfig = (overrides: TestHookOverrides = {}) => {
   return {
     eval: {
       url: overrides.url ?? 'https://example.com',
+      edgeUrl: overrides.edgeUrl ?? overrides.url ?? 'https://example.com',
       token: overrides.token ?? 'token-123',
       dataset: overrides.dataset ?? 'dataset-123',
       orgId: overrides.orgId ?? 'org-123',
@@ -64,6 +66,7 @@ describe.sequential('eval instrumentation', () => {
       dataset: 'dataset-123',
       token: 'token-123',
       url: 'https://example.com',
+      edgeUrl: 'https://example.com',
       orgId: 'org-123',
     });
   });

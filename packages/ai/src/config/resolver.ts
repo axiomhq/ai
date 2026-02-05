@@ -25,9 +25,12 @@ export function resolveAxiomConnection(
   consoleUrlOverride?: string,
 ): AxiomEvalInstrumentationOptions & { consoleEndpointUrl: string } {
   const consoleEndpointUrl = consoleUrlOverride ?? buildConsoleUrl(config.eval.url);
+  // Use edgeUrl for ingest/query operations, falling back to url if not specified
+  const edgeUrl = config.eval.edgeUrl || config.eval.url;
 
   return {
     url: config.eval.url,
+    edgeUrl,
     consoleEndpointUrl: consoleEndpointUrl,
     token: config.eval.token,
     dataset: config.eval.dataset,

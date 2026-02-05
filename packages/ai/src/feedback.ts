@@ -154,6 +154,12 @@ type FeedbackConfig = {
   readonly dataset: string;
   /** Optional custom Axiom API URL. Defaults to https://api.axiom.co. */
   readonly url?: string;
+  /**
+   * Optional Axiom Edge URL for ingest operations.
+   * When set, this URL is used for sending feedback data.
+   * Falls back to `url` if not specified.
+   */
+  readonly edgeUrl?: string;
 };
 
 type FeedbackErrorContext = {
@@ -200,7 +206,8 @@ const createFeedbackClient = (
     return createNoopFeedbackClient();
   }
 
-  const baseUrl = config.url ?? 'https://api.axiom.co';
+  // Use edgeUrl for ingest operations, falling back to url
+  const baseUrl = config.edgeUrl ?? config.url ?? 'https://api.axiom.co';
   const url = `${baseUrl}${getSuffix(baseUrl, config.dataset)}`;
 
   const sendFeedback: SendFeedbackFn = async (

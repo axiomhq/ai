@@ -79,7 +79,7 @@ export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, url, token, orgId } = resolveAxiomConnection(config);
+  const { dataset, edgeUrl, token, orgId } = resolveAxiomConnection(config);
 
   const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
@@ -89,7 +89,8 @@ export const findEvaluationCases = async (
     ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
-  const resp = await fetch(`${url}/v1/datasets/_apl?format=legacy`, {
+  // Use edgeUrl for query operations
+  const resp = await fetch(`${edgeUrl}/v1/datasets/_apl?format=legacy`, {
     headers: headers,
     method: 'POST',
     body: JSON.stringify({ apl }),
