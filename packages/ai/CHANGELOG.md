@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/axiomhq/ai/compare/axiom-v0.38.1...axiom-v0.39.0) (2026-02-05)
+
+
+### Features
+
+* **edge:** added support for edge regions ([#224](https://github.com/axiomhq/ai/issues/224)) ([8f7b99c](https://github.com/axiomhq/ai/commit/8f7b99ce7ec884aa7251b3edd6b3d28f62418058))
+
 ## [0.38.1](https://github.com/axiomhq/ai/compare/axiom-v0.38.0...axiom-v0.38.1) (2026-02-02)
 
 
