@@ -8,6 +8,7 @@ export async function register() {
       dataset: process.env.NEXT_PUBLIC_AXIOM_DATASET!,
       token: process.env.AXIOM_TOKEN!,
       url: process.env.NEXT_PUBLIC_AXIOM_URL ?? 'https://api.axiom.co',
+      edgeUrl: process.env.AXIOM_EDGE_URL ?? process.env.NEXT_PUBLIC_AXIOM_URL ?? 'https://api.axiom.co',
     });
   }
 }

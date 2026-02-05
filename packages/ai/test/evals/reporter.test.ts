@@ -21,6 +21,7 @@ describe('AxiomReporter', () => {
     mockConfig = {
       eval: {
         url: 'https://test.axiom.co',
+        edgeUrl: 'https://test.axiom.co',
         token: 'test-token',
         dataset: 'test-dataset',
         flagSchema: z.object({}).loose(),

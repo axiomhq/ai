@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadConfig } from '../../src/config/loader';
 import { DEFAULT_EVAL_INCLUDE } from '../../src/config/index';
+import { resolveAxiomConnection } from '../../src/config/resolver';
+import type { ResolvedAxiomConfig } from '../../src/config/index';
 
 const writeConfig = async (dir: string, contents: string) => {
   await writeFile(join(dir, 'axiom.config.cjs'), contents, 'utf8');
@@ -54,5 +56,52 @@ describe('loadConfig', () => {
         expect(config.eval.include).toEqual(customInclude);
       },
     );
+  });
+});
+
+describe('resolveAxiomConnection', () => {
+  const createConfig = (
+    overrides: Partial<ResolvedAxiomConfig['eval']> = {},
+  ): ResolvedAxiomConfig =>
+    ({
+      eval: {
+        url: 'https://api.axiom.co',
+        edgeUrl: undefined,
+        token: 'test-token',
+        dataset: 'test-dataset',
+        orgId: 'test-org',
+        flagSchema: null,
+        instrumentation: null,
+        include: [],
+        exclude: [],
+        timeoutMs: 60_000,
+        ...overrides,
+      },
+    }) as ResolvedAxiomConfig;
+
+  it('falls back to url when edgeUrl is not set', () => {
+    const config = createConfig({ url: 'https://api.axiom.co', edgeUrl: undefined });
+    const connection = resolveAxiomConnection(config);
+
+    expect(connection.edgeUrl).toBe('https://api.axiom.co');
+    expect(connection.url).toBe('https://api.axiom.co');
+  });
+
+  it('uses edgeUrl when explicitly set', () => {
+    const config = createConfig({
+      url: 'https://api.axiom.co',
+      edgeUrl: 'https://eu-central-1.aws.edge.axiom.co',
+    });
+    const connection = resolveAxiomConnection(config);
+
+    expect(connection.edgeUrl).toBe('https://eu-central-1.aws.edge.axiom.co');
+    expect(connection.url).toBe('https://api.axiom.co');
+  });
+
+  it('falls back to url when edgeUrl is empty string', () => {
+    const config = createConfig({ url: 'https://api.axiom.co', edgeUrl: '' });
+    const connection = resolveAxiomConnection(config);
+
+    expect(connection.edgeUrl).toBe('https://api.axiom.co');
   });
 });

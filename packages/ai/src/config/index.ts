@@ -30,6 +30,15 @@ export interface AxiomConnectionConfig {
   url?: string;
 
   /**
+   * Axiom Edge URL for ingest and query operations.
+   * When set, this URL is used for sending traces and querying data,
+   * while the regular `url` is used for API/console operations.
+   * Falls back to `url` if not specified.
+   * @example 'https://eu-central-1.aws.edge.axiom.co'
+   */
+  edgeUrl?: string;
+
+  /**
    * Axiom API token (can be undefined if not set)
    * @example process.env.AXIOM_TOKEN
    */
@@ -56,6 +65,7 @@ export interface AxiomConnectionConfig {
  */
 export interface AxiomEvalInstrumentationOptions {
   url: string;
+  edgeUrl: string;
   token: string;
   dataset: string;
   orgId?: string;
@@ -261,9 +271,13 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
   url = url || process.env.AXIOM_URL;
   orgId = orgId || process.env.AXIOM_ORG_ID;
 
+  // Edge URL for ingest and query operations
+  const edgeUrl = process.env.AXIOM_EDGE_URL;
+
   return {
     eval: {
       url: url || 'https://api.axiom.co',
+      edgeUrl: edgeUrl,
       orgId,
       token,
       dataset: process.env.AXIOM_DATASET,

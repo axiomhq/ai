@@ -68,8 +68,9 @@ function setupEvalProvider(connection: ReturnType<typeof resolveAxiomConnection>
     headers.Authorization = `Bearer ${connection.token}`;
   }
 
+  // Use edgeUrl for trace ingestion
   const collectorOptions = {
-    url: `${connection.url}/v1/traces`,
+    url: `${connection.edgeUrl}/v1/traces`,
     headers,
     concurrencyLimit: 10,
   };
@@ -124,6 +125,7 @@ export async function initInstrumentation(config: {
         dataset: connection.dataset,
         token: connection.token,
         url: connection.url,
+        edgeUrl: connection.edgeUrl,
         orgId: connection.orgId,
       });
 
