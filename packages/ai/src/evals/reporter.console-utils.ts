@@ -15,6 +15,12 @@ import type { Score } from './scorers';
 import { flattenObject } from '../util/dot-path';
 import type { AxiomConnectionResolvedConfig } from '../config/resolver';
 
+/** Convert score value to number (handles boolean scores from normalizeScore) */
+function scoreToNumber(score: Score['score']): number {
+  if (typeof score === 'boolean') return score ? 1 : 0;
+  return score ?? 0;
+}
+
 export type SuiteData = {
   version: string;
   name: string;
@@ -181,7 +187,7 @@ export function printTestCaseScores(
   keys.forEach((k) => {
     const scoreData = scores[k];
     const hasError = scoreData.metadata?.error;
-    const v = scoreData.score ? scoreData.score : 0;
+    const v = scoreToNumber(scoreData.score);
 
     const rawCurrent = hasError ? 'N/A' : formatPercentage(v);
     const paddedCurrent = rawCurrent.padStart(7);
@@ -465,7 +471,7 @@ export function calculateScorerAverages(suite: SuiteData): Record<string, number
         scorerTotals[scorerName] = { sum: 0, count: 0 };
       }
       if (!score.metadata?.error) {
-        scorerTotals[scorerName].sum += score.score || 0;
+        scorerTotals[scorerName].sum += scoreToNumber(score.score);
         scorerTotals[scorerName].count += 1;
       }
     }

@@ -58,6 +58,25 @@ describe('Scorer runtime behavior', () => {
     });
   });
 
+  it('Score object with boolean score is normalized and metadata is merged', async () => {
+    const booleanWithMeta = Scorer('BooleanMetaTest', ({ output }: { output: string }) => {
+      const passed = output === 'true';
+      return { score: passed, metadata: { reason: passed ? 'exact match' : 'mismatch' } };
+    });
+
+    const scoreTrue = await booleanWithMeta({ output: 'true' });
+    expect(scoreTrue).toEqual({
+      score: 1,
+      metadata: { reason: 'exact match', [Attr.Eval.Score.IsBoolean]: true },
+    });
+
+    const scoreFalse = await booleanWithMeta({ output: 'false' });
+    expect(scoreFalse).toEqual({
+      score: 0,
+      metadata: { reason: 'mismatch', [Attr.Eval.Score.IsBoolean]: true },
+    });
+  });
+
   it('Score object return value is passed through unchanged', async () => {
     const customScore = {
       score: 0.8,

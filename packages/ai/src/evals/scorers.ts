@@ -1,7 +1,7 @@
 import type { Aggregation } from './aggregations';
 
 export type Score = {
-  score: number | null;
+  score: number | boolean | null;
   metadata?: Record<string, any>;
 };
 
