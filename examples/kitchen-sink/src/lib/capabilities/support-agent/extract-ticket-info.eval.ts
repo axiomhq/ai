@@ -9,26 +9,35 @@ const ticketInfoMatch = Scorer(
   (args: { expected: ExtractTicketInfoResult; output: ExtractTicketInfoResult }) => {
     const { expected, output } = args;
 
-    // Check ticketInfo
     for (const key of Object.keys(expected.ticketInfo)) {
       // @ts-expect-error keys not typesafe
       if (expected.ticketInfo[key] !== output.ticketInfo[key]) {
-        return false;
+        return {
+          score: false,
+          // @ts-expect-error keys not typesafe
+          metadata: { field: `ticketInfo.${key}`, expected: expected.ticketInfo[key], actual: output.ticketInfo[key] },
+        };
       }
     }
 
-    // Check isComplete
     if (expected.status.isComplete !== output.status.isComplete) {
-      return false;
+      return {
+        score: false,
+        metadata: { field: 'status.isComplete', expected: expected.status.isComplete, actual: output.status.isComplete },
+      };
     }
 
-    // Check missingFields
-    if (expected.status.missingFields.length) {
-      const outputMissing = new Set(output.status.missingFields);
-      for (const field of expected.status.missingFields) {
-        if (!outputMissing.has(field)) return false;
+    const expectedMissing = new Set(expected.status.missingFields);
+    const actualMissing = new Set(output.status.missingFields);
+    if (expected.status.missingFields.length || output.status.missingFields.length) {
+      const missing = expected.status.missingFields.filter((f) => !actualMissing.has(f));
+      const extra = output.status.missingFields.filter((f) => !expectedMissing.has(f));
+      if (missing.length || extra.length) {
+        return {
+          score: false,
+          metadata: { field: 'status.missingFields', missing, extra },
+        };
       }
-      if (expected.status.missingFields.length !== output.status.missingFields.length) return false;
     }
 
     return true;
