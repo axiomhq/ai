@@ -1,5 +1,5 @@
 import { describe, it, expectTypeOf } from 'vitest';
-import { createScorer as Scorer, type Scorer as ScorerType } from '../../src/evals/scorers';
+import { Scorer, type ScorerType } from '../../src/evals/scorers';
 
 describe('Scorer type inference', () => {
   it('TInput inference when provided', () => {

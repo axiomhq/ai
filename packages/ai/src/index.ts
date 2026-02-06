@@ -8,7 +8,7 @@ export * from './otel/withSpan';
 export type { EvalSampling, ScorerResult } from './online-evals';
 export { onlineEval } from './online-evals';
 export { createScorer, createScorer as Scorer } from './evals/scorer.factory';
-export type { Score, Scorer as ScorerType } from './evals/scorers';
+export type { Score, Scorer as ScorerType } from './evals/scorer.types';
 export * from './otel/wrapTool';
 export * from './otel/middleware';
 export { type AxiomAIRedactionPolicy, RedactionPolicy } from './otel/utils/redaction';
