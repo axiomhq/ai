@@ -41,7 +41,7 @@ type TestCase = {
   metadata: { purpose: string };
 };
 
-Eval('support-agent-extract-ticket-info', {
+Eval('support-agent-extract-ticket-info-trials', {
   capability: 'support-agent',
   configFlags: pickFlags('supportAgent.extractTicketInfo'),
   data: [
@@ -146,5 +146,6 @@ Eval('support-agent-extract-ticket-info', {
   task: async (task) => {
     return await extractTicketInfo([{ role: 'user', content: task.input }]);
   },
+  trials: 3,
   scorers: [ticketInfoMatch],
 });

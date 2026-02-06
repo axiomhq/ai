@@ -8,6 +8,7 @@ export const ATTR_EVAL_BASELINE_ID = 'eval.baseline.id' as const;
 export const ATTR_EVAL_BASELINE_NAME = 'eval.baseline.name' as const;
 export const ATTR_EVAL_BASELINE_VERSION = 'eval.baseline.version' as const;
 export const ATTR_EVAL_METADATA = 'eval.metadata' as const;
+export const ATTR_EVAL_TRIALS = 'eval.trials' as const;
 // capability
 export const ATTR_EVAL_CAPABILITY_NAME = 'eval.capability.name' as const;
 export const ATTR_EVAL_STEP_NAME = 'eval.step.name' as const;
@@ -24,6 +25,9 @@ export const ATTR_EVAL_CASE_OUTPUT = 'eval.case.output' as const;
 export const ATTR_EVAL_CASE_EXPECTED = 'eval.case.expected' as const;
 export const ATTR_EVAL_CASE_SCORES = 'eval.case.scores' as const;
 export const ATTR_EVAL_CASE_METADATA = 'eval.case.metadata' as const;
+export const ATTR_EVAL_CASE_TRIALS = 'eval.case.trials' as const;
+// trial
+export const ATTR_EVAL_TRIAL_INDEX = 'eval.trial.index' as const;
 // task
 export const ATTR_EVAL_TASK_OUTPUT = 'eval.task.output' as const;
 export const ATTR_EVAL_TASK_NAME = 'eval.task.name' as const;
@@ -38,6 +42,8 @@ export const ATTR_EVAL_SCORE_PASSED = 'eval.score.passed' as const;
 export const ATTR_EVAL_SCORE_IS_BOOLEAN = 'eval.score.is_boolean' as const;
 export const ATTR_EVAL_SCORE_SCORER = 'eval.score.scorer' as const;
 export const ATTR_EVAL_SCORE_METADATA = 'eval.score.metadata' as const;
+export const ATTR_EVAL_SCORE_AGGREGATION = 'eval.score.aggregation' as const;
+export const ATTR_EVAL_SCORE_TRIALS = 'eval.score.trials' as const;
 // user
 export const ATTR_EVAL_USER_NAME = 'eval.user.name';
 export const ATTR_EVAL_USER_EMAIL = 'eval.user.email';

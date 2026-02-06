@@ -46,6 +46,16 @@
         "default": "./dist/evals.cjs"
       }
     },
+    "./ai/evals/aggregations": {
+      "import": {
+        "types": "./dist/evals/aggregations.d.ts",
+        "default": "./dist/evals/aggregations.js"
+      },
+      "require": {
+        "types": "./dist/evals/aggregations.d.cts",
+        "default": "./dist/evals/aggregations.cjs"
+      }
+    },
     "./ai/config": {
       "import": {
         "types": "./dist/config.d.ts",

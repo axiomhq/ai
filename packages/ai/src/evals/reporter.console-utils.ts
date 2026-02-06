@@ -137,10 +137,12 @@ export function printTestCaseCountStartDuration(
   testSuite: TestSuite,
   startTime: number,
   duration: string,
+  trials?: number,
   logger: Logger = console.log,
 ) {
   logger(' ');
-  logger(' ', c.dim('Cases'), testSuite.children.size);
+  const trialsLabel = trials && trials > 1 ? ` (${trials} trials each)` : '';
+  logger(' ', c.dim('Cases'), `${testSuite.children.size}${trialsLabel}`);
   logger(' ', c.dim('Start at'), new Date(startTime).toTimeString());
   logger(' ', c.dim('Duration'), `${duration}s`);
 }
@@ -190,8 +192,9 @@ export function printTestCaseScores(
     if (baselineCase?.scores[k]) {
       const baselineScoreValue = baselineCase.scores[k].value;
       const rawBaseline = formatPercentage(baselineScoreValue);
-      const paddedBaseline = rawBaseline.padStart(7);
-      const coloredBaseline = c.blueBright(paddedBaseline);
+      const paddedBaseline = rawBaseline === 'N/A' ? rawBaseline : rawBaseline.padStart(7);
+      const coloredBaseline =
+        rawBaseline === 'N/A' ? c.dim(paddedBaseline) : c.blueBright(paddedBaseline);
 
       const { text: diffText, color: diffColor } = formatDiff(v, baselineScoreValue);
       const paddedDiff = diffText.padStart(8);

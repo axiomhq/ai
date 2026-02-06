@@ -155,7 +155,24 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     duration = d;
   }
 
-  const scores = getCustomOrRegularAttribute(data.attributes, Attr.Eval.Case.Scores);
+  const scoresRaw = getCustomOrRegularAttribute(data.attributes, Attr.Eval.Case.Scores);
+  const scoresParsed = scoresRaw
+    ? typeof scoresRaw === 'string'
+      ? JSON.parse(scoresRaw)
+      : scoresRaw
+    : {};
+
+  // Normalize scores: convert .score to .value if needed (ScoreWithName uses .score, Case uses .value)
+  // FUTURE: find a better way of handling this
+  const scores: Case['scores'] = {};
+  for (const [name, scoreData] of Object.entries(scoresParsed)) {
+    const s = scoreData as { score?: number; value?: number; metadata?: Record<string, any> };
+    scores[name] = {
+      name,
+      value: s.value ?? s.score ?? 0,
+      metadata: s.metadata ?? {},
+    };
+  }
 
   const caseData: DeepPartial<Case> = {
     index: getCustomOrRegularNumber(data.attributes, Attr.Eval.Case.Index),
@@ -164,7 +181,7 @@ export const mapSpanToCase = (item: { _time: string; data: any }): Case => {
     expected: getCustomOrRegularString(data.attributes, Attr.Eval.Case.Expected),
     duration: duration,
     status: data.status.code,
-    scores: scores ? (typeof scores === 'string' ? JSON.parse(scores) : scores) : {}, // undefined would be more honest, but this lets us do like `baseline.scores[name]` without crashing
+    scores,
     runAt: item._time,
     spanId: data.span_id,
     traceId: data.trace_id,
