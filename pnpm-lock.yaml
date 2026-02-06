@@ -88,8 +88,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       hono:
-        specifier: ^4.10.6
-        version: 4.10.6
+        specifier: ^4.11.7
+        version: 4.11.7
       next:
         specifier: 16.0.7
         version: 16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -574,7 +574,7 @@ importers:
         version: 0.4.0
       eslint-plugin-turbo:
         specifier: ^2.3.0
-        version: 2.5.6(eslint@9.33.0(jiti@2.6.1))(turbo@2.7.6)
+        version: 2.5.6(eslint@9.33.0(jiti@2.6.1))(turbo@2.8.3)
       globals:
         specifier: ^15.12.0
         version: 15.15.0
@@ -3814,8 +3814,8 @@ packages:
     engines: {node: '>= 0.10.x'}
     hasBin: true
 
-  hono@4.10.6:
-    resolution: {integrity: sha512-BIdolzGpDO9MQ4nu3AUuDwHZZ+KViNm+EZ75Ae55eMXMqLVhDFqEMXxtUe9Qh8hjL+pIna/frs2j6Y2yD5Ua/g==}
+  hono@4.11.7:
+    resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -5062,8 +5062,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  turbo-darwin-64@2.7.6:
-    resolution: {integrity: sha512-bYu0qnWju2Ha3EbIkPCk1SMLT3sltKh1P/Jy5FER6BmH++H5z+T5MHh3W1Xoers9rk4N1VdKvog9FO1pxQyjhw==}
+  turbo-darwin-64@2.8.3:
+    resolution: {integrity: sha512-4kXRLfcygLOeNcP6JquqRLmGB/ATjjfehiojL2dJkL7GFm3SPSXbq7oNj8UbD8XriYQ5hPaSuz59iF1ijPHkTw==}
     cpu: [x64]
     os: [darwin]
 
@@ -5072,8 +5072,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  turbo-darwin-arm64@2.7.6:
-    resolution: {integrity: sha512-KCxTf3Y1hgNLYIWRLw8bwH8Zie9RyCGoxAlXYsCBI/YNqBSR+ZZK9KYzFxAqDaVaNvTwLFv3rJRGsXOFWg4+Uw==}
+  turbo-darwin-arm64@2.8.3:
+    resolution: {integrity: sha512-xF7uCeC0UY0Hrv/tqax0BMbFlVP1J/aRyeGQPZT4NjvIPj8gSPDgFhfkfz06DhUwDg5NgMo04uiSkAWE8WB/QQ==}
     cpu: [arm64]
     os: [darwin]
 
@@ -5082,8 +5082,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  turbo-linux-64@2.7.6:
-    resolution: {integrity: sha512-vjoU8zIfNgvJR3cMitgw7inEoi6bmuVuFawDl5yKtxjAEhDktFdRBpGS3WojD4l3BklBbIK689ssXcGf21LxRA==}
+  turbo-linux-64@2.8.3:
+    resolution: {integrity: sha512-vxMDXwaOjweW/4etY7BxrXCSkvtwh0PbwVafyfT1Ww659SedUxd5rM3V2ZCmbwG8NiCfY7d6VtxyHx3Wh1GoZA==}
     cpu: [x64]
     os: [linux]
 
@@ -5092,8 +5092,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  turbo-linux-arm64@2.7.6:
-    resolution: {integrity: sha512-TcMpBvTqZf+1DptrVYLbZls7WY1UVNDTGaf0bo7/GCgWYv5eZHCVo4Td7kCJeDU4glbXg67REX0md0S0V6ghMg==}
+  turbo-linux-arm64@2.8.3:
+    resolution: {integrity: sha512-mQX7uYBZFkuPLLlKaNe9IjR1JIef4YvY8f21xFocvttXvdPebnq3PK1Zjzl9A1zun2BEuWNUwQIL8lgvN9Pm3Q==}
     cpu: [arm64]
     os: [linux]
 
@@ -5102,8 +5102,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  turbo-windows-64@2.7.6:
-    resolution: {integrity: sha512-1/MhkYldiihjneY8QnnDMbAkHXn/udTWSVYS94EMlkE9AShozsLTTOT1gDOpX06EfEW5njP09suhMvxbvwuwpQ==}
+  turbo-windows-64@2.8.3:
+    resolution: {integrity: sha512-YLGEfppGxZj3VWcNOVa08h6ISsVKiG85aCAWosOKNUjb6yErWEuydv6/qImRJUI+tDLvDvW7BxopAkujRnWCrw==}
     cpu: [x64]
     os: [win32]
 
@@ -5112,8 +5112,8 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  turbo-windows-arm64@2.7.6:
-    resolution: {integrity: sha512-0wDVnUJLFAWm4ZzOQFDkbyyUqaszorTGf3Rdc22IRIyJTTLd6ajqdb+cWD89UZ1RKr953+PZR1gqgWQY4PDuhA==}
+  turbo-windows-arm64@2.8.3:
+    resolution: {integrity: sha512-afTUGKBRmOJU1smQSBnFGcbq0iabAPwh1uXu2BVk7BREg30/1gMnJh9DFEQTah+UD3n3ru8V55J83RQNFfqoyw==}
     cpu: [arm64]
     os: [win32]
 
@@ -5121,8 +5121,8 @@ packages:
     resolution: {integrity: sha512-gxToHmi9oTBNB05UjUsrWf0OyN5ZXtD0apOarC1KIx232Vp3WimRNy3810QzeNSgyD5rsaIDXlxlbnOzlouo+w==}
     hasBin: true
 
-  turbo@2.7.6:
-    resolution: {integrity: sha512-PO9AvJLEsNLO+EYhF4zB+v10hOjsJe5kJW+S6tTbRv+TW7gf1Qer4mfjP9h3/y9h8ZiPvOrenxnEgDtFgaM5zw==}
+  turbo@2.8.3:
+    resolution: {integrity: sha512-8Osxz5Tu/Dw2kb31EAY+nhq/YZ3wzmQSmYa1nIArqxgCAldxv9TPlrAiaBUDVnKA4aiPn0OFBD1ACcpc5VFOAQ==}
     hasBin: true
 
   type-check@0.4.0:
@@ -8506,11 +8506,11 @@ snapshots:
       '@microsoft/tsdoc': 0.15.1
       '@microsoft/tsdoc-config': 0.17.1
 
-  eslint-plugin-turbo@2.5.6(eslint@9.33.0(jiti@2.6.1))(turbo@2.7.6):
+  eslint-plugin-turbo@2.5.6(eslint@9.33.0(jiti@2.6.1))(turbo@2.8.3):
     dependencies:
       dotenv: 16.0.3
       eslint: 9.33.0(jiti@2.6.1)
-      turbo: 2.7.6
+      turbo: 2.8.3
 
   eslint-scope@8.4.0:
     dependencies:
@@ -8874,7 +8874,7 @@ snapshots:
       process: 0.10.1
       xtend: 4.0.2
 
-  hono@4.10.6: {}
+  hono@4.11.7: {}
 
   html-escaper@2.0.2: {}
 
@@ -10204,37 +10204,37 @@ snapshots:
   turbo-darwin-64@2.5.6:
     optional: true
 
-  turbo-darwin-64@2.7.6:
+  turbo-darwin-64@2.8.3:
     optional: true
 
   turbo-darwin-arm64@2.5.6:
     optional: true
 
-  turbo-darwin-arm64@2.7.6:
+  turbo-darwin-arm64@2.8.3:
     optional: true
 
   turbo-linux-64@2.5.6:
     optional: true
 
-  turbo-linux-64@2.7.6:
+  turbo-linux-64@2.8.3:
     optional: true
 
   turbo-linux-arm64@2.5.6:
     optional: true
 
-  turbo-linux-arm64@2.7.6:
+  turbo-linux-arm64@2.8.3:
     optional: true
 
   turbo-windows-64@2.5.6:
     optional: true
 
-  turbo-windows-64@2.7.6:
+  turbo-windows-64@2.8.3:
     optional: true
 
   turbo-windows-arm64@2.5.6:
     optional: true
 
-  turbo-windows-arm64@2.7.6:
+  turbo-windows-arm64@2.8.3:
     optional: true
 
   turbo@2.5.6:
@@ -10246,14 +10246,14 @@ snapshots:
       turbo-windows-64: 2.5.6
       turbo-windows-arm64: 2.5.6
 
-  turbo@2.7.6:
+  turbo@2.8.3:
     optionalDependencies:
-      turbo-darwin-64: 2.7.6
-      turbo-darwin-arm64: 2.7.6
-      turbo-linux-64: 2.7.6
-      turbo-linux-arm64: 2.7.6
-      turbo-windows-64: 2.7.6
-      turbo-windows-arm64: 2.7.6
+      turbo-darwin-64: 2.8.3
+      turbo-darwin-arm64: 2.8.3
+      turbo-linux-64: 2.8.3
+      turbo-linux-arm64: 2.8.3
+      turbo-windows-64: 2.8.3
+      turbo-windows-arm64: 2.8.3
 
   type-check@0.4.0:
     dependencies:
