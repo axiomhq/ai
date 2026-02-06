@@ -1,0 +1,31 @@
+{
+  "name": "online-evals-minimal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx online-evals-minimal.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint './**/*.{js,ts}'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.72",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.202.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/sdk-trace-node": "^2.0.1",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "ai": "^5.0.102",
+    "axiom": "workspace:*",
+    "dotenv": "^17.2.0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "eslint": "catalog:",
+    "tsx": "^4.20.4",
+    "typescript": "catalog:"
+  }
+}

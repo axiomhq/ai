@@ -28,9 +28,10 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
  */
 export function createScorer<
   TArgs extends Record<string, any> = {},
-  TInput = TArgs extends { input: infer I } ? I : unknown,
-  TExpected = TArgs extends { expected: infer E } ? Exclude<E, undefined> : unknown,
-  TOutput = TArgs extends { output: infer O } ? Exclude<O, undefined> : never,
+  // Use tuple wrapping to prevent distributive conditional types
+  TInput = [TArgs] extends [{ input: infer I }] ? I : unknown,
+  TExpected = [TArgs] extends [{ expected: infer E }] ? Exclude<E, undefined> : unknown,
+  TOutput = [TArgs] extends [{ output: infer O }] ? Exclude<O, undefined> : never,
   TExtra extends Record<string, any> = Simplify<
     Omit<TArgs, 'input' | 'expected' | 'output' | 'trialIndex'>
   >,
@@ -48,7 +49,7 @@ export function createScorer<
    * Optional configuration for the scorer, including aggregation for trials.
    */
   options?: ScorerOptions,
-): TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
+): [TOutput] extends [never] ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
   const normalizeScore = (res: number | boolean | Score): Score => {
     if (typeof res === 'number') {
       return { score: res };
@@ -102,5 +103,5 @@ export function createScorer<
     });
   }
 
-  return scorer as TOutput extends never ? never : Scorer<TInput, TExpected, TOutput, TExtra>;
+  return scorer as [TOutput] extends [never] ? never : Scorer<TInput, TExpected, TOutput, TExtra>;
 }
