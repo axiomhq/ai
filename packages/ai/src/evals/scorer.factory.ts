@@ -1,6 +1,6 @@
 import { Attr } from '../otel/semconv/attributes';
 import type { ValidateName } from '../util/name-validation';
-import type { Score, Scorer, ScorerOptions } from './scorers';
+import type { Score, Scorer, ScorerOptions } from './scorer.types';
 
 // Helper to force TypeScript to evaluate/simplify types
 type Simplify<T> = { [K in keyof T]: T[K] } & {};

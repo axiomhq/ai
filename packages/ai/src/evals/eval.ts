@@ -18,7 +18,7 @@ import type {
   Evaluation,
   OutOfScopeFlagAccess,
 } from './eval.types';
-import type { ScoreWithName, ScorerLike, Scorer } from './scorers';
+import type { ScoreWithName, ScorerLike, Scorer } from './scorer.types';
 import { Mean, type Aggregation } from './aggregations';
 import { EvaluationApiClient, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';

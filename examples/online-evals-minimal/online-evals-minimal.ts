@@ -12,7 +12,8 @@
 
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import { withSpan, wrapAISDKModel, Scorer, onlineEval } from 'axiom/ai';
+import { withSpan, wrapAISDKModel, onlineEval } from 'axiom/ai';
+import { Scorer } from 'axiom/ai/evals/scorers';
 import { initializeTelemetry, flushTelemetry } from './instrumentation';
 
 initializeTelemetry();

@@ -5,7 +5,7 @@ export { AxiomReporter } from './evals/reporter';
 export type { EvalContextData } from './evals/context/storage';
 
 export type { EvalBuilder } from './evals/builder';
-export { type Score, type ScorerOptions } from './evals/scorers';
+export { type Score, type ScorerOptions } from './evals/scorer.types';
 export { createScorer as Scorer } from './evals/scorer.factory';
 
 export type { Evaluation, Case, Chat, Task } from './evals/eval.types';

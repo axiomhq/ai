@@ -77,6 +77,30 @@ const result = await withSpan(
 )
 ```
 
+## Online Evals
+
+For running scorers in production (without vitest dependency):
+
+```ts
+import { withSpan, onlineEval } from 'axiom/ai';
+import { Scorer } from 'axiom/ai/evals/scorers';
+
+const formatScorer = Scorer('format-check', ({ output }: { output: string }) => {
+  return output.length > 0;
+});
+
+await withSpan({ capability: 'qa', step: 'answer' }, async () => {
+  const response = await generateText({ model, messages });
+  void onlineEval(
+    { capability: 'qa', step: 'answer' },
+    { output: response.text, scorers: [formatScorer] }
+  );
+  return response.text;
+});
+```
+
+> For offline evals that use `Eval()`, continue importing from `axiom/ai/evals`.
+
 ## Documentation
 
 For more information about how to set up and use the Axiom JavaScript SDK, read documentation on [axiom.co/docs/ai-engineering/quickstart](https://axiom.co/docs/ai-engineering/quickstart).

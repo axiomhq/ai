@@ -1,5 +1,5 @@
 import type { TaskMeta } from 'vitest';
-import type { ScoreWithName, ScorerLike } from './scorers';
+import type { ScoreWithName, ScorerLike } from './scorer.types';
 
 /** Extract the output type from a task function */
 export type OutputOf<TaskFn extends (...args: any) => any> = TaskFn extends (

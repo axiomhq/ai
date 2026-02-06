@@ -56,6 +56,16 @@
         "default": "./dist/evals/aggregations.cjs"
       }
     },
+    "./ai/evals/scorers": {
+      "import": {
+        "types": "./dist/evals/scorers.d.ts",
+        "default": "./dist/evals/scorers.js"
+      },
+      "require": {
+        "types": "./dist/evals/scorers.d.cts",
+        "default": "./dist/evals/scorers.cjs"
+      }
+    },
     "./ai/config": {
       "import": {
         "types": "./dist/config.d.ts",
