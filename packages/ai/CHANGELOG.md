@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/axiomhq/ai/compare/axiom-v0.40.0...axiom-v0.41.0) (2026-02-06)
+
+
+### Features
+
+* **ai:** add online evaluations for production monitoring ([#223](https://github.com/axiomhq/ai/issues/223)) ([748122e](https://github.com/axiomhq/ai/commit/748122e1d6e8d5872856a2963abad68d0b4bf8d4))
+
 ## [0.40.0](https://github.com/axiomhq/ai/compare/axiom-v0.39.0...axiom-v0.40.0) (2026-02-06)
 
 
