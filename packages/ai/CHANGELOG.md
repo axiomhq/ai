@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.40.0](https://github.com/axiomhq/ai/compare/axiom-v0.39.0...axiom-v0.40.0) (2026-02-06)
+
+
+### Features
+
+* add conversationId to withSpan ([#228](https://github.com/axiomhq/ai/issues/228)) ([a6c07af](https://github.com/axiomhq/ai/commit/a6c07af733e191cf45cf922eb1576606daba45cf))
+* **ai:** allow boolean score in Score objects with custom metadata ([#231](https://github.com/axiomhq/ai/issues/231)) ([de2020a](https://github.com/axiomhq/ai/commit/de2020a2596f4963c892adafa49b638331516203))
+
 ## [0.39.0](https://github.com/axiomhq/ai/compare/axiom-v0.38.1...axiom-v0.39.0) (2026-02-05)
 
 
