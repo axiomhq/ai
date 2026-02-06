@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.0](https://github.com/axiomhq/ai/compare/axiom-v0.41.0...axiom-v0.42.0) (2026-02-06)
+
+
+### Features
+
+* **ai:** add vitest-free axiom/ai/evals/scorers entry point ([#233](https://github.com/axiomhq/ai/issues/233)) ([c623d62](https://github.com/axiomhq/ai/commit/c623d62ca0d1b49a754a14379dd2d0c933fff96a))
+
 ## [0.41.0](https://github.com/axiomhq/ai/compare/axiom-v0.40.0...axiom-v0.41.0) (2026-02-06)
 
 
