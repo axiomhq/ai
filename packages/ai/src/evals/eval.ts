@@ -558,7 +558,10 @@ async function registerEval<
                                 }
                               } catch (error) {
                                 const scorerDuration = Math.round(performance.now() - scorerStart);
-                                console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
+                                console.error(
+                                  `ERROR: scorer ${scorerName} failed. Cause: \n`,
+                                  error,
+                                );
                                 const msg = errorToString(error);
                                 const metadata = {
                                   duration: scorerDuration,
