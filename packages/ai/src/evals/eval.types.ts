@@ -202,6 +202,14 @@ export type EvalCaseReport = {
   errors: Error[] | null;
   /** Status of the evaluation case */
   status: 'success' | 'fail' | 'pending';
+  /** Per-trial errors in order (null for successful trials) */
+  trialErrors?: Array<string | null>;
+  /** Trial summary stats for reporting */
+  trialSummary?: {
+    total: number;
+    succeeded: number;
+    failed: number;
+  };
   /** Duration in milliseconds for the entire case */
   duration: number | undefined;
   /** Timestamp when the case started */

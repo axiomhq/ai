@@ -28,6 +28,7 @@ export const ATTR_EVAL_CASE_METADATA = 'eval.case.metadata' as const;
 export const ATTR_EVAL_CASE_TRIALS = 'eval.case.trials' as const;
 // trial
 export const ATTR_EVAL_TRIAL_INDEX = 'eval.trial.index' as const;
+export const ATTR_EVAL_TRIAL_ERROR = 'eval.trial.error' as const;
 // task
 export const ATTR_EVAL_TASK_OUTPUT = 'eval.task.output' as const;
 export const ATTR_EVAL_TASK_NAME = 'eval.task.name' as const;

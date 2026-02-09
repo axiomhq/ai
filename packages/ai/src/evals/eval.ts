@@ -450,6 +450,8 @@ async function registerEval<
             try {
               // Accumulators for per-trial scores
               const perScorerTrials: Record<string, Array<number | null>> = {};
+              const trialErrors: Array<string | null> = Array.from({ length: trials }, () => null);
+              const trialFailures: Error[] = [];
               let lastOutput: TOutput | undefined;
               let totalDuration = 0;
 
@@ -468,121 +470,143 @@ async function registerEval<
                   },
                   async (trialSpan) => {
                     const trialContext = trace.setSpan(context.active(), trialSpan);
+                    const trialStart = performance.now();
 
-                    const result = await runTask(
-                      trialContext,
-                      {
-                        id: evalId,
-                        version: evalVersion,
-                        name: evalName,
-                      },
-                      {
-                        index: data.index,
-                        input: data.input,
-                        expected: data.expected,
-                        scorers: opts.scorers,
-                        task: opts.task,
-                        metadata: opts.metadata,
-                        configFlags: opts.configFlags,
-                        capability: opts.capability,
-                        step: opts.step,
-                      },
-                    );
-                    const { output, duration } = result;
-                    lastOutput = output;
-                    totalDuration += duration;
-                    outOfScopeFlags = result.outOfScopeFlags;
+                    try {
+                      const result = await runTask(
+                        trialContext,
+                        {
+                          id: evalId,
+                          version: evalVersion,
+                          name: evalName,
+                        },
+                        {
+                          index: data.index,
+                          input: data.input,
+                          expected: data.expected,
+                          scorers: opts.scorers,
+                          task: opts.task,
+                          metadata: opts.metadata,
+                          configFlags: opts.configFlags,
+                          capability: opts.capability,
+                          step: opts.step,
+                        },
+                      );
+                      const { output, duration } = result;
+                      lastOutput = output;
+                      totalDuration += duration;
+                      outOfScopeFlags = result.outOfScopeFlags;
 
-                    finalConfigSnapshot = {
-                      flags: result.finalFlags || {},
-                      pickedFlags: opts.configFlags,
-                      overrides: result.overrides,
-                    };
+                      finalConfigSnapshot = {
+                        flags: result.finalFlags || {},
+                        pickedFlags: opts.configFlags,
+                        overrides: result.overrides,
+                      };
 
-                    // Run scorers inside the trial span
-                    await Promise.all(
-                      opts.scorers.map(async (scorer) => {
-                        const scorerName = getScorerName(scorer);
-                        return startActiveSpan(
-                          `score ${scorerName}`,
-                          {
-                            attributes: {
-                              [Attr.GenAI.Operation.Name]: 'eval.score',
-                              [Attr.Eval.ID]: evalId,
-                              [Attr.Eval.Name]: evalName,
-                              [Attr.Eval.Version]: evalVersion,
-                              [Attr.Eval.Trial.Index]: trialIndex,
+                      // Run scorers inside the trial span
+                      await Promise.all(
+                        opts.scorers.map(async (scorer) => {
+                          const scorerName = getScorerName(scorer);
+                          return startActiveSpan(
+                            `score ${scorerName}`,
+                            {
+                              attributes: {
+                                [Attr.GenAI.Operation.Name]: 'eval.score',
+                                [Attr.Eval.ID]: evalId,
+                                [Attr.Eval.Name]: evalName,
+                                [Attr.Eval.Version]: evalVersion,
+                                [Attr.Eval.Trial.Index]: trialIndex,
+                              },
                             },
-                          },
-                          async (scorerSpan) => {
-                            const scorerStart = performance.now();
-                            try {
-                              const result = await scorer({
-                                input: data.input,
-                                output: output,
-                                expected: data.expected,
-                                trialIndex,
-                              });
+                            async (scorerSpan) => {
+                              const scorerStart = performance.now();
+                              try {
+                                const result = await scorer({
+                                  input: data.input,
+                                  output: output,
+                                  expected: data.expected,
+                                  trialIndex,
+                                });
 
-                              const scoreDuration = Math.round(performance.now() - scorerStart);
-                              const scoreValue = result.score as number;
-                              const metadata = Object.assign(
-                                { duration: scoreDuration, startedAt: scorerStart },
-                                result.metadata,
-                              );
+                                const scoreDuration = Math.round(performance.now() - scorerStart);
+                                const scoreValue = result.score as number;
+                                const metadata = Object.assign(
+                                  { duration: scoreDuration, startedAt: scorerStart },
+                                  result.metadata,
+                                );
 
-                              // Collect per-trial score
-                              (perScorerTrials[scorerName] ??= []).push(scoreValue);
+                                // Collect per-trial score
+                                (perScorerTrials[scorerName] ??= []).push(scoreValue);
 
-                              // Get aggregation config for span attributes
-                              const aggregation: Aggregation =
-                                (scorer as Scorer).aggregation ?? Mean();
+                                // Get aggregation config for span attributes
+                                const aggregation: Aggregation =
+                                  (scorer as Scorer).aggregation ?? Mean();
 
-                              scorerSpan.setAttributes({
-                                [Attr.Eval.Score.Name]: scorerName,
-                                [Attr.Eval.Score.Value]: scoreValue,
-                                [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                                [Attr.Eval.Score.Aggregation]: aggregation.type,
-                              });
+                                scorerSpan.setAttributes({
+                                  [Attr.Eval.Score.Name]: scorerName,
+                                  [Attr.Eval.Score.Value]: scoreValue,
+                                  [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                  [Attr.Eval.Score.Aggregation]: aggregation.type,
+                                });
 
-                              if (metadata.error) {
-                                const msg = errorToString(metadata.error);
+                                if (metadata.error) {
+                                  const msg = errorToString(metadata.error);
+                                  scorerSpan.setStatus({
+                                    code: SpanStatusCode.ERROR,
+                                    message: msg,
+                                  });
+                                }
+                              } catch (error) {
+                                const scorerDuration = Math.round(performance.now() - scorerStart);
+                                console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
+                                const msg = errorToString(error);
+                                const metadata = {
+                                  duration: scorerDuration,
+                                  startedAt: scorerStart,
+                                  error: msg,
+                                };
+
+                                // Collect null for failed scorer
+                                (perScorerTrials[scorerName] ??= []).push(null);
+
+                                scorerSpan.setAttributes({
+                                  [Attr.Eval.Score.Name]: scorerName,
+                                  [Attr.Eval.Score.Value]: undefined,
+                                  [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                });
+
                                 scorerSpan.setStatus({
                                   code: SpanStatusCode.ERROR,
                                   message: msg,
                                 });
+                              } finally {
+                                scorerSpan.end();
                               }
-                            } catch (error) {
-                              const scorerDuration = Math.round(performance.now() - scorerStart);
-                              console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
-                              const msg = errorToString(error);
-                              const metadata = {
-                                duration: scorerDuration,
-                                startedAt: scorerStart,
-                                error: msg,
-                              };
+                            },
+                            trialContext,
+                          );
+                        }),
+                      );
+                    } catch (error) {
+                      const failure = error as Error;
+                      const msg = errorToString(failure);
+                      trialErrors[trialIndex] = msg;
+                      trialFailures.push(failure);
+                      totalDuration += Math.round(performance.now() - trialStart);
 
-                              // Collect null for failed scorer
-                              (perScorerTrials[scorerName] ??= []).push(null);
+                      trialSpan.setAttributes({
+                        [Attr.Eval.Trial.Error]: msg,
+                      });
+                      trialSpan.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: msg,
+                      });
 
-                              scorerSpan.setAttributes({
-                                [Attr.Eval.Score.Name]: scorerName,
-                                [Attr.Eval.Score.Value]: undefined,
-                                [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                              });
-
-                              scorerSpan.setStatus({
-                                code: SpanStatusCode.ERROR,
-                                message: msg,
-                              });
-                            } finally {
-                              scorerSpan.end();
-                            }
-                          },
-                          trialContext,
-                        );
-                      }),
-                    );
+                      for (const scorer of opts.scorers) {
+                        const scorerName = getScorerName(scorer);
+                        (perScorerTrials[scorerName] ??= []).push(0);
+                      }
+                    }
                   },
                   caseContext,
                 );
@@ -609,7 +633,14 @@ async function registerEval<
                 };
               }
 
-              const output = lastOutput!;
+              const output = lastOutput ?? ('' as TOutput);
+              const failedTrials = trialFailures.length;
+              const succeededTrials = trials - failedTrials;
+              const trialSummary = {
+                total: trials,
+                succeeded: succeededTrials,
+                failed: failedTrials,
+              };
 
               caseSpan.setAttributes({
                 [Attr.Eval.Case.Output]:
@@ -628,17 +659,41 @@ async function registerEval<
                 scores,
                 status: 'success',
                 errors: [],
+                trialErrors,
+                trialSummary,
                 duration: totalDuration,
                 startedAt: start,
                 outOfScopeFlags,
                 pickedFlags: opts.configFlags,
               };
 
+              if (failedTrials > 0) {
+                const error = new Error(
+                  `Eval case ${data.index} failed with ${failedTrials} trial error(s).`,
+                );
+                caseSpan.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: error.message,
+                });
+                task.meta.case.status = 'fail';
+                task.meta.case.errors = trialFailures;
+                throw error;
+              }
+
               // Collect out-of-scope flags for evaluation-level aggregation
               allOutOfScopeFlags.push(...outOfScopeFlags);
             } catch (e) {
               console.log(e);
               const error = e as Error;
+
+              if (task.meta.case?.trialSummary) {
+                task.meta.case.status = 'fail';
+                task.meta.case.errors = task.meta.case.errors?.length
+                  ? task.meta.case.errors
+                  : [error];
+                allOutOfScopeFlags.push(...outOfScopeFlags);
+                throw e;
+              }
 
               const ctx = getEvalContext();
               outOfScopeFlags = ctx.outOfScopeFlags || ([] as OutOfScopeFlagAccess[]);

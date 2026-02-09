@@ -33,6 +33,7 @@ import {
   ATTR_EVAL_TYPE,
   ATTR_EVAL_TRIALS,
   ATTR_EVAL_TRIAL_INDEX,
+  ATTR_EVAL_TRIAL_ERROR,
   ATTR_EVAL_COLLECTION_ID,
   ATTR_EVAL_USER_NAME,
   ATTR_EVAL_USER_EMAIL,
@@ -329,6 +330,7 @@ export const Attr = {
     },
     Trial: {
       Index: ATTR_EVAL_TRIAL_INDEX,
+      Error: ATTR_EVAL_TRIAL_ERROR,
     },
     Case: {
       Index: ATTR_EVAL_CASE_INDEX,
