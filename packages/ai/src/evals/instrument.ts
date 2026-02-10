@@ -160,7 +160,11 @@ export const flush = async () => {
   const tasks: Array<Promise<unknown>> = [];
 
   if (axiomProvider) {
-    tasks.push(axiomProvider.forceFlush());
+    tasks.push(
+      axiomProvider.forceFlush().catch((err: unknown) => {
+        console.warn('[AxiomAI] Failed to flush axiom provider:', errorToString(err));
+      }),
+    );
   }
 
   const candidateProviders = new Set<TracerProvider>();
