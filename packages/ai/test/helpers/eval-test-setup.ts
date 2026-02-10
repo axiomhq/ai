@@ -11,34 +11,116 @@ export function createMockBaseline(
   evalId: string,
   caseCount: number = 3,
 ): MockAxiomResponse {
-  const baselineCases = Array.from({ length: caseCount }, (_, i) => ({
-    _time: new Date().toISOString(),
-    data: {
-      name: `case ${i}`,
-      span_id: `case-${i}`,
-      trace_id: evalId,
-      parent_span_id: evalId,
-      duration: '0.5s',
-      status: { code: 'OK' },
-      attributes: {
-        custom: {
-          'eval.case.index': i,
-          'eval.case.input': `test input ${i}`,
-          'eval.case.output': `test output ${i}`,
-          'eval.case.expected': `expected output ${i}`,
-          'eval.case.scores': JSON.stringify({
-            accuracy: { name: 'accuracy', value: 0.85 },
-            relevance: { name: 'relevance', value: 0.9 },
-          }),
-        },
-        gen_ai: {
-          operation: {
-            name: 'eval.case',
+  const caseSpans: any[] = [];
+  const trialSpans: any[] = [];
+  const scoreSpans: any[] = [];
+
+  for (let i = 0; i < caseCount; i++) {
+    const caseSpanId = `case-${i}`;
+    const trialSpanId = `trial-${i}-0`;
+
+    caseSpans.push({
+      _time: new Date().toISOString(),
+      data: {
+        name: `case ${i}`,
+        span_id: caseSpanId,
+        trace_id: evalId,
+        parent_span_id: evalId,
+        duration: '0.5s',
+        status: { code: 'OK' },
+        attributes: {
+          custom: {
+            'eval.case.index': i,
+            'eval.case.input': `test input ${i}`,
+            'eval.case.output': `test output ${i}`,
+            'eval.case.expected': `expected output ${i}`,
+            'eval.case.scores': JSON.stringify({
+              accuracy: { name: 'accuracy', value: 0.85 },
+              relevance: { name: 'relevance', value: 0.9 },
+            }),
+          },
+          gen_ai: {
+            operation: {
+              name: 'eval.case',
+            },
           },
         },
       },
-    },
-  }));
+    });
+
+    // Trial span (child of case)
+    trialSpans.push({
+      _time: new Date().toISOString(),
+      data: {
+        name: `trial 0`,
+        span_id: trialSpanId,
+        trace_id: evalId,
+        parent_span_id: caseSpanId,
+        duration: '0.4s',
+        status: { code: 'OK' },
+        attributes: {
+          custom: {
+            'eval.trial.index': 0,
+            'eval.id': evalId,
+            'eval.name': name,
+          },
+          gen_ai: {
+            operation: {
+              name: 'eval.trial',
+            },
+          },
+        },
+      },
+    });
+
+    // Score spans (children of trial)
+    scoreSpans.push(
+      {
+        _time: new Date().toISOString(),
+        data: {
+          name: `score accuracy`,
+          span_id: `score-accuracy-${i}`,
+          trace_id: evalId,
+          parent_span_id: trialSpanId,
+          duration: '0.01s',
+          status: { code: 'OK' },
+          attributes: {
+            custom: {
+              'eval.score.name': 'accuracy',
+              'eval.score.value': 0.85,
+            },
+            gen_ai: {
+              operation: {
+                name: 'eval.score',
+              },
+            },
+          },
+        },
+      },
+      {
+        _time: new Date().toISOString(),
+        data: {
+          name: `score relevance`,
+          span_id: `score-relevance-${i}`,
+          trace_id: evalId,
+          parent_span_id: trialSpanId,
+          duration: '0.01s',
+          status: { code: 'OK' },
+          attributes: {
+            custom: {
+              'eval.score.name': 'relevance',
+              'eval.score.value': 0.9,
+            },
+            gen_ai: {
+              operation: {
+                name: 'eval.score',
+              },
+            },
+          },
+        },
+      },
+    );
+  }
 
   const evalSpan = {
     _time: new Date().toISOString(),
@@ -71,7 +153,7 @@ export function createMockBaseline(
   };
 
   return {
-    matches: [evalSpan, ...baselineCases],
+    matches: [evalSpan, ...caseSpans, ...trialSpans, ...scoreSpans],
   };
 }
 

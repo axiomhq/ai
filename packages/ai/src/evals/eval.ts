@@ -383,7 +383,7 @@ async function registerEval<
           (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
         ).length;
 
-        // Calculate scorer averages from completed cases
+        // Calculate named scorer averages from completed cases
         const scorerTotals: Record<string, { sum: number; count: number }> = {};
         for (const t of suite.tasks) {
           if (t.meta.case?.status !== 'success') continue;
@@ -400,9 +400,13 @@ async function registerEval<
         const scorerAvgs = Object.values(scorerTotals).map(
           ({ sum, count }) => (count > 0 ? sum / count : 0),
         );
+        const namedScores: Record<string, number> = {};
+        for (const [name, { sum, count }] of Object.entries(scorerTotals)) {
+          namedScores[name] = count > 0 ? sum / count : 0;
+        }
 
         // Update evaluation status BEFORE flushing spans
-        // (span ingestion may lock the eval record on the server)
+        // (span ingestion locks "running" eval records, making them un-patchable)
         const patchId = serverEvalId || evalId;
         if (!isDebug && !isList && patchId) {
           try {
@@ -416,7 +420,7 @@ async function registerEval<
               scorerAvgs,
             });
           } catch (updateError) {
-            console.error(`[axiom] Failed to update evaluation ${patchId}:`, updateError);
+            console.error(`[axiom] Failed to update evaluation status ${patchId}:`, updateError);
           }
         }
 
@@ -430,6 +434,23 @@ async function registerEval<
               status: 'failed',
               error: errorToString(flushError),
             };
+          }
+        }
+
+        // Update summary scores AFTER flushing spans
+        // (must happen after flush so span ingestion doesn't overwrite scores)
+        if (!isDebug && !isList && patchId && Object.keys(namedScores).length > 0) {
+          try {
+            await evaluationApiClient.updateEvaluation({
+              id: patchId,
+              summary: {
+                averages: {
+                  scores: namedScores,
+                },
+              },
+            });
+          } catch (updateError) {
+            console.error(`[axiom] Failed to update evaluation scores ${patchId}:`, updateError);
           }
         }
       });

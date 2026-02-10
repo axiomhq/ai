@@ -38,6 +38,11 @@ export interface EvaluationApiPayloadBase {
   runId: string;
   configTimeoutMs: number;
   metadata?: Record<string, any>;
+  summary?: {
+    averages?: {
+      scores?: Record<string, number>;
+    };
+  };
 }
 
 export class EvaluationApiClient {
