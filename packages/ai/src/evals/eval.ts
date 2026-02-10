@@ -397,9 +397,12 @@ async function registerEval<
             scorerTotals[scorerName].count += 1;
           }
         }
-        const scorerAvgs = Object.values(scorerTotals).map(
-          ({ sum, count }) => (count > 0 ? sum / count : 0),
-        );
+        const scorerAvgs = Object.keys(scorerTotals)
+          .sort()
+          .map((scorerName) => {
+            const { sum, count } = scorerTotals[scorerName];
+            return count > 0 ? sum / count : 0;
+          });
         const namedScores: Record<string, number> = {};
         for (const [name, { sum, count }] of Object.entries(scorerTotals)) {
           namedScores[name] = count > 0 ? sum / count : 0;
