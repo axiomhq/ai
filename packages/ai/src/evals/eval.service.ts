@@ -214,10 +214,20 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
     // Convert case data
     const caseData = mapSpanToCase(caseSpan);
 
-    // Find task spans that belong to this case
+    // Find trial spans for this case (added in SDK 0.42.0)
+    const trialSpans = spans.filter(
+      (span) =>
+        span.data.name.startsWith('trial') && span.data.parent_span_id === caseSpan.data.span_id,
+    );
+
+    // Look for tasks/scores under trial spans, falling back to case for pre-trial compatibility
+    const trialSpanIds = trialSpans.map((s) => s.data.span_id);
+    const parentIds = trialSpanIds.length > 0 ? trialSpanIds : [caseSpan.data.span_id];
+
+    // Find task spans that belong to this case (via trial spans or directly)
     const taskSpans = spans.filter(
       (span) =>
-        span.data.name.startsWith('task') && span.data.parent_span_id === caseSpan.data.span_id,
+        span.data.name.startsWith('task') && parentIds.includes(span.data.parent_span_id),
     );
 
     if (taskSpans.length > 0) {
@@ -271,11 +281,11 @@ export const buildSpanTree = (spans: any[]): Evaluation | null => {
       caseData.task = taskData;
     }
 
-    // Find task spans that belong to this case
+    // Find score spans that belong to this case (via trial spans or directly)
     const scoreSpans = spans.filter(
       (span) =>
         span.data.attributes.gen_ai.operation.name === 'eval.score' &&
-        span.data.parent_span_id === caseSpan.data.span_id,
+        parentIds.includes(span.data.parent_span_id),
     );
 
     if (scoreSpans.length > 0) {
