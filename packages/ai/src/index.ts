@@ -7,8 +7,21 @@ export * from './otel/vercel';
 export * from './otel/withSpan';
 export type { EvalSampling, ScorerResult } from './online-evals';
 export { onlineEval } from './online-evals';
-export { createScorer, createScorer as Scorer } from './evals/scorer.factory';
-export type { Score, Scorer as ScorerType } from './evals/scorer.types';
+
+import { createScorer } from './evals/scorer.factory';
+import { warnScorerDeprecation } from './evals/deprecated';
+
+/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+export const Scorer = ((...args: unknown[]) => {
+  warnScorerDeprecation('axiom/ai');
+  return (createScorer as Function)(...args);
+}) as typeof createScorer;
+
+/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+export type { Score } from './evals/scorer.types';
+/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+export type { Scorer as ScorerType } from './evals/scorer.types';
+
 export * from './otel/wrapTool';
 export * from './otel/middleware';
 export { type AxiomAIRedactionPolicy, RedactionPolicy } from './otel/utils/redaction';
