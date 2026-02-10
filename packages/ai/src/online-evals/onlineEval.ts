@@ -6,7 +6,7 @@ import { executeScorer } from './executor';
 /**
  * Metadata for categorizing online evaluations.
  */
-type OnlineEvalMeta = {
+export type OnlineEvalMeta = {
   /** High-level capability being evaluated (e.g., 'qa', 'summarization') */
   capability: string;
   /** Specific step within the capability (e.g., 'answer', 'extract') */
@@ -23,7 +23,7 @@ type OnlineEvalMeta = {
 /**
  * Options for online evaluation.
  */
-type OnlineEvalOptions<TInput, TOutput> = {
+export type OnlineEvalOptions<TInput, TOutput> = {
   /** Input to pass to scorers (optional - only needed for input+output scorers) */
   input?: TInput;
   /** Output to evaluate */

@@ -66,6 +66,16 @@
         "default": "./dist/evals/scorers.cjs"
       }
     },
+    "./ai/evals/online": {
+      "import": {
+        "types": "./dist/evals/online.d.ts",
+        "default": "./dist/evals/online.js"
+      },
+      "require": {
+        "types": "./dist/evals/online.d.cts",
+        "default": "./dist/evals/online.cjs"
+      }
+    },
     "./ai/config": {
       "import": {
         "types": "./dist/config.d.ts",
