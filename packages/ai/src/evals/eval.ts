@@ -198,6 +198,7 @@ async function registerEval<
       let suiteContext: Context | undefined;
       let instrumentationError: unknown = undefined;
       let baseline: Evaluation | null | undefined = undefined;
+      let serverEvalId: string | undefined; // ID assigned by Axiom API for PATCH calls
 
       // Track out-of-scope flags across all cases for evaluation-level reporting
       const allOutOfScopeFlags: OutOfScopeFlagAccess[] = [];
@@ -283,6 +284,7 @@ async function registerEval<
         }
 
         const orgId = createEvalResponse?.data?.orgId;
+        serverEvalId = createEvalResponse?.data?.id;
         const resolvedBaselineId = createEvalResponse?.data?.baselineId;
 
         // Load baseline if we got a baselineId from the server
@@ -372,7 +374,53 @@ async function registerEval<
         suiteSpan?.setStatus({ code: SpanStatusCode.OK });
         suiteSpan?.end();
 
-        // flush traces before updating Evaluation in Axiom
+        const durationMs = Math.round(performance.now() - suiteStart);
+
+        const successCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'success',
+        ).length;
+        const erroredCases = suite.tasks.filter(
+          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
+        ).length;
+
+        // Calculate scorer averages from completed cases
+        const scorerTotals: Record<string, { sum: number; count: number }> = {};
+        for (const t of suite.tasks) {
+          if (t.meta.case?.status !== 'success') continue;
+          for (const [scorerName, scoreData] of Object.entries(t.meta.case.scores)) {
+            if (scoreData.metadata?.error) continue;
+            if (!scorerTotals[scorerName]) {
+              scorerTotals[scorerName] = { sum: 0, count: 0 };
+            }
+            const v = typeof scoreData.score === 'boolean' ? (scoreData.score ? 1 : 0) : (scoreData.score ?? 0);
+            scorerTotals[scorerName].sum += v;
+            scorerTotals[scorerName].count += 1;
+          }
+        }
+        const scorerAvgs = Object.values(scorerTotals).map(
+          ({ sum, count }) => (count > 0 ? sum / count : 0),
+        );
+
+        // Update evaluation status BEFORE flushing spans
+        // (span ingestion may lock the eval record on the server)
+        const patchId = serverEvalId || evalId;
+        if (!isDebug && !isList && patchId) {
+          try {
+            await evaluationApiClient.updateEvaluation({
+              id: patchId,
+              status: 'completed',
+              totalCases: collection.length,
+              successCases,
+              erroredCases,
+              durationMs,
+              scorerAvgs,
+            });
+          } catch (updateError) {
+            console.error(`[axiom] Failed to update evaluation ${patchId}:`, updateError);
+          }
+        }
+
+        // flush traces after updating eval status
         try {
           await flush();
         } catch (flushError) {
@@ -383,27 +431,6 @@ async function registerEval<
               error: errorToString(flushError),
             };
           }
-        }
-
-        const durationMs = Math.round(performance.now() - suiteStart);
-
-        const successCases = suite.tasks.filter(
-          (task) => task.meta.case.status === 'success',
-        ).length;
-        const erroredCases = suite.tasks.filter(
-          (task) => task.meta.case.status === 'fail' || task.meta.case.status === 'pending',
-        ).length;
-
-        // signal Axiom that evaluation finished to kick of summary calculations
-        if (!isDebug && !isList) {
-          await evaluationApiClient.updateEvaluation({
-            id: evalId,
-            status: 'completed',
-            totalCases: collection.length,
-            successCases,
-            erroredCases,
-            durationMs,
-          });
         }
       });
 
