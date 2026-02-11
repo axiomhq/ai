@@ -18,15 +18,13 @@ function setScorerSpanAttrs(
     [Attr.Eval.Tags]: JSON.stringify(['online']),
   });
 
-  const attrs: Record<string, string | number | boolean | undefined> = {
-    [Attr.Eval.Score.Value]: result.score ?? undefined,
-  };
-
-  if (result.metadata && Object.keys(result.metadata).length > 0) {
-    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(result.metadata);
+  if (result.score) {
+    scorerSpan.setAttribute(Attr.Eval.Score.Value, result.score);
   }
 
-  scorerSpan.setAttributes(attrs);
+  if (result.metadata && Object.keys(result.metadata).length > 0) {
+    scorerSpan.setAttribute(Attr.Eval.Score.Metadata, JSON.stringify(result.metadata));
+  }
 }
 
 /**
