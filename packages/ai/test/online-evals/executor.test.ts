@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SpanStatusCode } from '@opentelemetry/api';
-import { onlineEval } from '../../src/online-evals';
+import { onlineEval } from '../../src/online-evals/onlineEval';
 import type { ScorerLike } from '../../src/evals/scorers';
 
 function createTestScorer<TInput = unknown, TOutput = unknown>(
@@ -82,7 +82,7 @@ describe('onlineEval', () => {
     startSpanCallCount = 0;
     mockTracer.startSpan.mockImplementation((name: string) => {
       startSpanCallCount++;
-      if (name.match(/^eval \w+\/\w+$/) || name.match(/^eval \w+$/)) {
+      if (name.match(/^eval [\w-]+\/[\w-]+$/) || name.match(/^eval [\w-]+$/)) {
         return startSpanCallCount === 1 ? mockEvalSpan : mockScorerSpan;
       }
       return mockScorerSpan;
@@ -97,7 +97,7 @@ describe('onlineEval', () => {
     it('does nothing when scorers array is empty', async () => {
       const results = await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [] });
 
-      expect(results).toEqual([]);
+      expect(results).toEqual({});
       expect(mockTracer.startSpan).not.toHaveBeenCalled();
     });
 
@@ -148,8 +148,8 @@ describe('onlineEval', () => {
         { output: baseOutput, scorers: [failingScorer] },
       );
 
-      expect(results).toHaveLength(1);
-      expect(results[0].error).toBe('Scorer failed');
+      expect(results['failing-scorer']).toBeDefined();
+      expect(results['failing-scorer']?.error).toBe('Scorer failed');
       expect(mockScorerSpan.recordException).toHaveBeenCalled();
       expect(mockScorerSpan.setStatus).toHaveBeenCalledWith(
         expect.objectContaining({ code: SpanStatusCode.ERROR }),
@@ -179,7 +179,7 @@ describe('onlineEval', () => {
   });
 
   describe('return value', () => {
-    it('returns scorer results', async () => {
+    it('returns scorer results keyed by scorer name', async () => {
       const scorer = createTestScorer('test', async () => ({ score: 0.75 }));
 
       const results = await onlineEval(
@@ -187,25 +187,28 @@ describe('onlineEval', () => {
         { output: baseOutput, scorers: [scorer] },
       );
 
-      expect(results).toHaveLength(1);
-      expect(results[0].name).toBe('test');
-      expect(results[0].score).toBe(0.75);
+      expect(Object.keys(results)).toEqual(['test']);
+      expect(results['test']).toEqual({ name: 'test', score: 0.75 });
     });
 
-    it('returns empty array when no scorers', async () => {
+    it('returns empty object when no scorers', async () => {
       const results = await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [] });
-      expect(results).toEqual([]);
+      expect(results).toEqual({});
     });
 
-    it('returns empty array when sampling rejects', async () => {
+    it('returns empty object when all scorers are sampled out', async () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       const results = await onlineEval(
         { capability: 'qa' },
-        { output: baseOutput, scorers: [scorer], sampling: { rate: 0 } },
+        {
+          output: baseOutput,
+          scorers: [{ scorer, sampling: 0 }],
+        },
       );
 
-      expect(results).toEqual([]);
+      expect(results).toEqual({});
+      expect(mockTracer.startSpan).toHaveBeenCalledTimes(1);
     });
 
     it('returns named precomputed scores and errors', async () => {
@@ -224,14 +227,12 @@ describe('onlineEval', () => {
         },
       );
 
-      expect(results).toEqual([
-        {
-          name: 'route-decision',
-          score: 0,
-          metadata: { decision: 'REDIRECT' },
-          error: 'manual-fail',
-        },
-      ]);
+      expect(results['route-decision']).toEqual({
+        name: 'route-decision',
+        score: 0,
+        metadata: { decision: 'REDIRECT' },
+        error: 'manual-fail',
+      });
     });
 
     it('returns full precomputed scorer results', async () => {
@@ -243,13 +244,11 @@ describe('onlineEval', () => {
         },
       );
 
-      expect(results).toEqual([
-        {
-          name: 'cached',
-          score: 0.42,
-          metadata: { source: 'cache' },
-        },
-      ]);
+      expect(results['cached']).toEqual({
+        name: 'cached',
+        score: 0.42,
+        metadata: { source: 'cache' },
+      });
     });
 
     it('supports mixing scorer functions and precomputed scores', async () => {
@@ -263,14 +262,14 @@ describe('onlineEval', () => {
         },
       );
 
-      expect(results).toHaveLength(2);
-      expect(results[0]).toEqual({ name: 'runtime-scorer', score: 0.9 });
-      expect(results[1]).toEqual({ name: 'precomputed-scorer', score: 0.25 });
+      expect(Object.keys(results).sort()).toEqual(['precomputed-scorer', 'runtime-scorer']);
+      expect(results['runtime-scorer']).toEqual({ name: 'runtime-scorer', score: 0.9 });
+      expect(results['precomputed-scorer']).toEqual({ name: 'precomputed-scorer', score: 0.25 });
     });
   });
 
   describe('sampling', () => {
-    it('always runs when sampling is not configured', async () => {
+    it('always runs when scorer sampling is not configured', async () => {
       let executed = false;
       const scorer = createTestScorer('test', async () => {
         executed = true;
@@ -290,7 +289,7 @@ describe('onlineEval', () => {
 
       await onlineEval(
         { capability: 'qa' },
-        { output: baseOutput, scorers: [scorer], sampling: { rate: 1.0 } },
+        { output: baseOutput, scorers: [{ scorer, sampling: 1.0 }] },
       );
       expect(executed).toBe(true);
     });
@@ -304,7 +303,7 @@ describe('onlineEval', () => {
 
       await onlineEval(
         { capability: 'qa' },
-        { output: baseOutput, scorers: [scorer], sampling: { rate: 0 } },
+        { output: baseOutput, scorers: [{ scorer, sampling: 0 }] },
       );
       expect(executed).toBe(false);
     });
@@ -322,13 +321,80 @@ describe('onlineEval', () => {
 
         await onlineEval(
           { capability: 'qa' },
-          { output: baseOutput, scorers: [scorer], sampling: { rate: 0.5 } },
+          { output: baseOutput, scorers: [{ scorer, sampling: 0.5 }] },
         );
         if (executed) ranCount++;
       }
 
       expect(ranCount).toBeGreaterThan(20);
       expect(ranCount).toBeLessThan(80);
+    });
+
+    it('supports async sampling predicates', async () => {
+      let executed = false;
+      const scorer = createTestScorer('async-sampling', async () => {
+        executed = true;
+        return { score: 1 };
+      });
+
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          input: 'hello',
+          output: baseOutput,
+          scorers: [
+            {
+              scorer,
+              sampling: async ({ input, output }) => {
+                await new Promise((resolve) => setTimeout(resolve, 5));
+                return input === 'hello' && output === baseOutput;
+              },
+            },
+          ],
+        },
+      );
+
+      expect(executed).toBe(true);
+    });
+
+    it('captures sampling predicate failures as scorer errors', async () => {
+      const scorer = createTestScorer('sampled-failure', async () => ({ score: 1 }));
+
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [
+            {
+              scorer,
+              sampling: async () => {
+                throw new Error('Sampling gate failed');
+              },
+            },
+          ],
+        },
+      );
+
+      expect(results['sampled-failure']?.score).toBeNull();
+      expect(results['sampled-failure']?.error).toBe('Sampling gate failed');
+    });
+  });
+
+  describe('duplicate scorer names', () => {
+    it('marks eval span as error and returns empty object for duplicate names', async () => {
+      const scorer1 = createTestScorer('duplicate', async () => ({ score: 1 }));
+      const scorer2 = createTestScorer('duplicate', async () => ({ score: 0 }));
+
+      const results = await onlineEval(
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer1, scorer2] },
+      );
+
+      expect(results).toEqual({});
+      expect(mockEvalSpan.recordException).toHaveBeenCalled();
+      expect(mockEvalSpan.setStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ code: SpanStatusCode.ERROR }),
+      );
     });
   });
 
@@ -355,8 +421,8 @@ describe('onlineEval', () => {
         { output: baseOutput, scorers: [failingScorer] },
       );
 
-      expect(results).toHaveLength(1);
-      expect(results[0].error).toBeDefined();
+      expect(results['failing-async']).toBeDefined();
+      expect(results['failing-async']?.error).toBeDefined();
     });
   });
 
@@ -455,8 +521,9 @@ describe('onlineEval', () => {
     it('uses function name as default', async () => {
       const scorer: ScorerLike = async () => ({ score: 1 });
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      const results = await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
 
+      expect(Object.keys(results)).toHaveLength(1);
       expect(mockTracer.startSpan).toHaveBeenCalledWith(
         expect.stringContaining('eval'),
         expect.anything(),

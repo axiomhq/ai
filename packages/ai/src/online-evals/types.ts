@@ -1,12 +1,11 @@
 import type { Score as EvalScore } from '../evals/scorers';
 
 /**
- * Sampling configuration for online evaluation.
+ * Sampling decision for an individual scorer.
  */
-export type EvalSampling = {
-  /** Sample rate between 0.0 and 1.0 (default: 1.0 = 100%) */
-  rate: number;
-};
+export type ScorerSampling<TInput = unknown, TOutput = unknown> =
+  | number
+  | ((args: { input?: TInput; output: TOutput }) => boolean | Promise<boolean>);
 
 /**
  * Online scorer result payload.
@@ -31,3 +30,24 @@ export type Scorer<
   input?: TInput;
   output: TOutput;
 }) => Omit<ScorerResult<TMetadata>, 'name'> | Promise<Omit<ScorerResult<TMetadata>, 'name'>>;
+
+export type OnlineEvalScorerInput<
+  TInput = unknown,
+  TOutput = unknown,
+  TMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = Scorer<TInput, TOutput, TMetadata> | ScorerResult<TMetadata>;
+
+export type SampledOnlineEvalScorer<
+  TInput = unknown,
+  TOutput = unknown,
+  TMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  scorer: OnlineEvalScorerInput<TInput, TOutput, TMetadata>;
+  sampling?: ScorerSampling<TInput, TOutput>;
+};
+
+export type OnlineEvalScorerEntry<
+  TInput = unknown,
+  TOutput = unknown,
+  TMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = OnlineEvalScorerInput<TInput, TOutput, TMetadata> | SampledOnlineEvalScorer<TInput, TOutput, TMetadata>;

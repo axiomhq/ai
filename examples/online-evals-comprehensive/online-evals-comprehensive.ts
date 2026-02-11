@@ -130,8 +130,7 @@ async function main() {
       {
         input: prompt2,
         output: result2,
-        scorers: [relevanceScorer],
-        sampling: { rate: 0.5 },
+        scorers: [{ scorer: relevanceScorer, sampling: 0.5 }],
       },
     ),
   );

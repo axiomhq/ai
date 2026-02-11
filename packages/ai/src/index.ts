@@ -5,7 +5,7 @@
 export * from './otel/initAxiomAI';
 export * from './otel/vercel';
 export * from './otel/withSpan';
-import { onlineEval as _onlineEval } from './online-evals';
+import { onlineEval as _onlineEval } from './online-evals/onlineEval';
 import { warnOnlineEvalDeprecation } from './evals/deprecated';
 
 /** @deprecated Import from 'axiom/ai/evals/online' instead. */
@@ -13,9 +13,6 @@ export const onlineEval: typeof _onlineEval = (...args) => {
   warnOnlineEvalDeprecation();
   return _onlineEval(...args);
 };
-
-/** @deprecated Import from 'axiom/ai/evals/online' instead. */
-export type { EvalSampling, ScorerResult } from './online-evals';
 
 import { createScorer } from './evals/scorer.factory';
 import { warnScorerDeprecation } from './evals/deprecated';

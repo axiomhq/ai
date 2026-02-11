@@ -1,5 +1,5 @@
 import { describe, it, expectTypeOf } from 'vitest';
-import { onlineEval } from '../../src/online-evals';
+import { onlineEval } from '../../src/online-evals/onlineEval';
 
 describe('onlineEval type inference', () => {
   it('infers metadata from scorer function return', () => {
@@ -19,7 +19,7 @@ describe('onlineEval type inference', () => {
         },
       );
 
-    type Result = Awaited<ReturnType<typeof _evaluate>>[number];
+    type Result = NonNullable<Awaited<ReturnType<typeof _evaluate>>[string]>;
     expectTypeOf<Result['metadata']>().toEqualTypeOf<{ decision: 'REDIRECT' } | undefined>();
   });
 
@@ -41,7 +41,7 @@ describe('onlineEval type inference', () => {
         },
       );
 
-    type Result = Awaited<ReturnType<typeof _evaluate>>[number];
+    type Result = NonNullable<Awaited<ReturnType<typeof _evaluate>>['decision']>;
     expectTypeOf<Result['metadata']>().toEqualTypeOf<{ decision: 'CONTINUE' } | undefined>();
   });
 
@@ -54,6 +54,23 @@ describe('onlineEval type inference', () => {
           scorers: [
             // @ts-expect-error name is required for precomputed scorer results
             { score: 1, metadata: { decision: 'CONTINUE' as const } },
+          ],
+        },
+      );
+
+    invalid;
+  });
+
+  it('rejects duplicate scorer names when names are known literals', () => {
+    const invalid = () =>
+      onlineEval(
+        { capability: 'routing' },
+        {
+          output: 'response',
+          // @ts-expect-error duplicate scorer names are not allowed
+          scorers: [
+            { name: 'duplicate', score: 1 },
+            { name: 'duplicate', score: 0 },
           ],
         },
       );
