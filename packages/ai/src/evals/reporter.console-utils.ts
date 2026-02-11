@@ -595,11 +595,11 @@ export function printFinalReport({
       const baselineParam = suite.baseline?.traceId ? `?baselineId=${suite.baseline.traceId}` : '';
       logger('View eval result:');
       logger(
-        `${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations/${suite.name}/${suite.version}${baselineParam}`,
+        `${config.consoleEndpointUrl}/${orgId}/ai/evaluations/${suite.name}/${suite.version}${baselineParam}`,
       );
     } else {
       logger('View full report:');
-      logger(`${config.consoleEndpointUrl}/${orgId}/ai-engineering/evaluations?runId=${runId}`);
+      logger(`${config.consoleEndpointUrl}/${orgId}/ai/evaluations?runId=${runId}`);
     }
   } else if (isDebug) {
     logger(c.dim('Results not uploaded to Axiom (debug mode)'));
