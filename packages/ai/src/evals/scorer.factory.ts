@@ -5,6 +5,14 @@ import type { Score, Scorer, ScorerOptions } from './scorer.types';
 // Helper to force TypeScript to evaluate/simplify types
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
+type ScorerReturnValue = number | boolean | Score;
+type AwaitedValue<T> = T extends Promise<infer U> ? U : T;
+type InferScorerMetadata<T> =
+  AwaitedValue<T> extends Score<infer TMetadata> ? TMetadata : Record<string, any>;
+type NormalizeScorerReturn<T, TMetadata extends Record<string, any>> = T extends Promise<any>
+  ? Promise<Score<TMetadata>>
+  : Score<TMetadata>;
+
 /**
  * Creates a scorer to be used in evals.
  *
@@ -35,6 +43,9 @@ export function createScorer<
   TExtra extends Record<string, any> = Simplify<
     Omit<TArgs, 'input' | 'expected' | 'output' | 'trialIndex'>
   >,
+  TReturn extends ScorerReturnValue | Promise<ScorerReturnValue> =
+    | ScorerReturnValue
+    | Promise<ScorerReturnValue>,
   TName extends string = string,
 >(
   /**
@@ -44,13 +55,22 @@ export function createScorer<
   /**
    * The scorer function. Can be sync or async.
    */
-  fn: (args: TArgs) => number | boolean | Score | Promise<number | boolean | Score>,
+  fn: (args: TArgs) => TReturn,
   /**
    * Optional configuration for the scorer, including aggregation for trials.
    */
   options?: ScorerOptions,
-): [TOutput] extends [never] ? never : Scorer<TInput, TExpected, TOutput, TExtra> {
-  const normalizeScore = (res: number | boolean | Score): Score => {
+): [TOutput] extends [never]
+  ? never
+  : Scorer<
+      TInput,
+      TExpected,
+      TOutput,
+      TExtra,
+      InferScorerMetadata<TReturn>,
+      NormalizeScorerReturn<TReturn, InferScorerMetadata<TReturn>>
+    > {
+  const normalizeScore = (res: ScorerReturnValue): Score => {
     if (typeof res === 'number') {
       return { score: res };
     }
@@ -103,5 +123,14 @@ export function createScorer<
     });
   }
 
-  return scorer as [TOutput] extends [never] ? never : Scorer<TInput, TExpected, TOutput, TExtra>;
+  return scorer as [TOutput] extends [never]
+    ? never
+    : Scorer<
+        TInput,
+        TExpected,
+        TOutput,
+        TExtra,
+        InferScorerMetadata<TReturn>,
+        NormalizeScorerReturn<TReturn, InferScorerMetadata<TReturn>>
+      >;
 }
