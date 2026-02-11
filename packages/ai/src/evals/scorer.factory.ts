@@ -9,9 +9,8 @@ type ScorerReturnValue = number | boolean | Score;
 type AwaitedValue<T> = T extends Promise<infer U> ? U : T;
 type InferScorerMetadata<T> =
   AwaitedValue<T> extends Score<infer TMetadata> ? TMetadata : Record<string, any>;
-type NormalizeScorerReturn<T, TMetadata extends Record<string, any>> = T extends Promise<any>
-  ? Promise<Score<TMetadata>>
-  : Score<TMetadata>;
+type NormalizeScorerReturn<T, TMetadata extends Record<string, any>> =
+  T extends Promise<any> ? Promise<Score<TMetadata>> : Score<TMetadata>;
 
 /**
  * Creates a scorer to be used in evals.

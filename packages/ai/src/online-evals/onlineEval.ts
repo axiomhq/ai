@@ -16,10 +16,10 @@ type InferScorerMetadata<TScorerEntry> =
   TScorerEntry extends SampledOnlineEvalScorer<any, any, any>
     ? InferScorerMetadata<TScorerEntry['scorer']>
     : TScorerEntry extends Scorer<any, any, infer TMetadata>
-    ? TMetadata
-    : TScorerEntry extends ScorerResult<infer TMetadata>
       ? TMetadata
-      : never;
+      : TScorerEntry extends ScorerResult<infer TMetadata>
+        ? TMetadata
+        : never;
 
 type InferScorerName<TScorerEntry> =
   TScorerEntry extends SampledOnlineEvalScorer<any, any, any>
@@ -40,11 +40,7 @@ type DuplicateScorerNames<
   ? InferScorerName<Head> extends infer ScorerName
     ? ScorerName extends string
       ? IsBroadString<ScorerName> extends true
-        ? DuplicateScorerNames<
-            Tail extends readonly unknown[] ? Tail : never,
-            Seen,
-            Duplicates
-          >
+        ? DuplicateScorerNames<Tail extends readonly unknown[] ? Tail : never, Seen, Duplicates>
         : ScorerName extends Seen
           ? DuplicateScorerNames<
               Tail extends readonly unknown[] ? Tail : never,
@@ -60,15 +56,17 @@ type DuplicateScorerNames<
     : never
   : Duplicates;
 
-type EnsureUniqueScorerNames<TEntries extends readonly unknown[]> =
-  [DuplicateScorerNames<TEntries>] extends [never]
-    ? TEntries
-    : never & {
-        __axiomDuplicateScorerNames__: DuplicateScorerNames<TEntries>;
-      };
+type EnsureUniqueScorerNames<TEntries extends readonly unknown[]> = [
+  DuplicateScorerNames<TEntries>,
+] extends [never]
+  ? TEntries
+  : never & {
+      __axiomDuplicateScorerNames__: DuplicateScorerNames<TEntries>;
+    };
 
-type InferOnlineEvalResult<TScorers extends readonly unknown[]> =
-  ScorerResult<InferScorerMetadata<TScorers[number]>>;
+type InferOnlineEvalResult<TScorers extends readonly unknown[]> = ScorerResult<
+  InferScorerMetadata<TScorers[number]>
+>;
 
 type InferOnlineEvalResultRecord<TScorers extends readonly unknown[]> = Partial<
   Record<Extract<InferScorerName<TScorers[number]>, string>, InferOnlineEvalResult<TScorers>>

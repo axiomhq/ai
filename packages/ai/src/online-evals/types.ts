@@ -50,4 +50,6 @@ export type OnlineEvalScorerEntry<
   TInput = unknown,
   TOutput = unknown,
   TMetadata extends Record<string, unknown> = Record<string, unknown>,
-> = OnlineEvalScorerInput<TInput, TOutput, TMetadata> | SampledOnlineEvalScorer<TInput, TOutput, TMetadata>;
+> =
+  | OnlineEvalScorerInput<TInput, TOutput, TMetadata>
+  | SampledOnlineEvalScorer<TInput, TOutput, TMetadata>;

@@ -521,7 +521,10 @@ describe('onlineEval', () => {
     it('uses function name as default', async () => {
       const scorer: ScorerLike = async () => ({ score: 1 });
 
-      const results = await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      const results = await onlineEval(
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
       expect(Object.keys(results)).toHaveLength(1);
       expect(mockTracer.startSpan).toHaveBeenCalledWith(
