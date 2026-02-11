@@ -371,7 +371,7 @@ function main() {
       console.error(`  - ${entrypoint}`);
     }
     console.error(
-      '[check-vitest-entrypoints] Update VITEST_ALLOWED_ENTRYPOINTS to keep this policy explicit.',
+      '[check-vitest-entrypoints] Update EXPECTED_VITEST_ENTRYPOINTS to keep this policy explicit.',
     );
     process.exit(1);
   }
