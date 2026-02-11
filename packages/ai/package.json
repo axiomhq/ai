@@ -10,7 +10,8 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup && chmod +x dist/bin.js",
+    "build": "tsup && chmod +x dist/bin.js && pnpm check:vitest-entrypoints",
+    "check:vitest-entrypoints": "node ./scripts/check-vitest-entrypoints.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
