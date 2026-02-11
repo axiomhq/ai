@@ -4,27 +4,23 @@ import { Attr } from '../otel/semconv/attributes';
 
 type OnlineEvalScorerInput<TInput, TOutput> = Scorer<TInput, TOutput, any> | ScorerResult<any>;
 
-type NamedScorerResult<TMetadata extends Record<string, unknown> = Record<string, unknown>> =
-  ScorerResult<TMetadata>;
-
 function setScorerSpanAttrs(
   scorerSpan: Span,
   scorerName: string,
   result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
 ): void {
-  scorerSpan.setAttributes({
+  const attrs: Record<string, string | number | boolean | undefined> = {
     [Attr.GenAI.Operation.Name]: 'eval.score',
     [Attr.Eval.Score.Name]: scorerName,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
-  });
-
-  if (result.score) {
-    scorerSpan.setAttribute(Attr.Eval.Score.Value, result.score);
-  }
+    [Attr.Eval.Score.Value]: result.score ?? undefined,
+  };
 
   if (result.metadata && Object.keys(result.metadata).length > 0) {
-    scorerSpan.setAttribute(Attr.Eval.Score.Metadata, JSON.stringify(result.metadata));
+    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(result.metadata);
   }
+
+  scorerSpan.setAttributes(attrs);
 }
 
 /**
@@ -35,7 +31,7 @@ export async function executeScorer<TInput, TOutput>(
   input: TInput | undefined,
   output: TOutput,
   parentSpan: Span,
-): Promise<NamedScorerResult<any>> {
+): Promise<ScorerResult<any>> {
   const tracer = trace.getTracer('axiom-ai');
   const parentContext = trace.setSpan(context.active(), parentSpan);
 
@@ -56,7 +52,7 @@ export async function executeScorer<TInput, TOutput>(
                 output,
               })),
               name: scorerName,
-            } satisfies NamedScorerResult)
+            } satisfies ScorerResult)
           : scorer;
 
       setScorerSpanAttrs(scorerSpan, scorerName, result);
@@ -78,7 +74,7 @@ export async function executeScorer<TInput, TOutput>(
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      const failedResult: NamedScorerResult = {
+      const failedResult: ScorerResult = {
         name: scorerName,
         score: null,
         error: error.message,

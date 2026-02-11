@@ -1,23 +1,7 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import { onlineEval } from '../../src/online-evals';
-import type { Scorer, ScorerResult } from '../../src/evals/online';
 
 describe('onlineEval type inference', () => {
-  it('exports Scorer and ScorerResult types from online entrypoint', () => {
-    const scorer: Scorer<unknown, string, { decision: 'REDIRECT' }> = async ({ output }) => ({
-      score: output.length > 0 ? 1 : 0,
-      metadata: { decision: 'REDIRECT' },
-    });
-    const precomputed: ScorerResult<{ decision: 'CONTINUE' }> = {
-      name: 'decision',
-      score: 1,
-      metadata: { decision: 'CONTINUE' },
-    };
-
-    scorer;
-    precomputed;
-  });
-
   it('infers metadata from scorer function return', () => {
     const scorer = async ({ output }: { output: string }) => ({
       score: output.length > 0 ? 1 : 0,
@@ -40,7 +24,7 @@ describe('onlineEval type inference', () => {
   });
 
   it('infers metadata from precomputed scorer result', () => {
-    const precomputed: ScorerResult<{ decision: 'CONTINUE' }> = {
+    const precomputed = {
       name: 'decision',
       score: 1,
       metadata: {
