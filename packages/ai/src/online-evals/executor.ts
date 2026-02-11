@@ -2,9 +2,7 @@ import { context, trace, SpanStatusCode, type Span } from '@opentelemetry/api';
 import type { Scorer, ScorerResult } from './types';
 import { Attr } from '../otel/semconv/attributes';
 
-type OnlineEvalScorerInput<TInput, TOutput> =
-  | Scorer<TInput, TOutput, any>
-  | ScorerResult<any>;
+type OnlineEvalScorerInput<TInput, TOutput> = Scorer<TInput, TOutput, any> | ScorerResult<any>;
 
 type NamedScorerResult<TMetadata extends Record<string, unknown> = Record<string, unknown>> =
   ScorerResult<TMetadata>;
