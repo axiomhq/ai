@@ -125,6 +125,19 @@ describe('onlineEval', () => {
       expect(mockTracer.startSpan).toHaveBeenCalledTimes(3);
     });
 
+    it('accepts precomputed scores', async () => {
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ score: 0.75, metadata: { decision: 'REDIRECT' } }],
+        },
+      );
+
+      expect(mockTracer.startSpan).toHaveBeenCalledTimes(2);
+      expect(mockScorerSpan.setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.OK });
+    });
+
     it('handles scorer errors gracefully', async () => {
       const failingScorer = createTestScorer('failing-scorer', async () => {
         throw new Error('Scorer failed');
@@ -193,6 +206,64 @@ describe('onlineEval', () => {
       );
 
       expect(results).toEqual([]);
+    });
+
+    it('returns named precomputed scores and errors', async () => {
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [
+            {
+              name: 'route-decision',
+              score: 0,
+              metadata: { decision: 'REDIRECT' },
+              error: 'manual-fail',
+            },
+          ],
+        },
+      );
+
+      expect(results).toEqual([
+        {
+          name: 'route-decision',
+          score: { score: 0, metadata: { decision: 'REDIRECT' } },
+          error: 'manual-fail',
+        },
+      ]);
+    });
+
+    it('returns full precomputed scorer results', async () => {
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'cached', score: { score: 0.42, metadata: { source: 'cache' } } }],
+        },
+      );
+
+      expect(results).toEqual([
+        {
+          name: 'cached',
+          score: { score: 0.42, metadata: { source: 'cache' } },
+        },
+      ]);
+    });
+
+    it('supports mixing scorer functions and precomputed scores', async () => {
+      const scorer = createTestScorer('runtime-scorer', async () => ({ score: 0.9 }));
+
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [scorer, { name: 'precomputed-scorer', score: 0.25 }],
+        },
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual({ name: 'runtime-scorer', score: { score: 0.9 } });
+      expect(results[1]).toEqual({ name: 'precomputed-scorer', score: { score: 0.25 } });
     });
   });
 
