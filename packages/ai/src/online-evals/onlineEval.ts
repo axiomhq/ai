@@ -1,6 +1,5 @@
 import { context, trace, SpanStatusCode, type SpanContext } from '@opentelemetry/api';
-import type { ScorerLike } from '../evals/scorers';
-import type { EvalSampling, ScorerResult } from './types';
+import type { EvalSampling, OnlineEvalScorer, ScorerResult } from './types';
 import { executeScorer } from './executor';
 
 /**
@@ -28,8 +27,8 @@ export type OnlineEvalOptions<TInput, TOutput> = {
   input?: TInput;
   /** Output to evaluate */
   output: TOutput;
-  /** Scorers to run (not mutated) */
-  scorers: readonly ScorerLike<TInput, unknown, TOutput>[];
+  /** Scorers or precomputed scores to include (not mutated) */
+  scorers: readonly OnlineEvalScorer<TInput, TOutput>[];
   /** Optional sampling configuration */
   sampling?: EvalSampling;
 };
@@ -95,7 +94,7 @@ function shouldSample(sampling?: EvalSampling): boolean {
  * @param options - Evaluation configuration
  * @param options.input - Input to pass to scorers
  * @param options.output - Output to evaluate
- * @param options.scorers - Scorers to run
+ * @param options.scorers - Scorer functions or precomputed scores to include
  * @param options.sampling - Optional sampling configuration
  * @returns Promise resolving to scorer results
  */
