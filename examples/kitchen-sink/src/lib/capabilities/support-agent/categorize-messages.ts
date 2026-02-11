@@ -1,7 +1,8 @@
 import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
 import { generateText, ModelMessage } from 'ai';
-import { withSpan, wrapAISDKModel, onlineEval } from 'axiom/ai';
+import { withSpan, wrapAISDKModel } from 'axiom/ai';
+import { onlineEval } from 'axiom/ai/evals/online';
 import z from 'zod';
 import { validCategoryScorer, formatConfidenceScorer } from './online-scorers';
 

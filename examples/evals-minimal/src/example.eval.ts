@@ -1,5 +1,6 @@
 import { pickFlags } from '@/app-scope';
-import { Eval, Scorer } from 'axiom/ai/evals';
+import { Eval } from 'axiom/ai/evals';
+import { Scorer } from 'axiom/ai/evals/scorers';
 import { Mean, PassHatK } from 'axiom/ai/evals/aggregations';
 import { parrotOrAntiParrot } from './example';
 

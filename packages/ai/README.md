@@ -82,8 +82,9 @@ const result = await withSpan(
 For running scorers in production (without vitest dependency):
 
 ```ts
-import { withSpan, onlineEval } from 'axiom/ai';
+import { withSpan } from 'axiom/ai';
 import { Scorer } from 'axiom/ai/evals/scorers';
+import { onlineEval } from 'axiom/ai/evals/online';
 
 const formatScorer = Scorer('format-check', ({ output }: { output: string }) => {
   return output.length > 0;

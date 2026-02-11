@@ -1,6 +1,7 @@
 import { pickFlags } from '@/lib/app-scope';
 import { categorizeMessage } from '@/lib/capabilities/support-agent/categorize-messages';
-import { Eval, Scorer } from 'axiom/ai/evals';
+import { Eval } from 'axiom/ai/evals';
+import { Scorer } from 'axiom/ai/evals/scorers';
 
 const exactMatch = Scorer('exact-match', (args: { expected: string; output: string }) => {
   return args.expected === args.output ? true : false;

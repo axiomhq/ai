@@ -49,6 +49,7 @@ export default defineConfig([
       'src/evals/custom-runner.ts',
       'src/evals/aggregations.ts',
       'src/evals/scorers.ts',
+      'src/evals/online.ts',
     ],
     noExternal: ['handlebars'],
     clean: false,
