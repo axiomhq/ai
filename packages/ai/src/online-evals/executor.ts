@@ -42,58 +42,63 @@ export async function executeScorer<TInput, TOutput>(
   const parentContext = trace.setSpan(context.active(), parentSpan);
 
   return context.with(parentContext, async () => {
-    if (typeof scorer !== 'function') {
-      const scorerSpan = tracer.startSpan(`eval ${scorer.name}`);
-
-      try {
-        setScorerSpanAttrs(scorerSpan, scorer.name, scorer);
-
-        if (scorer.error) {
-          scorerSpan.recordException(new Error(scorer.error));
-          scorerSpan.setStatus({
-            code: SpanStatusCode.ERROR,
-            message: scorer.error,
-          });
-        } else {
-          scorerSpan.setStatus({ code: SpanStatusCode.OK });
-        }
-
-        return scorer;
-      } finally {
-        scorerSpan.end();
-      }
-    }
-
-    const scorerName = (scorer as { name?: string }).name || 'unknown';
+    const scorerName =
+      typeof scorer === 'function'
+        ? // undefined/unknown case shouldn't happen, but better safe than sorry
+          scorer.name || 'unknown'
+        : scorer.name;
     const scorerSpan = tracer.startSpan(`eval ${scorerName}`);
 
     try {
-      const result = await scorer({
-        input,
-        output,
-      });
+      const result =
+        typeof scorer === 'function'
+          ? ({
+              ...(await scorer({
+                input,
+                output,
+              })),
+              name: scorerName,
+            } satisfies NamedScorerResult)
+          : scorer;
 
       setScorerSpanAttrs(scorerSpan, scorerName, result);
-      scorerSpan.setStatus({ code: SpanStatusCode.OK });
+      if (result.error) {
+        const error = new Error(result.error);
+        scorerSpan.recordException(error);
+        scorerSpan.setAttributes({
+          [Attr.Error.Message]: error.message,
+          [Attr.Error.Type]: error.name,
+        });
+        scorerSpan.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: error.message,
+        });
+      } else {
+        scorerSpan.setStatus({ code: SpanStatusCode.OK });
+      }
 
-      return {
-        ...result,
-        name: scorerName,
-      };
+      return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
+      const failedResult: NamedScorerResult = {
+        name: scorerName,
+        score: null,
+        error: error.message,
+      };
+
+      setScorerSpanAttrs(scorerSpan, scorerName, failedResult);
 
       scorerSpan.recordException(error);
+      scorerSpan.setAttributes({
+        [Attr.Error.Message]: error.message,
+        [Attr.Error.Type]: error.name,
+      });
       scorerSpan.setStatus({
         code: SpanStatusCode.ERROR,
         message: error.message,
       });
 
-      return {
-        name: scorerName,
-        score: null,
-        error: error.message,
-      };
+      return failedResult;
     } finally {
       scorerSpan.end();
     }
