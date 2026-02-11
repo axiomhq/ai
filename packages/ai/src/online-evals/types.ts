@@ -1,4 +1,4 @@
-import type { Score, ScorerLike } from '../evals/scorers';
+import type { Score as EvalScore } from '../evals/scorers';
 
 /**
  * Sampling configuration for online evaluation.
@@ -9,29 +9,25 @@ export type EvalSampling = {
 };
 
 /**
- * Precomputed score payload for online evals.
- *
- * Supports passing:
- * - a bare `Score` object (name defaults to `precomputed`)
- * - a named score (`Score & { name: string }`)
- * - a full `ScorerResult` object
+ * Online scorer result payload.
+ * - For scorer functions, `name` is inferred from the function name/property.
+ * - For precomputed results passed into `onlineEval`, `name` is required.
  */
-export type PrecomputedScore = Score | (Score & { name: string; error?: string }) | ScorerResult;
-
-/**
- * Online eval scorer input. Can be a scorer function or precomputed score.
- */
-export type OnlineEvalScorer<TInput = unknown, TOutput = unknown> =
-  | ScorerLike<TInput, unknown, TOutput>
-  | PrecomputedScore;
-
-/**
- * Result of executing an online scorer.
- */
-export type ScorerResult = {
+export type ScorerResult<TMetadata extends Record<string, unknown> = Record<string, unknown>> = {
   name: string;
-  score: Score;
+  score: EvalScore['score'];
+  metadata?: TMetadata;
   error?: string;
 };
 
-export type { Score };
+/**
+ * Online scorer function.
+ */
+export type Scorer<
+  TInput = unknown,
+  TOutput = unknown,
+  TMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = (args: {
+  input?: TInput;
+  output: TOutput;
+}) => Omit<ScorerResult<TMetadata>, 'name'> | Promise<Omit<ScorerResult<TMetadata>, 'name'>>;

@@ -130,7 +130,7 @@ describe('onlineEval', () => {
         { capability: 'qa' },
         {
           output: baseOutput,
-          scorers: [{ score: 0.75, metadata: { decision: 'REDIRECT' } }],
+          scorers: [{ name: 'precomputed', score: 0.75, metadata: { decision: 'REDIRECT' } }],
         },
       );
 
@@ -189,7 +189,7 @@ describe('onlineEval', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].name).toBe('test');
-      expect(results[0].score).toEqual({ score: 0.75 });
+      expect(results[0].score).toBe(0.75);
     });
 
     it('returns empty array when no scorers', async () => {
@@ -227,7 +227,8 @@ describe('onlineEval', () => {
       expect(results).toEqual([
         {
           name: 'route-decision',
-          score: { score: 0, metadata: { decision: 'REDIRECT' } },
+          score: 0,
+          metadata: { decision: 'REDIRECT' },
           error: 'manual-fail',
         },
       ]);
@@ -238,14 +239,15 @@ describe('onlineEval', () => {
         { capability: 'qa' },
         {
           output: baseOutput,
-          scorers: [{ name: 'cached', score: { score: 0.42, metadata: { source: 'cache' } } }],
+          scorers: [{ name: 'cached', score: 0.42, metadata: { source: 'cache' } }],
         },
       );
 
       expect(results).toEqual([
         {
           name: 'cached',
-          score: { score: 0.42, metadata: { source: 'cache' } },
+          score: 0.42,
+          metadata: { source: 'cache' },
         },
       ]);
     });
@@ -262,8 +264,8 @@ describe('onlineEval', () => {
       );
 
       expect(results).toHaveLength(2);
-      expect(results[0]).toEqual({ name: 'runtime-scorer', score: { score: 0.9 } });
-      expect(results[1]).toEqual({ name: 'precomputed-scorer', score: { score: 0.25 } });
+      expect(results[0]).toEqual({ name: 'runtime-scorer', score: 0.9 });
+      expect(results[1]).toEqual({ name: 'precomputed-scorer', score: 0.25 });
     });
   });
 

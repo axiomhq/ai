@@ -1,35 +1,19 @@
 import { context, trace, SpanStatusCode, type Span } from '@opentelemetry/api';
-import type { OnlineEvalScorer, PrecomputedScore, ScorerResult } from './types';
+import type { Scorer, ScorerResult } from './types';
 import { Attr } from '../otel/semconv/attributes';
-import type { Score } from '../evals/scorers';
 
-function isScorerResult(value: PrecomputedScore): value is ScorerResult {
-  if (!value || typeof value !== 'object') return false;
-  if (!('name' in value) || typeof value.name !== 'string') return false;
-  if (!('score' in value)) return false;
+type OnlineEvalScorerInput<TInput, TOutput> =
+  | Scorer<TInput, TOutput, any>
+  | ScorerResult<any>;
 
-  const candidateScore = value.score;
-  return typeof candidateScore === 'object' && candidateScore !== null && 'score' in candidateScore;
-}
+type NamedScorerResult<TMetadata extends Record<string, unknown> = Record<string, unknown>> =
+  ScorerResult<TMetadata>;
 
-function normalizePrecomputedResult(precomputed: PrecomputedScore): ScorerResult {
-  if (isScorerResult(precomputed)) {
-    return precomputed;
-  }
-
-  const score = precomputed as Score & { name?: string; error?: string };
-
-  return {
-    name: score.name || 'precomputed',
-    score: {
-      score: score.score,
-      metadata: score.metadata,
-    },
-    error: score.error,
-  };
-}
-
-function setScorerSpanAttrs(scorerSpan: Span, scorerName: string, score: Score): void {
+function setScorerSpanAttrs(
+  scorerSpan: Span,
+  scorerName: string,
+  result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
+): void {
   scorerSpan.setAttributes({
     [Attr.GenAI.Operation.Name]: 'eval.score',
     [Attr.Eval.Score.Name]: scorerName,
@@ -37,11 +21,11 @@ function setScorerSpanAttrs(scorerSpan: Span, scorerName: string, score: Score):
   });
 
   const attrs: Record<string, string | number | boolean | undefined> = {
-    [Attr.Eval.Score.Value]: score.score ?? undefined,
+    [Attr.Eval.Score.Value]: result.score ?? undefined,
   };
 
-  if (score.metadata && Object.keys(score.metadata).length > 0) {
-    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(score.metadata);
+  if (result.metadata && Object.keys(result.metadata).length > 0) {
+    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(result.metadata);
   }
 
   scorerSpan.setAttributes(attrs);
@@ -51,33 +35,32 @@ function setScorerSpanAttrs(scorerSpan: Span, scorerName: string, score: Score):
  * Executes a single scorer or emits a precomputed scorer result.
  */
 export async function executeScorer<TInput, TOutput>(
-  scorer: OnlineEvalScorer<TInput, TOutput>,
+  scorer: OnlineEvalScorerInput<TInput, TOutput>,
   input: TInput | undefined,
   output: TOutput,
   parentSpan: Span,
-): Promise<ScorerResult> {
+): Promise<NamedScorerResult<any>> {
   const tracer = trace.getTracer('axiom-ai');
   const parentContext = trace.setSpan(context.active(), parentSpan);
 
   return context.with(parentContext, async () => {
     if (typeof scorer !== 'function') {
-      const precomputed = normalizePrecomputedResult(scorer);
-      const scorerSpan = tracer.startSpan(`eval ${precomputed.name}`);
+      const scorerSpan = tracer.startSpan(`eval ${scorer.name}`);
 
       try {
-        setScorerSpanAttrs(scorerSpan, precomputed.name, precomputed.score);
+        setScorerSpanAttrs(scorerSpan, scorer.name, scorer);
 
-        if (precomputed.error) {
-          scorerSpan.recordException(new Error(precomputed.error));
+        if (scorer.error) {
+          scorerSpan.recordException(new Error(scorer.error));
           scorerSpan.setStatus({
             code: SpanStatusCode.ERROR,
-            message: precomputed.error,
+            message: scorer.error,
           });
         } else {
           scorerSpan.setStatus({ code: SpanStatusCode.OK });
         }
 
-        return precomputed;
+        return scorer;
       } finally {
         scorerSpan.end();
       }
@@ -96,8 +79,8 @@ export async function executeScorer<TInput, TOutput>(
       scorerSpan.setStatus({ code: SpanStatusCode.OK });
 
       return {
+        ...result,
         name: scorerName,
-        score: result,
       };
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
@@ -110,7 +93,7 @@ export async function executeScorer<TInput, TOutput>(
 
       return {
         name: scorerName,
-        score: { score: null, metadata: { error: error.message } },
+        score: null,
         error: error.message,
       };
     } finally {

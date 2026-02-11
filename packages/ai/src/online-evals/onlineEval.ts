@@ -1,6 +1,19 @@
 import { context, trace, SpanStatusCode, type SpanContext } from '@opentelemetry/api';
-import type { EvalSampling, OnlineEvalScorer, ScorerResult } from './types';
+import type { EvalSampling, Scorer, ScorerResult } from './types';
 import { executeScorer } from './executor';
+
+type ScorerEntry<TInput, TOutput> = Scorer<TInput, TOutput, any> | ScorerResult<any>;
+
+type InferScorerMetadata<TScorerEntry> =
+  TScorerEntry extends Scorer<any, any, infer TMetadata>
+    ? TMetadata
+    : TScorerEntry extends ScorerResult<infer TMetadata>
+      ? TMetadata
+      : never;
+
+type InferOnlineEvalResult<TScorers extends readonly unknown[]> = ScorerResult<
+  InferScorerMetadata<TScorers[number]>
+>;
 
 /**
  * Metadata for categorizing online evaluations.
@@ -22,13 +35,20 @@ export type OnlineEvalMeta = {
 /**
  * Options for online evaluation.
  */
-export type OnlineEvalOptions<TInput, TOutput> = {
+export type OnlineEvalOptions<
+  TInput,
+  TOutput,
+  TScorers extends readonly ScorerEntry<TInput, TOutput>[] = readonly ScorerEntry<
+    TInput,
+    TOutput
+  >[],
+> = {
   /** Input to pass to scorers (optional - only needed for input+output scorers) */
   input?: TInput;
   /** Output to evaluate */
   output: TOutput;
-  /** Scorers or precomputed scores to include (not mutated) */
-  scorers: readonly OnlineEvalScorer<TInput, TOutput>[];
+  /** Scorers or precomputed scores */
+  scorers: TScorers;
   /** Optional sampling configuration */
   sampling?: EvalSampling;
 };
@@ -98,10 +118,14 @@ function shouldSample(sampling?: EvalSampling): boolean {
  * @param options.sampling - Optional sampling configuration
  * @returns Promise resolving to scorer results
  */
-export function onlineEval<TInput, TOutput>(
+export function onlineEval<
+  TInput,
+  TOutput,
+  TScorers extends readonly ScorerEntry<TInput, TOutput>[],
+>(
   meta: OnlineEvalMeta,
-  options: OnlineEvalOptions<TInput, TOutput>,
-): Promise<ScorerResult[]> {
+  options: OnlineEvalOptions<TInput, TOutput, TScorers>,
+): Promise<Array<InferOnlineEvalResult<TScorers>>> {
   if (options.scorers.length === 0) {
     return Promise.resolve([]);
   }
@@ -115,11 +139,15 @@ export function onlineEval<TInput, TOutput>(
   return executeOnlineEvalInternal(meta, options, linkSpanContext);
 }
 
-async function executeOnlineEvalInternal<TInput, TOutput>(
+async function executeOnlineEvalInternal<
+  TInput,
+  TOutput,
+  TScorers extends readonly ScorerEntry<TInput, TOutput>[],
+>(
   meta: OnlineEvalMeta,
-  options: OnlineEvalOptions<TInput, TOutput>,
+  options: OnlineEvalOptions<TInput, TOutput, TScorers>,
   linkSpanContext: SpanContext | undefined,
-): Promise<ScorerResult[]> {
+): Promise<Array<InferOnlineEvalResult<TScorers>>> {
   const tracer = trace.getTracer('axiom-ai');
 
   const spanName = meta.step ? `eval ${meta.capability}/${meta.step}` : `eval ${meta.capability}`;
