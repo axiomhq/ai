@@ -50,6 +50,33 @@ declare module 'vitest' {
 
 const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
+type RunTaskFailureDetails = {
+  duration: number;
+  outOfScopeFlags: OutOfScopeFlagAccess[];
+  finalFlags: Record<string, any>;
+  overrides?: Record<string, any>;
+};
+
+const RUN_TASK_FAILURE_DETAILS = Symbol.for('axiom.eval.runTaskFailureDetails');
+
+function attachRunTaskFailureDetails(
+  error: unknown,
+  details: RunTaskFailureDetails,
+): Error & { [RUN_TASK_FAILURE_DETAILS]: RunTaskFailureDetails } {
+  const normalized = toError(error) as Error & { [RUN_TASK_FAILURE_DETAILS]?: RunTaskFailureDetails };
+  normalized[RUN_TASK_FAILURE_DETAILS] = details;
+  return normalized as Error & { [RUN_TASK_FAILURE_DETAILS]: RunTaskFailureDetails };
+}
+
+function getRunTaskFailureDetails(error: unknown): RunTaskFailureDetails | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  return (error as { [RUN_TASK_FAILURE_DETAILS]?: RunTaskFailureDetails })[
+    RUN_TASK_FAILURE_DETAILS
+  ];
+}
+
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
  *
@@ -226,10 +253,9 @@ async function registerEval<
           configFlags: opts.configFlags,
         };
 
-        try {
-          await instrumentationReady;
-        } catch (error) {
-          instrumentationError = error;
+        const [, instrumentationInitError] = await tryCatchAsync(instrumentationReady);
+        if (instrumentationInitError) {
+          instrumentationError = instrumentationInitError;
         }
 
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
@@ -287,13 +313,16 @@ async function registerEval<
         const resolvedBaselineId = createEvalResponse?.data?.baselineId;
 
         // Load baseline if we got a baselineId from the server
-        try {
-          if (!isDebug && !isList && !!resolvedBaselineId) {
-            baseline = await findEvaluationCases(resolvedBaselineId, axiomConfig);
+        if (!isDebug && !isList && !!resolvedBaselineId) {
+          const [baselineResult, baselineError] = await tryCatchAsync(() =>
+            findEvaluationCases(resolvedBaselineId, axiomConfig),
+          );
+          if (baselineError) {
+            console.error(`Failed to load baseline: ${errorToString(baselineError)}`);
+            instrumentationError = instrumentationError || baselineError;
+          } else {
+            baseline = baselineResult;
           }
-        } catch (error) {
-          console.error(`Failed to load baseline: ${errorToString(error)}`);
-          instrumentationError = instrumentationError || error;
         }
 
         // Update span with baseline info
@@ -374,9 +403,8 @@ async function registerEval<
         suiteSpan?.end();
 
         // flush traces before updating Evaluation in Axiom
-        try {
-          await flush();
-        } catch (flushError) {
+        const [, flushError] = await tryCatchAsync(flush);
+        if (flushError) {
           // Update registration status to failed if flush fails
           if (suite.meta.evaluation) {
             suite.meta.evaluation.registrationStatus = {
@@ -445,6 +473,9 @@ async function registerEval<
             const caseContext = trace.setSpan(context.active(), caseSpan);
             const trials = Math.max(1, opts.trials ?? 1);
             let intentionalTrialFailureError: Error | undefined;
+            let caseFinalConfigSnapshot:
+              | { flags: Record<string, any>; pickedFlags?: string[]; overrides?: Record<string, any> }
+              | undefined;
 
             // Set case-level trials attribute
             caseSpan.setAttribute(Attr.Eval.Case.Trials, trials);
@@ -497,9 +528,9 @@ async function registerEval<
                       const { output, duration } = result;
                       lastOutput = output;
                       totalDuration += duration;
-                      outOfScopeFlags = result.outOfScopeFlags;
+                      outOfScopeFlags.push(...result.outOfScopeFlags);
 
-                      finalConfigSnapshot = {
+                      caseFinalConfigSnapshot = {
                         flags: result.finalFlags || {},
                         pickedFlags: opts.configFlags,
                         overrides: result.overrides,
@@ -598,12 +629,14 @@ async function registerEval<
                         }),
                       );
                     } catch (error) {
+                      const taskFailureDetails = getRunTaskFailureDetails(error);
                       const failure = toError(error);
                       const msg = errorToString(failure);
                       const spanErrorMessage = failure.message || msg;
                       trialErrors[trialIndex] = msg;
                       trialFailures.push(failure);
-                      totalDuration += Math.round(performance.now() - trialStart);
+                      totalDuration +=
+                        taskFailureDetails?.duration ?? Math.round(performance.now() - trialStart);
 
                       trialSpan.setAttributes({
                         [Attr.Eval.Trial.Error]: spanErrorMessage,
@@ -616,6 +649,15 @@ async function registerEval<
                       for (const scorer of opts.scorers) {
                         const scorerName = getScorerName(scorer);
                         (perScorerTrials[scorerName] ??= []).push(0);
+                      }
+
+                      if (taskFailureDetails) {
+                        outOfScopeFlags.push(...taskFailureDetails.outOfScopeFlags);
+                        caseFinalConfigSnapshot = {
+                          flags: taskFailureDetails.finalFlags || {},
+                          pickedFlags: opts.configFlags,
+                          overrides: taskFailureDetails.overrides,
+                        };
                       }
                     }
                   },
@@ -712,7 +754,19 @@ async function registerEval<
               }
 
               const ctx = getEvalContext();
-              outOfScopeFlags = ctx.outOfScopeFlags || ([] as OutOfScopeFlagAccess[]);
+              const ctxOutOfScopeFlags = ctx.outOfScopeFlags || [];
+              if (ctxOutOfScopeFlags.length > 0) {
+                outOfScopeFlags.push(...ctxOutOfScopeFlags);
+              }
+
+              const ctxFlags = ctx.flags || {};
+              if (!caseFinalConfigSnapshot && Object.keys(ctxFlags).length > 0) {
+                caseFinalConfigSnapshot = {
+                  flags: ctxFlags,
+                  pickedFlags: opts.configFlags,
+                  overrides: ctx.overrides,
+                };
+              }
 
               // Populate scores with error metadata for all scorers that didn't run
               const failedScores: Record<string, ScoreWithName> = {};
@@ -751,7 +805,7 @@ async function registerEval<
             } finally {
               // Compute per-case runtime flags report and attach to span/meta
               try {
-                const accessedFlags: Record<string, any> = finalConfigSnapshot?.flags || {};
+                const accessedFlags: Record<string, any> = caseFinalConfigSnapshot?.flags || {};
 
                 const accessed = Object.keys(accessedFlags);
                 const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
@@ -778,6 +832,10 @@ async function registerEval<
                   task.meta.case.runtimeFlags = runtimeFlags;
                 }
               } catch {}
+
+              if (caseFinalConfigSnapshot) {
+                finalConfigSnapshot = caseFinalConfigSnapshot;
+              }
             }
           },
           suiteContext,
@@ -875,26 +933,36 @@ const runTask = async <
           overrides?: Record<string, any>;
         }> => {
           // TODO: EXPERIMENTS - before we were setting config scope if provided here
-
           const start = performance.now();
-          const output = await executeTask(opts.task, opts.input, opts.expected!);
-          const duration = Math.round(performance.now() - start);
-          // set task output
-          taskSpan.setAttributes({
-            [Attr.Eval.Task.Output]: typeof output === 'string' ? output : JSON.stringify(output),
-          });
+          try {
+            const output = await executeTask(opts.task, opts.input, opts.expected!);
+            const duration = Math.round(performance.now() - start);
+            // set task output
+            taskSpan.setAttributes({
+              [Attr.Eval.Task.Output]: typeof output === 'string' ? output : JSON.stringify(output),
+            });
 
-          // Get out-of-scope flags from the evaluation context
-          const ctx = getEvalContext();
-          const outOfScopeFlags = ctx.outOfScopeFlags || [];
+            // Get out-of-scope flags from the evaluation context
+            const ctx = getEvalContext();
+            const outOfScopeFlags = ctx.outOfScopeFlags || [];
 
-          return {
-            output,
-            duration,
-            outOfScopeFlags,
-            finalFlags: ctx.flags || {},
-            overrides: ctx.overrides,
-          };
+            return {
+              output,
+              duration,
+              outOfScopeFlags,
+              finalFlags: ctx.flags || {},
+              overrides: ctx.overrides,
+            };
+          } catch (error) {
+            const ctx = getEvalContext();
+            const duration = Math.round(performance.now() - start);
+            throw attachRunTaskFailureDetails(error, {
+              duration,
+              outOfScopeFlags: ctx.outOfScopeFlags || [],
+              finalFlags: ctx.flags || {},
+              overrides: ctx.overrides,
+            });
+          }
         },
       );
 
