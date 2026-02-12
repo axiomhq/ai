@@ -643,7 +643,7 @@ async function registerEval<
                 };
               }
 
-              const output = lastOutput ?? ('' as TOutput);
+              const output = lastOutput;
               const failedTrials = trialFailures.length;
               const succeededTrials = trials - failedTrials;
               const trialSummary = {
@@ -654,7 +654,11 @@ async function registerEval<
 
               caseSpan.setAttributes({
                 [Attr.Eval.Case.Output]:
-                  typeof output === 'string' ? output : JSON.stringify(output),
+                  output === undefined
+                    ? undefined
+                    : typeof output === 'string'
+                      ? output
+                      : JSON.stringify(output),
                 [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
               });
 

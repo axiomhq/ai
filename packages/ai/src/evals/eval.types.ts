@@ -190,8 +190,8 @@ export type EvalCaseReport = {
   name: string;
   /** Input data that was provided to the {@link EvalTask} */
   input: string | Record<string, any>;
-  /** Output produced by the {@link EvalTask} */
-  output: string | Record<string, any>;
+  /** Output produced by the {@link EvalTask}; undefined when all trials fail before producing output */
+  output: string | Record<string, any> | undefined;
   /** Expected output for comparison */
   expected: string | Record<string, any>;
   /** Optional metadata for the case */
