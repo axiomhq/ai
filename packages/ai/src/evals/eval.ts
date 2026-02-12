@@ -587,7 +587,6 @@ async function registerEval<
 
                                   scorerSpan.setAttributes({
                                     [Attr.Eval.Score.Name]: scorerName,
-                                    [Attr.Eval.Score.Value]: undefined,
                                     [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
                                   });
 
@@ -697,15 +696,13 @@ async function registerEval<
                 failed: failedTrials,
               };
 
-              caseSpan.setAttributes({
-                [Attr.Eval.Case.Output]:
-                  output === undefined
-                    ? undefined
-                    : typeof output === 'string'
-                      ? output
-                      : JSON.stringify(output),
-                [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
-              });
+              caseSpan.setAttribute(Attr.Eval.Case.Scores, JSON.stringify(scores ? scores : {}));
+              if (output !== undefined) {
+                caseSpan.setAttribute(
+                  Attr.Eval.Case.Output,
+                  typeof output === 'string' ? output : JSON.stringify(output),
+                );
+              }
 
               // set task meta for showing result in vitest report
               task.meta.case = {
@@ -730,13 +727,13 @@ async function registerEval<
                 const error = new Error(
                   `Eval case ${data.index} failed with ${failedTrials} trial error(s).`,
                 );
+                intentionalTrialFailureError = error;
                 caseSpan.setStatus({
                   code: SpanStatusCode.ERROR,
                   message: error.message,
                 });
                 task.meta.case.status = 'fail';
                 task.meta.case.errors = trialFailures;
-                intentionalTrialFailureError = error;
                 throw error;
               }
 
