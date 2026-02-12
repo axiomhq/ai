@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.43.0](https://github.com/axiomhq/ai/compare/axiom-v0.42.0...axiom-v0.43.0) (2026-02-12)
+
+
+### Features
+
+* **ai:** deprecate old Scorer/onlineEval imports, add evals/online entry point ([#237](https://github.com/axiomhq/ai/issues/237)) ([d5a8068](https://github.com/axiomhq/ai/commit/d5a8068cd6445b50c83bba8eff681b4283067632))
+* allow onlineEval to accept precomputed scorer results, better sampling ([#241](https://github.com/axiomhq/ai/issues/241)) ([c7b1f0a](https://github.com/axiomhq/ai/commit/c7b1f0a768297d4b63601bece56d80b88ce2483a))
+* use `/ai` instead of `/ai-engineering` for result links ([#235](https://github.com/axiomhq/ai/issues/235)) ([87440fd](https://github.com/axiomhq/ai/commit/87440fdebec5b87da06999f193800fc943256a91))
+
 ## [0.42.0](https://github.com/axiomhq/ai/compare/axiom-v0.41.0...axiom-v0.42.0) (2026-02-06)
 
 
