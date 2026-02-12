@@ -57,8 +57,12 @@ describe.sequential('eval trial metadata capture', () => {
         (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
         {
           concurrent: {
-            for: <T>(items: T[]) =>
-              (_name: string, fn: (data: T, context: { task: MockTask }) => Promise<void> | void) => {
+            for:
+              <T>(items: T[]) =>
+              (
+                _name: string,
+                fn: (data: T, context: { task: MockTask }) => Promise<void> | void,
+              ) => {
                 for (const item of items) {
                   testFns.push(async (suite: MockSuite) => {
                     const task: MockTask = { meta: {} };
@@ -169,9 +173,9 @@ describe.sequential('eval trial metadata capture', () => {
     expect(case2.status).toBe('fail');
     expect(case2.runtimeFlags).toHaveProperty('feature.b');
     expect(case2.runtimeFlags).not.toHaveProperty('feature.a');
-    expect(case2.outOfScopeFlags?.some((f: { flagPath: string }) => f.flagPath === 'feature.b')).toBe(
-      true,
-    );
+    expect(
+      case2.outOfScopeFlags?.some((f: { flagPath: string }) => f.flagPath === 'feature.b'),
+    ).toBe(true);
   });
 
   it('excludes failed-trial task duration from case duration while still counting failed trials as zero score', async () => {
@@ -198,8 +202,12 @@ describe.sequential('eval trial metadata capture', () => {
         (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
         {
           concurrent: {
-            for: <T>(items: T[]) =>
-              (_name: string, fn: (data: T, context: { task: MockTask }) => Promise<void> | void) => {
+            for:
+              <T>(items: T[]) =>
+              (
+                _name: string,
+                fn: (data: T, context: { task: MockTask }) => Promise<void> | void,
+              ) => {
                 for (const item of items) {
                   testFns.push(async (suite: MockSuite) => {
                     const task: MockTask = { meta: {} };
@@ -320,8 +328,12 @@ describe.sequential('eval trial metadata capture', () => {
         (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
         {
           concurrent: {
-            for: <T>(items: T[]) =>
-              (_name: string, fn: (data: T, context: { task: MockTask }) => Promise<void> | void) => {
+            for:
+              <T>(items: T[]) =>
+              (
+                _name: string,
+                fn: (data: T, context: { task: MockTask }) => Promise<void> | void,
+              ) => {
                 for (const item of items) {
                   testFns.push(async (suite: MockSuite) => {
                     const task: MockTask = { meta: {} };

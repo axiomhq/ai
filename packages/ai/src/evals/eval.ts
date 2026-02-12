@@ -63,7 +63,9 @@ function attachRunTaskFailureDetails(
   error: unknown,
   details: RunTaskFailureDetails,
 ): Error & { [RUN_TASK_FAILURE_DETAILS]: RunTaskFailureDetails } {
-  const normalized = toError(error) as Error & { [RUN_TASK_FAILURE_DETAILS]?: RunTaskFailureDetails };
+  const normalized = toError(error) as Error & {
+    [RUN_TASK_FAILURE_DETAILS]?: RunTaskFailureDetails;
+  };
   normalized[RUN_TASK_FAILURE_DETAILS] = details;
   return normalized as Error & { [RUN_TASK_FAILURE_DETAILS]: RunTaskFailureDetails };
 }
@@ -474,7 +476,11 @@ async function registerEval<
             const trials = Math.max(1, opts.trials ?? 1);
             let intentionalTrialFailureError: Error | undefined;
             let caseFinalConfigSnapshot:
-              | { flags: Record<string, any>; pickedFlags?: string[]; overrides?: Record<string, any> }
+              | {
+                  flags: Record<string, any>;
+                  pickedFlags?: string[];
+                  overrides?: Record<string, any>;
+                }
               | undefined;
 
             // Set case-level trials attribute
@@ -562,7 +568,9 @@ async function registerEval<
                                 );
 
                                 if (scorerError || !result) {
-                                  const scorerDuration = Math.round(performance.now() - scorerStart);
+                                  const scorerDuration = Math.round(
+                                    performance.now() - scorerStart,
+                                  );
                                   console.error(
                                     `ERROR: scorer ${scorerName} failed. Cause: \n`,
                                     scorerError,
@@ -668,8 +676,7 @@ async function registerEval<
                 const trialsArr = perScorerTrials[scorerName] ?? [];
                 const aggregation: Aggregation = (scorer as Scorer).aggregation ?? Mean();
 
-                const aggregatedValue =
-                  trialsArr.length > 0 ? aggregation.aggregate(trialsArr) : 0;
+                const aggregatedValue = trialsArr.length > 0 ? aggregation.aggregate(trialsArr) : 0;
 
                 scores[scorerName] = {
                   name: scorerName,
