@@ -600,16 +600,17 @@ async function registerEval<
                     } catch (error) {
                       const failure = toError(error);
                       const msg = errorToString(failure);
+                      const spanErrorMessage = failure.message || msg;
                       trialErrors[trialIndex] = msg;
                       trialFailures.push(failure);
                       totalDuration += Math.round(performance.now() - trialStart);
 
                       trialSpan.setAttributes({
-                        [Attr.Eval.Trial.Error]: msg,
+                        [Attr.Eval.Trial.Error]: spanErrorMessage,
                       });
                       trialSpan.setStatus({
                         code: SpanStatusCode.ERROR,
-                        message: msg,
+                        message: spanErrorMessage,
                       });
 
                       for (const scorer of opts.scorers) {
