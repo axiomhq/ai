@@ -54,8 +54,10 @@ ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
         {
           input: evalInput,
           output: result,
-          scorers: [validCategoryScorer, formatConfidenceScorer],
-          sampling: { rate: 0.1 }, // Evaluate 10% of production traffic
+          scorers: [
+            { scorer: validCategoryScorer, sampling: 0.1 },
+            { scorer: formatConfidenceScorer, sampling: 0.1 },
+          ], // Evaluate 10% of production traffic
         },
       );
 

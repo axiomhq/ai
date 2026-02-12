@@ -18,8 +18,10 @@
  *       {
  *         input: userMessage,
  *         output: response.text,
- *         scorers: [validCategoryScorer, confidenceScorer],
- *         sampling: { rate: 0.1 },
+ *         scorers: [
+ *           { scorer: validCategoryScorer, sampling: 0.1 },
+ *           { scorer: confidenceScorer, sampling: 0.1 },
+ *         ],
  *       }
  *     );
  *
