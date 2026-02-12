@@ -25,6 +25,7 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../util/errors';
+import { tryCatchAsync, toError } from '../util/tryCatch';
 import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
 
@@ -443,6 +444,7 @@ async function registerEval<
           async (caseSpan) => {
             const caseContext = trace.setSpan(context.active(), caseSpan);
             const trials = Math.max(1, opts.trials ?? 1);
+            let intentionalTrialFailureError: Error | undefined;
 
             // Set case-level trials attribute
             caseSpan.setAttribute(Attr.Eval.Case.Trials, trials);
@@ -521,12 +523,43 @@ async function registerEval<
                             async (scorerSpan) => {
                               const scorerStart = performance.now();
                               try {
-                                const result = await scorer({
-                                  input: data.input,
-                                  output: output,
-                                  expected: data.expected,
-                                  trialIndex,
-                                });
+                                const [result, scorerError] = await tryCatchAsync(() =>
+                                  scorer({
+                                    input: data.input,
+                                    output: output,
+                                    expected: data.expected,
+                                    trialIndex,
+                                  }),
+                                );
+
+                                if (scorerError || !result) {
+                                  const scorerDuration = Math.round(performance.now() - scorerStart);
+                                  console.error(
+                                    `ERROR: scorer ${scorerName} failed. Cause: \n`,
+                                    scorerError,
+                                  );
+                                  const msg = errorToString(scorerError);
+                                  const metadata = {
+                                    duration: scorerDuration,
+                                    startedAt: scorerStart,
+                                    error: msg,
+                                  };
+
+                                  // Collect null for failed scorer
+                                  (perScorerTrials[scorerName] ??= []).push(null);
+
+                                  scorerSpan.setAttributes({
+                                    [Attr.Eval.Score.Name]: scorerName,
+                                    [Attr.Eval.Score.Value]: undefined,
+                                    [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                  });
+
+                                  scorerSpan.setStatus({
+                                    code: SpanStatusCode.ERROR,
+                                    message: msg,
+                                  });
+                                  return;
+                                }
 
                                 const scoreDuration = Math.round(performance.now() - scorerStart);
                                 const scoreValue = result.score as number;
@@ -556,32 +589,6 @@ async function registerEval<
                                     message: msg,
                                   });
                                 }
-                              } catch (error) {
-                                const scorerDuration = Math.round(performance.now() - scorerStart);
-                                console.error(
-                                  `ERROR: scorer ${scorerName} failed. Cause: \n`,
-                                  error,
-                                );
-                                const msg = errorToString(error);
-                                const metadata = {
-                                  duration: scorerDuration,
-                                  startedAt: scorerStart,
-                                  error: msg,
-                                };
-
-                                // Collect null for failed scorer
-                                (perScorerTrials[scorerName] ??= []).push(null);
-
-                                scorerSpan.setAttributes({
-                                  [Attr.Eval.Score.Name]: scorerName,
-                                  [Attr.Eval.Score.Value]: undefined,
-                                  [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                                });
-
-                                scorerSpan.setStatus({
-                                  code: SpanStatusCode.ERROR,
-                                  message: msg,
-                                });
                               } finally {
                                 scorerSpan.end();
                               }
@@ -591,7 +598,7 @@ async function registerEval<
                         }),
                       );
                     } catch (error) {
-                      const failure = error as Error;
+                      const failure = toError(error);
                       const msg = errorToString(failure);
                       trialErrors[trialIndex] = msg;
                       trialFailures.push(failure);
@@ -680,6 +687,7 @@ async function registerEval<
                 });
                 task.meta.case.status = 'fail';
                 task.meta.case.errors = trialFailures;
+                intentionalTrialFailureError = error;
                 throw error;
               }
 
@@ -687,9 +695,9 @@ async function registerEval<
               allOutOfScopeFlags.push(...outOfScopeFlags);
             } catch (e) {
               console.log(e);
-              const error = e as Error;
+              const error = toError(e);
 
-              if (task.meta.case?.trialSummary) {
+              if (e === intentionalTrialFailureError && task.meta.case) {
                 task.meta.case.status = 'fail';
                 task.meta.case.errors = task.meta.case.errors?.length
                   ? task.meta.case.errors
