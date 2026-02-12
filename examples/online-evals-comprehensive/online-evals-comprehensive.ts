@@ -21,8 +21,9 @@
 import { generateObject, generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { type SpanContext } from '@opentelemetry/api';
-import { withSpan, wrapAISDKModel, onlineEval } from 'axiom/ai';
+import { withSpan, wrapAISDKModel } from 'axiom/ai';
 import { Scorer } from 'axiom/ai/evals/scorers';
+import { onlineEval } from 'axiom/ai/evals/online';
 import { z } from 'zod';
 import { initializeTelemetry, flushTelemetry } from './instrumentation';
 
@@ -129,8 +130,7 @@ async function main() {
       {
         input: prompt2,
         output: result2,
-        scorers: [relevanceScorer],
-        sampling: { rate: 0.5 },
+        scorers: [{ scorer: relevanceScorer, sampling: 0.5 }],
       },
     ),
   );

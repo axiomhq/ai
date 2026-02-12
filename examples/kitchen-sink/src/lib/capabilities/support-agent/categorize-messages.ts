@@ -1,7 +1,8 @@
 import { flag } from '@/lib/app-scope';
 import { openai } from '@/lib/openai';
 import { generateText, ModelMessage } from 'ai';
-import { withSpan, wrapAISDKModel, onlineEval } from 'axiom/ai';
+import { withSpan, wrapAISDKModel } from 'axiom/ai';
+import { onlineEval } from 'axiom/ai/evals/online';
 import z from 'zod';
 import { validCategoryScorer, formatConfidenceScorer } from './online-scorers';
 
@@ -53,8 +54,10 @@ ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
         {
           input: evalInput,
           output: result,
-          scorers: [validCategoryScorer, formatConfidenceScorer],
-          sampling: { rate: 0.1 }, // Evaluate 10% of production traffic
+          scorers: [
+            { scorer: validCategoryScorer, sampling: 0.1 },
+            { scorer: formatConfidenceScorer, sampling: 0.1 },
+          ], // Evaluate 10% of production traffic
         },
       );
 

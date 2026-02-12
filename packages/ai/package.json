@@ -1,6 +1,6 @@
 {
   "name": "axiom",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -64,6 +64,16 @@
       "require": {
         "types": "./dist/evals/scorers.d.cts",
         "default": "./dist/evals/scorers.cjs"
+      }
+    },
+    "./ai/evals/online": {
+      "import": {
+        "types": "./dist/evals/online.d.ts",
+        "default": "./dist/evals/online.js"
+      },
+      "require": {
+        "types": "./dist/evals/online.d.cts",
+        "default": "./dist/evals/online.cjs"
       }
     },
     "./ai/config": {

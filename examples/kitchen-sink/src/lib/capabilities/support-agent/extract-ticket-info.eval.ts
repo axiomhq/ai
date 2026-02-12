@@ -1,4 +1,5 @@
-import { Eval, Scorer } from 'axiom/ai/evals';
+import { Eval } from 'axiom/ai/evals';
+import { Scorer } from 'axiom/ai/evals/scorers';
 import { pickFlags } from '@/lib/app-scope';
 import { extractTicketInfo } from '@/lib/capabilities/support-agent/extract-ticket-info';
 
