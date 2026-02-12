@@ -482,11 +482,11 @@ async function registerEval<
 
             try {
               // Accumulators for per-trial scores
-              const perScorerTrials: Record<string, Array<number | null>> = {};
+              const perScorerTrials: Record<string, number[]> = {};
               const trialErrors: Array<string | null> = Array.from({ length: trials }, () => null);
               const trialFailures: Error[] = [];
               let lastOutput: TOutput | undefined;
-              let totalDuration = 0;
+              let successfulTaskDuration = 0;
 
               // Run each trial
               for (let trialIndex = 0; trialIndex < trials; trialIndex++) {
@@ -503,8 +503,6 @@ async function registerEval<
                   },
                   async (trialSpan) => {
                     const trialContext = trace.setSpan(context.active(), trialSpan);
-                    const trialStart = performance.now();
-
                     try {
                       const result = await runTask(
                         trialContext,
@@ -527,7 +525,7 @@ async function registerEval<
                       );
                       const { output, duration } = result;
                       lastOutput = output;
-                      totalDuration += duration;
+                      successfulTaskDuration += duration;
                       outOfScopeFlags.push(...result.outOfScopeFlags);
 
                       caseFinalConfigSnapshot = {
@@ -576,8 +574,8 @@ async function registerEval<
                                     error: msg,
                                   };
 
-                                  // Collect null for failed scorer
-                                  (perScorerTrials[scorerName] ??= []).push(null);
+                                  // Count scorer failures as zero so failed trials affect aggregation.
+                                  (perScorerTrials[scorerName] ??= []).push(0);
 
                                   scorerSpan.setAttributes({
                                     [Attr.Eval.Score.Name]: scorerName,
@@ -635,8 +633,6 @@ async function registerEval<
                       const spanErrorMessage = failure.message || msg;
                       trialErrors[trialIndex] = msg;
                       trialFailures.push(failure);
-                      totalDuration +=
-                        taskFailureDetails?.duration ?? Math.round(performance.now() - trialStart);
 
                       trialSpan.setAttributes({
                         [Attr.Eval.Trial.Error]: spanErrorMessage,
@@ -672,14 +668,13 @@ async function registerEval<
                 const trialsArr = perScorerTrials[scorerName] ?? [];
                 const aggregation: Aggregation = (scorer as Scorer).aggregation ?? Mean();
 
-                // Filter out nulls for aggregation
-                const numeric = trialsArr.filter((x): x is number => typeof x === 'number');
-                const aggregatedValue = numeric.length > 0 ? aggregation.aggregate(numeric) : 0;
+                const aggregatedValue =
+                  trialsArr.length > 0 ? aggregation.aggregate(trialsArr) : 0;
 
                 scores[scorerName] = {
                   name: scorerName,
                   score: aggregatedValue,
-                  trials: trialsArr.map((x) => x ?? 0),
+                  trials: trialsArr,
                   aggregation: aggregation.type,
                   threshold: aggregation.threshold,
                   metadata: {},
@@ -718,7 +713,7 @@ async function registerEval<
                 errors: [],
                 trialErrors,
                 trialSummary,
-                duration: totalDuration,
+                duration: successfulTaskDuration,
                 startedAt: start,
                 outOfScopeFlags,
                 pickedFlags: opts.configFlags,

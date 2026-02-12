@@ -173,4 +173,248 @@ describe.sequential('eval trial metadata capture', () => {
       true,
     );
   });
+
+  it('excludes failed-trial task duration from case duration while still counting failed trials as zero score', async () => {
+    (globalThis as any).__SDK_VERSION__ = 'test-version';
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+    let resolveDone: (() => void) | undefined;
+    let rejectDone: ((error: unknown) => void) | undefined;
+    const done = new Promise<void>((resolve, reject) => {
+      resolveDone = resolve;
+      rejectDone = reject;
+    });
+    const state: { suite: MockSuite | undefined } = { suite: undefined };
+
+    vi.doMock('vitest', () => {
+      let beforeAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
+      let afterAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
+      const testFns: Array<(suite: MockSuite) => Promise<void> | void> = [];
+
+      const itMock = Object.assign(
+        (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
+        {
+          concurrent: {
+            for: <T>(items: T[]) =>
+              (_name: string, fn: (data: T, context: { task: MockTask }) => Promise<void> | void) => {
+                for (const item of items) {
+                  testFns.push(async (suite: MockSuite) => {
+                    const task: MockTask = { meta: {} };
+                    suite.tasks.push(task);
+                    try {
+                      await fn(item, { task });
+                    } catch {
+                      // Expected for intentionally failed cases.
+                    }
+                  });
+                }
+              },
+          },
+        },
+      );
+
+      return {
+        beforeAll: (fn: typeof beforeAllHook) => {
+          beforeAllHook = fn;
+        },
+        afterAll: (fn: typeof afterAllHook) => {
+          afterAllHook = fn;
+        },
+        it: itMock,
+        inject: (key: string) => {
+          const provided = {
+            baseline: undefined,
+            debug: true,
+            list: false,
+            overrides: {},
+            axiomConfig: createConfig(),
+            runId: 'run-123',
+            consoleUrl: undefined,
+          } as Record<string, unknown>;
+          return provided[key];
+        },
+        describe: async (name: string, fn: () => Promise<void>) => {
+          const suite: MockSuite = {
+            name,
+            file: 'mock.eval.ts',
+            meta: {},
+            tasks: [],
+          };
+          state.suite = suite;
+
+          try {
+            await fn();
+            if (beforeAllHook) {
+              await beforeAllHook(suite);
+            }
+
+            for (const testFn of testFns) {
+              await testFn(suite);
+            }
+
+            if (afterAllHook) {
+              await afterAllHook(suite);
+            }
+            resolveDone?.();
+          } catch (error) {
+            rejectDone?.(error);
+          }
+        },
+      };
+    });
+
+    const { Eval } = await import('../../src/evals/eval');
+
+    let attempts = 0;
+
+    Eval('trial-duration-regression', {
+      capability: 'my-capability',
+      trials: 2,
+      data: [{ input: 'case-1', expected: 'ok' }],
+      task: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          now += 2000;
+          return 'ok';
+        }
+
+        now += 500;
+        throw new Error('forced failure');
+      },
+      scorers: [async () => ({ score: 1 })],
+    });
+
+    await done;
+
+    const case1 = state.suite?.tasks[0].meta.case;
+
+    expect(case1.status).toBe('fail');
+    expect(case1.duration).toBe(2000);
+    expect(case1.trialSummary).toEqual({ total: 2, succeeded: 1, failed: 1 });
+
+    const score = Object.values(case1.scores)[0] as { trials?: number[] };
+    expect(score.trials).toEqual([1, 0]);
+  });
+
+  it('counts scorer exceptions as zero during trial aggregation', async () => {
+    (globalThis as any).__SDK_VERSION__ = 'test-version';
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    let resolveDone: (() => void) | undefined;
+    let rejectDone: ((error: unknown) => void) | undefined;
+    const done = new Promise<void>((resolve, reject) => {
+      resolveDone = resolve;
+      rejectDone = reject;
+    });
+    const state: { suite: MockSuite | undefined } = { suite: undefined };
+
+    vi.doMock('vitest', () => {
+      let beforeAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
+      let afterAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
+      const testFns: Array<(suite: MockSuite) => Promise<void> | void> = [];
+
+      const itMock = Object.assign(
+        (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
+        {
+          concurrent: {
+            for: <T>(items: T[]) =>
+              (_name: string, fn: (data: T, context: { task: MockTask }) => Promise<void> | void) => {
+                for (const item of items) {
+                  testFns.push(async (suite: MockSuite) => {
+                    const task: MockTask = { meta: {} };
+                    suite.tasks.push(task);
+                    try {
+                      await fn(item, { task });
+                    } catch {
+                      // Expected for intentionally failed cases.
+                    }
+                  });
+                }
+              },
+          },
+        },
+      );
+
+      return {
+        beforeAll: (fn: typeof beforeAllHook) => {
+          beforeAllHook = fn;
+        },
+        afterAll: (fn: typeof afterAllHook) => {
+          afterAllHook = fn;
+        },
+        it: itMock,
+        inject: (key: string) => {
+          const provided = {
+            baseline: undefined,
+            debug: true,
+            list: false,
+            overrides: {},
+            axiomConfig: createConfig(),
+            runId: 'run-123',
+            consoleUrl: undefined,
+          } as Record<string, unknown>;
+          return provided[key];
+        },
+        describe: async (name: string, fn: () => Promise<void>) => {
+          const suite: MockSuite = {
+            name,
+            file: 'mock.eval.ts',
+            meta: {},
+            tasks: [],
+          };
+          state.suite = suite;
+
+          try {
+            await fn();
+            if (beforeAllHook) {
+              await beforeAllHook(suite);
+            }
+
+            for (const testFn of testFns) {
+              await testFn(suite);
+            }
+
+            if (afterAllHook) {
+              await afterAllHook(suite);
+            }
+            resolveDone?.();
+          } catch (error) {
+            rejectDone?.(error);
+          }
+        },
+      };
+    });
+
+    const { Eval } = await import('../../src/evals/eval');
+
+    let scorerCalls = 0;
+
+    Eval('scorer-failure-counts-as-zero', {
+      capability: 'my-capability',
+      trials: 2,
+      data: [{ input: 'case-1', expected: 'ok' }],
+      task: async () => 'ok',
+      scorers: [
+        async () => {
+          scorerCalls += 1;
+          if (scorerCalls === 2) {
+            throw new Error('forced scorer failure');
+          }
+          return { score: 1 };
+        },
+      ],
+    });
+
+    await done;
+
+    const case1 = state.suite?.tasks[0].meta.case;
+    const score = Object.values(case1.scores)[0] as { score: number; trials?: number[] };
+
+    expect(case1.status).toBe('success');
+    expect(score.trials).toEqual([1, 0]);
+    expect(score.score).toBe(0.5);
+  });
 });
