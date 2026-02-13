@@ -17,6 +17,7 @@
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:live": "vitest run test/live/obsLive.test.ts",
     "test:watch": "vitest --watch",
     "test:wrangler-smoke": "pnpm build && vitest run --config vitest.smoke.config.ts",
     "gen": "tsx ./src/obs/gen/generateArtifacts.ts",
