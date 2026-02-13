@@ -29,13 +29,20 @@ export class ObsApiClient {
   }
 
   getDataset<T = unknown>(name: string) {
-    return requestJson<T>(this.config, { method: 'GET', path: `/v2/datasets/${name}` });
+    return requestJson<T>(this.config, {
+      method: 'GET',
+      path: `/v2/datasets/${encodeURIComponent(name)}`,
+    });
   }
 
   getDatasetSchema<T = unknown>(name: string) {
+    return this.getDatasetFields<T>(name);
+  }
+
+  getDatasetFields<T = unknown>(name: string) {
     return requestJson<T>(this.config, {
       method: 'GET',
-      path: `/v2/datasets/${name}/schema`,
+      path: `/v2/datasets/${encodeURIComponent(name)}/fields`,
     });
   }
 
@@ -45,7 +52,7 @@ export class ObsApiClient {
     }
     return requestJson<T>(this.config, {
       method: 'POST',
-      path: `/v2/datasets/${dataset}/query`,
+      path: `/v2/datasets/${encodeURIComponent(dataset)}/query`,
       body: { apl, ...options },
     });
   }
@@ -55,7 +62,10 @@ export class ObsApiClient {
   }
 
   getMonitor<T = unknown>(id: string) {
-    return requestJson<T>(this.config, { method: 'GET', path: `/v2/monitors/${id}` });
+    return requestJson<T>(this.config, {
+      method: 'GET',
+      path: `/v2/monitors/${encodeURIComponent(id)}`,
+    });
   }
 
   getMonitorHistory<T = unknown>(id: string, range: MonitorHistoryRange = {}) {
@@ -67,7 +77,8 @@ export class ObsApiClient {
       params.set('end', range.end);
     }
     const query = params.toString();
-    const path = query ? `/v2/monitors/${id}/history?${query}` : `/v2/monitors/${id}/history`;
+    const safeId = encodeURIComponent(id);
+    const path = query ? `/v2/monitors/${safeId}/history?${query}` : `/v2/monitors/${safeId}/history`;
     return requestJson<T>(this.config, { method: 'GET', path });
   }
 
@@ -76,7 +87,10 @@ export class ObsApiClient {
   }
 
   getSavedQuery<T = unknown>(id: string) {
-    return requestJson<T>(this.config, { method: 'GET', path: `/v2/saved-queries/${id}` });
+    return requestJson<T>(this.config, {
+      method: 'GET',
+      path: `/v2/saved-queries/${encodeURIComponent(id)}`,
+    });
   }
 }
 

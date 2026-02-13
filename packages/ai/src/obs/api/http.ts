@@ -19,6 +19,20 @@ export type ApiResponse<T> = {
   requestId?: string;
 };
 
+export class ObsApiError extends Error {
+  status: number;
+  method: 'GET' | 'POST';
+  path: string;
+
+  constructor(options: { method: 'GET' | 'POST'; path: string; status: number }) {
+    super(`Request failed: ${options.method} ${options.path} ${options.status}`);
+    this.name = 'ObsApiError';
+    this.status = options.status;
+    this.method = options.method;
+    this.path = options.path;
+  }
+}
+
 export const requestJson = async <T>(
   config: HttpConfig,
   options: RequestJsonOptions,
@@ -46,7 +60,11 @@ export const requestJson = async <T>(
   }
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${options.method} ${options.path} ${response.status}`);
+    throw new ObsApiError({
+      method: options.method,
+      path: options.path,
+      status: response.status,
+    });
   }
 
   const data = (await response.json()) as T;
