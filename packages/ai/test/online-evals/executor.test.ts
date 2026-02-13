@@ -55,14 +55,15 @@ const mockTracer = {
   startSpan: vi.fn((_name: string) => mockScorerSpan),
 };
 
-let startSpanCallCount = 0;
+vi.mock('../../src/otel/initAxiomAI', () => ({
+  getGlobalTracer: vi.fn(() => mockTracer),
+}));
 
 vi.mock('@opentelemetry/api', async () => {
   const actual = await vi.importActual('@opentelemetry/api');
   return {
     ...actual,
     trace: {
-      getTracer: vi.fn(() => mockTracer),
       setSpan: vi.fn((ctx) => ctx),
       getSpan: vi.fn(() => mockParentSpan),
     },
@@ -79,13 +80,11 @@ describe('onlineEval', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    startSpanCallCount = 0;
     mockTracer.startSpan.mockImplementation((name: string) => {
-      startSpanCallCount++;
-      if (name.match(/^eval [\w-]+\/[\w-]+$/) || name.match(/^eval [\w-]+$/)) {
-        return startSpanCallCount === 1 ? mockEvalSpan : mockScorerSpan;
+      if (name.startsWith('score ')) {
+        return mockScorerSpan;
       }
-      return mockScorerSpan;
+      return mockEvalSpan;
     });
   });
 
@@ -527,10 +526,7 @@ describe('onlineEval', () => {
       );
 
       expect(Object.keys(results)).toHaveLength(1);
-      expect(mockTracer.startSpan).toHaveBeenCalledWith(
-        expect.stringContaining('eval'),
-        expect.anything(),
-      );
+      expect(mockTracer.startSpan).toHaveBeenCalledWith(expect.stringContaining('score'));
     });
   });
 });
