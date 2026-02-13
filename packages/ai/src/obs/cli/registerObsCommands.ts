@@ -4,6 +4,7 @@ import { createExplainContext, emitExplainToStderr } from '../explain/context';
 import { resolveObsConfig } from '../config/resolve';
 import { datasetGet, datasetList, datasetSample, datasetSchema } from '../commands/dataset';
 import { queryRun } from '../commands/queryRun';
+import { querySavedGet, querySavedList, querySavedRun } from '../commands/savedQuery';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -50,6 +51,12 @@ const resolveHandler = (path: string) => {
       return datasetSample;
     case 'query run':
       return queryRun;
+    case 'query saved list':
+      return querySavedList;
+    case 'query saved get':
+      return querySavedGet;
+    case 'query saved run':
+      return querySavedRun;
     default:
       return notImplemented;
   }
