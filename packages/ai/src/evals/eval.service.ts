@@ -56,7 +56,9 @@ export class EvaluationApiClient {
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new AxiomCLIError(`Failed to create evaluation: ${resp.statusText}${text ? ` - ${text}` : ''}`);
+      throw new AxiomCLIError(
+        `Failed to create evaluation: ${resp.statusText}${text ? ` - ${text}` : ''}`,
+      );
     }
 
     return resp.json();
@@ -70,7 +72,9 @@ export class EvaluationApiClient {
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new AxiomCLIError(`Failed to update evaluation: ${resp.statusText}${text ? ` - ${text}` : ''}`);
+      throw new AxiomCLIError(
+        `Failed to update evaluation: ${resp.statusText}${text ? ` - ${text}` : ''}`,
+      );
     }
 
     // API may return HTTP 200 with an error in the response body
