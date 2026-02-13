@@ -30,6 +30,7 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
   }
 
   const originalIsTTY = process.stdout.isTTY;
+  const originalExitCode = process.exitCode;
   Object.defineProperty(process.stdout, 'isTTY', {
     value: stdoutIsTTY,
     configurable: true,
@@ -80,6 +81,10 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
     }
   }
 
+  if (typeof process.exitCode === 'number') {
+    exitCode = process.exitCode;
+  }
+
   Object.defineProperty(process.stdout, 'isTTY', {
     value: originalIsTTY,
     configurable: true,
@@ -87,6 +92,7 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
 
   process.stdout.write = originalStdoutWrite;
   process.stderr.write = originalStderrWrite;
+  process.exitCode = originalExitCode;
 
   for (const key of Object.keys(mergedEnv)) {
     if (previousEnv[key] === undefined) {

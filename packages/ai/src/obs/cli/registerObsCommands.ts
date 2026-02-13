@@ -1,5 +1,6 @@
 import { Command, Option } from 'commander';
 import { obsCommandSpec, type CommandSpec, type OptionSpec } from './commandSpec';
+import { createExplainContext, emitExplainToStderr } from '../explain/context';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -20,9 +21,17 @@ const applyHelpText = (command: Command, helpText?: string) => {
   });
 };
 
-const notImplemented = () => {
-  console.log('not implemented');
-  process.exit(2);
+const notImplemented = (...args: unknown[]) => {
+  const command = args[args.length - 1] as Command | undefined;
+  const options = typeof command?.optsWithGlobals === 'function' ? command.optsWithGlobals() : {};
+
+  if (options.explain) {
+    const explainContext = createExplainContext();
+    emitExplainToStderr(explainContext);
+  }
+
+  process.stdout.write('not implemented\n');
+  process.exitCode = 2;
 };
 
 const registerSubcommands = (parent: Command, spec: CommandSpec) => {
