@@ -182,4 +182,29 @@ describe('obs api client', () => {
       }),
     );
   });
+
+  it('normalizes dataset shorthand when dataset is not provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new ObsApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, 'vercel | count()', { maxBinAutoGroups: 40 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
 });

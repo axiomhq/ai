@@ -33,6 +33,19 @@ const rewriteLeadingDatasetPipe = (dataset: string, apl: string) => {
   return `['${escapeAplDataset(dataset)}'] | ${match[1].trim()}`;
 };
 
+const rewriteAplDatasetShorthand = (apl: string) => {
+  const trimmed = apl.trim();
+  if (aplIsDatasetScoped(trimmed)) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/^([A-Za-z0-9_./:-]+)\s*\|\s*(.+)$/s);
+  if (!match) {
+    return trimmed;
+  }
+  return `['${escapeAplDataset(match[1])}'] | ${match[2].trim()}`;
+};
+
 const qualifyAplWithDataset = (dataset: string, apl: string) => {
   const normalized = rewriteLeadingDatasetPipe(dataset, apl);
   if (aplIsDatasetScoped(normalized)) {
@@ -75,7 +88,7 @@ export class ObsApiClient {
       recordQuery(this.config.explain, { dataset, apl, options });
     }
 
-    const queryText = dataset ? qualifyAplWithDataset(dataset, apl) : apl.trim();
+    const queryText = dataset ? qualifyAplWithDataset(dataset, apl) : rewriteAplDatasetShorthand(apl);
 
     return requestJson<T>(this.config, {
       method: 'POST',
