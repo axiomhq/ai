@@ -107,12 +107,12 @@ export const obsCommandSpec = {
     {
       name: 'query',
       description: 'Run APL and work with saved queries',
-      help: `Usage:\n  axiom query <command>\n\nCommands:\n  run <dataset>                 Run an APL query against a dataset\n  saved list                     List saved queries\n  saved get <id>                 Show a saved query\n  saved run <id>                 Run a saved query\n\nOptions for query run:\n  --apl <string>                APL query string\n  --file <path>                 Read APL from file\n  --stdin                        Read APL from stdin\n  --max-bin-auto-groups <n>     Override auto maxBinAutoGroups\n  --columns <csv>               Explicit output columns\n  --limit <n>                   Limit rows (post-query shaping)\n  --since / --until / --start / --end\n  --format <format>             auto|table|csv|json|ndjson|mcp\n  --max-cells <n>\n  --explain\n`,
+      help: `Usage:\n  axiom query <command>\n\nCommands:\n  run [dataset]                 Run an APL query (dataset optional)\n  saved list                     List saved queries\n  saved get <id>                 Show a saved query\n  saved run <id>                 Run a saved query\n\nOptions for query run:\n  --apl <string>                APL query string\n  --file <path>                 Read APL from file\n  --stdin                        Read APL from stdin\n  --max-bin-auto-groups <n>     Override auto maxBinAutoGroups\n  --columns <csv>               Explicit output columns\n  --limit <n>                   Limit rows (post-query shaping)\n  --since / --until / --start / --end\n  --format <format>             auto|table|csv|json|ndjson|mcp\n  --max-cells <n>\n  --explain\n`,
       subcommands: [
         {
           name: 'run',
-          description: 'Run an APL query against a dataset',
-          args: '<dataset>',
+          description: 'Run an APL query (dataset optional)',
+          args: '[dataset]',
           options: [
             { name: 'apl', flags: '--apl <string>', description: 'APL query string' },
             { name: 'file', flags: '--file <path>', description: 'Read APL from file' },
