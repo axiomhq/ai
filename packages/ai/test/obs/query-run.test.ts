@@ -134,4 +134,35 @@ describe('query run', () => {
       }),
     );
   });
+
+  it('renders rows from legacy bucket aggregates', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          matches: [],
+          buckets: {
+            totals: [
+              {
+                group: {},
+                aggregations: [{ op: 'Count', value: 42 }],
+              },
+            ],
+          },
+          request: {
+            project: [{ field: 'Count', alias: 'Count' }],
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', 'run', '--apl', "['events'] | count", '--format', 'csv'], {
+      env,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Count');
+    expect(result.stdout).toContain('42');
+  });
 });

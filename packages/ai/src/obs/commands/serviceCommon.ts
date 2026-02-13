@@ -8,6 +8,7 @@ import { ObsApiError } from '../api/http';
 import { detectOtelDatasets, requireOtelFields } from '../otel/detectDatasets';
 import type { OtelFieldMap } from '../otel/types';
 import { TRACE_FIELD_CANDIDATES } from '../otel/fieldMapping';
+import { toQueryRows } from './queryRows';
 
 export const requireAuth = (orgId?: string, token?: string) => {
   if (!orgId || !token) {
@@ -194,23 +195,5 @@ export const write = (stdout: string, stderr = '') => {
 };
 
 export const toRows = (data: unknown): Record<string, unknown>[] => {
-  if (Array.isArray(data)) {
-    return data.filter((row): row is Record<string, unknown> => typeof row === 'object' && !!row);
-  }
-
-  if (typeof data === 'object' && data) {
-    const payload = data as { matches?: unknown; rows?: unknown };
-    if (Array.isArray(payload.matches)) {
-      return payload.matches.filter(
-        (row): row is Record<string, unknown> => typeof row === 'object' && !!row,
-      );
-    }
-    if (Array.isArray(payload.rows)) {
-      return payload.rows.filter(
-        (row): row is Record<string, unknown> => typeof row === 'object' && !!row,
-      );
-    }
-  }
-
-  return [];
+  return toQueryRows(data);
 };
