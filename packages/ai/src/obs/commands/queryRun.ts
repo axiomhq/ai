@@ -12,6 +12,7 @@ import {
 import { getColumnsFromRows } from '../format/shape';
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
+import { toQueryRows } from './queryRows';
 
 const requireAuth = (orgId?: string, token?: string) => {
   if (!orgId || !token) {
@@ -53,33 +54,6 @@ const resolveApl = async (options: {
   }
 
   throw new Error('Missing APL input. Use --apl, --file, or --stdin.');
-};
-
-const toRows = (data: unknown): Record<string, unknown>[] => {
-  if (Array.isArray(data)) {
-    return data.filter((row): row is Record<string, unknown> => typeof row === 'object' && !!row);
-  }
-
-  if (typeof data === 'object' && data) {
-    const objectData = data as {
-      matches?: unknown;
-      rows?: unknown;
-    };
-
-    if (Array.isArray(objectData.matches)) {
-      return objectData.matches.filter(
-        (row): row is Record<string, unknown> => typeof row === 'object' && !!row,
-      );
-    }
-
-    if (Array.isArray(objectData.rows)) {
-      return objectData.rows.filter(
-        (row): row is Record<string, unknown> => typeof row === 'object' && !!row,
-      );
-    }
-  }
-
-  return [];
 };
 
 const write = (stdout: string, stderr = '') => {
@@ -145,7 +119,7 @@ export const queryRun = withObsContext(
     });
 
     const response = await client.queryApl(dataset, apl, queryOptions);
-    let rows = toRows(response.data);
+    let rows = toQueryRows(response.data);
 
     const limit = options.limit !== undefined ? Number(options.limit) : undefined;
     if (limit !== undefined && Number.isFinite(limit) && limit > 0) {

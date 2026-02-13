@@ -10,6 +10,7 @@ import {
 } from '../format/output';
 import { getColumnsFromRows } from '../format/shape';
 import { buildJsonMeta } from '../format/meta';
+import { toQueryRows } from './queryRows';
 
 type SavedQueryRecord = {
   id?: string;
@@ -42,28 +43,6 @@ const normalizeSavedQuery = (query: SavedQueryRecord) => ({
   dataset: query.dataset ?? null,
   query: query.query ?? query.apl ?? '',
 });
-
-const toRows = (data: unknown): Record<string, unknown>[] => {
-  if (Array.isArray(data)) {
-    return data.filter((row): row is Record<string, unknown> => typeof row === 'object' && !!row);
-  }
-
-  if (typeof data === 'object' && data) {
-    const payload = data as { matches?: unknown; rows?: unknown };
-    if (Array.isArray(payload.matches)) {
-      return payload.matches.filter(
-        (row): row is Record<string, unknown> => typeof row === 'object' && !!row,
-      );
-    }
-    if (Array.isArray(payload.rows)) {
-      return payload.rows.filter(
-        (row): row is Record<string, unknown> => typeof row === 'object' && !!row,
-      );
-    }
-  }
-
-  return [];
-};
 
 const renderSavedRunOutput = (params: {
   dataset: string;
@@ -311,7 +290,7 @@ export const querySavedRun = withObsContext(async ({ config, explain }, ...args:
     maxBinAutoGroups: 40,
   });
 
-  let rows = toRows(queryResponse.data);
+  let rows = toQueryRows(queryResponse.data);
   const limit = options.limit !== undefined ? Number(options.limit) : undefined;
   if (limit !== undefined && Number.isFinite(limit) && limit > 0) {
     rows = rows.slice(0, limit);
