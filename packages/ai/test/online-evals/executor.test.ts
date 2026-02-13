@@ -515,6 +515,52 @@ describe('onlineEval', () => {
         message: 'Test error',
       });
     });
+
+    it('sets eval.name on scorer spans when name is provided in meta', async () => {
+      const scorer = createTestScorer('resolved', async () => ({ score: 1 }));
+
+      await onlineEval(
+        { capability: 'session_outcome', name: 'anton-agent' },
+        { output: baseOutput, scorers: [scorer] },
+      );
+
+      expect(mockScorerSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'eval.name': 'anton-agent',
+        }),
+      );
+    });
+
+    it('sets eval.name on eval span when name is provided in meta', async () => {
+      const scorer = createTestScorer('resolved', async () => ({ score: 1 }));
+
+      await onlineEval(
+        { capability: 'session_outcome', name: 'anton-agent' },
+        { output: baseOutput, scorers: [scorer] },
+      );
+
+      expect(mockEvalSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'eval.name': 'anton-agent',
+        }),
+      );
+    });
+
+    it('sets eval.name on precomputed scorer spans', async () => {
+      await onlineEval(
+        { capability: 'session_outcome', name: 'anton-agent' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'resolved', score: 1, metadata: { status: 'RESOLVED' } }],
+        },
+      );
+
+      expect(mockScorerSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'eval.name': 'anton-agent',
+        }),
+      );
+    });
   });
 
   describe('scorer without name', () => {

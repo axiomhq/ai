@@ -8,6 +8,7 @@ import type {
   ScorerSampling,
 } from './types';
 import { executeScorer } from './executor';
+import { Attr } from '../otel/semconv/attributes';
 
 type ScorerEntry<TInput, TOutput> = OnlineEvalScorerEntry<TInput, TOutput, any>;
 type ScorerInput<TInput, TOutput> = OnlineEvalScorerInput<TInput, TOutput, any>;
@@ -86,6 +87,8 @@ export type OnlineEvalMeta = {
   capability: string;
   /** Specific step within the capability (e.g., 'answer', 'extract') */
   step?: string;
+  /** Eval suite name propagated to all scorer spans as `eval.name` */
+  name?: string;
   /**
    * Explicit SpanContext to link the eval span to the originating generation span.
    * When omitted, the active span's context is used automatically.
@@ -264,6 +267,12 @@ async function executeOnlineEvalInternal<
     linkSpanContext ? { links: [{ context: linkSpanContext }] } : {},
   );
 
+  const evalName = meta.name;
+
+  if (evalName) {
+    evalSpan.setAttributes({ [Attr.Eval.Name]: evalName });
+  }
+
   try {
     const normalizedScorers = options.scorers.map((entry) => normalizeScorerEntry(entry));
     const duplicateScorerNames = getDuplicateScorerNames(normalizedScorers);
@@ -289,7 +298,13 @@ async function executeOnlineEvalInternal<
 
           return {
             sampledOut: false as const,
-            result: await executeScorer(entry.scorer, options.input, options.output, evalSpan),
+            result: await executeScorer(
+              entry.scorer,
+              options.input,
+              options.output,
+              evalSpan,
+              evalName,
+            ),
           };
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));
@@ -304,6 +319,7 @@ async function executeOnlineEvalInternal<
               options.input,
               options.output,
               evalSpan,
+              evalName,
             ),
           };
         }
