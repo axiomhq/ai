@@ -8,6 +8,7 @@ function setScorerSpanAttrs(
   scorerSpan: Span,
   scorerName: string,
   result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
+  evalName?: string,
 ): void {
   const attrs: Record<string, string | number | boolean | undefined> = {
     [Attr.GenAI.Operation.Name]: 'eval.score',
@@ -15,6 +16,10 @@ function setScorerSpanAttrs(
     [Attr.Eval.Tags]: JSON.stringify(['online']),
     [Attr.Eval.Score.Value]: result.score ?? undefined,
   };
+
+  if (evalName) {
+    attrs[Attr.Eval.Name] = evalName;
+  }
 
   if (result.metadata && Object.keys(result.metadata).length > 0) {
     attrs[Attr.Eval.Score.Metadata] = JSON.stringify(result.metadata);
@@ -31,6 +36,7 @@ export async function executeScorer<TInput, TOutput>(
   input: TInput | undefined,
   output: TOutput,
   parentSpan: Span,
+  evalName?: string,
 ): Promise<ScorerResult<any>> {
   const tracer = trace.getTracer('axiom-ai');
   const parentContext = trace.setSpan(context.active(), parentSpan);
@@ -55,7 +61,7 @@ export async function executeScorer<TInput, TOutput>(
             } satisfies ScorerResult)
           : scorer;
 
-      setScorerSpanAttrs(scorerSpan, scorerName, result);
+      setScorerSpanAttrs(scorerSpan, scorerName, result, evalName);
       if (result.error) {
         const error = new Error(result.error);
         scorerSpan.recordException(error);
@@ -80,7 +86,7 @@ export async function executeScorer<TInput, TOutput>(
         error: error.message,
       };
 
-      setScorerSpanAttrs(scorerSpan, scorerName, failedResult);
+      setScorerSpanAttrs(scorerSpan, scorerName, failedResult, evalName);
 
       scorerSpan.recordException(error);
       scorerSpan.setAttributes({
