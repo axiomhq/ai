@@ -112,6 +112,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@axiomhq/js": "^1.4.0",
     "@next/env": "^15.4.2",
     "@opentelemetry/auto-instrumentations-node": "^0.60.1",
     "@opentelemetry/context-async-hooks": "^2.0.1",

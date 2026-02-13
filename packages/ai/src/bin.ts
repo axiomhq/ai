@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { loadEvalCommand } from './cli/commands/eval.command';
 import { loadAuthCommand } from './cli/commands/auth.command';
+import { loadDatasetCommand } from './cli/commands/dataset.command';
 import { extractOverrides } from './cli/utils/parse-flag-overrides';
 import { setupGlobalAuth } from './cli/auth/global-auth';
 
@@ -47,6 +48,7 @@ program.hook('preAction', async (_, actionCommand: Command) => {
 });
 
 loadAuthCommand(program);
+loadDatasetCommand(program);
 loadEvalCommand(program, overrides);
 loadVersionCommand(program);
 
