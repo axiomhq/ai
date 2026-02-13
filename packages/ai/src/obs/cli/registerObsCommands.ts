@@ -5,6 +5,7 @@ import { resolveObsConfig } from '../config/resolve';
 import { datasetGet, datasetList, datasetSample, datasetSchema } from '../commands/dataset';
 import { queryRun } from '../commands/queryRun';
 import { querySavedGet, querySavedList, querySavedRun } from '../commands/savedQuery';
+import { monitorGet, monitorHistory, monitorList } from '../commands/monitor';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -57,6 +58,12 @@ const resolveHandler = (path: string) => {
       return querySavedGet;
     case 'query saved run':
       return querySavedRun;
+    case 'monitor list':
+      return monitorList;
+    case 'monitor get':
+      return monitorGet;
+    case 'monitor history':
+      return monitorHistory;
     default:
       return notImplemented;
   }

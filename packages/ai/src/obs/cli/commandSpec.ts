@@ -152,7 +152,17 @@ export const obsCommandSpec = {
           name: 'history',
           description: 'Show monitor execution history',
           args: '<id>',
-          options: [{ name: 'since', flags: '--since <since>', description: 'Default since=7d for history', defaultValue: '7d' }],
+          options: [
+            {
+              name: 'since',
+              flags: '--since <since>',
+              description: 'Default since=7d for history',
+              defaultValue: '7d',
+            },
+            { name: 'until', flags: '--until <until>', description: 'Time range end' },
+            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
+            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
+          ],
         },
       ],
     },
