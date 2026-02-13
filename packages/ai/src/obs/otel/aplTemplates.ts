@@ -18,3 +18,18 @@ let end = datetime(\${END});
 range start to end
 | where \${SERVICE_FIELD} == "\${SERVICE}"
 | summarize spans=count(), last_seen=max(_time), error_spans=countif(\${STATUS_FIELD} == "error"), p50_ms=percentile(\${DURATION_FIELD}, 50), p95_ms=percentile(\${DURATION_FIELD}, 95)`;
+
+export const SERVICE_TRACES_APL_TEMPLATE = `let start = datetime(\${START});
+let end = datetime(\${END});
+range start to end
+| where \${SERVICE_FIELD} == "\${SERVICE}"
+| summarize started_at=min(_time), root_operation=min(\${SPAN_NAME_FIELD}), duration_ms=max(\${DURATION_FIELD}), span_count=count(), error=max(iif(\${ERROR_EXPR}, 1, 0)) by trace_id=\${TRACE_ID_FIELD}
+| project trace_id, root_operation, started_at, duration_ms, span_count, error`;
+
+export const SERVICE_LOGS_APL_TEMPLATE = `let start = datetime(\${START});
+let end = datetime(\${END});
+range start to end
+| where \${SERVICE_FIELD} == "\${SERVICE}"
+| project _time, severity=\${SEVERITY_FIELD}, message=\${MESSAGE_FIELD}, trace_id=\${TRACE_ID_FIELD}
+| sort by _time desc
+| limit \${LIMIT}`;
