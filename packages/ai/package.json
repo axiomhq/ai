@@ -17,6 +17,7 @@
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:live": "vitest run test/live/obsLive.test.ts",
     "test:watch": "vitest --watch",
     "gen": "tsx ./src/obs/gen/generateArtifacts.ts",
     "check:gen": "pnpm gen && git diff --exit-code -- generated/completions generated/skills",
