@@ -2,6 +2,7 @@ import { Command, Option } from 'commander';
 import { obsCommandSpec, type CommandSpec, type OptionSpec } from './commandSpec';
 import { createExplainContext, emitExplainToStderr } from '../explain/context';
 import { resolveObsConfig } from '../config/resolve';
+import { datasetGet, datasetList, datasetSample, datasetSchema } from '../commands/dataset';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -36,16 +37,32 @@ const notImplemented = (...args: unknown[]) => {
   process.exitCode = 2;
 };
 
-const registerSubcommands = (parent: Command, spec: CommandSpec) => {
+const resolveHandler = (path: string) => {
+  switch (path) {
+    case 'dataset list':
+      return datasetList;
+    case 'dataset get':
+      return datasetGet;
+    case 'dataset schema':
+      return datasetSchema;
+    case 'dataset sample':
+      return datasetSample;
+    default:
+      return notImplemented;
+  }
+};
+
+const registerSubcommands = (parent: Command, spec: CommandSpec, parentPath: string) => {
   if (!spec.subcommands) {
     return;
   }
 
   spec.subcommands.forEach((subcommandSpec) => {
+    const path = `${parentPath} ${subcommandSpec.name}`.trim();
     const subcommand = new Command(subcommandSpec.name)
       .description(subcommandSpec.description)
       .helpOption('-h, --help', 'display help for command')
-      .action(notImplemented);
+      .action(resolveHandler(path));
 
     if (subcommandSpec.args) {
       subcommand.arguments(subcommandSpec.args);
@@ -55,7 +72,7 @@ const registerSubcommands = (parent: Command, spec: CommandSpec) => {
     applyHelpText(subcommand, subcommandSpec.help);
     parent.addCommand(subcommand);
 
-    registerSubcommands(subcommand, subcommandSpec);
+    registerSubcommands(subcommand, subcommandSpec, path);
   });
 };
 
@@ -67,7 +84,7 @@ export const registerObsCommands = (program: Command) => {
 
     applyHelpText(command, spec.help);
     addOptions(command, obsCommandSpec.globalOptions);
-    registerSubcommands(command, spec);
+    registerSubcommands(command, spec, spec.name);
 
     program.addCommand(command);
   });

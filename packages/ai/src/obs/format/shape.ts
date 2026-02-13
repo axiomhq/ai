@@ -61,3 +61,29 @@ export const truncateToBudget = <T extends Record<string, unknown>>(
     columnsTotal,
   };
 };
+
+export const pickColumns = <T extends Record<string, unknown>>(
+  rows: T[],
+  columns: string[],
+): Record<string, unknown>[] =>
+  rows.map((row) => {
+    const picked: Record<string, unknown> = {};
+    columns.forEach((column) => {
+      if (column in row) {
+        picked[column] = row[column];
+      } else {
+        picked[column] = null;
+      }
+    });
+    return picked;
+  });
+
+export const getColumnsFromRows = (rows: Record<string, unknown>[]) => {
+  const columns = new Set<string>();
+  rows.forEach((row) => {
+    Object.keys(row).forEach((key) => {
+      columns.add(key);
+    });
+  });
+  return [...columns];
+};
