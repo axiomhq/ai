@@ -33,3 +33,14 @@ range start to end
 | project _time, severity=\${SEVERITY_FIELD}, message=\${MESSAGE_FIELD}, trace_id=\${TRACE_ID_FIELD}
 | sort by _time desc
 | limit \${LIMIT}`;
+
+export const TRACE_LIST_APL_TEMPLATE = `let start = datetime(\${START});
+let end = datetime(\${END});
+range start to end
+| \${FILTERS}
+| summarize started_at=min(_time), root_operation=min(\${SPAN_NAME_FIELD}), duration_ms=max(\${DURATION_FIELD}), span_count=count(), error=max(iif(\${ERROR_EXPR}, 1, 0)) by trace_id=\${TRACE_ID_FIELD}
+| project trace_id, root_operation, started_at, duration_ms, span_count, error`;
+
+export const TRACE_SPANS_APL_TEMPLATE = `\${FILTER}
+| project start=_time, duration_ms=\${DURATION_FIELD}, service=\${SERVICE_FIELD}, operation=\${SPAN_NAME_FIELD}, kind=\${SPAN_KIND_FIELD}, status=\${STATUS_FIELD}, span_id=\${SPAN_ID_FIELD}, parent_span_id=\${PARENT_SPAN_ID_FIELD}
+| sort by start asc, duration_ms desc`;

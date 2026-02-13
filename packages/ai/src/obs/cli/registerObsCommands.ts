@@ -12,6 +12,9 @@ import { serviceGet } from '../commands/serviceGet';
 import { serviceOperations } from '../commands/serviceOperations';
 import { serviceTraces } from '../commands/serviceTraces';
 import { serviceLogs } from '../commands/serviceLogs';
+import { traceList } from '../commands/traceList';
+import { traceSpans } from '../commands/traceSpans';
+import { traceGet } from '../commands/traceGet';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -82,6 +85,12 @@ const resolveHandler = (path: string) => {
       return serviceTraces;
     case 'service logs':
       return serviceLogs;
+    case 'trace list':
+      return traceList;
+    case 'trace spans':
+      return traceSpans;
+    case 'trace get':
+      return traceGet;
     default:
       return notImplemented;
   }
