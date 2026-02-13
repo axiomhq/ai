@@ -128,6 +128,27 @@ The tsup build has two passes. Client modules (`feedback.ts`) must never import 
 - New span attributes containing prompt/completion content that bypass `redaction.ts` utilities
 - Direct `span.setAttribute()` calls with raw user input or model output
 
+### 7. Example Staleness After SDK Changes
+
+**Severity: Medium — examples drift from SDK, confusing users and hiding breakage**
+
+PRs that change SDK source code (`packages/ai/src/`) should update or at minimum verify the examples in `examples/` that exercise the changed code paths. Stale examples give users broken copy-paste snippets and mask API incompatibilities.
+
+**Detection — flag when ALL of these are true:**
+
+- PR modifies files under `packages/ai/src/`
+- PR does NOT modify any files under `examples/`
+- The changed source files export public API surface (entry points, middleware, scorers, wrapTool, withSpan, onlineEval, feedback, config)
+
+**What to flag:**
+
+- "This PR changes public SDK surface in `<file>` but no examples were updated. Please verify the examples in `examples/` still work, or update them to reflect the new behavior."
+
+**Exceptions — do NOT flag if:**
+
+- Changes are purely internal (unexported helpers, type narrowing, refactors with no public API change)
+- Changes only affect test files, CI config, or documentation
+
 ## Excluded Paths
 
 - **DO NOT** review the contents of the `.cursor/` directory
