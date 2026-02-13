@@ -3,7 +3,7 @@ import { runCli } from '../helpers/runCli';
 
 describe('obs explain', () => {
   it('uses env var for explain output', async () => {
-    const result = await runCli(['service', 'list'], {
+    const result = await runCli(['trace', 'list'], {
       stdoutIsTTY: true,
       env: { AXIOM_EXPLAIN: '1' },
     });
@@ -14,7 +14,7 @@ describe('obs explain', () => {
   });
 
   it('uses flag override for explain output', async () => {
-    const result = await runCli(['service', 'list', '--explain'], {
+    const result = await runCli(['trace', 'list', '--explain'], {
       stdoutIsTTY: true,
       env: { AXIOM_EXPLAIN: '0' },
     });

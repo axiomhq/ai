@@ -174,19 +174,39 @@ export const obsCommandSpec = {
         {
           name: 'list',
           description: 'List services seen in traces',
-          options: [{ name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' }],
+          options: [
+            { name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' },
+            { name: 'since', flags: '--since <since>', description: 'Time range start' },
+            { name: 'until', flags: '--until <until>', description: 'Time range end' },
+            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
+            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
+            { name: 'limit', flags: '--limit <n>', description: 'Default 20', defaultValue: 20 },
+          ],
         },
         {
           name: 'get',
           description: 'Show service status summary',
           args: '<service>',
-          options: [{ name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' }],
+          options: [
+            { name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' },
+            { name: 'since', flags: '--since <since>', description: 'Time range start' },
+            { name: 'until', flags: '--until <until>', description: 'Time range end' },
+            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
+            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
+          ],
         },
         {
           name: 'operations',
           description: 'List operations for a service',
           args: '<service>',
-          options: [{ name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' }],
+          options: [
+            { name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' },
+            { name: 'since', flags: '--since <since>', description: 'Time range start' },
+            { name: 'until', flags: '--until <until>', description: 'Time range end' },
+            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
+            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
+            { name: 'limit', flags: '--limit <n>', description: 'Default 20', defaultValue: 20 },
+          ],
         },
         {
           name: 'traces',

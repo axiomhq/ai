@@ -7,6 +7,9 @@ import { queryRun } from '../commands/queryRun';
 import { querySavedGet, querySavedList, querySavedRun } from '../commands/savedQuery';
 import { monitorGet, monitorHistory, monitorList } from '../commands/monitor';
 import { serviceDetect } from '../commands/serviceDetect';
+import { serviceList } from '../commands/serviceList';
+import { serviceGet } from '../commands/serviceGet';
+import { serviceOperations } from '../commands/serviceOperations';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -67,6 +70,12 @@ const resolveHandler = (path: string) => {
       return monitorHistory;
     case 'service detect':
       return serviceDetect;
+    case 'service list':
+      return serviceList;
+    case 'service get':
+      return serviceGet;
+    case 'service operations':
+      return serviceOperations;
     default:
       return notImplemented;
   }
