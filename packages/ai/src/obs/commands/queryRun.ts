@@ -97,8 +97,9 @@ const shouldResolveTimeRange = (options: Record<string, unknown>) =>
 export const queryRun = withObsContext(
   async ({ config, explain }, ...args: unknown[]) => {
     requireAuth(config.orgId, config.token);
-    const dataset = String(args[0] ?? '');
     const command = args[args.length - 1] as Command;
+    const positionalArgs = args.slice(0, -1);
+    const dataset = positionalArgs[0] ? String(positionalArgs[0]) : undefined;
 
     const options = command.optsWithGlobals() as {
       apl?: string;
@@ -171,8 +172,8 @@ export const queryRun = withObsContext(
         formatJson(
           {
             ...meta,
-            dataset,
             apl,
+            ...(dataset ? { dataset } : {}),
           },
           { rows },
         ),
@@ -200,7 +201,7 @@ export const queryRun = withObsContext(
 
       const headerLines = [
         '# Query Result',
-        `Dataset: ${dataset}`,
+        ...(dataset ? [`Dataset: ${dataset}`] : []),
         'APL:',
         '```apl',
         apl,

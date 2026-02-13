@@ -148,7 +148,7 @@ If not logged in:
   - \`axiom trace spans <trace-id> --format mcp\`
 
 ### 6) Use raw APL when needed
-- \`axiom query run <dataset> --apl "<APL>" --format mcp --explain\`
+- \`axiom query run --apl "<APL>" --format mcp --explain\`
 
 ## Commands
 
@@ -159,7 +159,7 @@ If not logged in:
 - \`axiom dataset sample <name>\`
 
 ### query
-- \`axiom query run <dataset> --apl "<APL>"\`
+- \`axiom query run --apl "<APL>"\`
 - \`axiom query saved list\`
 - \`axiom query saved get <id>\`
 - \`axiom query saved run <id>\`

@@ -30,10 +30,9 @@ describe('query run', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(
-      ['query', 'run', 'traces', '--apl', 'group by service | count()', '--format', 'csv'],
-      { env },
-    );
+    const result = await runCli(['query', 'run', '--apl', "['traces'] | group by service | count()", '--format', 'csv'], {
+      env,
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('service,count');
@@ -59,12 +58,11 @@ describe('query run', () => {
     const file = join(dir, 'query.apl');
     await writeFile(file, 'limit 1\n', 'utf8');
 
-    const result = await runCli(['query', 'run', 'events', '--file', file, '--format', 'json'], {
+    const result = await runCli(['query', 'run', '--file', file, '--format', 'json'], {
       env,
     });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('"dataset": "events"');
     expect(result.stdout).toContain('"apl": "limit 1"');
   });
 
@@ -79,7 +77,7 @@ describe('query run', () => {
     await writeFile(file, 'limit 999\n', 'utf8');
 
     await runCli(
-      ['query', 'run', 'events', '--apl', 'limit 1', '--file', file, '--format', 'json'],
+      ['query', 'run', '--apl', "['events'] | limit 1", '--file', file, '--format', 'json'],
       {
         env,
       },
@@ -105,7 +103,7 @@ describe('query run', () => {
     Object.defineProperty(stdin, 'isTTY', { value: false, configurable: true });
     Object.defineProperty(process, 'stdin', { value: stdin, configurable: true });
 
-    const result = await runCli(['query', 'run', 'events', '--stdin', '--format', 'mcp'], {
+    const result = await runCli(['query', 'run', '--stdin', '--format', 'mcp'], {
       env,
     });
 
@@ -115,5 +113,25 @@ describe('query run', () => {
     expect(result.stdout).toContain('```apl');
     expect(result.stdout).toContain('```csv');
     expect(result.stdout).toContain('limit 1');
+  });
+
+  it('still accepts legacy optional dataset argument', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ value: 1 }] }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', 'run', 'events', '--apl', 'limit 1', '--format', 'json'], {
+      env,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ apl: "['events'] | limit 1", maxBinAutoGroups: 40 }),
+      }),
+    );
   });
 });

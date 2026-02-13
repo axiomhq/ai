@@ -6,7 +6,7 @@ export type ExplainRequest = {
 };
 
 export type ExplainQuery = {
-  dataset: string;
+  dataset?: string;
   apl: string;
   options?: Record<string, unknown>;
 };
@@ -41,8 +41,9 @@ const formatRequest = (request: ExplainRequest) => {
 };
 
 const formatQuery = (query: ExplainQuery) => {
+  const dataset = query.dataset ? `dataset=${query.dataset} ` : '';
   const options = query.options ? ` options=${JSON.stringify(query.options)}` : '';
-  return `  - dataset=${query.dataset} apl=${JSON.stringify(query.apl)}${options}`;
+  return `  - ${dataset}apl=${JSON.stringify(query.apl)}${options}`;
 };
 
 const writeLine = (line: string) => {

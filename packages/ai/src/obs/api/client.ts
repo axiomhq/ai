@@ -70,17 +70,17 @@ export class ObsApiClient {
     });
   }
 
-  queryApl<T = unknown>(dataset: string, apl: string, options: QueryAplOptions = {}) {
+  queryApl<T = unknown>(dataset: string | undefined, apl: string, options: QueryAplOptions = {}) {
     if (this.config.explain) {
       recordQuery(this.config.explain, { dataset, apl, options });
     }
 
-    const qualifiedApl = qualifyAplWithDataset(dataset, apl);
+    const queryText = dataset ? qualifyAplWithDataset(dataset, apl) : apl.trim();
 
     return requestJson<T>(this.config, {
       method: 'POST',
       path: '/v1/datasets/_apl?format=legacy',
-      body: { apl: qualifiedApl, ...options },
+      body: { apl: queryText, ...options },
     });
   }
 
