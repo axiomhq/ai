@@ -61,7 +61,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
       )
       .option('-w, --watch true', 'keep server running and watch for changes', false)
       .option('-t, --token <TOKEN>', 'axiom token', getDefaultToken)
-      .option('-d, --dataset <DATASET>', 'axiom dataset name', process.env.AXIOM_DATASET)
+      .option('-d, --dataset <DATASET>', 'axiom dataset name')
       .option('-u, --url <AXIOM URL>', 'axiom url', getDefaultUrl)
       .option('-o, --org-id <ORG ID>', 'axiom organization id', getDefaultOrgId)
       .option('-b, --baseline <BASELINE ID>', 'id of baseline evaluation to compare against')
