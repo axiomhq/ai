@@ -7,9 +7,13 @@ export type ObsContext = {
   explain: ExplainContext;
 };
 
-export type ObsHandler = (context: ObsContext, ...args: unknown[]) => Promise<void> | void;
+export type ObsHandler<TArgs extends unknown[] = unknown[]> = (
+  context: ObsContext,
+  ...args: TArgs
+) => Promise<void> | void;
 
-export const withObsContext = (handler: ObsHandler) => async (...args: unknown[]) => {
+export const withObsContext = <TArgs extends unknown[]>(handler: ObsHandler<TArgs>) =>
+  async (...args: TArgs) => {
   const command = args[args.length - 1] as Command | undefined;
   const flags = typeof command?.optsWithGlobals === 'function' ? command.optsWithGlobals() : {};
   const config = resolveObsConfig(flags);

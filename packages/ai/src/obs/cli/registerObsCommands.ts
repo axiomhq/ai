@@ -3,6 +3,7 @@ import { obsCommandSpec, type CommandSpec, type OptionSpec } from './commandSpec
 import { createExplainContext, emitExplainToStderr } from '../explain/context';
 import { resolveObsConfig } from '../config/resolve';
 import { datasetGet, datasetList, datasetSample, datasetSchema } from '../commands/dataset';
+import { queryRun } from '../commands/queryRun';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -47,6 +48,8 @@ const resolveHandler = (path: string) => {
       return datasetSchema;
     case 'dataset sample':
       return datasetSample;
+    case 'query run':
+      return queryRun;
     default:
       return notImplemented;
   }

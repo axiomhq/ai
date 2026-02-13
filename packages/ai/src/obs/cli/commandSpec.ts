@@ -124,6 +124,10 @@ export const obsCommandSpec = {
             },
             { name: 'columns', flags: '--columns <csv>', description: 'Explicit output columns' },
             { name: 'limit', flags: '--limit <n>', description: 'Limit rows (post-query shaping)' },
+            { name: 'since', flags: '--since <since>', description: 'Time range start' },
+            { name: 'until', flags: '--until <until>', description: 'Time range end' },
+            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
+            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
           ],
         },
         {
