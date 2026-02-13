@@ -132,6 +132,14 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
             console.log('');
           }
 
+          // Validate token permissions before running evals (skip in debug mode)
+          if (!options.debug) {
+            const { validateTokenPermissions } = await import(
+              '../../config/validate-permissions'
+            );
+            await validateTokenPermissions(config);
+          }
+
           const runId = createRunId();
 
           consoleUrl = options.consoleUrl;
