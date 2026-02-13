@@ -21,11 +21,24 @@ const escapeAplDataset = (dataset: string) => dataset.replace(/\\/g, '\\\\').rep
 
 const aplIsDatasetScoped = (apl: string) => /^\s*\[\s*['"][^'"]+['"]\s*\]\s*\|/.test(apl.trim());
 
-const qualifyAplWithDataset = (dataset: string, apl: string) => {
-  if (aplIsDatasetScoped(apl)) {
-    return apl.trim();
+const escapeDatasetForRegex = (dataset: string) => dataset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const rewriteLeadingDatasetPipe = (dataset: string, apl: string) => {
+  const trimmed = apl.trim();
+  const pattern = new RegExp(`^${escapeDatasetForRegex(dataset)}\\s*\\|\\s*(.+)$`, 's');
+  const match = trimmed.match(pattern);
+  if (!match) {
+    return trimmed;
   }
-  return `['${escapeAplDataset(dataset)}'] | ${apl.trim()}`;
+  return `['${escapeAplDataset(dataset)}'] | ${match[1].trim()}`;
+};
+
+const qualifyAplWithDataset = (dataset: string, apl: string) => {
+  const normalized = rewriteLeadingDatasetPipe(dataset, apl);
+  if (aplIsDatasetScoped(normalized)) {
+    return normalized;
+  }
+  return `['${escapeAplDataset(dataset)}'] | ${normalized}`;
 };
 
 export class ObsApiClient {
