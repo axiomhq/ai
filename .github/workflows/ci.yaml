@@ -39,6 +39,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm check:gen
       - run: pnpm format:check
       - run: pnpm build
       - run: pnpm lint

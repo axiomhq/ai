@@ -5,6 +5,7 @@ import { loadAuthCommand } from './commands/auth.command';
 import { setupGlobalAuth } from './auth/global-auth';
 import { loadVersionCommand } from './commands/version.command';
 import { registerObsCommands } from '../obs/cli/registerObsCommands';
+import { loadCompletionCommand } from './commands/completion.command';
 
 const { loadEnvConfig } = pkg;
 
@@ -27,7 +28,13 @@ export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command 
     const parentCommand = actionCommand.parent;
     const parentName = parentCommand?.name();
 
-    if (commandName === 'auth' || parentName === 'auth' || commandName === 'version') {
+    if (
+      commandName === 'auth' ||
+      parentName === 'auth' ||
+      commandName === 'version' ||
+      commandName === 'completion' ||
+      parentName === 'completion'
+    ) {
       return;
     }
 
@@ -46,6 +53,7 @@ export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command 
   loadAuthCommand(program);
   loadEvalCommand(program, overrides);
   loadVersionCommand(program);
+  loadCompletionCommand(program);
   registerObsCommands(program);
 
   return program;

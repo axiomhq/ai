@@ -18,6 +18,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest --watch",
+    "gen": "tsx ./src/obs/gen/generateArtifacts.ts",
+    "check:gen": "pnpm gen && git diff --exit-code -- generated/completions generated/skills",
     "publint": "npx publint"
   },
   "types": "./dist/index.d.ts",
@@ -159,6 +161,7 @@
     "prettier": "catalog:",
     "tinyrainbow": "^2.0.0",
     "tsup": "catalog:",
+    "tsx": "^4.20.5",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"
