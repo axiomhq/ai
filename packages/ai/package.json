@@ -19,6 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:wrangler-smoke": "pnpm build && vitest run --config vitest.smoke.config.ts",
+    "gen": "tsx ./src/obs/gen/generateArtifacts.ts",
+    "check:gen": "pnpm gen && git diff --exit-code -- generated/completions generated/skills",
     "publint": "npx publint"
   },
   "types": "./dist/index.d.ts",
@@ -120,6 +122,7 @@
     "tsup": "catalog:",
     "typedoc": "^0.28.17",
     "typedoc-plugin-markdown": "^4.10.0",
+    "tsx": "^4.20.5",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"

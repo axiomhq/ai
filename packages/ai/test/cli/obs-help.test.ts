@@ -31,6 +31,7 @@ describe('obs cli help', () => {
         switch [alias]           Switch to a different profile
         eval [options] [target]  run evals locally
         version                  cli version
+        completion <shell>       Print shell completion script
         dataset [options]        Discover datasets and schema
         query [options]          Run APL and work with saved queries
         monitor [options]        Read monitors and run history
