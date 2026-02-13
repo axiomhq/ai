@@ -4,6 +4,7 @@ import { loadEvalCommand } from './commands/eval.command';
 import { loadAuthCommand } from './commands/auth.command';
 import { setupGlobalAuth } from './auth/global-auth';
 import { loadVersionCommand } from './commands/version.command';
+import { registerObsCommands } from '../obs/cli/registerObsCommands';
 
 const { loadEnvConfig } = pkg;
 
@@ -45,6 +46,7 @@ export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command 
   loadAuthCommand(program);
   loadEvalCommand(program, overrides);
   loadVersionCommand(program);
+  registerObsCommands(program);
 
   return program;
 };

@@ -39,6 +39,19 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
   let stderr = '';
   let exitCode = 0;
 
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  process.stdout.write = ((chunk: string | Uint8Array, encoding?: BufferEncoding) => {
+    stdout += Buffer.isBuffer(chunk) ? chunk.toString(encoding) : chunk;
+    return true;
+  }) as typeof process.stdout.write;
+
+  process.stderr.write = ((chunk: string | Uint8Array, encoding?: BufferEncoding) => {
+    stderr += Buffer.isBuffer(chunk) ? chunk.toString(encoding) : chunk;
+    return true;
+  }) as typeof process.stderr.write;
+
   if (!(globalThis as { __SDK_VERSION__?: string }).__SDK_VERSION__) {
     (globalThis as { __SDK_VERSION__?: string }).__SDK_VERSION__ = 'test-version';
   }
@@ -59,7 +72,7 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
   });
 
   try {
-    await program.parseAsync(['node', 'axiom', ...args], { from: 'user' });
+    await program.parseAsync(['node', 'axiom', ...args]);
   } catch (_error) {
     const commanderError = _error as { exitCode?: number } | undefined;
     if (exitCode === 0 && commanderError?.exitCode === undefined) {
@@ -71,6 +84,9 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
     value: originalIsTTY,
     configurable: true,
   });
+
+  process.stdout.write = originalStdoutWrite;
+  process.stderr.write = originalStderrWrite;
 
   for (const key of Object.keys(mergedEnv)) {
     if (previousEnv[key] === undefined) {
