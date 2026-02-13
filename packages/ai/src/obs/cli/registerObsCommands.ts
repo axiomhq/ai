@@ -6,6 +6,7 @@ import { datasetGet, datasetList, datasetSample, datasetSchema } from '../comman
 import { queryRun } from '../commands/queryRun';
 import { querySavedGet, querySavedList, querySavedRun } from '../commands/savedQuery';
 import { monitorGet, monitorHistory, monitorList } from '../commands/monitor';
+import { serviceDetect } from '../commands/serviceDetect';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -64,6 +65,8 @@ const resolveHandler = (path: string) => {
       return monitorGet;
     case 'monitor history':
       return monitorHistory;
+    case 'service detect':
+      return serviceDetect;
     default:
       return notImplemented;
   }
