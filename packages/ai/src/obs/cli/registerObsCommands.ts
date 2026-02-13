@@ -10,6 +10,8 @@ import { serviceDetect } from '../commands/serviceDetect';
 import { serviceList } from '../commands/serviceList';
 import { serviceGet } from '../commands/serviceGet';
 import { serviceOperations } from '../commands/serviceOperations';
+import { serviceTraces } from '../commands/serviceTraces';
+import { serviceLogs } from '../commands/serviceLogs';
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
@@ -76,6 +78,10 @@ const resolveHandler = (path: string) => {
       return serviceGet;
     case 'service operations':
       return serviceOperations;
+    case 'service traces':
+      return serviceTraces;
+    case 'service logs':
+      return serviceLogs;
     default:
       return notImplemented;
   }
