@@ -17,6 +17,17 @@ export type ObsApiClientConfig = Omit<HttpConfig, 'explain'> & {
   explain?: ExplainContext;
 };
 
+const escapeAplDataset = (dataset: string) => dataset.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+const aplIsDatasetScoped = (apl: string) => /^\s*\[\s*['"][^'"]+['"]\s*\]\s*\|/.test(apl.trim());
+
+const qualifyAplWithDataset = (dataset: string, apl: string) => {
+  if (aplIsDatasetScoped(apl)) {
+    return apl.trim();
+  }
+  return `['${escapeAplDataset(dataset)}'] | ${apl.trim()}`;
+};
+
 export class ObsApiClient {
   private config: HttpConfig;
 
@@ -50,10 +61,13 @@ export class ObsApiClient {
     if (this.config.explain) {
       recordQuery(this.config.explain, { dataset, apl, options });
     }
+
+    const qualifiedApl = qualifyAplWithDataset(dataset, apl);
+
     return requestJson<T>(this.config, {
       method: 'POST',
-      path: `/v2/datasets/${encodeURIComponent(dataset)}/query`,
-      body: { apl, ...options },
+      path: '/v1/datasets/_apl?format=legacy',
+      body: { apl: qualifiedApl, ...options },
     });
   }
 

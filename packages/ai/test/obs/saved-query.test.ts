@@ -99,10 +99,13 @@ describe('saved query commands', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'https://api.axiom.co/v2/datasets/traces/query',
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ apl: 'group by service | count()', maxBinAutoGroups: 40 }),
+        body: JSON.stringify({
+          apl: "['traces'] | group by service | count()",
+          maxBinAutoGroups: 40,
+        }),
       }),
     );
   });

@@ -38,10 +38,13 @@ describe('query run', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('service,count');
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.axiom.co/v2/datasets/traces/query',
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ apl: 'group by service | count()', maxBinAutoGroups: 40 }),
+        body: JSON.stringify({
+          apl: "['traces'] | group by service | count()",
+          maxBinAutoGroups: 40,
+        }),
       }),
     );
   });
@@ -83,10 +86,10 @@ describe('query run', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.axiom.co/v2/datasets/events/query',
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ apl: 'limit 1', maxBinAutoGroups: 40 }),
+        body: JSON.stringify({ apl: "['events'] | limit 1", maxBinAutoGroups: 40 }),
       }),
     );
   });
