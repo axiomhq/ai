@@ -356,26 +356,26 @@ describe('obs command integration contracts', () => {
     expect(sample.stderr).toBe('');
 
     expect(queryRun.stdout).toContain('```apl');
-    expect(queryRun.stderr).toContain('/v2/datasets/alpha/query');
+    expect(queryRun.stderr).toContain('/v1/datasets/_apl?format=legacy');
     expect(queryRun.stderr).toContain('apl="limit 1"');
 
     expect(savedRun.exitCode).toBe(0);
     expect(savedRun.stderr).toContain('/v2/saved-queries/sq_1');
-    expect(savedRun.stderr).toContain('/v2/datasets/alpha/query');
+    expect(savedRun.stderr).toContain('/v1/datasets/_apl?format=legacy');
 
     expect(monitorHistory.stdout).toContain('```csv');
     expect(monitorHistory.stderr).toContain('/v2/monitors/mon_1/history');
 
     expect(serviceOps.stdout).toContain('# Service Operations: checkout');
-    expect(serviceOps.stderr).toContain('/v2/datasets/traces/query');
+    expect(serviceOps.stderr).toContain('/v1/datasets/_apl?format=legacy');
 
     expect(serviceTraces.stdout).toContain('# Service Traces: checkout');
-    expect(serviceTraces.stderr).toContain('/v2/datasets/traces/query');
+    expect(serviceTraces.stderr).toContain('/v1/datasets/_apl?format=legacy');
 
     expect(serviceLogs.stdout).toContain('# Service Logs: checkout');
-    expect(serviceLogs.stderr).toContain('/v2/datasets/logs/query');
+    expect(serviceLogs.stderr).toContain('/v1/datasets/_apl?format=legacy');
 
     expect(traceSpans.stdout).toContain('# Trace Spans: trace-1');
-    expect(traceSpans.stderr).toContain('/v2/datasets/traces/query');
+    expect(traceSpans.stderr).toContain('/v1/datasets/_apl?format=legacy');
   });
 });

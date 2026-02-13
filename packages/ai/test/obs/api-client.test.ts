@@ -66,7 +66,7 @@ describe('obs api client', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
-      'https://api.axiom.co/v2/datasets/dataset%2Fgroup/query',
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -74,7 +74,7 @@ describe('obs api client', () => {
           'Content-Type': 'application/json',
           'X-Axiom-Org-Id': 'org',
         },
-        body: JSON.stringify({ apl: 'limit 1', maxBinAutoGroups: 40 }),
+        body: JSON.stringify({ apl: "['dataset/group'] | limit 1", maxBinAutoGroups: 40 }),
       }),
     );
 
@@ -93,7 +93,7 @@ describe('obs api client', () => {
       },
       {
         method: 'POST',
-        path: '/v2/datasets/dataset%2Fgroup/query',
+        path: '/v1/datasets/_apl?format=legacy',
         status: 200,
         requestId: 'req-2',
       },
