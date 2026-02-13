@@ -29,6 +29,96 @@ const createConfig = (): ResolvedAxiomConfig =>
     },
   }) as ResolvedAxiomConfig;
 
+const createMockVitestHarness = () => {
+  let resolveDone: (() => void) | undefined;
+  let rejectDone: ((error: unknown) => void) | undefined;
+  const done = new Promise<void>((resolve, reject) => {
+    resolveDone = resolve;
+    rejectDone = reject;
+  });
+  const state: { suite: MockSuite | undefined } = { suite: undefined };
+
+  vi.doMock('vitest', () => {
+    let beforeAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
+    let afterAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
+    const testFns: Array<(suite: MockSuite) => Promise<void> | void> = [];
+
+    const itMock = Object.assign(
+      (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
+      {
+        concurrent: {
+          for:
+            <T>(items: T[]) =>
+            (_name: string, fn: (data: T, context: { task: MockTask }) => Promise<void> | void) => {
+              for (const item of items) {
+                testFns.push(async (suite: MockSuite) => {
+                  const task: MockTask = { meta: {} };
+                  suite.tasks.push(task);
+                  try {
+                    await fn(item, { task });
+                  } catch {
+                    // Expected for intentionally failed cases.
+                  }
+                });
+              }
+            },
+        },
+      },
+    );
+
+    return {
+      beforeAll: (fn: typeof beforeAllHook) => {
+        beforeAllHook = fn;
+      },
+      afterAll: (fn: typeof afterAllHook) => {
+        afterAllHook = fn;
+      },
+      it: itMock,
+      inject: (key: string) => {
+        const provided = {
+          baseline: undefined,
+          debug: true,
+          list: false,
+          overrides: {},
+          axiomConfig: createConfig(),
+          runId: 'run-123',
+          consoleUrl: undefined,
+        } as Record<string, unknown>;
+        return provided[key];
+      },
+      describe: async (name: string, fn: () => Promise<void>) => {
+        const suite: MockSuite = {
+          name,
+          file: 'mock.eval.ts',
+          meta: {},
+          tasks: [],
+        };
+        state.suite = suite;
+
+        try {
+          await fn();
+          if (beforeAllHook) {
+            await beforeAllHook(suite);
+          }
+
+          for (const testFn of testFns) {
+            await testFn(suite);
+          }
+
+          if (afterAllHook) {
+            await afterAllHook(suite);
+          }
+          resolveDone?.();
+        } catch (error) {
+          rejectDone?.(error);
+        }
+      },
+    };
+  });
+
+  return { state, done };
+};
+
 describe.sequential('eval trial metadata capture', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -40,94 +130,7 @@ describe.sequential('eval trial metadata capture', () => {
     (globalThis as any).__SDK_VERSION__ = 'test-version';
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    let resolveDone: (() => void) | undefined;
-    let rejectDone: ((error: unknown) => void) | undefined;
-    const done = new Promise<void>((resolve, reject) => {
-      resolveDone = resolve;
-      rejectDone = reject;
-    });
-    const state: { suite: MockSuite | undefined } = { suite: undefined };
-
-    vi.doMock('vitest', () => {
-      let beforeAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
-      let afterAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
-      const testFns: Array<(suite: MockSuite) => Promise<void> | void> = [];
-
-      const itMock = Object.assign(
-        (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
-        {
-          concurrent: {
-            for:
-              <T>(items: T[]) =>
-              (
-                _name: string,
-                fn: (data: T, context: { task: MockTask }) => Promise<void> | void,
-              ) => {
-                for (const item of items) {
-                  testFns.push(async (suite: MockSuite) => {
-                    const task: MockTask = { meta: {} };
-                    suite.tasks.push(task);
-                    try {
-                      await fn(item, { task });
-                    } catch {
-                      // Expected for intentionally failed cases.
-                    }
-                  });
-                }
-              },
-          },
-        },
-      );
-
-      return {
-        beforeAll: (fn: typeof beforeAllHook) => {
-          beforeAllHook = fn;
-        },
-        afterAll: (fn: typeof afterAllHook) => {
-          afterAllHook = fn;
-        },
-        it: itMock,
-        inject: (key: string) => {
-          const provided = {
-            baseline: undefined,
-            debug: true,
-            list: false,
-            overrides: {},
-            axiomConfig: createConfig(),
-            runId: 'run-123',
-            consoleUrl: undefined,
-          } as Record<string, unknown>;
-          return provided[key];
-        },
-        describe: async (name: string, fn: () => Promise<void>) => {
-          const suite: MockSuite = {
-            name,
-            file: 'mock.eval.ts',
-            meta: {},
-            tasks: [],
-          };
-          state.suite = suite;
-
-          try {
-            await fn();
-            if (beforeAllHook) {
-              await beforeAllHook(suite);
-            }
-
-            for (const testFn of testFns) {
-              await testFn(suite);
-            }
-
-            if (afterAllHook) {
-              await afterAllHook(suite);
-            }
-            resolveDone?.();
-          } catch (error) {
-            rejectDone?.(error);
-          }
-        },
-      };
-    });
+    const { state, done } = createMockVitestHarness();
 
     const { Eval } = await import('../../src/evals/eval');
 
@@ -185,94 +188,7 @@ describe.sequential('eval trial metadata capture', () => {
     let now = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
 
-    let resolveDone: (() => void) | undefined;
-    let rejectDone: ((error: unknown) => void) | undefined;
-    const done = new Promise<void>((resolve, reject) => {
-      resolveDone = resolve;
-      rejectDone = reject;
-    });
-    const state: { suite: MockSuite | undefined } = { suite: undefined };
-
-    vi.doMock('vitest', () => {
-      let beforeAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
-      let afterAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
-      const testFns: Array<(suite: MockSuite) => Promise<void> | void> = [];
-
-      const itMock = Object.assign(
-        (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
-        {
-          concurrent: {
-            for:
-              <T>(items: T[]) =>
-              (
-                _name: string,
-                fn: (data: T, context: { task: MockTask }) => Promise<void> | void,
-              ) => {
-                for (const item of items) {
-                  testFns.push(async (suite: MockSuite) => {
-                    const task: MockTask = { meta: {} };
-                    suite.tasks.push(task);
-                    try {
-                      await fn(item, { task });
-                    } catch {
-                      // Expected for intentionally failed cases.
-                    }
-                  });
-                }
-              },
-          },
-        },
-      );
-
-      return {
-        beforeAll: (fn: typeof beforeAllHook) => {
-          beforeAllHook = fn;
-        },
-        afterAll: (fn: typeof afterAllHook) => {
-          afterAllHook = fn;
-        },
-        it: itMock,
-        inject: (key: string) => {
-          const provided = {
-            baseline: undefined,
-            debug: true,
-            list: false,
-            overrides: {},
-            axiomConfig: createConfig(),
-            runId: 'run-123',
-            consoleUrl: undefined,
-          } as Record<string, unknown>;
-          return provided[key];
-        },
-        describe: async (name: string, fn: () => Promise<void>) => {
-          const suite: MockSuite = {
-            name,
-            file: 'mock.eval.ts',
-            meta: {},
-            tasks: [],
-          };
-          state.suite = suite;
-
-          try {
-            await fn();
-            if (beforeAllHook) {
-              await beforeAllHook(suite);
-            }
-
-            for (const testFn of testFns) {
-              await testFn(suite);
-            }
-
-            if (afterAllHook) {
-              await afterAllHook(suite);
-            }
-            resolveDone?.();
-          } catch (error) {
-            rejectDone?.(error);
-          }
-        },
-      };
-    });
+    const { state, done } = createMockVitestHarness();
 
     const { Eval } = await import('../../src/evals/eval');
 
@@ -311,94 +227,7 @@ describe.sequential('eval trial metadata capture', () => {
     (globalThis as any).__SDK_VERSION__ = 'test-version';
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    let resolveDone: (() => void) | undefined;
-    let rejectDone: ((error: unknown) => void) | undefined;
-    const done = new Promise<void>((resolve, reject) => {
-      resolveDone = resolve;
-      rejectDone = reject;
-    });
-    const state: { suite: MockSuite | undefined } = { suite: undefined };
-
-    vi.doMock('vitest', () => {
-      let beforeAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
-      let afterAllHook: ((suite: MockSuite) => Promise<void> | void) | undefined;
-      const testFns: Array<(suite: MockSuite) => Promise<void> | void> = [];
-
-      const itMock = Object.assign(
-        (_name: string, _fn: (task: MockTask) => Promise<void> | void) => {},
-        {
-          concurrent: {
-            for:
-              <T>(items: T[]) =>
-              (
-                _name: string,
-                fn: (data: T, context: { task: MockTask }) => Promise<void> | void,
-              ) => {
-                for (const item of items) {
-                  testFns.push(async (suite: MockSuite) => {
-                    const task: MockTask = { meta: {} };
-                    suite.tasks.push(task);
-                    try {
-                      await fn(item, { task });
-                    } catch {
-                      // Expected for intentionally failed cases.
-                    }
-                  });
-                }
-              },
-          },
-        },
-      );
-
-      return {
-        beforeAll: (fn: typeof beforeAllHook) => {
-          beforeAllHook = fn;
-        },
-        afterAll: (fn: typeof afterAllHook) => {
-          afterAllHook = fn;
-        },
-        it: itMock,
-        inject: (key: string) => {
-          const provided = {
-            baseline: undefined,
-            debug: true,
-            list: false,
-            overrides: {},
-            axiomConfig: createConfig(),
-            runId: 'run-123',
-            consoleUrl: undefined,
-          } as Record<string, unknown>;
-          return provided[key];
-        },
-        describe: async (name: string, fn: () => Promise<void>) => {
-          const suite: MockSuite = {
-            name,
-            file: 'mock.eval.ts',
-            meta: {},
-            tasks: [],
-          };
-          state.suite = suite;
-
-          try {
-            await fn();
-            if (beforeAllHook) {
-              await beforeAllHook(suite);
-            }
-
-            for (const testFn of testFns) {
-              await testFn(suite);
-            }
-
-            if (afterAllHook) {
-              await afterAllHook(suite);
-            }
-            resolveDone?.();
-          } catch (error) {
-            rejectDone?.(error);
-          }
-        },
-      };
-    });
+    const { state, done } = createMockVitestHarness();
 
     const { Eval } = await import('../../src/evals/eval');
 
