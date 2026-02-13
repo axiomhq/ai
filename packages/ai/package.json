@@ -168,7 +168,9 @@
     "zod": "catalog:"
   },
   "files": [
-    "dist"
+    "dist",
+    "generated/completions",
+    "generated/skills"
   ],
   "packageManager": "pnpm@10.16.1"
 }

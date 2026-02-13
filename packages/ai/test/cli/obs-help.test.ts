@@ -14,6 +14,8 @@ const traceHelp = `Usage:\n  axiom trace <command>\n\nCommands:\n  list         
 describe('obs cli help', () => {
   it('prints top-level help with obs commands', async () => {
     const result = await runCli(['--help'], { stdoutIsTTY: true });
+    expect(result.stdout).not.toContain('dashboard');
+    expect(result.stdout).not.toContain('metrics');
     expect(result.stdout).toMatchInlineSnapshot(`
       "Usage: axiom [options] [command]
 
