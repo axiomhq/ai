@@ -2,6 +2,7 @@ import { Eval } from 'axiom/ai/evals';
 import { Scorer } from 'axiom/ai/evals/scorers';
 import { pickFlags } from '@/lib/app-scope';
 import {
+  SUPPORT_AGENT_CAPABILITY_NAME,
   runSupportAgent,
   SupportAgentResult,
 } from '@/lib/capabilities/support-agent/support-agent';
@@ -29,8 +30,8 @@ const toolUseMatch = Scorer(
   },
 );
 
-Eval('support-agent-e2e-tool-use', {
-  capability: 'support-agent',
+Eval('e2e-tool-use', {
+  capability: SUPPORT_AGENT_CAPABILITY_NAME,
   configFlags: pickFlags('supportAgent'),
   data: [
     {
