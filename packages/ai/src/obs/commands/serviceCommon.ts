@@ -1,28 +1,13 @@
 import { createObsApiClient } from '../api/client';
+import {
+  fieldNamesFromDatasetFields,
+  normalizeDatasetFields,
+  normalizeDatasetList,
+} from '../api/binding';
+import { ObsApiError } from '../api/http';
 import { detectOtelDatasets, requireOtelFields } from '../otel/detectDatasets';
 import type { OtelFieldMap } from '../otel/types';
 import { TRACE_FIELD_CANDIDATES } from '../otel/fieldMapping';
-
-type SchemaField = { field?: string; name?: string };
-
-const toFieldNames = (schema: unknown): string[] => {
-  if (Array.isArray(schema)) {
-    return schema
-      .map((entry) => (entry as SchemaField).field ?? (entry as SchemaField).name ?? '')
-      .filter(Boolean);
-  }
-
-  if (typeof schema === 'object' && schema) {
-    const fields = (schema as { fields?: unknown }).fields;
-    if (Array.isArray(fields)) {
-      return fields
-        .map((entry) => (entry as SchemaField).field ?? (entry as SchemaField).name ?? '')
-        .filter(Boolean);
-    }
-  }
-
-  return [];
-};
 
 export const requireAuth = (orgId?: string, token?: string) => {
   if (!orgId || !token) {
@@ -31,19 +16,37 @@ export const requireAuth = (orgId?: string, token?: string) => {
 };
 
 const listSchemas = async (client: ReturnType<typeof createObsApiClient>) => {
-  const datasetsResponse =
-    await client.listDatasets<Array<{ name?: string }> | { datasets: Array<{ name?: string }> }>();
-  const datasets = Array.isArray(datasetsResponse.data)
-    ? datasetsResponse.data
-    : datasetsResponse.data.datasets ?? [];
+  const datasetsResponse = await client.listDatasets();
+  const datasets = normalizeDatasetList(datasetsResponse.data);
+
+  const fetchFields = async (datasetName: string) => {
+    try {
+      const schemaResponse = await client.getDatasetFields(datasetName);
+      const fields = normalizeDatasetFields(schemaResponse.data);
+      return {
+        datasetName,
+        fields: fieldNamesFromDatasetFields(fields),
+      };
+    } catch (error) {
+      if (error instanceof ObsApiError) {
+        return null;
+      }
+      throw error;
+    }
+  };
 
   const schemaMap: Record<string, string[]> = {};
-  for (const dataset of datasets) {
-    if (!dataset.name) {
-      continue;
+  const queue = datasets.map((dataset) => dataset.name).filter(Boolean);
+  const concurrency = 8;
+
+  for (let index = 0; index < queue.length; index += concurrency) {
+    const batch = queue.slice(index, index + concurrency);
+    const results = await Promise.all(batch.map((datasetName) => fetchFields(datasetName)));
+    for (const result of results) {
+      if (result) {
+        schemaMap[result.datasetName] = result.fields;
+      }
     }
-    const schemaResponse = await client.getDatasetSchema(dataset.name);
-    schemaMap[dataset.name] = toFieldNames(schemaResponse.data);
   }
 
   return schemaMap;
@@ -65,9 +68,9 @@ export const resolveTraceDataset = async (params: {
   });
 
   if (params.overrideDataset) {
-    const schema = await client.getDatasetSchema(params.overrideDataset);
+    const schema = await client.getDatasetFields(params.overrideDataset);
     const fields = detectOtelDatasets({
-      [params.overrideDataset]: toFieldNames(schema.data),
+      [params.overrideDataset]: fieldNamesFromDatasetFields(normalizeDatasetFields(schema.data)),
     }).traces?.fields;
 
     if (!fields) {
@@ -147,8 +150,8 @@ export const resolveLogsDataset = async (params: {
   });
 
   if (params.overrideDataset) {
-    const schema = await client.getDatasetSchema(params.overrideDataset);
-    const schemaFields = toFieldNames(schema.data);
+    const schema = await client.getDatasetFields(params.overrideDataset);
+    const schemaFields = fieldNamesFromDatasetFields(normalizeDatasetFields(schema.data));
     const detection = detectOtelDatasets({
       [params.overrideDataset]: schemaFields,
     });

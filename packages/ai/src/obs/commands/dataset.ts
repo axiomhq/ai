@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { createObsApiClient } from '../api/client';
+import { normalizeDatasetFields, normalizeDatasetList } from '../api/binding';
 import { renderJson, renderMcp, renderNdjson, renderTabular, resolveOutputFormat } from '../format/output';
 import { formatCsv } from '../format/formatters';
 import { withObsContext } from '../cli/withObsContext';
@@ -14,26 +15,11 @@ type DatasetRecord = {
   modifiedAt?: string | null;
 };
 
-type DatasetSchemaField = {
-  field?: string;
-  name?: string;
-  type?: string;
-  nullable?: boolean;
-  description?: string | null;
-};
-
 const normalizeDataset = (dataset: DatasetRecord) => ({
   name: dataset.name ?? '',
   description: dataset.description ?? null,
   created_at: dataset.created_at ?? dataset.createdAt ?? null,
   modified_at: dataset.modified_at ?? dataset.modifiedAt ?? null,
-});
-
-const normalizeSchemaField = (field: DatasetSchemaField) => ({
-  field: field.field ?? field.name ?? '',
-  type: field.type ?? '',
-  nullable: field.nullable ?? false,
-  description: field.description ?? null,
 });
 
 const requireAuth = (orgId?: string, token?: string) => {
@@ -115,12 +101,8 @@ export const datasetList = withObsContext(async ({ config, explain }, _args, com
     explain,
   });
 
-  const response = await client.listDatasets<DatasetRecord[] | { datasets: DatasetRecord[] }>();
-  const datasets = Array.isArray(response.data)
-    ? response.data
-    : response.data.datasets ?? [];
-
-  const rows = datasets.slice(0, limit).map(normalizeDataset);
+  const response = await client.listDatasets();
+  const rows = normalizeDatasetList(response.data).slice(0, limit).map(normalizeDataset);
   const columns = ['name', 'description', 'created_at', 'modified_at'];
   const format = resolveOutputFormat(config.format as any, 'list', true);
 
@@ -215,11 +197,13 @@ export const datasetSchema = withObsContext(async ({ config, explain }, name: st
     explain,
   });
 
-  const response = await client.getDatasetSchema<DatasetSchemaField[] | { fields: DatasetSchemaField[] }>(
-    name,
-  );
-  const fields = Array.isArray(response.data) ? response.data : response.data.fields ?? [];
-  const rows = fields.map(normalizeSchemaField);
+  const response = await client.getDatasetFields(name);
+  const rows = normalizeDatasetFields(response.data).map((field) => ({
+    field: field.name,
+    type: field.type,
+    nullable: field.nullable ?? false,
+    description: field.description,
+  }));
   const columns = ['field', 'type', 'nullable', 'description'];
   const format = resolveOutputFormat(config.format as any, 'list', true);
 

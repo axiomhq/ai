@@ -1,4 +1,10 @@
 import { createObsApiClient } from '../api/client';
+import {
+  fieldNamesFromDatasetFields,
+  normalizeDatasetFields,
+  normalizeDatasetList,
+} from '../api/binding';
+import { ObsApiError } from '../api/http';
 import { withObsContext } from '../cli/withObsContext';
 import { formatJson, formatMcp } from '../format/formatters';
 import {
@@ -25,27 +31,6 @@ const write = (stdout: string, stderr = '') => {
   }
 };
 
-type SchemaField = { field?: string; name?: string };
-
-const toFieldNames = (schema: unknown): string[] => {
-  if (Array.isArray(schema)) {
-    return schema
-      .map((entry) => (entry as SchemaField).field ?? (entry as SchemaField).name ?? '')
-      .filter(Boolean);
-  }
-
-  if (typeof schema === 'object' && schema) {
-    const fields = (schema as { fields?: unknown }).fields;
-    if (Array.isArray(fields)) {
-      return fields
-        .map((entry) => (entry as SchemaField).field ?? (entry as SchemaField).name ?? '')
-        .filter(Boolean);
-    }
-  }
-
-  return [];
-};
-
 export const serviceDetect = withObsContext(async ({ config, explain }) => {
   requireAuth(config.orgId, config.token);
 
@@ -56,19 +41,37 @@ export const serviceDetect = withObsContext(async ({ config, explain }) => {
     explain,
   });
 
-  const datasetsResponse = await client.listDatasets<Array<{ name?: string }> | { datasets: Array<{ name?: string }> }>();
-  const datasetRows = Array.isArray(datasetsResponse.data)
-    ? datasetsResponse.data
-    : datasetsResponse.data.datasets ?? [];
+  const datasetsResponse = await client.listDatasets();
+  const datasetNames = normalizeDatasetList(datasetsResponse.data)
+    .map((dataset) => dataset.name)
+    .filter(Boolean);
 
-  const datasetNames = datasetRows
-    .map((dataset) => dataset.name ?? '')
-    .filter((name) => Boolean(name));
+  const fetchFields = async (datasetName: string) => {
+    try {
+      const schemaResponse = await client.getDatasetFields(datasetName);
+      const fields = normalizeDatasetFields(schemaResponse.data);
+      return {
+        datasetName,
+        fields: fieldNamesFromDatasetFields(fields),
+      };
+    } catch (error) {
+      if (error instanceof ObsApiError) {
+        return null;
+      }
+      throw error;
+    }
+  };
 
   const schemaMap: Record<string, string[]> = {};
-  for (const dataset of datasetNames) {
-    const schemaResponse = await client.getDatasetSchema(dataset);
-    schemaMap[dataset] = toFieldNames(schemaResponse.data);
+  const concurrency = 8;
+  for (let index = 0; index < datasetNames.length; index += concurrency) {
+    const batch = datasetNames.slice(index, index + concurrency);
+    const results = await Promise.all(batch.map((datasetName) => fetchFields(datasetName)));
+    for (const result of results) {
+      if (result) {
+        schemaMap[result.datasetName] = result.fields;
+      }
+    }
   }
 
   const detection = detectOtelDatasets(schemaMap);

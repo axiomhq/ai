@@ -17,6 +17,12 @@ describe('obs api client', () => {
         }),
       )
       .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ name: 'field', type: 'string' }]), {
+          status: 200,
+          headers: { 'x-request-id': 'req-1b' },
+        }),
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ matches: [] }), {
           status: 200,
           headers: { 'x-request-id': 'req-2' },
@@ -34,7 +40,8 @@ describe('obs api client', () => {
     });
 
     await client.listDatasets();
-    await client.queryApl('dataset', 'limit 1', { maxBinAutoGroups: 40 });
+    await client.getDatasetFields('team/logs');
+    await client.queryApl('dataset/group', 'limit 1', { maxBinAutoGroups: 40 });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -51,7 +58,15 @@ describe('obs api client', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'https://api.axiom.co/v2/datasets/dataset/query',
+      'https://api.axiom.co/v2/datasets/team%2Flogs/fields',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'https://api.axiom.co/v2/datasets/dataset%2Fgroup/query',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -71,8 +86,14 @@ describe('obs api client', () => {
         requestId: 'req-1',
       },
       {
+        method: 'GET',
+        path: '/v2/datasets/team%2Flogs/fields',
+        status: 200,
+        requestId: 'req-1b',
+      },
+      {
         method: 'POST',
-        path: '/v2/datasets/dataset/query',
+        path: '/v2/datasets/dataset%2Fgroup/query',
         status: 200,
         requestId: 'req-2',
       },
@@ -80,7 +101,7 @@ describe('obs api client', () => {
 
     expect(explain.queries).toEqual([
       {
-        dataset: 'dataset',
+        dataset: 'dataset/group',
         apl: 'limit 1',
         options: { maxBinAutoGroups: 40 },
       },
