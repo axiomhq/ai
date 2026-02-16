@@ -9,9 +9,7 @@
     "eval": "axiom eval .",
     "eval:by-file": "axiom eval src/example.eval.ts",
     "eval:by-glob": "axiom eval **/example*.ts",
-    "eval:by-name": "axiom eval \"Minimal\"",
-    "// TODO: BEFORE MERGE": "delete this v",
-    "eval:trial-status-repro": "axiom eval src/trial-status-repro.eval.ts"
+    "eval:by-name": "axiom eval \"Minimal\""
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.72",
