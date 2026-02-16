@@ -467,7 +467,7 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       await onlineEval(
-        { capability: 'qa', link: explicitSpanContext },
+        { capability: 'qa', links: explicitSpanContext },
         { output: baseOutput, scorers: [scorer] },
       );
 
@@ -475,6 +475,32 @@ describe('onlineEval', () => {
       expect(trace.getSpan).not.toHaveBeenCalled();
       expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {
         links: [{ context: explicitSpanContext }],
+      });
+    });
+
+    it('creates eval span with multiple explicit links', async () => {
+      const { trace } = await import('@opentelemetry/api');
+      const spanContext1 = {
+        traceId: 'trace-id-1-00000000000000000',
+        spanId: 'span-id-1-000',
+        traceFlags: 1,
+      };
+      const spanContext2 = {
+        traceId: 'trace-id-2-00000000000000000',
+        spanId: 'span-id-2-000',
+        traceFlags: 1,
+      };
+      const scorer = createTestScorer('test', async () => ({ score: 1 }));
+
+      await onlineEval(
+        { capability: 'qa', links: [spanContext1, spanContext2] },
+        { output: baseOutput, scorers: [scorer] },
+      );
+
+      // Explicit links take priority — trace.getSpan should not be called
+      expect(trace.getSpan).not.toHaveBeenCalled();
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {
+        links: [{ context: spanContext1 }, { context: spanContext2 }],
       });
     });
 
