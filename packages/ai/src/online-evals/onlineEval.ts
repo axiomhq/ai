@@ -1,4 +1,5 @@
 import { context, trace, SpanStatusCode, type SpanContext } from '@opentelemetry/api';
+import { getGlobalTracer } from '../otel/initAxiomAI';
 import type {
   OnlineEvalScorerEntry,
   OnlineEvalScorerInput,
@@ -8,6 +9,7 @@ import type {
   ScorerSampling,
 } from './types';
 import { executeScorer } from './executor';
+import { Attr } from '../otel/semconv/attributes';
 
 type ScorerEntry<TInput, TOutput> = OnlineEvalScorerEntry<TInput, TOutput, any>;
 type ScorerInput<TInput, TOutput> = OnlineEvalScorerInput<TInput, TOutput, any>;
@@ -255,7 +257,7 @@ async function executeOnlineEvalInternal<
   options: OnlineEvalOptions<TInput, TOutput, TScorers>,
   linkSpanContext: SpanContext | undefined,
 ): Promise<InferOnlineEvalResultRecord<TScorers>> {
-  const tracer = trace.getTracer('axiom-ai');
+  const tracer = getGlobalTracer();
 
   const spanName = meta.step ? `eval ${meta.capability}/${meta.step}` : `eval ${meta.capability}`;
 
@@ -263,6 +265,16 @@ async function executeOnlineEvalInternal<
     spanName,
     linkSpanContext ? { links: [{ context: linkSpanContext }] } : {},
   );
+
+  const evalAttrs: Record<string, string> = {
+    [Attr.GenAI.Operation.Name]: 'eval',
+    [Attr.Eval.Capability.Name]: meta.capability,
+    [Attr.Eval.Tags]: JSON.stringify(['online']),
+  };
+  if (meta.step) {
+    evalAttrs[Attr.Eval.Step.Name] = meta.step;
+  }
+  evalSpan.setAttributes(evalAttrs);
 
   try {
     const normalizedScorers = options.scorers.map((entry) => normalizeScorerEntry(entry));
@@ -289,7 +301,13 @@ async function executeOnlineEvalInternal<
 
           return {
             sampledOut: false as const,
-            result: await executeScorer(entry.scorer, options.input, options.output, evalSpan),
+            result: await executeScorer(
+              entry.scorer,
+              options.input,
+              options.output,
+              evalSpan,
+              meta,
+            ),
           };
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));
@@ -304,6 +322,7 @@ async function executeOnlineEvalInternal<
               options.input,
               options.output,
               evalSpan,
+              meta,
             ),
           };
         }
