@@ -89,12 +89,13 @@ export type OnlineEvalMeta = {
   /** Specific step within the capability (e.g., 'answer', 'extract') */
   step?: string;
   /**
-   * Explicit SpanContext to link the eval span to the originating generation span.
+   * Explicit SpanContext(s) to link the eval span to originating generation span(s).
    * When omitted, the active span's context is used automatically.
    * Use this for deferred evaluation when onlineEval is called after the
    * originating span has completed.
+   * Supports both single context and multiple contexts for multi-span linking.
    */
-  links?: SpanContext;
+  links?: SpanContext | SpanContext[];
 };
 
 /**
@@ -206,6 +207,7 @@ function getDuplicateScorerNames<TInput, TOutput>(
  *
  * **Deferred evaluation with explicit link:**
  * Pass the originating span's context for linking when evaluating later.
+ * Supports single or multiple span contexts.
  * ```ts
  * let spanCtx: SpanContext;
  * const result = await withSpan({ ... }, async (span) => {
@@ -213,6 +215,9 @@ function getDuplicateScorerNames<TInput, TOutput>(
  *   return await generateText({ ... });
  * });
  * void onlineEval({ ..., links: spanCtx }, { output: result, scorers });
+ *
+ * // Or link to multiple spans:
+ * void onlineEval({ ..., links: [spanCtx1, spanCtx2] }, { output, scorers });
  * ```
  *
  * **Awaiting for flush (short-lived processes):**
@@ -224,7 +229,7 @@ function getDuplicateScorerNames<TInput, TOutput>(
  * @param meta - Evaluation metadata for categorization
  * @param meta.capability - High-level capability being evaluated
  * @param meta.step - Optional step within the capability
- * @param meta.links - Optional SpanContext to link to (auto-detected if omitted)
+ * @param meta.links - Optional SpanContext(s) to link to (auto-detected if omitted)
  * @param options - Evaluation configuration
  * @param options.input - Input to pass to scorers
  * @param options.output - Output to evaluate
@@ -243,9 +248,10 @@ export function onlineEval<
     return Promise.resolve({});
   }
 
-  const linkSpanContext = meta.links ?? trace.getSpan(context.active())?.spanContext();
+  const rawLinks = meta.links ?? trace.getSpan(context.active())?.spanContext();
+  const linkContexts = rawLinks ? (Array.isArray(rawLinks) ? rawLinks : [rawLinks]) : [];
 
-  return executeOnlineEvalInternal(meta, options, linkSpanContext);
+  return executeOnlineEvalInternal(meta, options, linkContexts);
 }
 
 async function executeOnlineEvalInternal<
@@ -255,7 +261,7 @@ async function executeOnlineEvalInternal<
 >(
   meta: OnlineEvalMeta,
   options: OnlineEvalOptions<TInput, TOutput, TScorers>,
-  linkSpanContext: SpanContext | undefined,
+  linkContexts: SpanContext[],
 ): Promise<InferOnlineEvalResultRecord<TScorers>> {
   const tracer = getGlobalTracer();
 
@@ -263,7 +269,7 @@ async function executeOnlineEvalInternal<
 
   const evalSpan = tracer.startSpan(
     spanName,
-    linkSpanContext ? { links: [{ context: linkSpanContext }] } : {},
+    linkContexts.length > 0 ? { links: linkContexts.map((ctx) => ({ context: ctx })) } : {},
   );
 
   const evalAttrs: Record<string, string> = {

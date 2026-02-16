@@ -478,6 +478,32 @@ describe('onlineEval', () => {
       });
     });
 
+    it('creates eval span with multiple explicit links', async () => {
+      const { trace } = await import('@opentelemetry/api');
+      const spanContext1 = {
+        traceId: 'trace-id-1-00000000000000000',
+        spanId: 'span-id-1-000',
+        traceFlags: 1,
+      };
+      const spanContext2 = {
+        traceId: 'trace-id-2-00000000000000000',
+        spanId: 'span-id-2-000',
+        traceFlags: 1,
+      };
+      const scorer = createTestScorer('test', async () => ({ score: 1 }));
+
+      await onlineEval(
+        { capability: 'qa', links: [spanContext1, spanContext2] },
+        { output: baseOutput, scorers: [scorer] },
+      );
+
+      // Explicit links take priority — trace.getSpan should not be called
+      expect(trace.getSpan).not.toHaveBeenCalled();
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {
+        links: [{ context: spanContext1 }, { context: spanContext2 }],
+      });
+    });
+
     it('creates eval span without link when no active span', async () => {
       const { trace } = await import('@opentelemetry/api');
       vi.mocked(trace.getSpan).mockReturnValueOnce(undefined);
