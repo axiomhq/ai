@@ -576,18 +576,32 @@ export function printFinalReport({
   logger(c.bgBlue(c.white(' FINAL EVALUATION REPORT ')));
   logger('');
 
-  for (const suite of suiteData) {
-    const scorerAverages = calculateScorerAverages(suite);
-    const flagDiff = calculateFlagDiff(suite);
-    printSuiteBox({ suite, scorerAverages, calculateBaselineScorerAverage, flagDiff, logger });
-    logger('');
-  }
-
   const runId = suiteData[0]?.runId;
   const orgId = suiteData[0]?.orgId;
 
   const anyRegistered = registrationStatus.some((s) => s.registered);
   const anyFailed = registrationStatus.some((s) => !s.registered);
+  const allFailed =
+    registrationStatus.length > 0 && registrationStatus.every((s) => !s.registered);
+  const hasAnyScores = suiteData.some((suite) =>
+    suite.cases.some((caseData) => Object.keys(caseData.scores ?? {}).length > 0),
+  );
+  const shouldPrintSuiteBoxes = isDebug || !allFailed || hasAnyScores;
+
+  if (shouldPrintSuiteBoxes) {
+    for (const suite of suiteData) {
+      const scorerAverages = calculateScorerAverages(suite);
+      const flagDiff = calculateFlagDiff(suite);
+      printSuiteBox({
+        suite,
+        scorerAverages,
+        calculateBaselineScorerAverage,
+        flagDiff,
+        logger,
+      });
+      logger('');
+    }
+  }
 
   if (anyRegistered && orgId && config?.consoleEndpointUrl) {
     if (suiteData.length === 1) {

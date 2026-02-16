@@ -16,6 +16,7 @@ import {
   printOutOfScopeFlags,
   printTestCaseSuccessOrFailed,
   printSuiteBox,
+  printFinalReport,
   type SuiteData,
 } from '../../src/evals/reporter.console-utils';
 import type { MetaWithCase, Case, Evaluation } from '../../src/evals/eval.types';
@@ -767,6 +768,78 @@ describe('reporter.console-utils', () => {
       expect(lines.some((l) => l.includes('feature.new: true'))).toBe(true);
       expect(lines.some((l) => l.includes('default: false'))).toBe(true);
       expect(lines.some((l) => l.includes('baseline: <not set>'))).toBe(true);
+    });
+  });
+
+  describe('printFinalReport', () => {
+    const createSuiteData = (
+      name: string,
+      scores: Record<string, any> = { accuracy: { score: 0.8 } },
+    ): SuiteData =>
+      ({
+        name,
+        version: 'v1',
+        file: '/path/to/test.eval.ts',
+        duration: '1.23s',
+        runId: 'run-123',
+        orgId: 'org-123',
+        baseline: null,
+        cases: [{ index: 0, scores }],
+      }) as SuiteData;
+
+    it('prints suite boxes when all registrations failed but scores exist', () => {
+      const { logger, getOutput } = createMockLogger();
+
+      printFinalReport({
+        suiteData: [createSuiteData('failed-suite')],
+        registrationStatus: [{ name: 'failed-suite', registered: false, error: '401' }],
+        logger,
+      });
+
+      const output = stripAnsi(getOutput());
+      expect(output).toContain('FINAL EVALUATION REPORT');
+      expect(output).toContain('Results not available in Axiom UI (registration failed)');
+      expect(output).toContain('Failed to register "failed-suite" with Axiom');
+      expect(output).toContain('Baseline:');
+      expect(output).toContain('Config changes:');
+      expect(output).toContain('┌─');
+    });
+
+    it('omits suite boxes when all registrations failed and no scores exist', () => {
+      const { logger, getOutput } = createMockLogger();
+
+      printFinalReport({
+        suiteData: [createSuiteData('failed-suite', {})],
+        registrationStatus: [{ name: 'failed-suite', registered: false, error: '401' }],
+        logger,
+      });
+
+      const output = stripAnsi(getOutput());
+      expect(output).toContain('FINAL EVALUATION REPORT');
+      expect(output).toContain('Results not available in Axiom UI (registration failed)');
+      expect(output).toContain('Failed to register "failed-suite" with Axiom');
+      expect(output).not.toContain('Baseline:');
+      expect(output).not.toContain('Config changes:');
+      expect(output).not.toContain('┌─');
+    });
+
+    it('prints suite boxes when at least one suite registered', () => {
+      const { logger, getOutput } = createMockLogger();
+
+      printFinalReport({
+        suiteData: [createSuiteData('registered-suite'), createSuiteData('failed-suite')],
+        registrationStatus: [
+          { name: 'registered-suite', registered: true },
+          { name: 'failed-suite', registered: false, error: '401' },
+        ],
+        logger,
+      });
+
+      const output = stripAnsi(getOutput());
+      expect(output).toContain('registered-suite');
+      expect(output).toContain('Baseline:');
+      expect(output).toContain('Config changes:');
+      expect(output).toContain('Failed to register "failed-suite" with Axiom');
     });
   });
 });
