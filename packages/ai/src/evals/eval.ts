@@ -496,176 +496,179 @@ async function registerEval<
 
               // Run each trial
               for (let trialIndex = 0; trialIndex < trials; trialIndex++) {
-                await startActiveSpan(
-                  `trial ${trialIndex}`,
-                  {
-                    attributes: {
-                      [Attr.GenAI.Operation.Name]: 'eval.trial',
-                      [Attr.Eval.Trial.Index]: trialIndex,
-                      [Attr.Eval.ID]: evalId,
-                      [Attr.Eval.Name]: evalName,
-                      [Attr.Eval.Version]: evalVersion,
+                try {
+                  await startActiveSpan(
+                    `trial ${trialIndex}`,
+                    {
+                      attributes: {
+                        [Attr.GenAI.Operation.Name]: 'eval.trial',
+                        [Attr.Eval.Trial.Index]: trialIndex,
+                        [Attr.Eval.ID]: evalId,
+                        [Attr.Eval.Name]: evalName,
+                        [Attr.Eval.Version]: evalVersion,
+                      },
                     },
-                  },
-                  async (trialSpan) => {
-                    const trialContext = trace.setSpan(context.active(), trialSpan);
-                    try {
-                      const result = await runTask(
-                        trialContext,
-                        {
-                          id: evalId,
-                          version: evalVersion,
-                          name: evalName,
-                        },
-                        {
-                          index: data.index,
-                          input: data.input,
-                          expected: data.expected,
-                          scorers: opts.scorers,
-                          task: opts.task,
-                          metadata: opts.metadata,
-                          configFlags: opts.configFlags,
-                          capability: opts.capability,
-                          step: opts.step,
-                        },
-                      );
-                      const { output, duration } = result;
-                      lastOutput = output;
-                      successfulTaskDuration += duration;
-                      outOfScopeFlags.push(...result.outOfScopeFlags);
+                    async (trialSpan) => {
+                      const trialContext = trace.setSpan(context.active(), trialSpan);
+                      try {
+                        const result = await runTask(
+                          trialContext,
+                          {
+                            id: evalId,
+                            version: evalVersion,
+                            name: evalName,
+                          },
+                          {
+                            index: data.index,
+                            input: data.input,
+                            expected: data.expected,
+                            scorers: opts.scorers,
+                            task: opts.task,
+                            metadata: opts.metadata,
+                            configFlags: opts.configFlags,
+                            capability: opts.capability,
+                            step: opts.step,
+                          },
+                        );
+                        const { output, duration } = result;
+                        lastOutput = output;
+                        successfulTaskDuration += duration;
+                        outOfScopeFlags.push(...result.outOfScopeFlags);
 
-                      caseFinalConfigSnapshot = {
-                        flags: result.finalFlags || {},
-                        pickedFlags: opts.configFlags,
-                        overrides: result.overrides,
-                      };
+                        caseFinalConfigSnapshot = {
+                          flags: result.finalFlags || {},
+                          pickedFlags: opts.configFlags,
+                          overrides: result.overrides,
+                        };
 
-                      // Run scorers inside the trial span
-                      await Promise.all(
-                        opts.scorers.map(async (scorer) => {
-                          const scorerName = getScorerName(scorer);
-                          return startActiveSpan(
-                            `score ${scorerName}`,
-                            {
-                              attributes: {
-                                [Attr.GenAI.Operation.Name]: 'eval.score',
-                                [Attr.Eval.ID]: evalId,
-                                [Attr.Eval.Name]: evalName,
-                                [Attr.Eval.Version]: evalVersion,
-                                [Attr.Eval.Trial.Index]: trialIndex,
+                        // Run scorers inside the trial span
+                        await Promise.all(
+                          opts.scorers.map(async (scorer) => {
+                            const scorerName = getScorerName(scorer);
+                            return startActiveSpan(
+                              `score ${scorerName}`,
+                              {
+                                attributes: {
+                                  [Attr.GenAI.Operation.Name]: 'eval.score',
+                                  [Attr.Eval.ID]: evalId,
+                                  [Attr.Eval.Name]: evalName,
+                                  [Attr.Eval.Version]: evalVersion,
+                                  [Attr.Eval.Trial.Index]: trialIndex,
+                                },
                               },
-                            },
-                            async (scorerSpan) => {
-                              const scorerStart = performance.now();
-                              try {
-                                const [result, scorerError] = await tryCatchAsync(() =>
-                                  scorer({
-                                    input: data.input,
-                                    output: output,
-                                    expected: data.expected,
-                                    trialIndex,
-                                  }),
-                                );
-
-                                if (scorerError || !result) {
-                                  const scorerDuration = Math.round(
-                                    performance.now() - scorerStart,
+                              async (scorerSpan) => {
+                                const scorerStart = performance.now();
+                                try {
+                                  const [result, scorerError] = await tryCatchAsync(() =>
+                                    scorer({
+                                      input: data.input,
+                                      output: output,
+                                      expected: data.expected,
+                                      trialIndex,
+                                    }),
                                   );
-                                  console.error(
-                                    `ERROR: scorer ${scorerName} failed. Cause: \n`,
-                                    scorerError,
-                                  );
-                                  const msg = errorToString(scorerError);
-                                  const metadata = {
-                                    duration: scorerDuration,
-                                    startedAt: scorerStart,
-                                    error: msg,
-                                  };
 
-                                  // Count scorer failures as zero so failed trials affect aggregation.
-                                  (perScorerTrials[scorerName] ??= []).push(0);
+                                  if (scorerError || !result) {
+                                    const scorerDuration = Math.round(
+                                      performance.now() - scorerStart,
+                                    );
+                                    console.error(
+                                      `ERROR: scorer ${scorerName} failed. Cause: \n`,
+                                      scorerError,
+                                    );
+                                    const msg = errorToString(scorerError);
+                                    const metadata = {
+                                      duration: scorerDuration,
+                                      startedAt: scorerStart,
+                                      error: msg,
+                                    };
+
+                                    // Count scorer failures as zero so failed trials affect aggregation.
+                                    (perScorerTrials[scorerName] ??= []).push(0);
+
+                                    scorerSpan.setAttributes({
+                                      [Attr.Eval.Score.Name]: scorerName,
+                                      [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                    });
+
+                                    scorerSpan.setStatus({
+                                      code: SpanStatusCode.ERROR,
+                                      message: msg,
+                                    });
+                                    return;
+                                  }
+
+                                  const scoreDuration = Math.round(performance.now() - scorerStart);
+                                  const scoreValue = result.score as number;
+                                  const metadata = Object.assign(
+                                    { duration: scoreDuration, startedAt: scorerStart },
+                                    result.metadata,
+                                  );
+
+                                  // Collect per-trial score
+                                  (perScorerTrials[scorerName] ??= []).push(scoreValue);
+
+                                  // Get aggregation config for span attributes
+                                  const aggregation: Aggregation =
+                                    (scorer as Scorer).aggregation ?? Mean();
 
                                   scorerSpan.setAttributes({
                                     [Attr.Eval.Score.Name]: scorerName,
+                                    [Attr.Eval.Score.Value]: scoreValue,
                                     [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                    [Attr.Eval.Score.Aggregation]: aggregation.type,
                                   });
 
-                                  scorerSpan.setStatus({
-                                    code: SpanStatusCode.ERROR,
-                                    message: msg,
-                                  });
-                                  return;
+                                  if (metadata.error) {
+                                    const msg = errorToString(metadata.error);
+                                    scorerSpan.setStatus({
+                                      code: SpanStatusCode.ERROR,
+                                      message: msg,
+                                    });
+                                  }
+                                } finally {
+                                  scorerSpan.end();
                                 }
+                              },
+                              trialContext,
+                            );
+                          }),
+                        );
+                      } catch (error) {
+                        const taskFailureDetails = getRunTaskFailureDetails(error);
+                        const failure = toError(error);
+                        const msg = errorToString(failure);
+                        const spanErrorMessage = failure.message || msg;
+                        trialErrors[trialIndex] = msg;
+                        trialFailures.push(failure);
 
-                                const scoreDuration = Math.round(performance.now() - scorerStart);
-                                const scoreValue = result.score as number;
-                                const metadata = Object.assign(
-                                  { duration: scoreDuration, startedAt: scorerStart },
-                                  result.metadata,
-                                );
+                        trialSpan.setAttributes({
+                          [Attr.Eval.Trial.Error]: spanErrorMessage,
+                        });
 
-                                // Collect per-trial score
-                                (perScorerTrials[scorerName] ??= []).push(scoreValue);
+                        for (const scorer of opts.scorers) {
+                          const scorerName = getScorerName(scorer);
+                          (perScorerTrials[scorerName] ??= []).push(0);
+                        }
 
-                                // Get aggregation config for span attributes
-                                const aggregation: Aggregation =
-                                  (scorer as Scorer).aggregation ?? Mean();
+                        if (taskFailureDetails) {
+                          outOfScopeFlags.push(...taskFailureDetails.outOfScopeFlags);
+                          caseFinalConfigSnapshot = {
+                            flags: taskFailureDetails.finalFlags || {},
+                            pickedFlags: opts.configFlags,
+                            overrides: taskFailureDetails.overrides,
+                          };
+                        }
 
-                                scorerSpan.setAttributes({
-                                  [Attr.Eval.Score.Name]: scorerName,
-                                  [Attr.Eval.Score.Value]: scoreValue,
-                                  [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                                  [Attr.Eval.Score.Aggregation]: aggregation.type,
-                                });
-
-                                if (metadata.error) {
-                                  const msg = errorToString(metadata.error);
-                                  scorerSpan.setStatus({
-                                    code: SpanStatusCode.ERROR,
-                                    message: msg,
-                                  });
-                                }
-                              } finally {
-                                scorerSpan.end();
-                              }
-                            },
-                            trialContext,
-                          );
-                        }),
-                      );
-                    } catch (error) {
-                      const taskFailureDetails = getRunTaskFailureDetails(error);
-                      const failure = toError(error);
-                      const msg = errorToString(failure);
-                      const spanErrorMessage = failure.message || msg;
-                      trialErrors[trialIndex] = msg;
-                      trialFailures.push(failure);
-
-                      trialSpan.setAttributes({
-                        [Attr.Eval.Trial.Error]: spanErrorMessage,
-                      });
-                      trialSpan.setStatus({
-                        code: SpanStatusCode.ERROR,
-                        message: spanErrorMessage,
-                      });
-
-                      for (const scorer of opts.scorers) {
-                        const scorerName = getScorerName(scorer);
-                        (perScorerTrials[scorerName] ??= []).push(0);
+                        // Re-throw so startActiveSpan records the trial span as ERROR.
+                        throw failure;
                       }
-
-                      if (taskFailureDetails) {
-                        outOfScopeFlags.push(...taskFailureDetails.outOfScopeFlags);
-                        caseFinalConfigSnapshot = {
-                          flags: taskFailureDetails.finalFlags || {},
-                          pickedFlags: opts.configFlags,
-                          overrides: taskFailureDetails.overrides,
-                        };
-                      }
-                    }
-                  },
-                  caseContext,
-                );
+                    },
+                    caseContext,
+                  );
+                } catch {
+                  // Continue remaining trials after task-level failures.
+                }
               }
 
               // Aggregate scores across trials
