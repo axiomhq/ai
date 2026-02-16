@@ -467,7 +467,7 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       await onlineEval(
-        { capability: 'qa', link: explicitSpanContext },
+        { capability: 'qa', links: explicitSpanContext },
         { output: baseOutput, scorers: [scorer] },
       );
 

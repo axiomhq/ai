@@ -126,7 +126,7 @@ async function main() {
   // LLM judge at 50% sampling rate — tune down for expensive scorers in production.
   pendingEvals.push(
     onlineEval(
-      { capability: 'demo', step: 'answer-question', link: originCtx! },
+      { capability: 'demo', step: 'answer-question', links: originCtx! },
       {
         input: prompt2,
         output: result2,
@@ -164,7 +164,7 @@ async function main() {
   // No active withSpan context here — the link is the only connection.
   pendingEvals.push(
     onlineEval(
-      { capability: 'demo', step: 'name-scientist', link: storedCtx! },
+      { capability: 'demo', step: 'name-scientist', links: storedCtx! },
       { output: result3, scorers: [formatScorer] },
     ),
   );

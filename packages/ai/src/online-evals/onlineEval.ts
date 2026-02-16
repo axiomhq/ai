@@ -94,7 +94,7 @@ export type OnlineEvalMeta = {
    * Use this for deferred evaluation when onlineEval is called after the
    * originating span has completed.
    */
-  link?: SpanContext;
+  links?: SpanContext;
 };
 
 /**
@@ -212,7 +212,7 @@ function getDuplicateScorerNames<TInput, TOutput>(
  *   spanCtx = span.spanContext();
  *   return await generateText({ ... });
  * });
- * void onlineEval({ ..., link: spanCtx }, { output: result, scorers });
+ * void onlineEval({ ..., links: spanCtx }, { output: result, scorers });
  * ```
  *
  * **Awaiting for flush (short-lived processes):**
@@ -224,7 +224,7 @@ function getDuplicateScorerNames<TInput, TOutput>(
  * @param meta - Evaluation metadata for categorization
  * @param meta.capability - High-level capability being evaluated
  * @param meta.step - Optional step within the capability
- * @param meta.link - Optional SpanContext to link to (auto-detected if omitted)
+ * @param meta.links - Optional SpanContext to link to (auto-detected if omitted)
  * @param options - Evaluation configuration
  * @param options.input - Input to pass to scorers
  * @param options.output - Output to evaluate
@@ -243,7 +243,7 @@ export function onlineEval<
     return Promise.resolve({});
   }
 
-  const linkSpanContext = meta.link ?? trace.getSpan(context.active())?.spanContext();
+  const linkSpanContext = meta.links ?? trace.getSpan(context.active())?.spanContext();
 
   return executeOnlineEvalInternal(meta, options, linkSpanContext);
 }
