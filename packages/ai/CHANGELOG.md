@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.44.0](https://github.com/axiomhq/ai/compare/axiom-v0.43.0...axiom-v0.44.0) (2026-02-16)
+
+
+### Features
+
+* per-case error handling in SDK ([#236](https://github.com/axiomhq/ai/issues/236)) ([d828ab4](https://github.com/axiomhq/ai/commit/d828ab4fb1d9b553c3143b2817e669ccd0a16e90))
+
+
+### Bug Fixes
+
+* **ai:** CLI dataset override and improved error handling ([#246](https://github.com/axiomhq/ai/issues/246)) ([261d0fa](https://github.com/axiomhq/ai/commit/261d0fa331f875d52d53f404a1cce4023a30dc65))
+* **ai:** use global tracer and fix attribute parity in online evals ([#249](https://github.com/axiomhq/ai/issues/249)) ([3b2ee4e](https://github.com/axiomhq/ai/commit/3b2ee4ede3e2a4e67b756770c20814257fd0dddc))
+
 ## [0.43.0](https://github.com/axiomhq/ai/compare/axiom-v0.42.0...axiom-v0.43.0) (2026-02-12)
 
 
