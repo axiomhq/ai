@@ -1,6 +1,6 @@
-import { Attr } from '../otel/semconv/attributes';
 import type { ValidateName } from '../util/name-validation';
 import type { Score, Scorer, ScorerOptions } from './scorer.types';
+import { normalizeScore } from './normalize-score';
 
 // Helper to force TypeScript to evaluate/simplify types
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
@@ -11,6 +11,22 @@ type InferScorerMetadata<T> =
   AwaitedValue<T> extends Score<infer TMetadata> ? TMetadata : Record<string, any>;
 type NormalizeScorerReturn<T, TMetadata extends Record<string, any>> =
   T extends Promise<any> ? Promise<Score<TMetadata>> : Score<TMetadata>;
+
+/**
+ * Normalizes a raw scorer return value (number, boolean, or Score) to a Score object.
+ */
+function normalizeScorerResult(res: ScorerReturnValue): Score {
+  // Number → wrap in Score
+  if (typeof res === 'number') {
+    return { score: res };
+  }
+  // Boolean → wrap in Score (normalizeScore will handle conversion)
+  if (typeof res === 'boolean') {
+    return normalizeScore({ score: res });
+  }
+  // Score object → normalize (handles boolean score inside object)
+  return normalizeScore(res);
+}
 
 /**
  * Creates a scorer to be used in evals.
@@ -69,41 +85,16 @@ export function createScorer<
       InferScorerMetadata<TReturn>,
       NormalizeScorerReturn<TReturn, InferScorerMetadata<TReturn>>
     > {
-  const normalizeScore = (res: ScorerReturnValue): Score => {
-    if (typeof res === 'number') {
-      return { score: res };
-    }
-    if (typeof res === 'boolean') {
-      return {
-        score: res ? 1 : 0,
-        metadata: {
-          [Attr.Eval.Score.IsBoolean]: true,
-        },
-      };
-    }
-    // Score object with boolean score - convert and merge is_boolean into metadata
-    if (typeof res.score === 'boolean') {
-      return {
-        score: res.score ? 1 : 0,
-        metadata: {
-          ...res.metadata,
-          [Attr.Eval.Score.IsBoolean]: true,
-        },
-      };
-    }
-    return res;
-  };
-
   const scorer: any = (args: TArgs) => {
     const res = fn(args);
 
     // If user returned a Promise, handle async
     if (res instanceof Promise) {
-      return res.then(normalizeScore);
+      return res.then(normalizeScorerResult);
     }
 
     // Otherwise handle sync
-    return normalizeScore(res);
+    return normalizeScorerResult(res);
   };
 
   // Attach name property to function for pre-execution access

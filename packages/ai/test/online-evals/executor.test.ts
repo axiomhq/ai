@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { onlineEval } from '../../src/online-evals/onlineEval';
 import type { ScorerLike } from '../../src/evals/scorers';
+import { Attr } from '../../src/otel/semconv/attributes';
 
 function createTestScorer<TInput = unknown, TOutput = unknown>(
   name: string,
@@ -9,8 +10,8 @@ function createTestScorer<TInput = unknown, TOutput = unknown>(
     input?: TInput;
     output: TOutput;
   }) =>
-    | { score: number | null; metadata?: Record<string, unknown> }
-    | Promise<{ score: number | null; metadata?: Record<string, unknown> }>,
+    | { score: number | boolean | null; metadata?: Record<string, unknown> }
+    | Promise<{ score: number | boolean | null; metadata?: Record<string, unknown> }>,
 ): ScorerLike<TInput, unknown, TOutput> {
   const scorer = fn as ScorerLike<TInput, unknown, TOutput>;
   Object.defineProperty(scorer, 'name', {
@@ -527,6 +528,100 @@ describe('onlineEval', () => {
 
       expect(Object.keys(results)).toHaveLength(1);
       expect(mockTracer.startSpan).toHaveBeenCalledWith(expect.stringContaining('score'));
+    });
+  });
+
+  describe('boolean score normalization', () => {
+    it('normalizes precomputed boolean true to 1 with is_boolean', async () => {
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-scorer', score: true }],
+        },
+      );
+
+      expect(results['bool-scorer']).toBeDefined();
+      expect(results['bool-scorer']?.score).toBe(1);
+      expect(results['bool-scorer']?.metadata?.[Attr.Eval.Score.IsBoolean]).toBe(true);
+    });
+
+    it('normalizes precomputed boolean false to 0 with is_boolean', async () => {
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-scorer', score: false }],
+        },
+      );
+
+      expect(results['bool-scorer']).toBeDefined();
+      expect(results['bool-scorer']?.score).toBe(0);
+      expect(results['bool-scorer']?.metadata?.[Attr.Eval.Score.IsBoolean]).toBe(true);
+    });
+
+    it('preserves existing metadata when normalizing boolean', async () => {
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-scorer', score: true, metadata: { reason: 'exact match' } }],
+        },
+      );
+
+      expect(results['bool-scorer']).toBeDefined();
+      expect(results['bool-scorer']?.score).toBe(1);
+      expect(results['bool-scorer']?.metadata).toEqual({
+        reason: 'exact match',
+        [Attr.Eval.Score.IsBoolean]: true,
+      });
+    });
+
+    it('normalizes boolean scores from scorer functions', async () => {
+      // Create scorer that returns boolean
+      const boolScorer = createTestScorer<unknown, string>('bool-fn', async ({ output }) => ({
+        score: output === 'test output',
+      }));
+
+      const results = await onlineEval(
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [boolScorer] },
+      );
+
+      expect(results['bool-fn']).toBeDefined();
+      expect(results['bool-fn']?.score).toBe(1);
+      expect(results['bool-fn']?.metadata?.[Attr.Eval.Score.IsBoolean]).toBe(true);
+    });
+
+    it('does not add is_boolean for number scores', async () => {
+      const results = await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'num-scorer', score: 0.75 }],
+        },
+      );
+
+      expect(results['num-scorer']).toBeDefined();
+      expect(results['num-scorer']?.score).toBe(0.75);
+      expect(results['num-scorer']?.metadata?.[Attr.Eval.Score.IsBoolean]).toBeUndefined();
+    });
+
+    it('sets is_boolean attribute on span for boolean scores', async () => {
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-scorer', score: true }],
+        },
+      );
+
+      expect(mockScorerSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [Attr.Eval.Score.Value]: 1,
+          [Attr.Eval.Score.IsBoolean]: true,
+        }),
+      );
     });
   });
 });

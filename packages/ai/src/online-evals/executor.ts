@@ -3,26 +3,36 @@ import { getGlobalTracer } from '../otel/initAxiomAI';
 import type { Scorer, ScorerResult } from './types';
 import type { OnlineEvalMeta } from './onlineEval';
 import { Attr } from '../otel/semconv/attributes';
+import { normalizeScore, type NormalizedScore } from '../evals/normalize-score';
 
 type OnlineEvalScorerInput<TInput, TOutput> = Scorer<TInput, TOutput, any> | ScorerResult<any>;
 
 function setScorerSpanAttrs(
   scorerSpan: Span,
   scorerName: string,
-  result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
+  normalizedResult: NormalizedScore,
   meta?: OnlineEvalMeta,
 ): void {
   const attrs: Record<string, string | number | boolean | undefined> = {
     [Attr.GenAI.Operation.Name]: 'eval.score',
     [Attr.Eval.Score.Name]: scorerName,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
-    [Attr.Eval.Score.Value]: result.score ?? undefined,
+    [Attr.Eval.Score.Value]: normalizedResult.score ?? undefined,
     [Attr.Eval.Capability.Name]: meta?.capability,
     [Attr.Eval.Step.Name]: meta?.step,
   };
 
-  if (result.metadata && Object.keys(result.metadata).length > 0) {
-    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(result.metadata);
+  // Set is_boolean attribute if present in metadata.
+  if (normalizedResult.metadata?.[Attr.Eval.Score.IsBoolean]) {
+    attrs[Attr.Eval.Score.IsBoolean] = true;
+  }
+
+  // Serialize remaining metadata (excluding is_boolean, which is a direct attribute).
+  if (normalizedResult.metadata && Object.keys(normalizedResult.metadata).length > 0) {
+    const { [Attr.Eval.Score.IsBoolean]: _, ...restMetadata } = normalizedResult.metadata;
+    if (Object.keys(restMetadata).length > 0) {
+      attrs[Attr.Eval.Score.Metadata] = JSON.stringify(restMetadata);
+    }
   }
 
   scorerSpan.setAttributes(attrs);
@@ -50,18 +60,25 @@ export async function executeScorer<TInput, TOutput>(
     const scorerSpan = tracer.startSpan(`score ${scorerName}`);
 
     try {
-      const result =
+      const rawResult =
         typeof scorer === 'function'
-          ? ({
-              ...(await scorer({
-                input,
-                output,
-              })),
-              name: scorerName,
-            } satisfies ScorerResult)
+          ? await scorer({
+              input,
+              output,
+            })
           : scorer;
 
-      setScorerSpanAttrs(scorerSpan, scorerName, result, meta);
+      // Normalize score values (boolean -> number + is_boolean metadata).
+      const normalized = normalizeScore({ score: rawResult.score, metadata: rawResult.metadata });
+
+      const result: ScorerResult<any> = {
+        name: scorerName,
+        score: normalized.score,
+        metadata: normalized.metadata,
+        error: rawResult.error,
+      };
+
+      setScorerSpanAttrs(scorerSpan, scorerName, normalized, meta);
       if (result.error) {
         const error = new Error(result.error);
         scorerSpan.recordException(error);
@@ -86,7 +103,7 @@ export async function executeScorer<TInput, TOutput>(
         error: error.message,
       };
 
-      setScorerSpanAttrs(scorerSpan, scorerName, failedResult, meta);
+      setScorerSpanAttrs(scorerSpan, scorerName, { score: null }, meta);
 
       scorerSpan.recordException(error);
       scorerSpan.setAttributes({
