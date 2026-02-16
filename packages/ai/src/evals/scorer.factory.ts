@@ -1,5 +1,5 @@
-import { Attr } from '../otel/semconv/attributes';
 import type { ValidateName } from '../util/name-validation';
+import { normalizeBooleanScore } from './normalize-score';
 import type { Score, Scorer, ScorerOptions } from './scorer.types';
 
 // Helper to force TypeScript to evaluate/simplify types
@@ -74,24 +74,9 @@ export function createScorer<
       return { score: res };
     }
     if (typeof res === 'boolean') {
-      return {
-        score: res ? 1 : 0,
-        metadata: {
-          [Attr.Eval.Score.IsBoolean]: true,
-        },
-      };
+      return normalizeBooleanScore(res);
     }
-    // Score object with boolean score - convert and merge is_boolean into metadata
-    if (typeof res.score === 'boolean') {
-      return {
-        score: res.score ? 1 : 0,
-        metadata: {
-          ...res.metadata,
-          [Attr.Eval.Score.IsBoolean]: true,
-        },
-      };
-    }
-    return res;
+    return normalizeBooleanScore(res.score, res.metadata);
   };
 
   const scorer: any = (args: TArgs) => {
