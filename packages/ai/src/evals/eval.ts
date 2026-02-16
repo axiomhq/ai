@@ -25,6 +25,7 @@ import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global
 import { deepEqual } from '../util/deep-equal';
 import { dotNotationToNested } from '../util/dot-path';
 import { AxiomCLIError, errorToString } from '../util/errors';
+import { tryCatchAsync, toError } from '../util/tryCatch';
 import type { ValidateName } from '../util/name-validation';
 import { recordName } from './name-validation-runtime';
 
@@ -48,6 +49,35 @@ declare module 'vitest' {
 }
 
 const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
+
+type RunTaskFailureDetails = {
+  duration: number;
+  outOfScopeFlags: OutOfScopeFlagAccess[];
+  finalFlags: Record<string, any>;
+  overrides?: Record<string, any>;
+};
+
+const RUN_TASK_FAILURE_DETAILS = Symbol.for('axiom.eval.runTaskFailureDetails');
+
+function attachRunTaskFailureDetails(
+  error: unknown,
+  details: RunTaskFailureDetails,
+): Error & { [RUN_TASK_FAILURE_DETAILS]: RunTaskFailureDetails } {
+  const normalized = toError(error) as Error & {
+    [RUN_TASK_FAILURE_DETAILS]?: RunTaskFailureDetails;
+  };
+  normalized[RUN_TASK_FAILURE_DETAILS] = details;
+  return normalized as Error & { [RUN_TASK_FAILURE_DETAILS]: RunTaskFailureDetails };
+}
+
+function getRunTaskFailureDetails(error: unknown): RunTaskFailureDetails | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  return (error as { [RUN_TASK_FAILURE_DETAILS]?: RunTaskFailureDetails })[
+    RUN_TASK_FAILURE_DETAILS
+  ];
+}
 
 /**
  * Creates and registers an evaluation suite with the given name and parameters.
@@ -225,10 +255,9 @@ async function registerEval<
           configFlags: opts.configFlags,
         };
 
-        try {
-          await instrumentationReady;
-        } catch (error) {
-          instrumentationError = error;
+        const [, instrumentationInitError] = await tryCatchAsync(instrumentationReady);
+        if (instrumentationInitError) {
+          instrumentationError = instrumentationInitError;
         }
 
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
@@ -286,13 +315,16 @@ async function registerEval<
         const resolvedBaselineId = createEvalResponse?.data?.baselineId;
 
         // Load baseline if we got a baselineId from the server
-        try {
-          if (!isDebug && !isList && !!resolvedBaselineId) {
-            baseline = await findEvaluationCases(resolvedBaselineId, axiomConfig);
+        if (!isDebug && !isList && !!resolvedBaselineId) {
+          const [baselineResult, baselineError] = await tryCatchAsync(() =>
+            findEvaluationCases(resolvedBaselineId, axiomConfig),
+          );
+          if (baselineError) {
+            console.error(`Failed to load baseline: ${errorToString(baselineError)}`);
+            instrumentationError = instrumentationError || baselineError;
+          } else {
+            baseline = baselineResult;
           }
-        } catch (error) {
-          console.error(`Failed to load baseline: ${errorToString(error)}`);
-          instrumentationError = instrumentationError || error;
         }
 
         // Update span with baseline info
@@ -373,9 +405,8 @@ async function registerEval<
         suiteSpan?.end();
 
         // flush traces before updating Evaluation in Axiom
-        try {
-          await flush();
-        } catch (flushError) {
+        const [, flushError] = await tryCatchAsync(flush);
+        if (flushError) {
           // Update registration status to failed if flush fails
           if (suite.meta.evaluation) {
             suite.meta.evaluation.registrationStatus = {
@@ -443,149 +474,201 @@ async function registerEval<
           async (caseSpan) => {
             const caseContext = trace.setSpan(context.active(), caseSpan);
             const trials = Math.max(1, opts.trials ?? 1);
+            let intentionalTrialFailureError: Error | undefined;
+            let caseFinalConfigSnapshot:
+              | {
+                  flags: Record<string, any>;
+                  pickedFlags?: string[];
+                  overrides?: Record<string, any>;
+                }
+              | undefined;
 
             // Set case-level trials attribute
             caseSpan.setAttribute(Attr.Eval.Case.Trials, trials);
 
             try {
               // Accumulators for per-trial scores
-              const perScorerTrials: Record<string, Array<number | null>> = {};
+              const perScorerTrials: Record<string, number[]> = {};
+              const trialErrors: Array<string | null> = Array.from({ length: trials }, () => null);
+              const trialFailures: Error[] = [];
               let lastOutput: TOutput | undefined;
-              let totalDuration = 0;
+              let successfulTaskDuration = 0;
 
               // Run each trial
               for (let trialIndex = 0; trialIndex < trials; trialIndex++) {
-                await startActiveSpan(
-                  `trial ${trialIndex}`,
-                  {
-                    attributes: {
-                      [Attr.GenAI.Operation.Name]: 'eval.trial',
-                      [Attr.Eval.Trial.Index]: trialIndex,
-                      [Attr.Eval.ID]: evalId,
-                      [Attr.Eval.Name]: evalName,
-                      [Attr.Eval.Version]: evalVersion,
+                try {
+                  await startActiveSpan(
+                    `trial ${trialIndex}`,
+                    {
+                      attributes: {
+                        [Attr.GenAI.Operation.Name]: 'eval.trial',
+                        [Attr.Eval.Trial.Index]: trialIndex,
+                        [Attr.Eval.ID]: evalId,
+                        [Attr.Eval.Name]: evalName,
+                        [Attr.Eval.Version]: evalVersion,
+                      },
                     },
-                  },
-                  async (trialSpan) => {
-                    const trialContext = trace.setSpan(context.active(), trialSpan);
-
-                    const result = await runTask(
-                      trialContext,
-                      {
-                        id: evalId,
-                        version: evalVersion,
-                        name: evalName,
-                      },
-                      {
-                        index: data.index,
-                        input: data.input,
-                        expected: data.expected,
-                        scorers: opts.scorers,
-                        task: opts.task,
-                        metadata: opts.metadata,
-                        configFlags: opts.configFlags,
-                        capability: opts.capability,
-                        step: opts.step,
-                      },
-                    );
-                    const { output, duration } = result;
-                    lastOutput = output;
-                    totalDuration += duration;
-                    outOfScopeFlags = result.outOfScopeFlags;
-
-                    finalConfigSnapshot = {
-                      flags: result.finalFlags || {},
-                      pickedFlags: opts.configFlags,
-                      overrides: result.overrides,
-                    };
-
-                    // Run scorers inside the trial span
-                    await Promise.all(
-                      opts.scorers.map(async (scorer) => {
-                        const scorerName = getScorerName(scorer);
-                        return startActiveSpan(
-                          `score ${scorerName}`,
-                          {
-                            attributes: {
-                              [Attr.GenAI.Operation.Name]: 'eval.score',
-                              [Attr.Eval.ID]: evalId,
-                              [Attr.Eval.Name]: evalName,
-                              [Attr.Eval.Version]: evalVersion,
-                              [Attr.Eval.Trial.Index]: trialIndex,
-                            },
-                          },
-                          async (scorerSpan) => {
-                            const scorerStart = performance.now();
-                            try {
-                              const result = await scorer({
-                                input: data.input,
-                                output: output,
-                                expected: data.expected,
-                                trialIndex,
-                              });
-
-                              const scoreDuration = Math.round(performance.now() - scorerStart);
-                              const scoreValue = result.score as number;
-                              const metadata = Object.assign(
-                                { duration: scoreDuration, startedAt: scorerStart },
-                                result.metadata,
-                              );
-
-                              // Collect per-trial score
-                              (perScorerTrials[scorerName] ??= []).push(scoreValue);
-
-                              // Get aggregation config for span attributes
-                              const aggregation: Aggregation =
-                                (scorer as Scorer).aggregation ?? Mean();
-
-                              scorerSpan.setAttributes({
-                                [Attr.Eval.Score.Name]: scorerName,
-                                [Attr.Eval.Score.Value]: scoreValue,
-                                [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                                [Attr.Eval.Score.Aggregation]: aggregation.type,
-                              });
-
-                              if (metadata.error) {
-                                const msg = errorToString(metadata.error);
-                                scorerSpan.setStatus({
-                                  code: SpanStatusCode.ERROR,
-                                  message: msg,
-                                });
-                              }
-                            } catch (error) {
-                              const scorerDuration = Math.round(performance.now() - scorerStart);
-                              console.error(`ERROR: scorer ${scorerName} failed. Cause: \n`, error);
-                              const msg = errorToString(error);
-                              const metadata = {
-                                duration: scorerDuration,
-                                startedAt: scorerStart,
-                                error: msg,
-                              };
-
-                              // Collect null for failed scorer
-                              (perScorerTrials[scorerName] ??= []).push(null);
-
-                              scorerSpan.setAttributes({
-                                [Attr.Eval.Score.Name]: scorerName,
-                                [Attr.Eval.Score.Value]: undefined,
-                                [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
-                              });
-
-                              scorerSpan.setStatus({
-                                code: SpanStatusCode.ERROR,
-                                message: msg,
-                              });
-                            } finally {
-                              scorerSpan.end();
-                            }
-                          },
+                    async (trialSpan) => {
+                      const trialContext = trace.setSpan(context.active(), trialSpan);
+                      try {
+                        const result = await runTask(
                           trialContext,
+                          {
+                            id: evalId,
+                            version: evalVersion,
+                            name: evalName,
+                          },
+                          {
+                            index: data.index,
+                            input: data.input,
+                            expected: data.expected,
+                            scorers: opts.scorers,
+                            task: opts.task,
+                            metadata: opts.metadata,
+                            configFlags: opts.configFlags,
+                            capability: opts.capability,
+                            step: opts.step,
+                          },
                         );
-                      }),
-                    );
-                  },
-                  caseContext,
-                );
+                        const { output, duration } = result;
+                        lastOutput = output;
+                        successfulTaskDuration += duration;
+                        outOfScopeFlags.push(...result.outOfScopeFlags);
+
+                        caseFinalConfigSnapshot = {
+                          flags: result.finalFlags || {},
+                          pickedFlags: opts.configFlags,
+                          overrides: result.overrides,
+                        };
+
+                        // Run scorers inside the trial span
+                        await Promise.all(
+                          opts.scorers.map(async (scorer) => {
+                            const scorerName = getScorerName(scorer);
+                            return startActiveSpan(
+                              `score ${scorerName}`,
+                              {
+                                attributes: {
+                                  [Attr.GenAI.Operation.Name]: 'eval.score',
+                                  [Attr.Eval.ID]: evalId,
+                                  [Attr.Eval.Name]: evalName,
+                                  [Attr.Eval.Version]: evalVersion,
+                                  [Attr.Eval.Trial.Index]: trialIndex,
+                                },
+                              },
+                              async (scorerSpan) => {
+                                const scorerStart = performance.now();
+                                try {
+                                  const [result, scorerError] = await tryCatchAsync(() =>
+                                    scorer({
+                                      input: data.input,
+                                      output: output,
+                                      expected: data.expected,
+                                      trialIndex,
+                                    }),
+                                  );
+
+                                  if (scorerError || !result) {
+                                    const scorerDuration = Math.round(
+                                      performance.now() - scorerStart,
+                                    );
+                                    console.error(
+                                      `ERROR: scorer ${scorerName} failed. Cause: \n`,
+                                      scorerError,
+                                    );
+                                    const msg = errorToString(scorerError);
+                                    const metadata = {
+                                      duration: scorerDuration,
+                                      startedAt: scorerStart,
+                                      error: msg,
+                                    };
+
+                                    // Count scorer failures as zero so failed trials affect aggregation.
+                                    (perScorerTrials[scorerName] ??= []).push(0);
+
+                                    scorerSpan.setAttributes({
+                                      [Attr.Eval.Score.Name]: scorerName,
+                                      [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                    });
+
+                                    scorerSpan.setStatus({
+                                      code: SpanStatusCode.ERROR,
+                                      message: msg,
+                                    });
+                                    return;
+                                  }
+
+                                  const scoreDuration = Math.round(performance.now() - scorerStart);
+                                  const scoreValue = result.score as number;
+                                  const metadata = Object.assign(
+                                    { duration: scoreDuration, startedAt: scorerStart },
+                                    result.metadata,
+                                  );
+
+                                  // Collect per-trial score
+                                  (perScorerTrials[scorerName] ??= []).push(scoreValue);
+
+                                  // Get aggregation config for span attributes
+                                  const aggregation: Aggregation =
+                                    (scorer as Scorer).aggregation ?? Mean();
+
+                                  scorerSpan.setAttributes({
+                                    [Attr.Eval.Score.Name]: scorerName,
+                                    [Attr.Eval.Score.Value]: scoreValue,
+                                    [Attr.Eval.Score.Metadata]: JSON.stringify(metadata),
+                                    [Attr.Eval.Score.Aggregation]: aggregation.type,
+                                  });
+
+                                  if (metadata.error) {
+                                    const msg = errorToString(metadata.error);
+                                    scorerSpan.setStatus({
+                                      code: SpanStatusCode.ERROR,
+                                      message: msg,
+                                    });
+                                  }
+                                } finally {
+                                  scorerSpan.end();
+                                }
+                              },
+                              trialContext,
+                            );
+                          }),
+                        );
+                      } catch (error) {
+                        const taskFailureDetails = getRunTaskFailureDetails(error);
+                        const failure = toError(error);
+                        const msg = errorToString(failure);
+                        const spanErrorMessage = failure.message || msg;
+                        trialErrors[trialIndex] = msg;
+                        trialFailures.push(failure);
+
+                        trialSpan.setAttributes({
+                          [Attr.Eval.Trial.Error]: spanErrorMessage,
+                        });
+
+                        for (const scorer of opts.scorers) {
+                          const scorerName = getScorerName(scorer);
+                          (perScorerTrials[scorerName] ??= []).push(0);
+                        }
+
+                        if (taskFailureDetails) {
+                          outOfScopeFlags.push(...taskFailureDetails.outOfScopeFlags);
+                          caseFinalConfigSnapshot = {
+                            flags: taskFailureDetails.finalFlags || {},
+                            pickedFlags: opts.configFlags,
+                            overrides: taskFailureDetails.overrides,
+                          };
+                        }
+
+                        // Re-throw so startActiveSpan records the trial span as ERROR.
+                        throw failure;
+                      }
+                    },
+                    caseContext,
+                  );
+                } catch {
+                  // Continue remaining trials after task-level failures.
+                }
               }
 
               // Aggregate scores across trials
@@ -595,27 +678,34 @@ async function registerEval<
                 const trialsArr = perScorerTrials[scorerName] ?? [];
                 const aggregation: Aggregation = (scorer as Scorer).aggregation ?? Mean();
 
-                // Filter out nulls for aggregation
-                const numeric = trialsArr.filter((x): x is number => typeof x === 'number');
-                const aggregatedValue = numeric.length > 0 ? aggregation.aggregate(numeric) : 0;
+                const aggregatedValue = trialsArr.length > 0 ? aggregation.aggregate(trialsArr) : 0;
 
                 scores[scorerName] = {
                   name: scorerName,
                   score: aggregatedValue,
-                  trials: trialsArr.map((x) => x ?? 0),
+                  trials: trialsArr,
                   aggregation: aggregation.type,
                   threshold: aggregation.threshold,
                   metadata: {},
                 };
               }
 
-              const output = lastOutput!;
+              const output = lastOutput;
+              const failedTrials = trialFailures.length;
+              const succeededTrials = trials - failedTrials;
+              const trialSummary = {
+                total: trials,
+                succeeded: succeededTrials,
+                failed: failedTrials,
+              };
 
-              caseSpan.setAttributes({
-                [Attr.Eval.Case.Output]:
+              caseSpan.setAttribute(Attr.Eval.Case.Scores, JSON.stringify(scores ? scores : {}));
+              if (output !== undefined) {
+                caseSpan.setAttribute(
+                  Attr.Eval.Case.Output,
                   typeof output === 'string' ? output : JSON.stringify(output),
-                [Attr.Eval.Case.Scores]: JSON.stringify(scores ? scores : {}),
-              });
+                );
+              }
 
               // set task meta for showing result in vitest report
               task.meta.case = {
@@ -628,20 +718,57 @@ async function registerEval<
                 scores,
                 status: 'success',
                 errors: [],
-                duration: totalDuration,
+                trialErrors,
+                trialSummary,
+                duration: successfulTaskDuration,
                 startedAt: start,
                 outOfScopeFlags,
                 pickedFlags: opts.configFlags,
               };
 
+              if (failedTrials > 0) {
+                const error = new Error(
+                  `Eval case ${data.index} failed with ${failedTrials} trial error(s).`,
+                );
+                intentionalTrialFailureError = error;
+                caseSpan.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: error.message,
+                });
+                task.meta.case.status = 'fail';
+                task.meta.case.errors = trialFailures;
+                throw error;
+              }
+
               // Collect out-of-scope flags for evaluation-level aggregation
               allOutOfScopeFlags.push(...outOfScopeFlags);
             } catch (e) {
               console.log(e);
-              const error = e as Error;
+              const error = toError(e);
+
+              if (e === intentionalTrialFailureError && task.meta.case) {
+                task.meta.case.status = 'fail';
+                task.meta.case.errors = task.meta.case.errors?.length
+                  ? task.meta.case.errors
+                  : [error];
+                allOutOfScopeFlags.push(...outOfScopeFlags);
+                throw e;
+              }
 
               const ctx = getEvalContext();
-              outOfScopeFlags = ctx.outOfScopeFlags || ([] as OutOfScopeFlagAccess[]);
+              const ctxOutOfScopeFlags = ctx.outOfScopeFlags || [];
+              if (ctxOutOfScopeFlags.length > 0) {
+                outOfScopeFlags.push(...ctxOutOfScopeFlags);
+              }
+
+              const ctxFlags = ctx.flags || {};
+              if (!caseFinalConfigSnapshot && Object.keys(ctxFlags).length > 0) {
+                caseFinalConfigSnapshot = {
+                  flags: ctxFlags,
+                  pickedFlags: opts.configFlags,
+                  overrides: ctx.overrides,
+                };
+              }
 
               // Populate scores with error metadata for all scorers that didn't run
               const failedScores: Record<string, ScoreWithName> = {};
@@ -680,7 +807,7 @@ async function registerEval<
             } finally {
               // Compute per-case runtime flags report and attach to span/meta
               try {
-                const accessedFlags: Record<string, any> = finalConfigSnapshot?.flags || {};
+                const accessedFlags: Record<string, any> = caseFinalConfigSnapshot?.flags || {};
 
                 const accessed = Object.keys(accessedFlags);
                 const allDefaults = getConfigScope()?.getAllDefaultFlags?.() ?? {};
@@ -707,6 +834,10 @@ async function registerEval<
                   task.meta.case.runtimeFlags = runtimeFlags;
                 }
               } catch {}
+
+              if (caseFinalConfigSnapshot) {
+                finalConfigSnapshot = caseFinalConfigSnapshot;
+              }
             }
           },
           suiteContext,
@@ -804,26 +935,36 @@ const runTask = async <
           overrides?: Record<string, any>;
         }> => {
           // TODO: EXPERIMENTS - before we were setting config scope if provided here
-
           const start = performance.now();
-          const output = await executeTask(opts.task, opts.input, opts.expected!);
-          const duration = Math.round(performance.now() - start);
-          // set task output
-          taskSpan.setAttributes({
-            [Attr.Eval.Task.Output]: typeof output === 'string' ? output : JSON.stringify(output),
-          });
+          try {
+            const output = await executeTask(opts.task, opts.input, opts.expected!);
+            const duration = Math.round(performance.now() - start);
+            // set task output
+            taskSpan.setAttributes({
+              [Attr.Eval.Task.Output]: typeof output === 'string' ? output : JSON.stringify(output),
+            });
 
-          // Get out-of-scope flags from the evaluation context
-          const ctx = getEvalContext();
-          const outOfScopeFlags = ctx.outOfScopeFlags || [];
+            // Get out-of-scope flags from the evaluation context
+            const ctx = getEvalContext();
+            const outOfScopeFlags = ctx.outOfScopeFlags || [];
 
-          return {
-            output,
-            duration,
-            outOfScopeFlags,
-            finalFlags: ctx.flags || {},
-            overrides: ctx.overrides,
-          };
+            return {
+              output,
+              duration,
+              outOfScopeFlags,
+              finalFlags: ctx.flags || {},
+              overrides: ctx.overrides,
+            };
+          } catch (error) {
+            const ctx = getEvalContext();
+            const duration = Math.round(performance.now() - start);
+            throw attachRunTaskFailureDetails(error, {
+              duration,
+              outOfScopeFlags: ctx.outOfScopeFlags || [],
+              finalFlags: ctx.flags || {},
+              overrides: ctx.overrides,
+            });
+          }
         },
       );
 

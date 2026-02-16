@@ -190,8 +190,8 @@ export type EvalCaseReport = {
   name: string;
   /** Input data that was provided to the {@link EvalTask} */
   input: string | Record<string, any>;
-  /** Output produced by the {@link EvalTask} */
-  output: string | Record<string, any>;
+  /** Output produced by the {@link EvalTask}; undefined when all trials fail before producing output */
+  output: string | Record<string, any> | undefined;
   /** Expected output for comparison */
   expected: string | Record<string, any>;
   /** Optional metadata for the case */
@@ -202,6 +202,14 @@ export type EvalCaseReport = {
   errors: Error[] | null;
   /** Status of the evaluation case */
   status: 'success' | 'fail' | 'pending';
+  /** Per-trial errors in order (null for successful trials) */
+  trialErrors?: Array<string | null>;
+  /** Trial summary stats for reporting */
+  trialSummary?: {
+    total: number;
+    succeeded: number;
+    failed: number;
+  };
   /** Duration in milliseconds for the entire case */
   duration: number | undefined;
   /** Timestamp when the case started */
