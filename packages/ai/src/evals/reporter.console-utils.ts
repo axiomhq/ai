@@ -581,8 +581,7 @@ export function printFinalReport({
 
   const anyRegistered = registrationStatus.some((s) => s.registered);
   const anyFailed = registrationStatus.some((s) => !s.registered);
-  const allFailed =
-    registrationStatus.length > 0 && registrationStatus.every((s) => !s.registered);
+  const allFailed = registrationStatus.length > 0 && registrationStatus.every((s) => !s.registered);
   const hasAnyScores = suiteData.some((suite) =>
     suite.cases.some((caseData) => Object.keys(caseData.scores ?? {}).length > 0),
   );
