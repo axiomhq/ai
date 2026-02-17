@@ -350,7 +350,19 @@ async function executeOnlineEvalInternal<
     const failedCount = Object.values(results).filter((result) => result.error).length;
     const ranCount = Object.keys(results).length;
 
+    const scoresSummary: Record<string, ScorerResult> = {};
+    for (const [name, result] of Object.entries(results)) {
+      scoresSummary[name] = {
+        name: result.name,
+        score: result.score,
+        ...(result.metadata &&
+          Object.keys(result.metadata).length > 0 && { metadata: result.metadata }),
+        ...(result.error && { error: result.error }),
+      };
+    }
+
     evalSpan.setAttributes({
+      [Attr.Eval.Case.Scores]: JSON.stringify(scoresSummary),
       'axiom.eval.online.scorers.total': normalizedScorers.length,
       'axiom.eval.online.scorers.ran': ranCount,
       'axiom.eval.online.scorers.sampled_out': sampledOutCount,
