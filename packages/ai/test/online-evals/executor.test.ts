@@ -95,7 +95,11 @@ describe('onlineEval', () => {
 
   describe('basic execution', () => {
     it('does nothing when scorers array is empty', async () => {
-      const results = await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [] });
+      const results = await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [] },
+      );
 
       expect(results).toEqual({});
       expect(mockTracer.startSpan).not.toHaveBeenCalled();
@@ -107,6 +111,7 @@ describe('onlineEval', () => {
       }));
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa', step: 'answer' },
         { input: baseInput, output: baseOutput, scorers: [scorer] },
       );
@@ -119,7 +124,11 @@ describe('onlineEval', () => {
       const scorer1 = createTestScorer('scorer-1', async () => ({ score: 0.8 }));
       const scorer2 = createTestScorer('scorer-2', async () => ({ score: 0.6 }));
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer1, scorer2] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer1, scorer2] },
+      );
 
       // eval span + 2 scorer spans
       expect(mockTracer.startSpan).toHaveBeenCalledTimes(3);
@@ -127,6 +136,7 @@ describe('onlineEval', () => {
 
     it('accepts precomputed scores', async () => {
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -144,6 +154,7 @@ describe('onlineEval', () => {
       });
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [failingScorer] },
       );
@@ -168,6 +179,7 @@ describe('onlineEval', () => {
       const customOutput = { response: 'world' };
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { input: customInput, output: customOutput, scorers: [scorer] },
       );
@@ -178,11 +190,34 @@ describe('onlineEval', () => {
     });
   });
 
+  describe('name validation', () => {
+    it('throws on empty name', () => {
+      const scorer = createTestScorer('test', async () => ({ score: 1 }));
+
+      expect(() =>
+        onlineEval('' as any, { capability: 'qa' }, { output: baseOutput, scorers: [scorer] }),
+      ).toThrow('[AxiomAI] Invalid eval name');
+    });
+
+    it('throws on name with invalid characters', () => {
+      const scorer = createTestScorer('test', async () => ({ score: 1 }));
+
+      expect(() =>
+        onlineEval(
+          'invalid name!' as any,
+          { capability: 'qa' },
+          { output: baseOutput, scorers: [scorer] },
+        ),
+      ).toThrow('[AxiomAI] Invalid eval name');
+    });
+  });
+
   describe('return value', () => {
     it('returns scorer results keyed by scorer name', async () => {
       const scorer = createTestScorer('test', async () => ({ score: 0.75 }));
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [scorer] },
       );
@@ -192,7 +227,11 @@ describe('onlineEval', () => {
     });
 
     it('returns empty object when no scorers', async () => {
-      const results = await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [] });
+      const results = await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [] },
+      );
       expect(results).toEqual({});
     });
 
@@ -200,6 +239,7 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -213,6 +253,7 @@ describe('onlineEval', () => {
 
     it('returns named precomputed scores and errors', async () => {
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -237,6 +278,7 @@ describe('onlineEval', () => {
 
     it('returns full precomputed scorer results', async () => {
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -255,6 +297,7 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('runtime-scorer', async () => ({ score: 0.9 }));
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -276,7 +319,11 @@ describe('onlineEval', () => {
         return { score: 1 };
       });
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
       expect(executed).toBe(true);
     });
 
@@ -288,6 +335,7 @@ describe('onlineEval', () => {
       });
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [{ scorer, sampling: 1.0 }] },
       );
@@ -302,6 +350,7 @@ describe('onlineEval', () => {
       });
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [{ scorer, sampling: 0 }] },
       );
@@ -320,6 +369,7 @@ describe('onlineEval', () => {
         });
 
         await onlineEval(
+          'test-eval',
           { capability: 'qa' },
           { output: baseOutput, scorers: [{ scorer, sampling: 0.5 }] },
         );
@@ -338,6 +388,7 @@ describe('onlineEval', () => {
       });
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           input: 'hello',
@@ -361,6 +412,7 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('sampled-failure', async () => ({ score: 1 }));
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -386,6 +438,7 @@ describe('onlineEval', () => {
       const scorer2 = createTestScorer('duplicate', async () => ({ score: 0 }));
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [scorer1, scorer2] },
       );
@@ -406,7 +459,11 @@ describe('onlineEval', () => {
 
       // void usage should not cause type errors or throw
       expect(() => {
-        void onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+        void onlineEval(
+          'test-eval',
+          { capability: 'qa' },
+          { output: baseOutput, scorers: [scorer] },
+        );
       }).not.toThrow();
     });
 
@@ -417,6 +474,7 @@ describe('onlineEval', () => {
 
       // Should resolve without throwing
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [failingScorer] },
       );
@@ -427,23 +485,57 @@ describe('onlineEval', () => {
   });
 
   describe('span naming', () => {
-    it('creates span with capability and step', async () => {
+    it('creates span with eval name', async () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       await onlineEval(
+        'my-eval',
         { capability: 'qa', step: 'answer' },
         { output: baseOutput, scorers: [scorer] },
       );
 
-      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa/answer', expect.anything());
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval my-eval', expect.anything());
     });
 
-    it('creates span with capability only when step is omitted', async () => {
+    it('uses name regardless of capability and step', async () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
-      await onlineEval({ capability: 'summarization' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'summarization-eval',
+        { capability: 'summarization' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
-      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval summarization', expect.anything());
+      expect(mockTracer.startSpan).toHaveBeenCalledWith(
+        'eval summarization-eval',
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('eval.name attribute', () => {
+    it('sets eval.name on the eval span', async () => {
+      const scorer = createTestScorer('test', async () => ({ score: 1 }));
+
+      await onlineEval('my-eval', { capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+
+      expect(mockEvalSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [Attr.Eval.Name]: 'my-eval',
+        }),
+      );
+    });
+
+    it('sets eval.name on scorer spans', async () => {
+      const scorer = createTestScorer('test', async () => ({ score: 1 }));
+
+      await onlineEval('my-eval', { capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+
+      expect(mockScorerSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [Attr.Eval.Name]: 'my-eval',
+        }),
+      );
     });
   });
 
@@ -451,9 +543,13 @@ describe('onlineEval', () => {
     it('creates eval span with link to active span', async () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
-      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval test-eval', {
         links: [{ context: mockSpanContext }],
       });
     });
@@ -468,13 +564,14 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa', links: explicitSpanContext },
         { output: baseOutput, scorers: [scorer] },
       );
 
       // Explicit link takes priority — trace.getSpan should not be called
       expect(trace.getSpan).not.toHaveBeenCalled();
-      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval test-eval', {
         links: [{ context: explicitSpanContext }],
       });
     });
@@ -494,13 +591,14 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa', links: [spanContext1, spanContext2] },
         { output: baseOutput, scorers: [scorer] },
       );
 
       // Explicit links take priority — trace.getSpan should not be called
       expect(trace.getSpan).not.toHaveBeenCalled();
-      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval test-eval', {
         links: [{ context: spanContext1 }, { context: spanContext2 }],
       });
     });
@@ -510,9 +608,13 @@ describe('onlineEval', () => {
       vi.mocked(trace.getSpan).mockReturnValueOnce(undefined);
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
-      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval qa', {});
+      expect(mockTracer.startSpan).toHaveBeenCalledWith('eval test-eval', {});
     });
   });
 
@@ -520,7 +622,11 @@ describe('onlineEval', () => {
     it('sets span attributes on successful execution', async () => {
       const scorer = createTestScorer('meta-scorer', async () => ({ score: 0.5 }));
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
       expect(mockScorerSpan.setAttributes).toHaveBeenCalled();
       expect(mockScorerSpan.setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.OK });
@@ -533,7 +639,11 @@ describe('onlineEval', () => {
         throw error;
       });
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
       expect(mockScorerSpan.recordException).toHaveBeenCalledWith(error);
       expect(mockScorerSpan.setStatus).toHaveBeenCalledWith({
@@ -555,7 +665,11 @@ describe('onlineEval', () => {
     it('sets eval.case.scores for a single successful scorer', async () => {
       const scorer = createTestScorer('accuracy', async () => ({ score: 0.85 }));
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
       const scores = getScoresSummary();
       expect(scores).toEqual({
@@ -570,7 +684,11 @@ describe('onlineEval', () => {
       }));
       const scorer2 = createTestScorer('length', async () => ({ score: 1 }));
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer1, scorer2] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer1, scorer2] },
+      );
 
       const scores = getScoresSummary();
       expect(scores).toEqual({
@@ -584,7 +702,11 @@ describe('onlineEval', () => {
         throw new Error('timeout');
       });
 
-      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+      await onlineEval(
+        'test-eval',
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [scorer] },
+      );
 
       const scores = getScoresSummary();
       expect(scores).toEqual({
@@ -596,6 +718,7 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('sampled', async () => ({ score: 1 }));
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [{ scorer, sampling: 0 }] },
       );
@@ -612,6 +735,7 @@ describe('onlineEval', () => {
       const sampledOutScorer = createTestScorer('tone', async () => ({ score: 1 }));
 
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -633,6 +757,7 @@ describe('onlineEval', () => {
       const scorer: ScorerLike = async () => ({ score: 1 });
 
       const results = await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         { output: baseOutput, scorers: [scorer] },
       );
@@ -645,6 +770,7 @@ describe('onlineEval', () => {
   describe('precomputed boolean score normalization', () => {
     it('normalizes boolean true to 1 with is_boolean metadata', async () => {
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -662,6 +788,7 @@ describe('onlineEval', () => {
 
     it('normalizes boolean false to 0', async () => {
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,
@@ -678,6 +805,7 @@ describe('onlineEval', () => {
 
     it('merges is_boolean into existing precomputed metadata', async () => {
       await onlineEval(
+        'test-eval',
         { capability: 'qa' },
         {
           output: baseOutput,

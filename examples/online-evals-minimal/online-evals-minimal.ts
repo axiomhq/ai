@@ -41,6 +41,7 @@ async function main() {
     // Await ensures the eval completes before flushTelemetry() shuts down.
     // In a long-running server, use `void onlineEval(...)` instead.
     await onlineEval(
+      'generate-fact',
       { capability: 'demo', step: 'generate-fact' },
       { output: response.text, scorers: [formatScorer] },
     );

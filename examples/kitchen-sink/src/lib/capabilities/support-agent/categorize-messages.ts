@@ -50,6 +50,7 @@ ${messages.map((msg) => `${msg.role}: ${msg.content}`).join('\n')}
       // Online evaluation: monitor classification quality in production
       // Active span is auto-linked. Fire-and-forget — doesn't block response.
       void onlineEval(
+        'categorize-message',
         { capability: 'support-agent', step: 'categorize-message' },
         {
           input: evalInput,

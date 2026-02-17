@@ -12,6 +12,7 @@ function setScorerSpanAttrs(
   scorerName: string,
   result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
   meta?: OnlineEvalMeta,
+  evalName?: string,
 ): void {
   const { score: scoreValue, metadata } = normalizeBooleanScore(result.score, result.metadata);
 
@@ -20,6 +21,7 @@ function setScorerSpanAttrs(
     [Attr.Eval.Score.Name]: scorerName,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
     [Attr.Eval.Score.Value]: scoreValue ?? undefined,
+    [Attr.Eval.Name]: evalName,
     [Attr.Eval.Capability.Name]: meta?.capability,
     [Attr.Eval.Step.Name]: meta?.step,
   };
@@ -40,6 +42,7 @@ export async function executeScorer<TInput, TOutput>(
   output: TOutput,
   parentSpan: Span,
   meta?: OnlineEvalMeta,
+  evalName?: string,
 ): Promise<ScorerResult<any>> {
   const tracer = getGlobalTracer();
   const parentContext = trace.setSpan(context.active(), parentSpan);
@@ -64,7 +67,7 @@ export async function executeScorer<TInput, TOutput>(
             } satisfies ScorerResult)
           : scorer;
 
-      setScorerSpanAttrs(scorerSpan, scorerName, result, meta);
+      setScorerSpanAttrs(scorerSpan, scorerName, result, meta, evalName);
       if (result.error) {
         const error = new Error(result.error);
         scorerSpan.recordException(error);
@@ -89,7 +92,7 @@ export async function executeScorer<TInput, TOutput>(
         error: error.message,
       };
 
-      setScorerSpanAttrs(scorerSpan, scorerName, failedResult, meta);
+      setScorerSpanAttrs(scorerSpan, scorerName, failedResult, meta, evalName);
 
       scorerSpan.recordException(error);
       scorerSpan.setAttributes({

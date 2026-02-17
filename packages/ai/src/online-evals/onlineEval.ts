@@ -10,6 +10,8 @@ import type {
 } from './types';
 import { executeScorer } from './executor';
 import { Attr } from '../otel/semconv/attributes';
+import type { ValidateName } from '../util/name-validation';
+import { isValidName } from '../util/name-validation-runtime';
 
 type ScorerEntry<TInput, TOutput> = OnlineEvalScorerEntry<TInput, TOutput, any>;
 type ScorerInput<TInput, TOutput> = OnlineEvalScorerInput<TInput, TOutput, any>;
@@ -198,6 +200,7 @@ function getDuplicateScorerNames<TInput, TOutput>(
  * await withSpan({ capability: 'qa', step: 'answer' }, async () => {
  *   const response = await generateText({ ... });
  *   void onlineEval(
+ *     'my-eval',
  *     { capability: 'qa', step: 'answer' },
  *     { output: response.text, scorers: [formatScorer] }
  *   );
@@ -214,18 +217,19 @@ function getDuplicateScorerNames<TInput, TOutput>(
  *   spanCtx = span.spanContext();
  *   return await generateText({ ... });
  * });
- * void onlineEval({ ..., links: spanCtx }, { output: result, scorers });
+ * void onlineEval('my-eval', { ..., links: spanCtx }, { output: result, scorers });
  *
  * // Or link to multiple spans:
- * void onlineEval({ ..., links: [spanCtx1, spanCtx2] }, { output, scorers });
+ * void onlineEval('my-eval', { ..., links: [spanCtx1, spanCtx2] }, { output, scorers });
  * ```
  *
  * **Awaiting for flush (short-lived processes):**
  * ```ts
- * await onlineEval({ ... }, { output, scorers });
+ * await onlineEval('my-eval', { ... }, { output, scorers });
  * await flushTelemetry();
  * ```
  *
+ * @param name - Eval name (A-Z, a-z, 0-9, -, _ only). Used as the span name and `eval.name` attribute.
  * @param meta - Evaluation metadata for categorization
  * @param meta.capability - High-level capability being evaluated
  * @param meta.step - Optional step within the capability
@@ -239,11 +243,18 @@ function getDuplicateScorerNames<TInput, TOutput>(
 export function onlineEval<
   TInput,
   TOutput,
+  Name extends string,
   const TScorers extends readonly ScorerEntry<TInput, TOutput>[],
 >(
+  name: ValidateName<Name>,
   meta: OnlineEvalMeta,
   options: OnlineEvalOptions<TInput, TOutput, TScorers>,
 ): Promise<InferOnlineEvalResultRecord<TScorers>> {
+  const nameValidation = isValidName(name as string);
+  if (!nameValidation.valid) {
+    throw new Error(`[AxiomAI] Invalid eval name: ${nameValidation.error}`);
+  }
+
   if (options.scorers.length === 0) {
     return Promise.resolve({});
   }
@@ -251,7 +262,7 @@ export function onlineEval<
   const rawLinks = meta.links ?? trace.getSpan(context.active())?.spanContext();
   const linkContexts = rawLinks ? (Array.isArray(rawLinks) ? rawLinks : [rawLinks]) : [];
 
-  return executeOnlineEvalInternal(meta, options, linkContexts);
+  return executeOnlineEvalInternal(name as string, meta, options, linkContexts);
 }
 
 async function executeOnlineEvalInternal<
@@ -259,21 +270,21 @@ async function executeOnlineEvalInternal<
   TOutput,
   const TScorers extends readonly ScorerEntry<TInput, TOutput>[],
 >(
+  name: string,
   meta: OnlineEvalMeta,
   options: OnlineEvalOptions<TInput, TOutput, TScorers>,
   linkContexts: SpanContext[],
 ): Promise<InferOnlineEvalResultRecord<TScorers>> {
   const tracer = getGlobalTracer();
 
-  const spanName = meta.step ? `eval ${meta.capability}/${meta.step}` : `eval ${meta.capability}`;
-
   const evalSpan = tracer.startSpan(
-    spanName,
+    `eval ${name}`,
     linkContexts.length > 0 ? { links: linkContexts.map((ctx) => ({ context: ctx })) } : {},
   );
 
   const evalAttrs: Record<string, string> = {
     [Attr.GenAI.Operation.Name]: 'eval',
+    [Attr.Eval.Name]: name,
     [Attr.Eval.Capability.Name]: meta.capability,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
   };
@@ -313,6 +324,7 @@ async function executeOnlineEvalInternal<
               options.output,
               evalSpan,
               meta,
+              name,
             ),
           };
         } catch (err) {
@@ -329,6 +341,7 @@ async function executeOnlineEvalInternal<
               options.output,
               evalSpan,
               meta,
+              name,
             ),
           };
         }

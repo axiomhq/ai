@@ -91,6 +91,7 @@ async function main() {
     // Here we collect the promise because the script exits after flush.
     pendingEvals.push(
       onlineEval(
+        'generate-fact',
         { capability: 'demo', step: 'generate-fact' },
         { output: response.text, scorers: [formatScorer] },
       ),
@@ -126,6 +127,7 @@ async function main() {
   // LLM judge at 50% sampling rate — tune down for expensive scorers in production.
   pendingEvals.push(
     onlineEval(
+      'answer-question',
       { capability: 'demo', step: 'answer-question', links: originCtx! },
       {
         input: prompt2,
@@ -164,6 +166,7 @@ async function main() {
   // No active withSpan context here — the link is the only connection.
   pendingEvals.push(
     onlineEval(
+      'name-scientist',
       { capability: 'demo', step: 'name-scientist', links: storedCtx! },
       { output: result3, scorers: [formatScorer] },
     ),
@@ -190,6 +193,7 @@ async function main() {
 
   // Await ensures eval completes before we flush.
   await onlineEval(
+    'describe-sky',
     { capability: 'demo', step: 'describe-sky' },
     { output: result4, scorers: [formatScorer] },
   );

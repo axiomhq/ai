@@ -12,6 +12,7 @@ describe('onlineEval type inference', () => {
 
     const _evaluate = () =>
       onlineEval(
+        'routing-eval',
         { capability: 'routing' },
         {
           output: 'response',
@@ -34,6 +35,7 @@ describe('onlineEval type inference', () => {
 
     const _evaluate = () =>
       onlineEval(
+        'routing-eval',
         { capability: 'routing' },
         {
           output: 'response',
@@ -48,6 +50,7 @@ describe('onlineEval type inference', () => {
   it('requires name for precomputed scorer results passed to onlineEval', () => {
     const invalid = () =>
       onlineEval(
+        'routing-eval',
         { capability: 'routing' },
         {
           output: 'response',
@@ -64,6 +67,7 @@ describe('onlineEval type inference', () => {
   it('rejects duplicate scorer names when names are known literals', () => {
     const invalid = () =>
       onlineEval(
+        'routing-eval',
         { capability: 'routing' },
         {
           output: 'response',
