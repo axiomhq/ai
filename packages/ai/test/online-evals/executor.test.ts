@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SpanStatusCode } from '@opentelemetry/api';
+import { Attr } from '../../src/otel/semconv/attributes';
 import { onlineEval } from '../../src/online-evals/onlineEval';
 import type { ScorerLike } from '../../src/evals/scorers';
 
@@ -553,6 +554,58 @@ describe('onlineEval', () => {
 
       expect(Object.keys(results)).toHaveLength(1);
       expect(mockTracer.startSpan).toHaveBeenCalledWith(expect.stringContaining('score'));
+    });
+  });
+
+  describe('precomputed boolean score normalization', () => {
+    it('normalizes boolean true to 1 with is_boolean metadata', async () => {
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-scorer', score: true as any }],
+        },
+      );
+
+      expect(mockScorerSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [Attr.Eval.Score.Value]: 1,
+          [Attr.Eval.Score.Metadata]: expect.stringContaining(Attr.Eval.Score.IsBoolean),
+        }),
+      );
+    });
+
+    it('normalizes boolean false to 0', async () => {
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-scorer', score: false as any }],
+        },
+      );
+
+      expect(mockScorerSpan.setAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [Attr.Eval.Score.Value]: 0,
+        }),
+      );
+    });
+
+    it('merges is_boolean into existing precomputed metadata', async () => {
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [{ name: 'bool-meta', score: true as any, metadata: { reason: 'exact' } }],
+        },
+      );
+
+      const call = mockScorerSpan.setAttributes.mock.calls[0][0];
+      const metadata = JSON.parse(call[Attr.Eval.Score.Metadata]);
+      expect(metadata).toEqual({
+        reason: 'exact',
+        [Attr.Eval.Score.IsBoolean]: true,
+      });
     });
   });
 });

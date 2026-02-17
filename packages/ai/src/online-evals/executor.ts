@@ -1,4 +1,5 @@
 import { context, trace, SpanStatusCode, type Span } from '@opentelemetry/api';
+import { normalizeBooleanScore } from '../evals/normalize-score';
 import { getGlobalTracer } from '../otel/initAxiomAI';
 import type { Scorer, ScorerResult } from './types';
 import type { OnlineEvalMeta } from './onlineEval';
@@ -12,17 +13,19 @@ function setScorerSpanAttrs(
   result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
   meta?: OnlineEvalMeta,
 ): void {
+  const { score: scoreValue, metadata } = normalizeBooleanScore(result.score, result.metadata);
+
   const attrs: Record<string, string | number | boolean | undefined> = {
     [Attr.GenAI.Operation.Name]: 'eval.score',
     [Attr.Eval.Score.Name]: scorerName,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
-    [Attr.Eval.Score.Value]: result.score ?? undefined,
+    [Attr.Eval.Score.Value]: scoreValue ?? undefined,
     [Attr.Eval.Capability.Name]: meta?.capability,
     [Attr.Eval.Step.Name]: meta?.step,
   };
 
-  if (result.metadata && Object.keys(result.metadata).length > 0) {
-    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(result.metadata);
+  if (metadata && Object.keys(metadata).length > 0) {
+    attrs[Attr.Eval.Score.Metadata] = JSON.stringify(metadata);
   }
 
   scorerSpan.setAttributes(attrs);
