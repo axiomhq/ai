@@ -543,6 +543,91 @@ describe('onlineEval', () => {
     });
   });
 
+  describe('scores summary attribute', () => {
+    function getScoresSummary() {
+      const call = mockEvalSpan.setAttributes.mock.calls.find(
+        (args: Record<string, unknown>[]) => args[0]['eval.case.scores'] !== undefined,
+      );
+      expect(call).toBeDefined();
+      return JSON.parse(call![0]['eval.case.scores'] as string);
+    }
+
+    it('sets eval.case.scores for a single successful scorer', async () => {
+      const scorer = createTestScorer('accuracy', async () => ({ score: 0.85 }));
+
+      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+
+      const scores = getScoresSummary();
+      expect(scores).toEqual({
+        accuracy: { name: 'accuracy', score: 0.85 },
+      });
+    });
+
+    it('includes metadata only when non-empty', async () => {
+      const scorer1 = createTestScorer('tone', async () => ({
+        score: 0.7,
+        metadata: { reason: 'casual' },
+      }));
+      const scorer2 = createTestScorer('length', async () => ({ score: 1 }));
+
+      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer1, scorer2] });
+
+      const scores = getScoresSummary();
+      expect(scores).toEqual({
+        tone: { name: 'tone', score: 0.7, metadata: { reason: 'casual' } },
+        length: { name: 'length', score: 1 },
+      });
+    });
+
+    it('includes failed scorer with score null and error', async () => {
+      const scorer = createTestScorer('safety', async () => {
+        throw new Error('timeout');
+      });
+
+      await onlineEval({ capability: 'qa' }, { output: baseOutput, scorers: [scorer] });
+
+      const scores = getScoresSummary();
+      expect(scores).toEqual({
+        safety: { name: 'safety', score: null, error: 'timeout' },
+      });
+    });
+
+    it('excludes sampled-out scorers from summary', async () => {
+      const scorer = createTestScorer('sampled', async () => ({ score: 1 }));
+
+      await onlineEval(
+        { capability: 'qa' },
+        { output: baseOutput, scorers: [{ scorer, sampling: 0 }] },
+      );
+
+      const scores = getScoresSummary();
+      expect(scores).toEqual({});
+    });
+
+    it('includes success and failure but excludes sampled-out in mixed scenario', async () => {
+      const successScorer = createTestScorer('accuracy', async () => ({ score: 0.9 }));
+      const failingScorer = createTestScorer('safety', async () => {
+        throw new Error('api error');
+      });
+      const sampledOutScorer = createTestScorer('tone', async () => ({ score: 1 }));
+
+      await onlineEval(
+        { capability: 'qa' },
+        {
+          output: baseOutput,
+          scorers: [successScorer, failingScorer, { scorer: sampledOutScorer, sampling: 0 }],
+        },
+      );
+
+      const scores = getScoresSummary();
+      expect(scores).toEqual({
+        accuracy: { name: 'accuracy', score: 0.9 },
+        safety: { name: 'safety', score: null, error: 'api error' },
+      });
+      expect(scores['tone']).toBeUndefined();
+    });
+  });
+
   describe('scorer without name', () => {
     it('uses function name as default', async () => {
       const scorer: ScorerLike = async () => ({ score: 1 });
