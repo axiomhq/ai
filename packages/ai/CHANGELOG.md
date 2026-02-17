@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.45.0](https://github.com/axiomhq/ai/compare/axiom-v0.44.0...axiom-v0.45.0) (2026-02-17)
+
+
+### Features
+
+* **ai:** add eval.case.scores summary attribute to online evals ([#256](https://github.com/axiomhq/ai/issues/256)) ([ca9e6f7](https://github.com/axiomhq/ai/commit/ca9e6f742d51f8f2e959d07a1bc024a2c628ddd9))
+
+
+### Bug Fixes
+
+* **ai:** add 'offline' tag to offline eval spans ([#258](https://github.com/axiomhq/ai/issues/258)) ([07b2f16](https://github.com/axiomhq/ai/commit/07b2f16b1fe0ab6b0cf5355f5b3ddd6beb1afb98))
+* **ai:** normalize boolean scores for precomputed online eval scorers ([#253](https://github.com/axiomhq/ai/issues/253)) ([4fafb59](https://github.com/axiomhq/ai/commit/4fafb59a13008221ed403aeeb839f5f08df7b0f9))
+* rename OnlineEval link attribute to links ([#254](https://github.com/axiomhq/ai/issues/254)) ([4a2d7e4](https://github.com/axiomhq/ai/commit/4a2d7e4f75679fbc02796082df947b86002358fb))
+
 ## [0.44.0](https://github.com/axiomhq/ai/compare/axiom-v0.43.0...axiom-v0.44.0) (2026-02-16)
 
 
