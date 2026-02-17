@@ -266,7 +266,7 @@ async function registerEval<
             [Attr.Eval.Name]: evalName,
             [Attr.Eval.Version]: evalVersion,
             [Attr.Eval.Type]: 'regression', // TODO: where to get experiment type value from?
-            [Attr.Eval.Tags]: [],
+            [Attr.Eval.Tags]: JSON.stringify(['offline']),
             [Attr.Eval.Collection.ID]: 'custom', // TODO: where to get collection split value from?
             [Attr.Eval.Collection.Name]: 'custom', // TODO: where to get collection name from?
             [Attr.Eval.Collection.Size]: collection.length,
@@ -358,9 +358,6 @@ async function registerEval<
         if (instrumentationError) {
           throw instrumentationError;
         }
-
-        const tags: string[] = ['offline'];
-        suiteSpan?.setAttribute(Attr.Eval.Tags, JSON.stringify(tags));
 
         // Aggregate out-of-scope flags for evaluation-level reporting
         const flagSummary = new Map<string, OutOfScopeFlag>();
@@ -550,6 +547,7 @@ async function registerEval<
                               {
                                 attributes: {
                                   [Attr.GenAI.Operation.Name]: 'eval.score',
+                                  [Attr.Eval.Tags]: JSON.stringify(['offline']),
                                   [Attr.Eval.ID]: evalId,
                                   [Attr.Eval.Name]: evalName,
                                   [Attr.Eval.Version]: evalVersion,
