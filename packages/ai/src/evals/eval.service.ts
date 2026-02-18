@@ -3,7 +3,7 @@ import { createFetcher, type Fetcher } from '../utils/fetcher';
 import type { ResolvedAxiomConfig } from '../config/index';
 import { resolveAxiomConnection } from '../config/resolver';
 import { Attr } from '../otel';
-import { AxiomCLIError } from '../util/errors';
+import { AxiomCLIError, errorToString } from '../util/errors';
 import {
   getCustomOrRegularAttribute,
   getCustomOrRegularNumber,
@@ -52,6 +52,8 @@ export class EvaluationApiClient {
     const resp = await this.fetcher(`/api/v3/evaluations`, {
       method: 'POST',
       body: JSON.stringify(evaluation),
+    }).catch((error) => {
+      throw new AxiomCLIError(`Failed to create evaluation: ${errorToString(error)}`);
     });
 
     if (!resp.ok) {

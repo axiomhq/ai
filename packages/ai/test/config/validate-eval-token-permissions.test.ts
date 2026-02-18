@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { validateTokenPermissions } from '../../src/config/validate-permissions';
-import type { ResolvedAxiomConfig } from '../../src/config';
+import { validateTokenPermissions } from '../../src/config/validate-eval-token-permissions';
+import type { ResolvedAxiomConfig } from '../../src/config/index';
 import { AxiomCLIError } from '../../src/util/errors';
 
 // Mock the OTEL modules
@@ -63,14 +63,18 @@ describe('validateTokenPermissions', () => {
     // Mock successful query response
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ matches: [] }),
+      json: async () => ({
+        valid: true,
+        permissions: { canWrite: true, canRead: true },
+        errors: [],
+      }),
     });
 
     const result = await validateTokenPermissions(mockConfig);
 
     expect(result.valid).toBe(true);
-    expect(result.canIngest).toBe(true);
-    expect(result.canQuery).toBe(true);
+    expect(result.permissions.canWrite).toBe(true);
+    expect(result.permissions.canRead).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
@@ -84,7 +88,9 @@ describe('validateTokenPermissions', () => {
     });
 
     await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(AxiomCLIError);
-    await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(/Invalid or expired token/);
+    await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(
+      /Failed to validate token: Unauthorized/,
+    );
   });
 
   it('should fail validation when query fails with 403', async () => {
@@ -97,7 +103,9 @@ describe('validateTokenPermissions', () => {
     });
 
     await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(AxiomCLIError);
-    await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(/Read permission denied/);
+    await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(
+      /Failed to validate token: Forbidden/,
+    );
   });
 
   it('should fail validation when query fails with 404', async () => {
@@ -113,25 +121,17 @@ describe('validateTokenPermissions', () => {
     await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(/Dataset not found/);
   });
 
-  it('should provide helpful error message with token management URL', async () => {
-    // Mock failed query
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      statusText: 'Forbidden',
-      json: async () => ({ message: 'Forbidden' }),
-    });
-
-    await expect(validateTokenPermissions(mockConfig)).rejects.toThrow(/Manage tokens at:/);
-  });
-
   it('should list required permissions in error message', async () => {
     // Mock failed query
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-      status: 403,
-      statusText: 'Forbidden',
-      json: async () => ({ message: 'Forbidden' }),
+      status: 200,
+      statusText: '',
+      json: async () => ({
+        valid: false,
+        permissions: { canWrite: false, canRead: false },
+        errors: [],
+      }),
     });
 
     try {

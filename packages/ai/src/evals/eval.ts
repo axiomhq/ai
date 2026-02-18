@@ -258,6 +258,7 @@ async function registerEval<
         const [, instrumentationInitError] = await tryCatchAsync(instrumentationReady);
         if (instrumentationInitError) {
           instrumentationError = instrumentationInitError;
+          suite.meta.evaluation.instrumentationError = errorToString(instrumentationInitError);
         }
 
         suiteSpan = startSpan(`eval ${evalName}-${evalVersion}`, {
@@ -293,22 +294,28 @@ async function registerEval<
         suiteSpan.setAttribute(Attr.Eval.Config.Flags, flagConfigJson);
 
         let createEvalResponse;
+        let registrationError: Error | undefined = undefined;
         if (!isDebug && !isList) {
-          createEvalResponse = await evaluationApiClient.createEvaluation({
-            id: evalId,
-            name: evalName,
-            capability: opts.capability,
-            step: opts.step,
-            dataset: axiomConfig.eval.dataset,
-            version: evalVersion,
-            baselineId: baselineId ?? undefined,
-            runId: runId,
-            totalCases: collection.length,
-            config: { overrides: injectedOverrides },
-            configTimeoutMs: timeoutMs,
-            metadata: opts.metadata,
-            status: 'running',
-          });
+          try {
+            createEvalResponse = await evaluationApiClient.createEvaluation({
+              id: evalId,
+              name: evalName,
+              capability: opts.capability,
+              step: opts.step,
+              dataset: axiomConfig.eval.dataset,
+              version: evalVersion,
+              baselineId: baselineId ?? undefined,
+              runId: runId,
+              totalCases: collection.length,
+              config: { overrides: injectedOverrides },
+              configTimeoutMs: timeoutMs,
+              metadata: opts.metadata,
+              status: 'running',
+            });
+            registrationError = createEvalResponse?.error;
+          } catch (error) {
+            registrationError = error as Error;
+          }
         }
 
         const orgId = createEvalResponse?.data?.orgId;
@@ -342,10 +349,10 @@ async function registerEval<
           orgId: orgId ?? undefined,
           baseline: baseline ?? undefined,
           configFlags: opts.configFlags,
-          registrationStatus: instrumentationError
+          registrationStatus: registrationError
             ? {
                 status: 'failed',
-                error: errorToString(instrumentationError),
+                error: errorToString(registrationError),
               }
             : { status: 'success' },
           trials: opts.trials,
@@ -424,14 +431,23 @@ async function registerEval<
 
         // signal Axiom that evaluation finished to kick of summary calculations
         if (!isDebug && !isList) {
-          await evaluationApiClient.updateEvaluation({
-            id: evalId,
-            status: 'completed',
-            totalCases: collection.length,
-            successCases,
-            erroredCases,
-            durationMs,
-          });
+          try {
+            await evaluationApiClient.updateEvaluation({
+              id: evalId,
+              status: 'completed',
+              totalCases: collection.length,
+              successCases,
+              erroredCases,
+              durationMs,
+            });
+          } catch (error) {
+            if (suite.meta.evaluation?.registrationStatus?.status !== 'failed') {
+              suite.meta.evaluation.registrationStatus = {
+                status: 'failed',
+                error: errorToString(error),
+              };
+            }
+          }
         }
       });
 

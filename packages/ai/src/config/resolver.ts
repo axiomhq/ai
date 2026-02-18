@@ -8,6 +8,10 @@ import type { AxiomEvalInstrumentationOptions, ResolvedAxiomConfig } from './ind
 const buildConsoleUrl = (urlString: string) => {
   const url = new URL(urlString);
 
+  if (url.host.startsWith('localhost:')) {
+    return urlString;
+  }
+
   return `${url.protocol}//app.${url.host.split('api.').at(-1)}`;
 };
 
