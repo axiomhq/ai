@@ -310,25 +310,33 @@ async function executeOnlineEvalInternal<
 
           return {
             sampledOut: false as const,
-            result: await executeScorer(entry.scorer, params.input, params.output, evalSpan, name),
+            result: await executeScorer({
+              scorer: entry.scorer,
+              input: params.input,
+              output: params.output,
+              parentSpan: evalSpan,
+              capability: params.capability,
+              step: params.step,
+              evalName: name,
+            }),
           };
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));
           return {
             sampledOut: false as const,
-            result: await executeScorer(
-              {
+            result: await executeScorer({
+              scorer: {
                 name: entry.name,
                 score: null,
                 error: error.message,
               },
-              params.input,
-              params.output,
-              evalSpan,
-              params.capability,
-              params.step,
-              name,
-            ),
+              input: params.input,
+              output: params.output,
+              parentSpan: evalSpan,
+              capability: params.capability,
+              step: params.step,
+              evalName: name,
+            }),
           };
         }
       }),

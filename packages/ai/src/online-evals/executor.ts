@@ -40,45 +40,45 @@ function setScorerSpanAttrs(args: ScorerSpanAttrs): void {
 /**
  * Executes a single scorer or emits a precomputed scorer result.
  */
-export async function executeScorer<TInput, TOutput>(
-  scorer: OnlineEvalScorerInput<TInput, TOutput>,
-  input: TInput | undefined,
-  output: TOutput,
-  parentSpan: Span,
-  capability: string,
-  step?: string,
-  evalName?: string,
-): Promise<ScorerResult<any>> {
+export async function executeScorer<TInput, TOutput>(params: {
+  scorer: OnlineEvalScorerInput<TInput, TOutput>;
+  input: TInput | undefined;
+  output: TOutput;
+  parentSpan: Span;
+  capability: string;
+  step?: string;
+  evalName?: string;
+}): Promise<ScorerResult<any>> {
   const tracer = getGlobalTracer();
-  const parentContext = trace.setSpan(context.active(), parentSpan);
+  const parentContext = trace.setSpan(context.active(), params.parentSpan);
 
   return context.with(parentContext, async () => {
     const scorerName =
-      typeof scorer === 'function'
+      typeof params.scorer === 'function'
         ? // undefined/unknown case shouldn't happen, but better safe than sorry
-          scorer.name || 'unknown'
-        : scorer.name;
+          params.scorer.name || 'unknown'
+        : params.scorer.name;
     const scorerSpan = tracer.startSpan(`score ${scorerName}`);
 
     try {
       const result =
-        typeof scorer === 'function'
+        typeof params.scorer === 'function'
           ? ({
-              ...(await scorer({
-                input,
-                output,
+              ...(await params.scorer({
+                input: params.input,
+                output: params.output,
               })),
               name: scorerName,
             } satisfies ScorerResult)
-          : scorer;
+          : params.scorer;
 
       setScorerSpanAttrs({
         span: scorerSpan,
         name: scorerName,
         result,
-        capability,
-        step,
-        evalName,
+        capability: params.capability,
+        step: params.step,
+        evalName: params.evalName,
       });
       if (result.error) {
         const error = new Error(result.error);
@@ -108,9 +108,9 @@ export async function executeScorer<TInput, TOutput>(
         span: scorerSpan,
         name: scorerName,
         result: failedResult,
-        capability,
-        step,
-        evalName,
+        capability: params.capability,
+        step: params.step,
+        evalName: params.evalName,
       });
 
       scorerSpan.recordException(error);
