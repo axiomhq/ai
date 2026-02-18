@@ -2,35 +2,39 @@ import { context, trace, SpanStatusCode, type Span } from '@opentelemetry/api';
 import { normalizeBooleanScore } from '../evals/normalize-score';
 import { getGlobalTracer } from '../otel/initAxiomAI';
 import type { Scorer, ScorerResult } from './types';
-import type { OnlineEvalMeta } from './onlineEval';
 import { Attr } from '../otel/semconv/attributes';
 
 type OnlineEvalScorerInput<TInput, TOutput> = Scorer<TInput, TOutput, any> | ScorerResult<any>;
+type ScorerSpanAttrs = {
+  capability: string;
+  step?: string;
+  evalName?: string;
+  name: string;
+  span: Span;
+  result: Pick<ScorerResult<any>, 'score' | 'metadata'>;
+};
 
-function setScorerSpanAttrs(
-  scorerSpan: Span,
-  scorerName: string,
-  result: Pick<ScorerResult<any>, 'score' | 'metadata'>,
-  meta?: OnlineEvalMeta,
-  evalName?: string,
-): void {
-  const { score: scoreValue, metadata } = normalizeBooleanScore(result.score, result.metadata);
+function setScorerSpanAttrs(args: ScorerSpanAttrs): void {
+  const { score: scoreValue, metadata } = normalizeBooleanScore(
+    args.result.score,
+    args.result.metadata,
+  );
 
   const attrs: Record<string, string | number | boolean | undefined> = {
     [Attr.GenAI.Operation.Name]: 'eval.score',
-    [Attr.Eval.Score.Name]: scorerName,
+    [Attr.Eval.Score.Name]: args.name,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
     [Attr.Eval.Score.Value]: scoreValue ?? undefined,
-    [Attr.Eval.Name]: evalName,
-    [Attr.Eval.Capability.Name]: meta?.capability,
-    [Attr.Eval.Step.Name]: meta?.step,
+    [Attr.Eval.Name]: args.evalName,
+    [Attr.Eval.Capability.Name]: args.capability,
+    [Attr.Eval.Step.Name]: args.step,
   };
 
   if (metadata && Object.keys(metadata).length > 0) {
     attrs[Attr.Eval.Score.Metadata] = JSON.stringify(metadata);
   }
 
-  scorerSpan.setAttributes(attrs);
+  args.span.setAttributes(attrs);
 }
 
 /**
@@ -41,7 +45,8 @@ export async function executeScorer<TInput, TOutput>(
   input: TInput | undefined,
   output: TOutput,
   parentSpan: Span,
-  meta?: OnlineEvalMeta,
+  capability: string,
+  step?: string,
   evalName?: string,
 ): Promise<ScorerResult<any>> {
   const tracer = getGlobalTracer();
@@ -67,7 +72,14 @@ export async function executeScorer<TInput, TOutput>(
             } satisfies ScorerResult)
           : scorer;
 
-      setScorerSpanAttrs(scorerSpan, scorerName, result, meta, evalName);
+      setScorerSpanAttrs({
+        span: scorerSpan,
+        name: scorerName,
+        result,
+        capability,
+        step,
+        evalName,
+      });
       if (result.error) {
         const error = new Error(result.error);
         scorerSpan.recordException(error);
@@ -92,7 +104,14 @@ export async function executeScorer<TInput, TOutput>(
         error: error.message,
       };
 
-      setScorerSpanAttrs(scorerSpan, scorerName, failedResult, meta, evalName);
+      setScorerSpanAttrs({
+        span: scorerSpan,
+        name: scorerName,
+        result: failedResult,
+        capability,
+        step,
+        evalName,
+      });
 
       scorerSpan.recordException(error);
       scorerSpan.setAttributes({

@@ -83,9 +83,16 @@ type NormalizedScorerEntry<TInput, TOutput> = {
 };
 
 /**
- * Metadata for categorizing online evaluations.
+ * Options for online evaluation.
  */
-export type OnlineEvalMeta = {
+export type OnlineEvalParams<
+  TInput,
+  TOutput,
+  TScorers extends readonly ScorerEntry<TInput, TOutput>[] = readonly ScorerEntry<
+    TInput,
+    TOutput
+  >[],
+> = {
   /** High-level capability being evaluated (e.g., 'qa', 'summarization') */
   capability: string;
   /** Specific step within the capability (e.g., 'answer', 'extract') */
@@ -98,19 +105,6 @@ export type OnlineEvalMeta = {
    * Supports both single context and multiple contexts for multi-span linking.
    */
   links?: SpanContext | SpanContext[];
-};
-
-/**
- * Options for online evaluation.
- */
-export type OnlineEvalOptions<
-  TInput,
-  TOutput,
-  TScorers extends readonly ScorerEntry<TInput, TOutput>[] = readonly ScorerEntry<
-    TInput,
-    TOutput
-  >[],
-> = {
   /** Input to pass to scorers (optional - only needed for input+output scorers) */
   input?: TInput;
   /** Output to evaluate */
@@ -234,7 +228,7 @@ function getDuplicateScorerNames<TInput, TOutput>(
  * @param meta.capability - High-level capability being evaluated
  * @param meta.step - Optional step within the capability
  * @param meta.links - Optional SpanContext(s) to link to (auto-detected if omitted)
- * @param options - Evaluation configuration
+ * @param params - Evaluation configuration
  * @param options.input - Input to pass to scorers
  * @param options.output - Output to evaluate
  * @param options.scorers - Scorer entries with optional per-scorer sampling
@@ -247,22 +241,21 @@ export function onlineEval<
   const TScorers extends readonly ScorerEntry<TInput, TOutput>[],
 >(
   name: ValidateName<Name>,
-  meta: OnlineEvalMeta,
-  options: OnlineEvalOptions<TInput, TOutput, TScorers>,
+  params: OnlineEvalParams<TInput, TOutput, TScorers>,
 ): Promise<InferOnlineEvalResultRecord<TScorers>> {
   const nameValidation = isValidName(name as string);
   if (!nameValidation.valid) {
     throw new Error(`[AxiomAI] Invalid eval name: ${nameValidation.error}`);
   }
 
-  if (options.scorers.length === 0) {
+  if (params.scorers.length === 0) {
     return Promise.resolve({});
   }
 
-  const rawLinks = meta.links ?? trace.getSpan(context.active())?.spanContext();
+  const rawLinks = params.links ?? trace.getSpan(context.active())?.spanContext();
   const linkContexts = rawLinks ? (Array.isArray(rawLinks) ? rawLinks : [rawLinks]) : [];
 
-  return executeOnlineEvalInternal(name as string, meta, options, linkContexts);
+  return executeOnlineEvalInternal(name as string, params, linkContexts);
 }
 
 async function executeOnlineEvalInternal<
@@ -271,8 +264,7 @@ async function executeOnlineEvalInternal<
   const TScorers extends readonly ScorerEntry<TInput, TOutput>[],
 >(
   name: string,
-  meta: OnlineEvalMeta,
-  options: OnlineEvalOptions<TInput, TOutput, TScorers>,
+  params: OnlineEvalParams<TInput, TOutput, TScorers>,
   linkContexts: SpanContext[],
 ): Promise<InferOnlineEvalResultRecord<TScorers>> {
   const tracer = getGlobalTracer();
@@ -285,16 +277,16 @@ async function executeOnlineEvalInternal<
   const evalAttrs: Record<string, string> = {
     [Attr.GenAI.Operation.Name]: 'eval',
     [Attr.Eval.Name]: name,
-    [Attr.Eval.Capability.Name]: meta.capability,
+    [Attr.Eval.Capability.Name]: params.capability,
     [Attr.Eval.Tags]: JSON.stringify(['online']),
   };
-  if (meta.step) {
-    evalAttrs[Attr.Eval.Step.Name] = meta.step;
+  if (params.step) {
+    evalAttrs[Attr.Eval.Step.Name] = params.step;
   }
   evalSpan.setAttributes(evalAttrs);
 
   try {
-    const normalizedScorers = options.scorers.map((entry) => normalizeScorerEntry(entry));
+    const normalizedScorers = params.scorers.map((entry) => normalizeScorerEntry(entry));
     const duplicateScorerNames = getDuplicateScorerNames(normalizedScorers);
     if (duplicateScorerNames.length > 0) {
       throw new Error(
@@ -308,8 +300,8 @@ async function executeOnlineEvalInternal<
       normalizedScorers.map(async (entry) => {
         try {
           const sampledIn = await shouldSample(entry.sampling, {
-            input: options.input,
-            output: options.output,
+            input: params.input,
+            output: params.output,
           });
 
           if (!sampledIn) {
@@ -318,14 +310,7 @@ async function executeOnlineEvalInternal<
 
           return {
             sampledOut: false as const,
-            result: await executeScorer(
-              entry.scorer,
-              options.input,
-              options.output,
-              evalSpan,
-              meta,
-              name,
-            ),
+            result: await executeScorer(entry.scorer, params.input, params.output, evalSpan, name),
           };
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));
@@ -337,10 +322,11 @@ async function executeOnlineEvalInternal<
                 score: null,
                 error: error.message,
               },
-              options.input,
-              options.output,
+              params.input,
+              params.output,
               evalSpan,
-              meta,
+              params.capability,
+              params.step,
               name,
             ),
           };
