@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/axiomhq/ai/compare/axiom-v0.45.0...axiom-v0.46.0) (2026-02-19)
+
+
+### Features
+
+* **ai:** add mandatory name parameter to onlineEval ([#259](https://github.com/axiomhq/ai/issues/259)) ([3e0e44a](https://github.com/axiomhq/ai/commit/3e0e44a884216ad98ca9ff9f6225c55b67f39241))
+
 ## [0.45.0](https://github.com/axiomhq/ai/compare/axiom-v0.44.0...axiom-v0.45.0) (2026-02-17)
 
 
