@@ -196,7 +196,8 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       expect(() =>
-        onlineEval('' as any, { capability: 'qa', output: baseOutput, scorers: [scorer] }),
+        // @ts-expect-error - empty string is not a valid eval name
+        onlineEval('', { capability: 'qa', output: baseOutput, scorers: [scorer] }),
       ).toThrow('[AxiomAI] Invalid eval name');
     });
 
@@ -204,7 +205,8 @@ describe('onlineEval', () => {
       const scorer = createTestScorer('test', async () => ({ score: 1 }));
 
       expect(() =>
-        onlineEval('invalid name!' as any, {
+        // @ts-expect-error - name with invalid characters is not a valid eval name
+        onlineEval('invalid name!', {
           capability: 'qa',
           output: baseOutput,
           scorers: [scorer],
