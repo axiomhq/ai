@@ -90,10 +90,12 @@ async function main() {
     // In a server: `void onlineEval(...)` — fire-and-forget is fine.
     // Here we collect the promise because the script exits after flush.
     pendingEvals.push(
-      onlineEval(
-        { capability: 'demo', step: 'generate-fact' },
-        { output: response.text, scorers: [formatScorer] },
-      ),
+      onlineEval('evaluate-generated-fact-format', {
+        capability: 'demo',
+        step: 'generate-fact',
+        output: response.text,
+        scorers: [formatScorer],
+      }),
     );
 
     return response.text;
@@ -125,14 +127,14 @@ async function main() {
   // Called outside withSpan — explicit link connects eval to originating span.
   // LLM judge at 50% sampling rate — tune down for expensive scorers in production.
   pendingEvals.push(
-    onlineEval(
-      { capability: 'demo', step: 'answer-question', links: originCtx! },
-      {
-        input: prompt2,
-        output: result2,
-        scorers: [{ scorer: relevanceScorer, sampling: 0.5 }],
-      },
-    ),
+    onlineEval('answer-relevance', {
+      capability: 'demo',
+      step: 'answer-question',
+      links: originCtx!,
+      input: prompt2,
+      output: result2,
+      scorers: [{ scorer: relevanceScorer, sampling: 0.5 }],
+    }),
   );
 
   console.log(`Response: ${result2}\n`);
@@ -163,10 +165,13 @@ async function main() {
   // Simulate a later evaluation using a stored SpanContext.
   // No active withSpan context here — the link is the only connection.
   pendingEvals.push(
-    onlineEval(
-      { capability: 'demo', step: 'name-scientist', links: storedCtx! },
-      { output: result3, scorers: [formatScorer] },
-    ),
+    onlineEval('name-format', {
+      capability: 'demo',
+      step: 'name-scientist',
+      links: storedCtx!,
+      output: result3,
+      scorers: [formatScorer],
+    }),
   );
 
   console.log();
@@ -189,10 +194,12 @@ async function main() {
   });
 
   // Await ensures eval completes before we flush.
-  await onlineEval(
-    { capability: 'demo', step: 'describe-sky' },
-    { output: result4, scorers: [formatScorer] },
-  );
+  await onlineEval('sky-desription-format', {
+    capability: 'demo',
+    step: 'describe-sky',
+    output: result4,
+    scorers: [formatScorer],
+  });
 
   console.log(`Response: ${result4}\n`);
 

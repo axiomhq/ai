@@ -11,13 +11,7 @@ describe('onlineEval type inference', () => {
     });
 
     const _evaluate = () =>
-      onlineEval(
-        { capability: 'routing' },
-        {
-          output: 'response',
-          scorers: [scorer],
-        },
-      );
+      onlineEval('routing-eval', { capability: 'routing', output: 'response', scorers: [scorer] });
 
     type Result = NonNullable<Awaited<ReturnType<typeof _evaluate>>[string]>;
     expectTypeOf<Result['metadata']>().toEqualTypeOf<{ decision: 'REDIRECT' } | undefined>();
@@ -33,13 +27,12 @@ describe('onlineEval type inference', () => {
     };
 
     const _evaluate = () =>
-      onlineEval(
-        { capability: 'routing' },
-        {
-          output: 'response',
-          scorers: [precomputed],
-        },
-      );
+      onlineEval('routing-eval', {
+        capability: 'routing',
+
+        output: 'response',
+        scorers: [precomputed],
+      });
 
     type Result = NonNullable<Awaited<ReturnType<typeof _evaluate>>['decision']>;
     expectTypeOf<Result['metadata']>().toEqualTypeOf<{ decision: 'CONTINUE' } | undefined>();
@@ -47,33 +40,30 @@ describe('onlineEval type inference', () => {
 
   it('requires name for precomputed scorer results passed to onlineEval', () => {
     const invalid = () =>
-      onlineEval(
-        { capability: 'routing' },
-        {
-          output: 'response',
-          scorers: [
-            // @ts-expect-error name is required for precomputed scorer results
-            { score: 1, metadata: { decision: 'CONTINUE' as const } },
-          ],
-        },
-      );
+      onlineEval('routing-eval', {
+        capability: 'routing',
+        output: 'response',
+        scorers: [
+          // @ts-expect-error name is required for precomputed scorer results
+          { score: 1, metadata: { decision: 'CONTINUE' as const } },
+        ],
+      });
 
     invalid;
   });
 
   it('rejects duplicate scorer names when names are known literals', () => {
     const invalid = () =>
-      onlineEval(
-        { capability: 'routing' },
-        {
-          output: 'response',
-          // @ts-expect-error duplicate scorer names are not allowed
-          scorers: [
-            { name: 'duplicate', score: 1 },
-            { name: 'duplicate', score: 0 },
-          ],
-        },
-      );
+      onlineEval('routing-eval', {
+        capability: 'routing',
+
+        output: 'response',
+        // @ts-expect-error duplicate scorer names are not allowed
+        scorers: [
+          { name: 'duplicate', score: 1 },
+          { name: 'duplicate', score: 0 },
+        ],
+      });
 
     invalid;
   });
