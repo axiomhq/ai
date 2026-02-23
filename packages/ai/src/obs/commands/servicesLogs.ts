@@ -5,19 +5,38 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
-import { SERVICE_LOGS_APL_TEMPLATE } from '../otel/aplTemplates';
-import { requireAuth, resolveLogsDataset, toRows, write } from './serviceCommon';
+import {
+  aplFieldRef,
+  aplStringLiteral,
+  requireAuth,
+  resolveLogsDataset,
+  toRows,
+  write,
+} from './servicesCommon';
 
-const expandTemplate = (template: string, replacements: Record<string, string>) => {
-  let output = template;
-  for (const [key, value] of Object.entries(replacements)) {
-    output = output.split(`\${${key}}`).join(value);
+const buildProjection = (fields: {
+  severityField: string | null;
+  messageField: string | null;
+  traceIdField: string | null;
+}) => {
+  const projection = ['_time'];
+
+  if (fields.severityField) {
+    projection.push(`severity=${aplFieldRef(fields.severityField)}`);
   }
-  return output;
+  if (fields.messageField) {
+    projection.push(`message=${aplFieldRef(fields.messageField)}`);
+  }
+  if (fields.traceIdField) {
+    projection.push(`trace_id=${aplFieldRef(fields.traceIdField)}`);
+  }
+
+  return projection.join(', ');
 };
 
 export const serviceLogs = withObsContext(async ({ config, explain }, ...args: unknown[]) => {
@@ -30,7 +49,7 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
     until?: string;
     start?: string;
     end?: string;
-    limit?: number | string;
+    dataset?: string;
     logsDataset?: string;
   };
 
@@ -55,7 +74,7 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
       orgId: config.orgId!,
       token: config.token!,
       explain,
-      overrideDataset: options.logsDataset,
+      overrideDataset: options.logsDataset ?? options.dataset,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -66,18 +85,14 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
 
   const { client, dataset, fields } = resolvedLogs;
 
-  const limit = options.limit !== undefined ? Number(options.limit) : 50;
+  const projection = buildProjection(fields);
 
-  const apl = expandTemplate(SERVICE_LOGS_APL_TEMPLATE, {
-    SERVICE_FIELD: fields.serviceField,
-    TRACE_ID_FIELD: fields.traceIdField ?? 'null',
-    SEVERITY_FIELD: fields.severityField ?? 'null',
-    MESSAGE_FIELD: fields.messageField ?? 'null',
-    START: timeRange.start,
-    END: timeRange.end,
-    SERVICE: service,
-    LIMIT: String(limit),
-  });
+  const apl = `let start = datetime(${timeRange.start});
+let end = datetime(${timeRange.end});
+where _time >= start and _time <= end
+| where ${aplFieldRef(fields.serviceField)} == ${aplStringLiteral(service)}
+| project ${projection}
+| sort by _time desc`;
 
   const queryResponse = await client.queryApl(dataset, apl, {
     startTime: timeRange.start,
@@ -85,14 +100,16 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
     maxBinAutoGroups: 40,
   });
 
-  let rows = toRows(queryResponse.data);
-  if (Number.isFinite(limit) && limit > 0) {
-    rows = rows.slice(0, limit);
-  }
+  const rows = toRows(queryResponse.data);
 
-  const hasTraceId = rows.some((row) => row.trace_id !== undefined);
-  const columns = ['_time', 'severity', 'message'];
-  if (hasTraceId) {
+  const columns = ['_time'];
+  if (fields.severityField) {
+    columns.push('severity');
+  }
+  if (fields.messageField) {
+    columns.push('message');
+  }
+  if (fields.traceIdField) {
     columns.push('trace_id');
   }
 
@@ -100,7 +117,7 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom service logs',
+      command: 'axiom services logs',
       timeRange,
       meta: {
         truncated: false,
@@ -115,7 +132,7 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -123,7 +140,7 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
 
@@ -140,7 +157,7 @@ export const serviceLogs = withObsContext(async ({ config, explain }, ...args: u
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
 

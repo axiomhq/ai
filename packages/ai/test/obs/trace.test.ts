@@ -52,7 +52,7 @@ describe('trace commands', () => {
 
     const result = await runCli(
       [
-        'trace',
+        'traces',
         'list',
         '--service',
         'checkout',
@@ -71,9 +71,9 @@ describe('trace commands', () => {
     expect(result.stdout).toContain('```csv');
 
     const callBody = JSON.parse(String(fetchMock.mock.calls[2][1].body));
-    expect(callBody.apl).toContain('where service.name == "checkout"');
-    expect(callBody.apl).toContain('where name == "GET /checkout"');
-    expect(callBody.apl).toContain('where status.code == "error"');
+    expect(callBody.apl).toContain("where ['service.name'] == \"checkout\"");
+    expect(callBody.apl).toContain("where ['name'] == \"GET /checkout\"");
+    expect(callBody.apl).toContain("where ['status.code'] == \"error\"");
   });
 
   it('trace get builds a tree when parent relationships exist', async () => {
@@ -113,7 +113,7 @@ describe('trace commands', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['trace', 'get', 'trace-1', '--format', 'json'], { env });
+    const result = await runCli(['traces', 'get', 'trace-1', '--format', 'json'], { env });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('"tree_mode": "tree"');
@@ -121,7 +121,7 @@ describe('trace commands', () => {
     expect(result.stdout).toContain('|    40 payments POST /charge ERR');
   });
 
-  it('trace get falls back to list and truncates top spans table by max-cells', async () => {
+  it('trace get falls back to list view when parent links are missing', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
@@ -146,18 +146,15 @@ describe('trace commands', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(
-      ['trace', 'get', 'trace-2', '--format', 'table', '--max-cells', '16'],
-      {
-        env,
-        stdoutIsTTY: true,
-      },
-    );
+    const result = await runCli(['traces', 'get', 'trace-2', '--format', 'table'], {
+      env,
+      stdoutIsTTY: true,
+    });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('tree_mode');
     expect(result.stdout).toContain('fallback');
-    expect(result.stderr).toContain('truncated: showing');
+    expect(result.stderr).toBe('');
   });
 
   it('trace spans returns sorted rows', async () => {
@@ -197,7 +194,7 @@ describe('trace commands', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['trace', 'spans', 'trace-3', '--format', 'json'], { env });
+    const result = await runCli(['traces', 'spans', 'trace-3', '--format', 'json'], { env });
     expect(result.exitCode).toBe(0);
     const firstDuration = result.stdout.indexOf('\"duration_ms\": 20');
     const secondDuration = result.stdout.indexOf('\"duration_ms\": 10');

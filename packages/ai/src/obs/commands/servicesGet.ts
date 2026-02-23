@@ -5,12 +5,20 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
 import { SERVICE_OPERATIONS_APL_TEMPLATE, SERVICE_SUMMARY_APL_TEMPLATE } from '../otel/aplTemplates';
-import { requireAuth, resolveTraceDataset, toRows, write } from './serviceCommon';
+import {
+  aplFieldRef,
+  aplStringLiteral,
+  requireAuth,
+  resolveTraceDataset,
+  toRows,
+  write,
+} from './servicesCommon';
 
 const expandTemplate = (template: string, replacements: Record<string, string>) => {
   let output = template;
@@ -58,22 +66,22 @@ export const serviceGet = withObsContext(async ({ config, explain }, ...args: un
   const durationField = fields.durationField ?? 'duration_ms';
 
   const summaryApl = expandTemplate(SERVICE_SUMMARY_APL_TEMPLATE, {
-    SERVICE_FIELD: fields.serviceField!,
-    STATUS_FIELD: statusField,
-    DURATION_FIELD: durationField,
+    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
+    STATUS_FIELD: aplFieldRef(statusField),
+    DURATION_FIELD: aplFieldRef(durationField),
     START: timeRange.start,
     END: timeRange.end,
-    SERVICE: service,
+    SERVICE: aplStringLiteral(service),
   });
 
   const operationsApl = expandTemplate(SERVICE_OPERATIONS_APL_TEMPLATE, {
-    SERVICE_FIELD: fields.serviceField!,
-    SPAN_NAME_FIELD: fields.spanNameField!,
-    STATUS_FIELD: statusField,
-    DURATION_FIELD: durationField,
+    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
+    SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
+    STATUS_FIELD: aplFieldRef(statusField),
+    DURATION_FIELD: aplFieldRef(durationField),
     START: timeRange.start,
     END: timeRange.end,
-    SERVICE: service,
+    SERVICE: aplStringLiteral(service),
   });
 
   const [summaryResponse, operationsResponse] = await Promise.all([
@@ -109,7 +117,7 @@ export const serviceGet = withObsContext(async ({ config, explain }, ...args: un
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom service get',
+      command: 'axiom services get',
       timeRange,
       meta: {
         truncated: false,
@@ -127,7 +135,7 @@ export const serviceGet = withObsContext(async ({ config, explain }, ...args: un
   if (format === 'ndjson') {
     const result = renderNdjson(operations, ['operation', 'spans', 'error_rate', 'p95_ms'], {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     write(result.stdout);
     return;
@@ -137,7 +145,7 @@ export const serviceGet = withObsContext(async ({ config, explain }, ...args: un
     const operationColumns = ['operation', 'spans', 'error_rate', 'p95_ms'];
     const operationCsv = renderTabular(operations, operationColumns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
 
@@ -157,14 +165,14 @@ export const serviceGet = withObsContext(async ({ config, explain }, ...args: un
   const summaryRows = Object.entries(summary).map(([key, value]) => ({ key, value }));
   const summaryResult = renderTabular(summaryRows, ['key', 'value'], {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
 
   const operationColumns = ['operation', 'spans', 'error_rate', 'p95_ms'];
   const operationResult = renderTabular(operations, operationColumns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
 

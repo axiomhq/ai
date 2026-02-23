@@ -65,20 +65,20 @@ describe('service traces/logs', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'traces', 'checkout', '--limit', '1', '--format', 'json'], {
+    const result = await runCli(['services', 'traces', 'checkout', '--format', 'json'], {
       env,
     });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('"trace_id": "trace-1"');
-    expect(result.stdout).not.toContain('"trace_id": "trace-2"');
+    expect(result.stdout).toContain('"trace_id": "trace-2"');
 
     const callBody = JSON.parse(String(fetchMock.mock.calls[2][1].body));
-    expect(callBody.apl).toContain('by trace_id=trace_id');
-    expect(callBody.apl).toContain('where service.name == "checkout"');
+    expect(callBody.apl).toContain("by trace_id=['trace_id']");
+    expect(callBody.apl).toContain("where ['service.name'] == \"checkout\"");
   });
 
-  it('service logs supports logs dataset override and mcp output', async () => {
+  it('service logs supports dataset alias override and mcp output', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(logsSchema), { status: 200 }))
@@ -108,13 +108,11 @@ describe('service traces/logs', () => {
 
     const result = await runCli(
       [
-        'service',
+        'services',
         'logs',
         'checkout',
-        '--logs-dataset',
+        '--dataset',
         'logs',
-        '--limit',
-        '1',
         '--format',
         'mcp',
       ],
@@ -126,7 +124,7 @@ describe('service traces/logs', () => {
     expect(result.stdout).toContain('```csv');
 
     const callBody = JSON.parse(String(fetchMock.mock.calls[1][1].body));
-    expect(callBody.apl).toContain('limit 1');
+    expect(callBody.apl).toContain('| sort by _time desc');
   });
 
   it('service logs errors when no logs dataset is detected', async () => {
@@ -141,10 +139,10 @@ describe('service traces/logs', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'logs', 'checkout', '--format', 'json'], { env });
+    const result = await runCli(['services', 'logs', 'checkout', '--format', 'json'], { env });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('axiom service detect --explain');
+    expect(result.stderr).toContain('axiom services detect --explain');
     expect(result.stderr).toContain('--logs-dataset');
   });
 });

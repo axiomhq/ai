@@ -1,11 +1,36 @@
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const LEGACY_MATCH_METADATA_FIELDS = new Set(['_time', '_sysTime', '_rowId']);
+
+const flattenLegacyEnvelope = (row: Record<string, unknown>): Record<string, unknown> => {
+  const envelopeKey = ['data', 'fields', 'row'].find((key) => isObject(row[key]));
+  if (!envelopeKey) {
+    return row;
+  }
+
+  const nested = flattenLegacyEnvelope(row[envelopeKey] as Record<string, unknown>);
+  const outerEntries = Object.entries(row).filter(
+    ([key]) => key !== envelopeKey && !LEGACY_MATCH_METADATA_FIELDS.has(key),
+  );
+
+  if (outerEntries.length === 0) {
+    return nested;
+  }
+
+  return {
+    ...Object.fromEntries(outerEntries),
+    ...nested,
+  };
+};
+
 const objectRows = (rows: unknown): Record<string, unknown>[] => {
   if (!Array.isArray(rows)) {
     return [];
   }
-  return rows.filter((row): row is Record<string, unknown> => isObject(row));
+  return rows
+    .filter((row): row is Record<string, unknown> => isObject(row))
+    .map((row) => flattenLegacyEnvelope(row));
 };
 
 const rowsFromBucketEntries = (

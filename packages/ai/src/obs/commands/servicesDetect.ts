@@ -1,35 +1,16 @@
 import { createObsApiClient } from '../api/client';
-import {
-  fieldNamesFromDatasetFields,
-  normalizeDatasetFields,
-  normalizeDatasetList,
-} from '../api/binding';
-import { ObsApiError } from '../api/http';
 import { withObsContext } from '../cli/withObsContext';
 import { formatJson, formatMcp } from '../format/formatters';
 import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { buildTraceTieWarning, detectOtelDatasets } from '../otel/detectDatasets';
-
-const requireAuth = (orgId?: string, token?: string) => {
-  if (!orgId || !token) {
-    throw new Error('Missing Axiom credentials. Run `axiom auth login`.');
-  }
-};
-
-const write = (stdout: string, stderr = '') => {
-  if (stdout) {
-    process.stdout.write(stdout);
-  }
-  if (stderr) {
-    process.stderr.write(stderr);
-  }
-};
+import { listDatasetSchemas, requireAuth, write } from './servicesCommon';
 
 export const serviceDetect = withObsContext(async ({ config, explain }) => {
   requireAuth(config.orgId, config.token);
@@ -41,38 +22,11 @@ export const serviceDetect = withObsContext(async ({ config, explain }) => {
     explain,
   });
 
-  const datasetsResponse = await client.listDatasets();
-  const datasetNames = normalizeDatasetList(datasetsResponse.data)
-    .map((dataset) => dataset.name)
-    .filter(Boolean);
-
-  const fetchFields = async (datasetName: string) => {
-    try {
-      const schemaResponse = await client.getDatasetFields(datasetName);
-      const fields = normalizeDatasetFields(schemaResponse.data);
-      return {
-        datasetName,
-        fields: fieldNamesFromDatasetFields(fields),
-      };
-    } catch (error) {
-      if (error instanceof ObsApiError) {
-        return null;
-      }
-      throw error;
-    }
-  };
-
-  const schemaMap: Record<string, string[]> = {};
-  const concurrency = 8;
-  for (let index = 0; index < datasetNames.length; index += concurrency) {
-    const batch = datasetNames.slice(index, index + concurrency);
-    const results = await Promise.all(batch.map((datasetName) => fetchFields(datasetName)));
-    for (const result of results) {
-      if (result) {
-        schemaMap[result.datasetName] = result.fields;
-      }
-    }
-  }
+  const schemaMap = await listDatasetSchemas(client, {
+    url: config.url,
+    orgId: config.orgId!,
+    token: config.token!,
+  });
 
   const detection = detectOtelDatasets(schemaMap);
   const rows = [
@@ -138,7 +92,7 @@ export const serviceDetect = withObsContext(async ({ config, explain }) => {
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom service detect',
+      command: 'axiom services detect',
       meta: {
         truncated: false,
         rowsShown: rows.length,
@@ -201,7 +155,7 @@ export const serviceDetect = withObsContext(async ({ config, explain }) => {
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -209,7 +163,7 @@ export const serviceDetect = withObsContext(async ({ config, explain }) => {
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
 
@@ -231,7 +185,7 @@ export const serviceDetect = withObsContext(async ({ config, explain }) => {
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
 

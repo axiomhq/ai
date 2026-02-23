@@ -5,12 +5,20 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
-import { SERVICE_LIST_APL_TEMPLATE } from '../otel/aplTemplates';
-import { requireAuth, resolveTraceDataset, toRows, write } from './serviceCommon';
+import { SERVICE_TRACES_APL_TEMPLATE } from '../otel/aplTemplates';
+import {
+  aplFieldRef,
+  aplStringLiteral,
+  requireAuth,
+  resolveTraceDataset,
+  toRows,
+  write,
+} from './servicesCommon';
 
 const expandTemplate = (template: string, replacements: Record<string, string>) => {
   let output = template;
@@ -22,24 +30,18 @@ const expandTemplate = (template: string, replacements: Record<string, string>) 
 
 const sortRows = (rows: Record<string, unknown>[]) =>
   [...rows].sort((a, b) => {
-    const errorA = Number(a.error_rate ?? 0);
-    const errorB = Number(b.error_rate ?? 0);
+    const errorA = Number(a.error ?? 0);
+    const errorB = Number(b.error ?? 0);
     if (errorB !== errorA) {
       return errorB - errorA;
     }
-
-    const spansA = Number(a.spans ?? 0);
-    const spansB = Number(b.spans ?? 0);
-    if (spansB !== spansA) {
-      return spansB - spansA;
-    }
-
-    return String(a.service ?? '').localeCompare(String(b.service ?? ''));
+    return String(b.started_at ?? '').localeCompare(String(a.started_at ?? ''));
   });
 
-export const serviceList = withObsContext(async ({ config, explain }, ...args: unknown[]) => {
+export const serviceTraces = withObsContext(async ({ config, explain }, ...args: unknown[]) => {
   requireAuth(config.orgId, config.token);
 
+  const service = String(args[0] ?? '');
   const command = args[args.length - 1] as Command;
   const options = command.optsWithGlobals() as {
     dataset?: string;
@@ -47,7 +49,6 @@ export const serviceList = withObsContext(async ({ config, explain }, ...args: u
     until?: string;
     start?: string;
     end?: string;
-    limit?: number | string;
   };
 
   const timeRange = resolveTimeRange(
@@ -68,17 +69,24 @@ export const serviceList = withObsContext(async ({ config, explain }, ...args: u
     token: config.token!,
     explain,
     overrideDataset: options.dataset,
-    requiredFields: ['serviceField', 'traceIdField', 'spanIdField'],
+    requiredFields: ['serviceField', 'traceIdField', 'spanNameField'],
   });
 
-  const statusField = fields.statusField ?? 'status.code';
   const durationField = fields.durationField ?? 'duration_ms';
-  const apl = expandTemplate(SERVICE_LIST_APL_TEMPLATE, {
-    SERVICE_FIELD: fields.serviceField!,
-    STATUS_FIELD: statusField,
-    DURATION_FIELD: durationField,
+  const statusField = fields.statusField;
+  const errorExpression = statusField
+    ? `${aplFieldRef(statusField)} == "error"`
+    : '0';
+
+  const apl = expandTemplate(SERVICE_TRACES_APL_TEMPLATE, {
+    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
+    TRACE_ID_FIELD: aplFieldRef(fields.traceIdField!),
+    SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
+    DURATION_FIELD: aplFieldRef(durationField),
+    ERROR_EXPR: errorExpression,
     START: timeRange.start,
     END: timeRange.end,
+    SERVICE: aplStringLiteral(service),
   });
 
   const queryResponse = await client.queryApl(dataset, apl, {
@@ -87,28 +95,14 @@ export const serviceList = withObsContext(async ({ config, explain }, ...args: u
     maxBinAutoGroups: 40,
   });
 
-  const limit = options.limit !== undefined ? Number(options.limit) : 20;
   let rows = sortRows(toRows(queryResponse.data));
-  if (Number.isFinite(limit) && limit > 0) {
-    rows = rows.slice(0, limit);
-  }
 
-  const includeErrorColumns = rows.some((row) => row.error_spans !== undefined || row.error_rate !== undefined);
-  const includeDuration = rows.some((row) => row.p95_ms !== undefined);
-
-  const columns = ['service', 'last_seen', 'spans'];
-  if (includeErrorColumns) {
-    columns.push('error_spans', 'error_rate');
-  }
-  if (includeDuration) {
-    columns.push('p95_ms');
-  }
-
+  const columns = ['trace_id', 'root_operation', 'started_at', 'duration_ms', 'span_count', 'error'];
   const format = resolveOutputFormat(config.format as OutputFormat, 'list', true);
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom service list',
+      command: 'axiom services traces',
       timeRange,
       meta: {
         truncated: false,
@@ -123,7 +117,7 @@ export const serviceList = withObsContext(async ({ config, explain }, ...args: u
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -131,11 +125,12 @@ export const serviceList = withObsContext(async ({ config, explain }, ...args: u
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
+
     write(
-      formatMcp('# Services (last 30m)', [
+      formatMcp(`# Service Traces: ${service}`, [
         {
           language: 'csv',
           content: csvResult.stdout.trimEnd(),
@@ -147,7 +142,7 @@ export const serviceList = withObsContext(async ({ config, explain }, ...args: u
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   write(result.stdout, result.stderr);

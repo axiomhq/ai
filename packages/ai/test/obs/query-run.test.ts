@@ -115,6 +115,37 @@ describe('query run', () => {
     expect(result.stdout).toContain('limit 1');
   });
 
+  it('prints a concise error when no APL source is provided', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', 'run', '--format', 'json'], { env });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.trim()).toBe('Missing APL input. Use --apl, --file, or --stdin.');
+    expect(result.stderr).not.toContain('at resolveApl');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('prints a concise error when --stdin is empty', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const originalStdin = process.stdin;
+    const stdin = Readable.from(['   \n']) as NodeJS.ReadStream;
+    Object.defineProperty(stdin, 'isTTY', { value: false, configurable: true });
+    Object.defineProperty(process, 'stdin', { value: stdin, configurable: true });
+
+    const result = await runCli(['query', 'run', '--stdin', '--format', 'json'], { env });
+
+    Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.trim()).toBe('No APL provided on stdin');
+    expect(result.stderr).not.toContain('at resolveApl');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('still accepts legacy optional dataset argument', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ matches: [{ value: 1 }] }), { status: 200 }),

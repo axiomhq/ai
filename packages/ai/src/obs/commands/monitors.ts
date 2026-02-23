@@ -1,11 +1,13 @@
 import type { Command } from 'commander';
 import { createObsApiClient } from '../api/client';
+import { ObsApiError } from '../api/http';
 import { withObsContext } from '../cli/withObsContext';
 import { formatJson, formatMcp } from '../format/formatters';
 import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
@@ -22,12 +24,18 @@ type MonitorRecord = {
 };
 
 type MonitorHistoryRecord = {
-  started_at?: string;
+  checkId?: string;
+  check_id?: string;
+  name?: string | null;
+  message?: string | null;
+  timestamp?: string;
   duration_ms?: number | null;
   state?: string;
   triggered?: boolean;
-  message?: string | null;
+  started_at?: string;
 };
+
+type MonitorHistoryResponse = MonitorHistoryRecord[] | { history: MonitorHistoryRecord[] };
 
 const requireAuth = (orgId?: string, token?: string) => {
   if (!orgId || !token) {
@@ -54,29 +62,45 @@ const normalizeMonitor = (monitor: MonitorRecord) => ({
   last_state: monitor.last_state ?? 'unknown',
 });
 
-const truncateMessage = (message?: string | null) => {
-  if (!message) {
-    return '';
+const normalizeHistory = (row: MonitorHistoryRecord) => {
+  const normalized: Record<string, unknown> = {};
+  if (row.checkId !== undefined) {
+    normalized.checkId = row.checkId;
+  } else if (row.check_id !== undefined) {
+    normalized.checkId = row.check_id;
   }
-  if (message.length <= 22) {
-    return message;
+  if (row.name !== undefined) {
+    normalized.name = row.name;
   }
-  return `${message.slice(0, 19)}...`;
+  if (row.state !== undefined) {
+    normalized.state = row.state;
+  }
+  if (row.timestamp !== undefined) {
+    normalized.timestamp = row.timestamp;
+  } else if (row.started_at !== undefined) {
+    normalized.timestamp = row.started_at;
+  }
+  if (row.duration_ms !== undefined) {
+    normalized.duration_ms = row.duration_ms;
+  }
+  if (row.message !== undefined) {
+    normalized.message = row.message;
+  }
+  if (row.triggered !== undefined) {
+    normalized.triggered = row.triggered;
+  }
+  return normalized;
 };
 
-const normalizeHistory = (row: MonitorHistoryRecord) => ({
-  started_at: row.started_at ?? '',
-  duration_ms: row.duration_ms ?? null,
-  state: row.state ?? 'unknown',
-  triggered: row.triggered ?? false,
-  message: truncateMessage(row.message),
-});
+const formatMonitorHistoryValidationError = (error: ObsApiError) => {
+  if (error.detail) {
+    return `Monitor history request validation failed: ${error.detail}`;
+  }
+  return 'Monitor history request validation failed. Check --since/--until or --start/--end values.';
+};
 
 export const monitorList = withObsContext(async ({ config, explain }, ...args: unknown[]) => {
   requireAuth(config.orgId, config.token);
-  const command = args[args.length - 1] as Command;
-  const options = command.optsWithGlobals() as { limit?: number | string };
-  const limit = options.limit !== undefined ? Number(options.limit) : 100;
 
   const client = createObsApiClient({
     url: config.url,
@@ -87,13 +111,13 @@ export const monitorList = withObsContext(async ({ config, explain }, ...args: u
 
   const response = await client.listMonitors<MonitorRecord[] | { monitors: MonitorRecord[] }>();
   const monitors = Array.isArray(response.data) ? response.data : response.data.monitors ?? [];
-  const rows = monitors.slice(0, limit).map(normalizeMonitor);
+  const rows = monitors.map(normalizeMonitor);
   const columns = ['id', 'name', 'dataset', 'enabled', 'schedule', 'last_run_at', 'last_state'];
   const format = resolveOutputFormat(config.format as OutputFormat, 'list', true);
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom monitor list',
+      command: 'axiom monitors list',
       meta: {
         truncated: false,
         rowsShown: rows.length,
@@ -107,7 +131,7 @@ export const monitorList = withObsContext(async ({ config, explain }, ...args: u
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -115,7 +139,7 @@ export const monitorList = withObsContext(async ({ config, explain }, ...args: u
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
     write(
@@ -131,7 +155,7 @@ export const monitorList = withObsContext(async ({ config, explain }, ...args: u
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   write(result.stdout, result.stderr);
@@ -155,7 +179,7 @@ export const monitorGet = withObsContext(async ({ config, explain }, ...args: un
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom monitor get',
+      command: 'axiom monitors get',
       meta: {
         truncated: false,
         rowsShown: 1,
@@ -169,7 +193,7 @@ export const monitorGet = withObsContext(async ({ config, explain }, ...args: un
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson([row], columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson([row], columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -177,7 +201,7 @@ export const monitorGet = withObsContext(async ({ config, explain }, ...args: un
   if (format === 'mcp') {
     const csvResult = renderTabular([row], columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
     write(
@@ -193,7 +217,7 @@ export const monitorGet = withObsContext(async ({ config, explain }, ...args: un
 
   const result = renderTabular([row], columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   write(result.stdout, result.stderr);
@@ -230,22 +254,40 @@ export const monitorHistory = withObsContext(async ({ config, explain }, ...args
     explain,
   });
 
-  const response = await client.getMonitorHistory<MonitorHistoryRecord[] | { history: MonitorHistoryRecord[] }>(
-    id,
-    {
+  let response: { data: MonitorHistoryResponse };
+  try {
+    response = await client.getMonitorHistory<MonitorHistoryResponse>(id, {
       start: timeRange.start,
       end: timeRange.end,
-    },
-  );
+    });
+  } catch (error) {
+    if (error instanceof ObsApiError && error.status === 422) {
+      process.stderr.write(`${formatMonitorHistoryValidationError(error)}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    throw error;
+  }
 
   const history = Array.isArray(response.data) ? response.data : response.data.history ?? [];
   const rows = history.map(normalizeHistory);
-  const columns = ['started_at', 'duration_ms', 'state', 'triggered', 'message'];
+  const preferredColumns = [
+    'checkId',
+    'name',
+    'state',
+    'timestamp',
+    'duration_ms',
+    'message',
+    'triggered',
+  ];
+  const columns = preferredColumns.filter((column) =>
+    rows.some((row) => Object.prototype.hasOwnProperty.call(row, column)),
+  );
   const format = resolveOutputFormat(config.format as OutputFormat, 'list', true);
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom monitor history',
+      command: 'axiom monitors history',
       timeRange,
       meta: {
         truncated: false,
@@ -260,7 +302,7 @@ export const monitorHistory = withObsContext(async ({ config, explain }, ...args
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -268,7 +310,7 @@ export const monitorHistory = withObsContext(async ({ config, explain }, ...args
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
     write(
@@ -284,7 +326,7 @@ export const monitorHistory = withObsContext(async ({ config, explain }, ...args
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   write(result.stdout, result.stderr);

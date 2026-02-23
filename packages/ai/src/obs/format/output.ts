@@ -28,6 +28,8 @@ export type RenderResult = {
   meta: FormatMeta;
 };
 
+export const UNLIMITED_MAX_CELLS = Number.MAX_SAFE_INTEGER;
+
 export const resolveOutputFormat = (
   format: OutputFormat,
   kind: OutputKind,

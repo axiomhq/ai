@@ -13,6 +13,41 @@ type ProgramOptions = {
   overrides?: Record<string, string>;
 };
 
+const formatTopLevelHelp = (
+  cmd: Command,
+  helper: ReturnType<Command['createHelp']>,
+) => {
+  const usage = `Usage: ${helper.commandUsage(cmd)}`;
+  const description = helper.commandDescription(cmd);
+  const options = helper
+    .visibleOptions(cmd)
+    .map((option) => `  ${helper.optionTerm(option).padEnd(24)}  ${helper.optionDescription(option)}`)
+    .join('\n');
+  const commands = helper
+    .visibleCommands(cmd)
+    .sort((a, b) => helper.subcommandTerm(a).localeCompare(helper.subcommandTerm(b)))
+    .map((entry) => ({
+      term: helper.subcommandTerm(entry),
+      description: helper.subcommandDescription(entry),
+    }));
+  const rows = commands.map((row) => {
+    const [name, ...args] = row.term.split(/\s+/);
+    return {
+      name,
+      args: args.join(' '),
+      description: row.description,
+    };
+  });
+  const nameWidth = rows.reduce((max, row) => Math.max(max, row.name.length), 0);
+  const argsWidth = rows.reduce((max, row) => Math.max(max, row.args.length), 0);
+  const commandLines = commands.map(
+    (_, index) =>
+      `  ${rows[index].name.padEnd(nameWidth)}  ${rows[index].args.padEnd(argsWidth)}  ${rows[index].description}`.trimEnd(),
+  );
+
+  return [usage, description, `Options:\n${options}`, `Commands:\n${commandLines.join('\n')}`].join('\n\n') + '\n';
+};
+
 export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command => {
   loadEnvConfig(process.cwd());
 
@@ -22,6 +57,18 @@ export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command 
     .name('axiom')
     .description("Axiom's CLI to manage your objects and run evals")
     .version(__SDK_VERSION__);
+
+  program.configureHelp({
+    formatHelp: (cmd, helper) => {
+      if (cmd.parent) {
+        const defaultHelp = Object.getPrototypeOf(helper) as {
+          formatHelp: (this: unknown, command: Command, help: typeof helper) => string;
+        };
+        return defaultHelp.formatHelp.call(helper, cmd, helper);
+      }
+      return formatTopLevelHelp(cmd, helper);
+    },
+  });
 
   program.hook('preAction', async (_, actionCommand: Command) => {
     const commandName = actionCommand.name();

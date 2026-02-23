@@ -31,6 +31,7 @@ export const runCli = async (args: string[], options: RunCliOptions = {}): Promi
 
   const originalIsTTY = process.stdout.isTTY;
   const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
   Object.defineProperty(process.stdout, 'isTTY', {
     value: stdoutIsTTY,
     configurable: true,
