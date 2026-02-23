@@ -28,7 +28,7 @@ describe('obs explain', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ matches: [] }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['trace', 'list'], {
+    const result = await runCli(['traces', 'list'], {
       stdoutIsTTY: true,
       env: { AXIOM_EXPLAIN: '1', AXIOM_TOKEN: 'token', AXIOM_ORG_ID: 'org' },
     });
@@ -60,7 +60,7 @@ describe('obs explain', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ matches: [] }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['trace', 'list', '--explain'], {
+    const result = await runCli(['traces', 'list', '--explain'], {
       stdoutIsTTY: true,
       env: { AXIOM_EXPLAIN: '0', AXIOM_TOKEN: 'token', AXIOM_ORG_ID: 'org' },
     });

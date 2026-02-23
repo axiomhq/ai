@@ -5,11 +5,19 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { TRACE_SPANS_APL_TEMPLATE } from '../otel/aplTemplates';
-import { requireAuth, resolveTraceDataset, toRows, write } from './serviceCommon';
+import {
+  aplFieldRef,
+  aplStringLiteral,
+  requireAuth,
+  resolveTraceDataset,
+  toRows,
+  write,
+} from './servicesCommon';
 
 const expandTemplate = (template: string, replacements: Record<string, string>) => {
   let output = template;
@@ -48,14 +56,14 @@ export const traceSpans = withObsContext(async ({ config, explain }, ...args: un
   });
 
   const apl = expandTemplate(TRACE_SPANS_APL_TEMPLATE, {
-    FILTER: `where ${fields.traceIdField!} == "${traceId}"`,
-    DURATION_FIELD: fields.durationField ?? 'duration_ms',
-    SERVICE_FIELD: fields.serviceField!,
-    SPAN_NAME_FIELD: fields.spanNameField!,
-    SPAN_KIND_FIELD: fields.spanKindField ?? 'kind',
-    STATUS_FIELD: fields.statusField ?? 'status.code',
-    SPAN_ID_FIELD: fields.spanIdField!,
-    PARENT_SPAN_ID_FIELD: fields.parentSpanIdField ?? 'parent_span_id',
+    FILTER: `where ${aplFieldRef(fields.traceIdField!)} == ${aplStringLiteral(traceId)}`,
+    DURATION_FIELD: aplFieldRef(fields.durationField ?? 'duration_ms'),
+    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
+    SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
+    SPAN_KIND_FIELD: aplFieldRef(fields.spanKindField ?? 'kind'),
+    STATUS_FIELD: aplFieldRef(fields.statusField ?? 'status.code'),
+    SPAN_ID_FIELD: aplFieldRef(fields.spanIdField!),
+    PARENT_SPAN_ID_FIELD: aplFieldRef(fields.parentSpanIdField ?? 'parent_span_id'),
   });
 
   const queryResponse = await client.queryApl(dataset, apl, {
@@ -69,7 +77,7 @@ export const traceSpans = withObsContext(async ({ config, explain }, ...args: un
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom trace spans',
+      command: 'axiom traces spans',
       meta: {
         truncated: false,
         rowsShown: rows.length,
@@ -83,7 +91,7 @@ export const traceSpans = withObsContext(async ({ config, explain }, ...args: un
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -91,7 +99,7 @@ export const traceSpans = withObsContext(async ({ config, explain }, ...args: un
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
 
@@ -108,7 +116,7 @@ export const traceSpans = withObsContext(async ({ config, explain }, ...args: un
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   write(result.stdout, result.stderr);

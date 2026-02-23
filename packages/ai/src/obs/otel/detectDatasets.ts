@@ -109,6 +109,6 @@ export const requireOtelFields = (
   }
 
   throw new Error(
-    `Dataset ${dataset} is missing required fields: ${missing.join(', ')}. Run \`axiom service detect --explain\` to inspect mappings.`,
+    `Dataset ${dataset} is missing required fields: ${missing.join(', ')}. Run \`axiom services detect --explain\` to inspect mappings.`,
   );
 };

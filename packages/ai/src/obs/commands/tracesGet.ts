@@ -5,11 +5,19 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { TRACE_SPANS_APL_TEMPLATE } from '../otel/aplTemplates';
-import { requireAuth, resolveTraceDataset, toRows, write } from './serviceCommon';
+import {
+  aplFieldRef,
+  aplStringLiteral,
+  requireAuth,
+  resolveTraceDataset,
+  toRows,
+  write,
+} from './servicesCommon';
 
 type SpanRow = {
   start?: string;
@@ -141,14 +149,14 @@ export const traceGet = withObsContext(async ({ config, explain }, ...args: unkn
   });
 
   const apl = expandTemplate(TRACE_SPANS_APL_TEMPLATE, {
-    FILTER: `where ${fields.traceIdField!} == "${traceId}"`,
-    DURATION_FIELD: fields.durationField ?? 'duration_ms',
-    SERVICE_FIELD: fields.serviceField!,
-    SPAN_NAME_FIELD: fields.spanNameField!,
-    SPAN_KIND_FIELD: fields.spanKindField ?? 'kind',
-    STATUS_FIELD: fields.statusField ?? 'status.code',
-    SPAN_ID_FIELD: fields.spanIdField!,
-    PARENT_SPAN_ID_FIELD: fields.parentSpanIdField ?? 'parent_span_id',
+    FILTER: `where ${aplFieldRef(fields.traceIdField!)} == ${aplStringLiteral(traceId)}`,
+    DURATION_FIELD: aplFieldRef(fields.durationField ?? 'duration_ms'),
+    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
+    SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
+    SPAN_KIND_FIELD: aplFieldRef(fields.spanKindField ?? 'kind'),
+    STATUS_FIELD: aplFieldRef(fields.statusField ?? 'status.code'),
+    SPAN_ID_FIELD: aplFieldRef(fields.spanIdField!),
+    PARENT_SPAN_ID_FIELD: aplFieldRef(fields.parentSpanIdField ?? 'parent_span_id'),
   });
 
   const queryResponse = await client.queryApl(dataset, apl, {
@@ -180,7 +188,7 @@ export const traceGet = withObsContext(async ({ config, explain }, ...args: unkn
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom trace get',
+      command: 'axiom traces get',
       meta: {
         truncated: false,
         rowsShown: topRows.length,
@@ -196,7 +204,7 @@ export const traceGet = withObsContext(async ({ config, explain }, ...args: unkn
   if (format === 'ndjson') {
     const result = renderNdjson(topRows, ['start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'], {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     write(result.stdout);
     return;
@@ -205,7 +213,7 @@ export const traceGet = withObsContext(async ({ config, explain }, ...args: unkn
   if (format === 'mcp') {
     const csvResult = renderTabular(topRows, ['start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'], {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
 
@@ -229,13 +237,13 @@ export const traceGet = withObsContext(async ({ config, explain }, ...args: unkn
   const metadataRows = Object.entries(metadata).map(([key, value]) => ({ key, value }));
   const metadataTable = renderTabular(metadataRows, ['key', 'value'], {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
 
   const topTable = renderTabular(topRows, ['start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'], {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
 

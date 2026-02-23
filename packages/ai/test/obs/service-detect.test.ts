@@ -71,7 +71,7 @@ describe('service detect', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'detect', '--format', 'table'], {
+    const result = await runCli(['services', 'detect', '--format', 'table'], {
       env,
       stdoutIsTTY: true,
     });
@@ -94,7 +94,7 @@ describe('service detect', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'detect', '--format', 'json'], { env });
+    const result = await runCli(['services', 'detect', '--format', 'json'], { env });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('"traces"');
     expect(result.stdout).toContain('"dataset": null');
@@ -121,7 +121,7 @@ describe('service detect', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'detect', '--format', 'mcp'], { env });
+    const result = await runCli(['services', 'detect', '--format', 'mcp'], { env });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('# Service Dataset Detection');
     expect(result.stdout).toContain('```csv');

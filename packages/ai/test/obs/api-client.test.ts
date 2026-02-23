@@ -128,7 +128,7 @@ describe('obs api client', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.axiom.co/v2/monitors/monitor/history?start=2026-01-01T00%3A00%3A00Z&end=2026-01-02T00%3A00%3A00Z',
+      'https://api.axiom.co/v2/monitors/monitor/history?startTime=2026-01-01T00%3A00%3A00Z&endTime=2026-01-02T00%3A00%3A00Z',
       expect.objectContaining({ method: 'GET' }),
     );
   });
@@ -204,6 +204,41 @@ describe('obs api client', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('injects dataset after let statements', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new ObsApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(
+      'traces',
+      `let start = datetime(2026-01-01T00:00:00Z);
+let end = datetime(2026-01-01T01:00:00Z);
+range start to end | count()`,
+      { maxBinAutoGroups: 40 },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          apl:
+            "let start = datetime(2026-01-01T00:00:00Z);\nlet end = datetime(2026-01-01T01:00:00Z);\n['traces'] | range start to end | count()",
+          maxBinAutoGroups: 40,
+        }),
       }),
     );
   });

@@ -23,35 +23,55 @@ const aplIsDatasetScoped = (apl: string) => /^\s*\[\s*['"][^'"]+['"]\s*\]\s*\|/.
 
 const escapeDatasetForRegex = (dataset: string) => dataset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const rewriteLeadingDatasetPipe = (dataset: string, apl: string) => {
+const splitAplPrelude = (apl: string) => {
   const trimmed = apl.trim();
-  const pattern = new RegExp(`^${escapeDatasetForRegex(dataset)}\\s*\\|\\s*(.+)$`, 's');
-  const match = trimmed.match(pattern);
+  const match = trimmed.match(/^((?:\s*let\b[\s\S]*?;\s*)+)([\s\S]*)$/);
   if (!match) {
-    return trimmed;
+    return { prelude: '', body: trimmed };
   }
-  return `['${escapeAplDataset(dataset)}'] | ${match[1].trim()}`;
+  return {
+    prelude: match[1],
+    body: match[2].trim(),
+  };
+};
+
+const withAplPrelude = (prelude: string, body: string) => {
+  if (!prelude) {
+    return body;
+  }
+  return `${prelude}${body}`.trim();
+};
+
+const rewriteLeadingDatasetPipe = (dataset: string, apl: string) => {
+  const { prelude, body } = splitAplPrelude(apl);
+  const pattern = new RegExp(`^${escapeDatasetForRegex(dataset)}\\s*\\|\\s*(.+)$`, 's');
+  const match = body.match(pattern);
+  if (!match) {
+    return withAplPrelude(prelude, body);
+  }
+  return withAplPrelude(prelude, `['${escapeAplDataset(dataset)}'] | ${match[1].trim()}`);
 };
 
 const rewriteAplDatasetShorthand = (apl: string) => {
-  const trimmed = apl.trim();
-  if (aplIsDatasetScoped(trimmed)) {
-    return trimmed;
+  const { prelude, body } = splitAplPrelude(apl);
+  if (aplIsDatasetScoped(body)) {
+    return withAplPrelude(prelude, body);
   }
 
-  const match = trimmed.match(/^([A-Za-z0-9_./:-]+)\s*\|\s*(.+)$/s);
+  const match = body.match(/^([A-Za-z0-9_./:-]+)\s*\|\s*(.+)$/s);
   if (!match) {
-    return trimmed;
+    return withAplPrelude(prelude, body);
   }
-  return `['${escapeAplDataset(match[1])}'] | ${match[2].trim()}`;
+  return withAplPrelude(prelude, `['${escapeAplDataset(match[1])}'] | ${match[2].trim()}`);
 };
 
 const qualifyAplWithDataset = (dataset: string, apl: string) => {
   const normalized = rewriteLeadingDatasetPipe(dataset, apl);
-  if (aplIsDatasetScoped(normalized)) {
-    return normalized;
+  const { prelude, body } = splitAplPrelude(normalized);
+  if (aplIsDatasetScoped(body)) {
+    return withAplPrelude(prelude, body);
   }
-  return `['${escapeAplDataset(dataset)}'] | ${normalized}`;
+  return withAplPrelude(prelude, `['${escapeAplDataset(dataset)}'] | ${body}`);
 };
 
 export class ObsApiClient {
@@ -111,10 +131,10 @@ export class ObsApiClient {
   getMonitorHistory<T = unknown>(id: string, range: MonitorHistoryRange = {}) {
     const params = new URLSearchParams();
     if (range.start) {
-      params.set('start', range.start);
+      params.set('startTime', range.start);
     }
     if (range.end) {
-      params.set('end', range.end);
+      params.set('endTime', range.end);
     }
     const query = params.toString();
     const safeId = encodeURIComponent(id);
@@ -122,16 +142,6 @@ export class ObsApiClient {
     return requestJson<T>(this.config, { method: 'GET', path });
   }
 
-  listSavedQueries<T = unknown>() {
-    return requestJson<T>(this.config, { method: 'GET', path: '/v2/saved-queries' });
-  }
-
-  getSavedQuery<T = unknown>(id: string) {
-    return requestJson<T>(this.config, {
-      method: 'GET',
-      path: `/v2/saved-queries/${encodeURIComponent(id)}`,
-    });
-  }
 }
 
 export const createObsApiClient = (config: ObsApiClientConfig) => new ObsApiClient(config);

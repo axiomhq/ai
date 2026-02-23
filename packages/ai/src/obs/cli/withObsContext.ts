@@ -19,9 +19,17 @@ export const withObsContext = <TArgs extends unknown[]>(handler: ObsHandler<TArg
   const config = resolveObsConfig(flags);
   const explain = createExplainContext();
 
-  await handler({ config, explain }, ...args);
-
-  if (config.explain) {
-    emitExplainToStderr(explain);
+  try {
+    await handler({ config, explain }, ...args);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    if (!process.exitCode || process.exitCode === 0) {
+      process.exitCode = 1;
+    }
+  } finally {
+    if (config.explain) {
+      emitExplainToStderr(explain);
+    }
   }
 };

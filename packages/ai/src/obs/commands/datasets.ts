@@ -1,26 +1,17 @@
 import type { Command } from 'commander';
 import { createObsApiClient } from '../api/client';
-import { normalizeDatasetFields, normalizeDatasetList } from '../api/binding';
-import { renderJson, renderMcp, renderNdjson, renderTabular, resolveOutputFormat } from '../format/output';
+import { normalizeDataset, normalizeDatasetFields, normalizeDatasetList } from '../api/binding';
+import {
+  renderJson,
+  renderMcp,
+  renderNdjson,
+  renderTabular,
+  resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
+} from '../format/output';
 import { formatCsv } from '../format/formatters';
 import { withObsContext } from '../cli/withObsContext';
 import { resolveTimeRange } from '../time/range';
-
-type DatasetRecord = {
-  name?: string;
-  description?: string | null;
-  created_at?: string | null;
-  createdAt?: string | null;
-  modified_at?: string | null;
-  modifiedAt?: string | null;
-};
-
-const normalizeDataset = (dataset: DatasetRecord) => ({
-  name: dataset.name ?? '',
-  description: dataset.description ?? null,
-  created_at: dataset.created_at ?? dataset.createdAt ?? null,
-  modified_at: dataset.modified_at ?? dataset.modifiedAt ?? null,
-});
 
 const requireAuth = (orgId?: string, token?: string) => {
   if (!orgId || !token) {
@@ -89,10 +80,8 @@ const pickSampleColumns = (rows: Record<string, unknown>[]) => {
   return columns;
 };
 
-export const datasetList = withObsContext(async ({ config, explain }, _args, command: Command) => {
+export const datasetList = withObsContext(async ({ config, explain }, _args, _command: Command) => {
   requireAuth(config.orgId, config.token);
-  const options = command.optsWithGlobals();
-  const limit = Number(options.limit ?? 100);
 
   const client = createObsApiClient({
     url: config.url,
@@ -102,14 +91,14 @@ export const datasetList = withObsContext(async ({ config, explain }, _args, com
   });
 
   const response = await client.listDatasets();
-  const rows = normalizeDatasetList(response.data).slice(0, limit).map(normalizeDataset);
+  const rows = normalizeDatasetList(response.data);
   const columns = ['name', 'description', 'created_at', 'modified_at'];
   const format = resolveOutputFormat(config.format as any, 'list', true);
 
   if (format === 'json') {
-    const result = renderJson('axiom dataset list', rows, columns, {
+    const result = renderJson('axiom datasets list', rows, columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
@@ -118,15 +107,15 @@ export const datasetList = withObsContext(async ({ config, explain }, _args, com
   if (format === 'ndjson') {
     const result = renderNdjson(rows, columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
   }
 
   if (format === 'mcp') {
-    const csvResult = formatCsv(rows, columns, { maxCells: config.maxCells, quiet: true });
-    const header = buildMcpHeader('Datasets', csvResult.meta, config.maxCells);
+    const csvResult = formatCsv(rows, columns, { maxCells: UNLIMITED_MAX_CELLS, quiet: true });
+    const header = buildMcpHeader('Datasets', csvResult.meta, UNLIMITED_MAX_CELLS);
     const output = renderMcp(header, [{ language: 'csv', content: csvResult.stdout.trimEnd() }]);
     writeOutput(output.stdout);
     return;
@@ -134,7 +123,7 @@ export const datasetList = withObsContext(async ({ config, explain }, _args, com
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   writeOutput(result.stdout, result.stderr);
@@ -149,15 +138,15 @@ export const datasetGet = withObsContext(async ({ config, explain }, name: strin
     explain,
   });
 
-  const response = await client.getDataset<DatasetRecord>(name);
+  const response = await client.getDataset<Record<string, unknown>>(name);
   const row = normalizeDataset(response.data);
   const columns = ['name', 'description', 'created_at', 'modified_at'];
   const format = resolveOutputFormat(config.format as any, 'get', true);
 
   if (format === 'json') {
-    const result = renderJson('axiom dataset get', [row], columns, {
+    const result = renderJson('axiom datasets get', [row], columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
@@ -166,15 +155,15 @@ export const datasetGet = withObsContext(async ({ config, explain }, name: strin
   if (format === 'ndjson') {
     const result = renderNdjson([row], columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
   }
 
   if (format === 'mcp') {
-    const csvResult = formatCsv([row], columns, { maxCells: config.maxCells, quiet: true });
-    const header = buildMcpHeader(`Dataset ${name}`, csvResult.meta, config.maxCells);
+    const csvResult = formatCsv([row], columns, { maxCells: UNLIMITED_MAX_CELLS, quiet: true });
+    const header = buildMcpHeader(`Dataset ${name}`, csvResult.meta, UNLIMITED_MAX_CELLS);
     const output = renderMcp(header, [{ language: 'csv', content: csvResult.stdout.trimEnd() }]);
     writeOutput(output.stdout);
     return;
@@ -182,14 +171,16 @@ export const datasetGet = withObsContext(async ({ config, explain }, name: strin
 
   const result = renderTabular([row], columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   writeOutput(result.stdout, result.stderr);
 });
 
-export const datasetSchema = withObsContext(async ({ config, explain }, name: string) => {
+export const datasetSchema = withObsContext(async ({ config, explain }, ...args: unknown[]) => {
   requireAuth(config.orgId, config.token);
+  const name = String(args[0] ?? '');
+
   const client = createObsApiClient({
     url: config.url,
     orgId: config.orgId!,
@@ -198,19 +189,28 @@ export const datasetSchema = withObsContext(async ({ config, explain }, name: st
   });
 
   const response = await client.getDatasetFields(name);
-  const rows = normalizeDatasetFields(response.data).map((field) => ({
-    field: field.name,
-    type: field.type,
-    nullable: field.nullable ?? false,
-    description: field.description,
-  }));
-  const columns = ['field', 'type', 'nullable', 'description'];
+  const rows = normalizeDatasetFields(response.data).map((field) => {
+    const row: Record<string, unknown> = {
+      name: field.name,
+      type: field.type,
+    };
+    if (Object.prototype.hasOwnProperty.call(field, 'unit')) {
+      row.unit = field.unit ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(field, 'description')) {
+      row.description = field.description ?? null;
+    }
+    return row;
+  });
+  const columns = ['name', 'type', 'unit', 'description'].filter((column) =>
+    rows.some((row) => Object.prototype.hasOwnProperty.call(row, column)),
+  );
   const format = resolveOutputFormat(config.format as any, 'list', true);
 
   if (format === 'json') {
-    const result = renderJson('axiom dataset schema', rows, columns, {
+    const result = renderJson('axiom datasets schema', rows, columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
@@ -219,15 +219,15 @@ export const datasetSchema = withObsContext(async ({ config, explain }, name: st
   if (format === 'ndjson') {
     const result = renderNdjson(rows, columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
   }
 
   if (format === 'mcp') {
-    const csvResult = formatCsv(rows, columns, { maxCells: config.maxCells, quiet: true });
-    const header = buildMcpHeader(`Dataset ${name} schema`, csvResult.meta, config.maxCells);
+    const csvResult = formatCsv(rows, columns, { maxCells: UNLIMITED_MAX_CELLS, quiet: true });
+    const header = buildMcpHeader(`Dataset ${name} schema`, csvResult.meta, UNLIMITED_MAX_CELLS);
     const output = renderMcp(header, [{ language: 'csv', content: csvResult.stdout.trimEnd() }]);
     writeOutput(output.stdout);
     return;
@@ -235,17 +235,18 @@ export const datasetSchema = withObsContext(async ({ config, explain }, name: st
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   writeOutput(result.stdout, result.stderr);
 });
 
-export const datasetSample = withObsContext(async ({ config, explain }, name: string, command: Command) => {
+export const datasetSample = withObsContext(
+  async ({ config, explain }, name: string, _options: unknown, command: Command) => {
   requireAuth(config.orgId, config.token);
   const options = command.optsWithGlobals();
-  const limit = Number(options.limit ?? 20);
   const since = options.since ?? '15m';
+  const sampleSize = 20;
 
   const timeRange = resolveTimeRange({ since }, new Date(), since, '0m');
 
@@ -256,7 +257,10 @@ export const datasetSample = withObsContext(async ({ config, explain }, name: st
     explain,
   });
 
-  const apl = `range ${timeRange.start} to ${timeRange.end}\n| limit ${limit}`;
+  const apl = `let start = datetime(${timeRange.start});
+let end = datetime(${timeRange.end});
+where _time >= start and _time <= end
+| limit ${sampleSize}`;
   const response = await client.queryApl<{ matches: Record<string, unknown>[] }>(name, apl, {
     startTime: timeRange.start,
     endTime: timeRange.end,
@@ -267,9 +271,9 @@ export const datasetSample = withObsContext(async ({ config, explain }, name: st
   const format = resolveOutputFormat(config.format as any, 'list', true);
 
   if (format === 'json') {
-    const result = renderJson('axiom dataset sample', rows, columns, {
+    const result = renderJson('axiom datasets sample', rows, columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     }, timeRange);
     writeOutput(result.stdout);
     return;
@@ -278,15 +282,15 @@ export const datasetSample = withObsContext(async ({ config, explain }, name: st
   if (format === 'ndjson') {
     const result = renderNdjson(rows, columns, {
       format,
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
     });
     writeOutput(result.stdout);
     return;
   }
 
   if (format === 'mcp') {
-    const csvResult = formatCsv(rows, columns, { maxCells: config.maxCells, quiet: true });
-    const header = buildMcpHeader(`Dataset ${name} sample`, csvResult.meta, config.maxCells);
+    const csvResult = formatCsv(rows, columns, { maxCells: UNLIMITED_MAX_CELLS, quiet: true });
+    const header = buildMcpHeader(`Dataset ${name} sample`, csvResult.meta, UNLIMITED_MAX_CELLS);
     const output = renderMcp(header, [{ language: 'csv', content: csvResult.stdout.trimEnd() }]);
     writeOutput(output.stdout);
     return;
@@ -294,8 +298,9 @@ export const datasetSample = withObsContext(async ({ config, explain }, name: st
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   writeOutput(result.stdout, result.stderr);
-});
+  },
+);

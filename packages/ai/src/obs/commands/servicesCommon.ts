@@ -16,7 +16,98 @@ export const requireAuth = (orgId?: string, token?: string) => {
   }
 };
 
-const listSchemas = async (client: ReturnType<typeof createObsApiClient>) => {
+type SchemaMap = Record<string, string[]>;
+
+type ObsSchemaCacheScope = {
+  url: string;
+  orgId: string;
+  token: string;
+};
+
+type ObsSchemaCacheEntry = {
+  expiresAtMs: number;
+  schemaMap: SchemaMap;
+};
+
+const DEFAULT_SCHEMA_CACHE_TTL_MS = 30_000;
+const obsSchemaCache = new Map<string, ObsSchemaCacheEntry>();
+
+const parseCacheTtl = (value: string | undefined): number | null => {
+  if (value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return Math.floor(parsed);
+};
+
+const resolveSchemaCacheTtlMs = () => {
+  const override = parseCacheTtl(process.env.AXIOM_OBS_SCHEMA_CACHE_TTL_MS);
+  if (override !== null) {
+    return override;
+  }
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return 0;
+  }
+  return DEFAULT_SCHEMA_CACHE_TTL_MS;
+};
+
+const buildSchemaCacheKey = (scope: ObsSchemaCacheScope) =>
+  `${scope.url}\u0000${scope.orgId}\u0000${scope.token}`;
+
+const cloneSchemaMap = (schemaMap: SchemaMap): SchemaMap =>
+  Object.fromEntries(Object.entries(schemaMap).map(([dataset, fields]) => [dataset, [...fields]]));
+
+const readSchemaCache = (cacheKey: string): SchemaMap | null => {
+  const ttlMs = resolveSchemaCacheTtlMs();
+  if (ttlMs <= 0) {
+    return null;
+  }
+
+  const cached = obsSchemaCache.get(cacheKey);
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAtMs <= Date.now()) {
+    obsSchemaCache.delete(cacheKey);
+    return null;
+  }
+
+  return cloneSchemaMap(cached.schemaMap);
+};
+
+const writeSchemaCache = (cacheKey: string, schemaMap: SchemaMap) => {
+  const ttlMs = resolveSchemaCacheTtlMs();
+  if (ttlMs <= 0) {
+    return;
+  }
+
+  obsSchemaCache.set(cacheKey, {
+    expiresAtMs: Date.now() + ttlMs,
+    schemaMap: cloneSchemaMap(schemaMap),
+  });
+};
+
+export const clearObsSchemaCache = () => {
+  obsSchemaCache.clear();
+};
+
+const listSchemas = async (
+  client: ReturnType<typeof createObsApiClient>,
+  cacheScope?: ObsSchemaCacheScope,
+) => {
+  const cacheKey = cacheScope ? buildSchemaCacheKey(cacheScope) : null;
+  if (cacheKey) {
+    const cached = readSchemaCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const datasetsResponse = await client.listDatasets();
   const datasets = normalizeDatasetList(datasetsResponse.data);
 
@@ -36,7 +127,7 @@ const listSchemas = async (client: ReturnType<typeof createObsApiClient>) => {
     }
   };
 
-  const schemaMap: Record<string, string[]> = {};
+  const schemaMap: SchemaMap = {};
   const queue = datasets.map((dataset) => dataset.name).filter(Boolean);
   const concurrency = 8;
 
@@ -50,8 +141,17 @@ const listSchemas = async (client: ReturnType<typeof createObsApiClient>) => {
     }
   }
 
-  return schemaMap;
+  if (cacheKey) {
+    writeSchemaCache(cacheKey, schemaMap);
+  }
+
+  return cloneSchemaMap(schemaMap);
 };
+
+export const listDatasetSchemas = async (
+  client: ReturnType<typeof createObsApiClient>,
+  cacheScope: ObsSchemaCacheScope,
+) => listSchemas(client, cacheScope);
 
 export const resolveTraceDataset = async (params: {
   url: string;
@@ -76,7 +176,7 @@ export const resolveTraceDataset = async (params: {
 
     if (!fields) {
       throw new Error(
-        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom service detect --explain\` to inspect mappings.`,
+        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom services detect --explain\` to inspect mappings.`,
       );
     }
 
@@ -88,11 +188,15 @@ export const resolveTraceDataset = async (params: {
     };
   }
 
-  const schemaMap = await listSchemas(client);
+  const schemaMap = await listDatasetSchemas(client, {
+    url: params.url,
+    orgId: params.orgId,
+    token: params.token,
+  });
 
   const detection = detectOtelDatasets(schemaMap);
   if (!detection.traces) {
-    throw new Error('No trace dataset detected. Run `axiom service detect --explain` to inspect mappings.');
+    throw new Error('No trace dataset detected. Run `axiom services detect --explain` to inspect mappings.');
   }
 
   requireOtelFields(detection.traces.dataset, detection.traces.fields, params.requiredFields);
@@ -159,7 +263,7 @@ export const resolveLogsDataset = async (params: {
     const logs = detection.logs;
     if (!logs) {
       throw new Error(
-        `No logs dataset detected. Run \`axiom service detect --explain\` and re-run with --logs-dataset <name>.`,
+        `No logs dataset detected. Run \`axiom services detect --explain\` and re-run with --logs-dataset <name>.`,
       );
     }
 
@@ -170,11 +274,15 @@ export const resolveLogsDataset = async (params: {
     };
   }
 
-  const schemaMap = await listSchemas(client);
+  const schemaMap = await listDatasetSchemas(client, {
+    url: params.url,
+    orgId: params.orgId,
+    token: params.token,
+  });
   const detection = detectOtelDatasets(schemaMap);
   if (!detection.logs) {
     throw new Error(
-      'No logs dataset detected. Run `axiom service detect --explain` and re-run with --logs-dataset <name>.',
+      'No logs dataset detected. Run `axiom services detect --explain` and re-run with --logs-dataset <name>.',
     );
   }
 
@@ -197,3 +305,10 @@ export const write = (stdout: string, stderr = '') => {
 export const toRows = (data: unknown): Record<string, unknown>[] => {
   return toQueryRows(data);
 };
+
+const escapeAplSingleQuoted = (value: string) => value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+const escapeAplDoubleQuoted = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+export const aplFieldRef = (field: string) => `['${escapeAplSingleQuoted(field)}']`;
+
+export const aplStringLiteral = (value: string) => `"${escapeAplDoubleQuoted(value)}"`;

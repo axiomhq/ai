@@ -48,7 +48,7 @@ describe('service list/get/operations', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'list', '--format', 'table'], {
+    const result = await runCli(['services', 'list', '--format', 'table'], {
       env,
       stdoutIsTTY: true,
     });
@@ -57,8 +57,8 @@ describe('service list/get/operations', () => {
     expect(result.stdout).toContain('checkout');
 
     const callBody = JSON.parse(String(fetchMock.mock.calls[2][1].body));
-    expect(callBody.apl).toContain('by service=service.name');
-    expect(callBody.apl).toContain('percentile(duration_ms, 95)');
+    expect(callBody.apl).toContain("by service=['service.name']");
+    expect(callBody.apl).toContain("percentile(['duration_ms'], 95)");
   });
 
   it('service operations renders mcp csv', async () => {
@@ -78,7 +78,7 @@ describe('service list/get/operations', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'operations', 'checkout', '--format', 'mcp'], { env });
+    const result = await runCli(['services', 'operations', 'checkout', '--format', 'mcp'], { env });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('# Service Operations: checkout');
     expect(result.stdout).toContain('```csv');
@@ -113,7 +113,7 @@ describe('service list/get/operations', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['service', 'get', 'checkout', '--format', 'json'], { env });
+    const result = await runCli(['services', 'get', 'checkout', '--format', 'json'], { env });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('"summary"');
     expect(result.stdout).toContain('"operations"');

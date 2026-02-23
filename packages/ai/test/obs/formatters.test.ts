@@ -42,7 +42,7 @@ describe('obs formatters', () => {
   it('formats json wrapper', () => {
     const output = formatJson(
       {
-        command: 'axiom dataset list',
+        command: 'axiom datasets list',
         generated_at: '2026-01-01T00:00:00Z',
         truncated: false,
         rows_shown: 3,
@@ -52,7 +52,7 @@ describe('obs formatters', () => {
     );
 
     expect(output).toMatchInlineSnapshot(`
-      "{\n  \"meta\": {\n    \"command\": \"axiom dataset list\",\n    \"generated_at\": \"2026-01-01T00:00:00Z\",\n    \"truncated\": false,\n    \"rows_shown\": 3,\n    \"rows_total\": 3\n  },\n  \"data\": [\n    {\n      \"id\": \"svc-a\",\n      \"value\": 12,\n      \"extra\": \"alpha\"\n    },\n    {\n      \"id\": \"svc-b\",\n      \"value\": 7,\n      \"extra\": \"beta\"\n    },\n    {\n      \"id\": \"svc-c\",\n      \"value\": 3,\n      \"extra\": \"gamma\"\n    }\n  ]\n}\n"
+      "{\n  \"meta\": {\n    \"command\": \"axiom datasets list\",\n    \"generated_at\": \"2026-01-01T00:00:00Z\",\n    \"truncated\": false,\n    \"rows_shown\": 3,\n    \"rows_total\": 3\n  },\n  \"data\": [\n    {\n      \"id\": \"svc-a\",\n      \"value\": 12,\n      \"extra\": \"alpha\"\n    },\n    {\n      \"id\": \"svc-b\",\n      \"value\": 7,\n      \"extra\": \"beta\"\n    },\n    {\n      \"id\": \"svc-c\",\n      \"value\": 3,\n      \"extra\": \"gamma\"\n    }\n  ]\n}\n"
     `);
   });
 

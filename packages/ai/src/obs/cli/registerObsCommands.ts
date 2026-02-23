@@ -1,24 +1,40 @@
-import { Command, Option } from 'commander';
+import { Command, InvalidArgumentError, Option } from 'commander';
 import { obsCommandSpec, type CommandSpec, type OptionSpec } from './commandSpec';
 import { createExplainContext, emitExplainToStderr } from '../explain/context';
 import { resolveObsConfig } from '../config/resolve';
-import { datasetGet, datasetList, datasetSample, datasetSchema } from '../commands/dataset';
+import { datasetGet, datasetList, datasetSample, datasetSchema } from '../commands/datasets';
 import { queryRun } from '../commands/queryRun';
-import { querySavedGet, querySavedList, querySavedRun } from '../commands/savedQuery';
-import { monitorGet, monitorHistory, monitorList } from '../commands/monitor';
-import { serviceDetect } from '../commands/serviceDetect';
-import { serviceList } from '../commands/serviceList';
-import { serviceGet } from '../commands/serviceGet';
-import { serviceOperations } from '../commands/serviceOperations';
-import { serviceTraces } from '../commands/serviceTraces';
-import { serviceLogs } from '../commands/serviceLogs';
-import { traceList } from '../commands/traceList';
-import { traceSpans } from '../commands/traceSpans';
-import { traceGet } from '../commands/traceGet';
+import { monitorGet, monitorHistory, monitorList } from '../commands/monitors';
+import { serviceDetect } from '../commands/servicesDetect';
+import { serviceList } from '../commands/servicesList';
+import { serviceGet } from '../commands/servicesGet';
+import { serviceOperations } from '../commands/servicesOperations';
+import { serviceTraces } from '../commands/servicesTraces';
+import { serviceLogs } from '../commands/servicesLogs';
+import { traceList } from '../commands/tracesList';
+import { traceSpans } from '../commands/tracesSpans';
+import { traceGet } from '../commands/tracesGet';
+
+const POSITIVE_INTEGER_OPTION_NAMES = new Set<OptionSpec['name']>([
+  'limit',
+  'maxCells',
+  'maxBinAutoGroups',
+]);
+
+const parsePositiveInteger = (value: string) => {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError('must be a positive integer');
+  }
+  return parsed;
+};
 
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
     const commanderOption = new Option(option.flags, option.description);
+    if (POSITIVE_INTEGER_OPTION_NAMES.has(option.name)) {
+      commanderOption.argParser(parsePositiveInteger);
+    }
     if (option.hidden) {
       commanderOption.hideHelp();
     }
@@ -51,45 +67,39 @@ const notImplemented = (...args: unknown[]) => {
 
 const resolveHandler = (path: string) => {
   switch (path) {
-    case 'dataset list':
+    case 'datasets list':
       return datasetList;
-    case 'dataset get':
+    case 'datasets get':
       return datasetGet;
-    case 'dataset schema':
+    case 'datasets schema':
       return datasetSchema;
-    case 'dataset sample':
+    case 'datasets sample':
       return datasetSample;
     case 'query run':
       return queryRun;
-    case 'query saved list':
-      return querySavedList;
-    case 'query saved get':
-      return querySavedGet;
-    case 'query saved run':
-      return querySavedRun;
-    case 'monitor list':
+    case 'monitors list':
       return monitorList;
-    case 'monitor get':
+    case 'monitors get':
       return monitorGet;
-    case 'monitor history':
+    case 'monitors history':
       return monitorHistory;
-    case 'service detect':
+    case 'services detect':
       return serviceDetect;
-    case 'service list':
+    case 'services list':
       return serviceList;
-    case 'service get':
+    case 'services get':
       return serviceGet;
-    case 'service operations':
+    case 'services operations':
       return serviceOperations;
-    case 'service traces':
+    case 'services traces':
       return serviceTraces;
-    case 'service logs':
+    case 'services logs':
       return serviceLogs;
-    case 'trace list':
+    case 'traces list':
       return traceList;
-    case 'trace spans':
+    case 'traces spans':
       return traceSpans;
-    case 'trace get':
+    case 'traces get':
       return traceGet;
     default:
       return notImplemented;

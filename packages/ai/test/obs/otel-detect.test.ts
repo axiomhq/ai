@@ -79,7 +79,7 @@ describe('otel mapping and dataset detection', () => {
         ['traceIdField', 'spanIdField'],
       ),
     ).toThrow(
-      'Dataset traces is missing required fields: traceIdField. Run `axiom service detect --explain` to inspect mappings.',
+      'Dataset traces is missing required fields: traceIdField. Run `axiom services detect --explain` to inspect mappings.',
     );
   });
 });

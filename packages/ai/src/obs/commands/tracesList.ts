@@ -5,12 +5,20 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
 import { TRACE_LIST_APL_TEMPLATE } from '../otel/aplTemplates';
-import { requireAuth, resolveTraceDataset, toRows, write } from './serviceCommon';
+import {
+  aplFieldRef,
+  aplStringLiteral,
+  requireAuth,
+  resolveTraceDataset,
+  toRows,
+  write,
+} from './servicesCommon';
 
 const expandTemplate = (template: string, replacements: Record<string, string>) => {
   let output = template;
@@ -19,6 +27,9 @@ const expandTemplate = (template: string, replacements: Record<string, string>) 
   }
   return output;
 };
+
+const hasTraceId = (row: Record<string, unknown>) =>
+  typeof row.trace_id === 'string' && row.trace_id.trim().length > 0;
 
 const sortRows = (rows: Record<string, unknown>[]) =>
   [...rows].sort((a, b) => {
@@ -43,7 +54,6 @@ export const traceList = withObsContext(async ({ config, explain }, ...args: unk
     until?: string;
     start?: string;
     end?: string;
-    limit?: number | string;
   };
 
   const timeRange = resolveTimeRange(
@@ -70,32 +80,32 @@ export const traceList = withObsContext(async ({ config, explain }, ...args: unk
   const statusField = fields.statusField;
   const durationField = fields.durationField ?? 'duration_ms';
 
-  const filterClauses = [`where _time >= datetime(${timeRange.start}) and _time <= datetime(${timeRange.end})`];
+  const filterClauses: string[] = [];
   if (options.service) {
-    filterClauses.push(`where ${fields.serviceField!} == "${options.service}"`);
+    filterClauses.push(`where ${aplFieldRef(fields.serviceField!)} == ${aplStringLiteral(options.service)}`);
   }
   if (options.operation) {
-    filterClauses.push(`where ${fields.spanNameField!} == "${options.operation}"`);
+    filterClauses.push(`where ${aplFieldRef(fields.spanNameField!)} == ${aplStringLiteral(options.operation)}`);
   }
   if (options.status === 'error' && statusField) {
-    filterClauses.push(`where ${statusField} == "error"`);
+    filterClauses.push(`where ${aplFieldRef(statusField)} == "error"`);
   }
   if (options.status === 'ok' && statusField) {
-    filterClauses.push(`where ${statusField} == "ok"`);
+    filterClauses.push(`where ${aplFieldRef(statusField)} == "ok"`);
   }
   if (options.status === 'unset' && statusField) {
-    filterClauses.push(`where isempty(${statusField})`);
+    filterClauses.push(`where isempty(${aplFieldRef(statusField)})`);
   }
 
   const errorExpression = statusField
-    ? `${statusField} == "error" or toint(http.status_code) >= 500`
-    : 'toint(http.status_code) >= 500';
+    ? `${aplFieldRef(statusField)} == "error"`
+    : '0';
 
   const apl = expandTemplate(TRACE_LIST_APL_TEMPLATE, {
-    FILTERS: filterClauses.join('\n| '),
-    TRACE_ID_FIELD: fields.traceIdField!,
-    SPAN_NAME_FIELD: fields.spanNameField!,
-    DURATION_FIELD: durationField,
+    FILTERS: filterClauses.length > 0 ? `| ${filterClauses.join('\n| ')}` : '',
+    TRACE_ID_FIELD: aplFieldRef(fields.traceIdField!),
+    SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
+    DURATION_FIELD: aplFieldRef(durationField),
     ERROR_EXPR: errorExpression,
     START: timeRange.start,
     END: timeRange.end,
@@ -107,18 +117,14 @@ export const traceList = withObsContext(async ({ config, explain }, ...args: unk
     maxBinAutoGroups: 40,
   });
 
-  const limit = options.limit !== undefined ? Number(options.limit) : 20;
-  let rows = sortRows(toRows(queryResponse.data));
-  if (Number.isFinite(limit) && limit > 0) {
-    rows = rows.slice(0, limit);
-  }
+  let rows = sortRows(toRows(queryResponse.data).filter(hasTraceId));
 
   const columns = ['trace_id', 'root_operation', 'started_at', 'duration_ms', 'span_count', 'error'];
   const format = resolveOutputFormat(config.format as OutputFormat, 'list', true);
 
   if (format === 'json') {
     const meta = buildJsonMeta({
-      command: 'axiom trace list',
+      command: 'axiom traces list',
       timeRange,
       meta: {
         truncated: false,
@@ -133,7 +139,7 @@ export const traceList = withObsContext(async ({ config, explain }, ...args: unk
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(rows, columns, { format, maxCells: config.maxCells });
+    const result = renderNdjson(rows, columns, { format, maxCells: UNLIMITED_MAX_CELLS });
     write(result.stdout);
     return;
   }
@@ -141,7 +147,7 @@ export const traceList = withObsContext(async ({ config, explain }, ...args: unk
   if (format === 'mcp') {
     const csvResult = renderTabular(rows, columns, {
       format: 'csv',
-      maxCells: config.maxCells,
+      maxCells: UNLIMITED_MAX_CELLS,
       quiet: true,
     });
 
@@ -158,7 +164,7 @@ export const traceList = withObsContext(async ({ config, explain }, ...args: unk
 
   const result = renderTabular(rows, columns, {
     format,
-    maxCells: config.maxCells,
+    maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,
   });
   write(result.stdout, result.stderr);
