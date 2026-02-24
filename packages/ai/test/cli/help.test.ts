@@ -6,7 +6,7 @@ describe('cli help', () => {
     const result = await runCli(['--help'], { stdoutIsTTY: true });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Usage');
+    expect(result.stdout).toContain('USAGE');
     expect(result.stdout).toContain('axiom');
   });
 });

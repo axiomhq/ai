@@ -123,8 +123,8 @@ axiom completion bash | source /dev/stdin
 
 ## Agent Skill File
 
-The package ships a generated observability skill guide at:
+The package ships a generated Axiom CLI skill guide at:
 
-- `generated/skills/axiom-obs-cli.md`
+- `generated/skills/axiom-cli.md`
 
 This file is generated from the CLI command spec and stays in sync with completion generation.
