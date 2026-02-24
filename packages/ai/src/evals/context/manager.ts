@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
 
 interface ContextManager<T = any> {
   getStore(): T | undefined;
@@ -17,6 +18,15 @@ function setGlobalContextManager(manager: ContextManager): void {
 
 const isNodeJS = typeof process !== 'undefined' && !!process.versions?.node;
 
+function getNodeRequire(): NodeJS.Require {
+  if (typeof require === 'function') {
+    return require;
+  }
+
+  // We only require Node builtins, so any absolute path is valid as a createRequire base.
+  return createRequire(join(process.cwd(), '__axiom_require__.js'));
+}
+
 function getContextManager(): ContextManager {
   // Check global Symbol registry cache first (shared across VM contexts)
   const existing = getGlobalContextManager();
@@ -29,8 +39,8 @@ function getContextManager(): ContextManager {
       // Resolve AsyncLocalStorage in both ESM and CJS Node contexts without bundler interference
       let AsyncLocalStorage: any;
 
-      // Use createRequire to obtain a require in ESM
-      const req = createRequire(import.meta.url);
+      // Obtain require in both CJS and ESM Node runtimes without relying on tsup shims.
+      const req = getNodeRequire();
       try {
         AsyncLocalStorage = req('node:async_hooks').AsyncLocalStorage;
       } catch {
