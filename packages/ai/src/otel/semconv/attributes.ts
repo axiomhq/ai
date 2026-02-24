@@ -43,6 +43,10 @@ import {
   ATTR_EVAL_CONFIG_FLAGS,
   ATTR_EVAL_CAPABILITY_NAME,
   ATTR_EVAL_STEP_NAME,
+  ATTR_EVAL_ONLINE_SCORERS_TOTAL,
+  ATTR_EVAL_ONLINE_SCORERS_RAN,
+  ATTR_EVAL_ONLINE_SCORERS_SAMPLED_OUT,
+  ATTR_EVAL_ONLINE_SCORERS_FAILED,
 } from './eval_proposal';
 
 import {
@@ -317,6 +321,14 @@ export const Attr = {
     },
     Tags: ATTR_EVAL_TAGS,
     Metadata: ATTR_EVAL_METADATA,
+    Online: {
+      Scorers: {
+        Total: ATTR_EVAL_ONLINE_SCORERS_TOTAL,
+        Ran: ATTR_EVAL_ONLINE_SCORERS_RAN,
+        SampledOut: ATTR_EVAL_ONLINE_SCORERS_SAMPLED_OUT,
+        Failed: ATTR_EVAL_ONLINE_SCORERS_FAILED,
+      },
+    },
     Collection: {
       ID: ATTR_EVAL_COLLECTION_ID,
       Name: ATTR_EVAL_COLLECTION_NAME,
