@@ -4,7 +4,7 @@ import { loadEvalCommand } from './commands/eval.command';
 import { loadAuthCommand } from './commands/auth.command';
 import { setupGlobalAuth } from './auth/global-auth';
 import { loadVersionCommand } from './commands/version.command';
-import { registerObsCommands } from '../obs/cli/registerObsCommands';
+import { registerCliCommands } from './registerCliCommands';
 import { loadCompletionCommand } from './commands/completion.command';
 
 const { loadEnvConfig } = pkg;
@@ -13,39 +13,84 @@ type ProgramOptions = {
   overrides?: Record<string, string>;
 };
 
+type CommandRow = {
+  name: string;
+  description: string;
+};
+
+const formatRows = (rows: CommandRow[]) => {
+  if (rows.length === 0) {
+    return '';
+  }
+
+  const width = rows.reduce((max, row) => Math.max(max, row.name.length), 0);
+  return rows.map((row) => `  ${`${row.name}:`.padEnd(width + 2)} ${row.description}`).join('\n');
+};
+
 const formatTopLevelHelp = (
   cmd: Command,
   helper: ReturnType<Command['createHelp']>,
 ) => {
-  const usage = `Usage: ${helper.commandUsage(cmd)}`;
   const description = helper.commandDescription(cmd);
+
+  const commandRows = helper
+    .visibleCommands(cmd)
+    .map((entry) => ({
+      name: helper.subcommandTerm(entry).split(/\s+/)[0],
+      description: helper.subcommandDescription(entry),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const coreCommandNames = new Set([
+    'auth',
+    'datasets',
+    'eval',
+    'monitors',
+    'query',
+    'services',
+    'traces',
+  ]);
+
+  const coreCommands = commandRows.filter((row) => coreCommandNames.has(row.name));
+  const additionalCommands = commandRows.filter((row) => !coreCommandNames.has(row.name));
+
   const options = helper
     .visibleOptions(cmd)
-    .map((option) => `  ${helper.optionTerm(option).padEnd(24)}  ${helper.optionDescription(option)}`)
+    .map((option) => {
+      const term = helper.optionTerm(option);
+      const optionWithLong = option as { long?: string };
+      if (optionWithLong.long === '--help') {
+        return { term, description: 'Show help for command' };
+      }
+      if (optionWithLong.long === '--version') {
+        return { term, description: `Show ${cmd.name()} version` };
+      }
+      return { term, description: helper.optionDescription(option) };
+    });
+  const optionWidth = options.reduce((max, option) => Math.max(max, option.term.length), 0);
+  const optionLines = options
+    .map((option) => `  ${option.term.padEnd(optionWidth)}   ${option.description}`)
     .join('\n');
-  const commands = helper
-    .visibleCommands(cmd)
-    .sort((a, b) => helper.subcommandTerm(a).localeCompare(helper.subcommandTerm(b)))
-    .map((entry) => ({
-      term: helper.subcommandTerm(entry),
-      description: helper.subcommandDescription(entry),
-    }));
-  const rows = commands.map((row) => {
-    const [name, ...args] = row.term.split(/\s+/);
-    return {
-      name,
-      args: args.join(' '),
-      description: row.description,
-    };
-  });
-  const nameWidth = rows.reduce((max, row) => Math.max(max, row.name.length), 0);
-  const argsWidth = rows.reduce((max, row) => Math.max(max, row.args.length), 0);
-  const commandLines = commands.map(
-    (_, index) =>
-      `  ${rows[index].name.padEnd(nameWidth)}  ${rows[index].args.padEnd(argsWidth)}  ${rows[index].description}`.trimEnd(),
-  );
 
-  return [usage, description, `Options:\n${options}`, `Commands:\n${commandLines.join('\n')}`].join('\n\n') + '\n';
+  return [
+    description,
+    '',
+    'USAGE',
+    `  ${cmd.name()} <command> [flags]`,
+    '',
+    'CORE COMMANDS',
+    formatRows(coreCommands),
+    '',
+    'ADDITIONAL COMMANDS',
+    formatRows(additionalCommands),
+    '',
+    'FLAGS',
+    optionLines,
+    '',
+    'LEARN MORE',
+    `  Use \`${cmd.name()} <command> --help\` for more information about a command.`,
+    '',
+  ].join('\n');
 };
 
 export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command => {
@@ -55,7 +100,7 @@ export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command 
 
   program
     .name('axiom')
-    .description("Axiom's CLI to manage your objects and run evals")
+    .description('Axiom CLI')
     .version(__SDK_VERSION__);
 
   program.configureHelp({
@@ -101,7 +146,7 @@ export const createProgram = ({ overrides = {} }: ProgramOptions = {}): Command 
   loadEvalCommand(program, overrides);
   loadVersionCommand(program);
   loadCompletionCommand(program);
-  registerObsCommands(program);
+  registerCliCommands(program);
 
   return program;
 };
