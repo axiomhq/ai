@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - 'packages/ai/**'
+      - 'examples/kitchen-sink/**'
       - '.github/workflows/check-vitest-entrypoints.yaml'
   pull_request:
     branches:
       - main
     paths:
       - 'packages/ai/**'
+      - 'examples/kitchen-sink/**'
       - '.github/workflows/check-vitest-entrypoints.yaml'
 
 env:
@@ -34,3 +36,10 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm -C packages/ai build
       - run: pnpm -C packages/ai check:vitest-entrypoints
+      - name: Verify kitchen-sink builds without vitest
+        run: |
+          # vitest is resolvable through the axiom workspace:* symlink
+          # (kitchen-sink -> packages/ai/node_modules/vitest). Remove it
+          # so next build fails if any entrypoint leaks a vitest import.
+          rm -rf packages/ai/node_modules/vitest packages/ai/node_modules/@vitest
+          pnpm --filter kitchen-sink build
