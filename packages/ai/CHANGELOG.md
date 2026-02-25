@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.46.1](https://github.com/axiomhq/ai/compare/axiom-v0.46.0...axiom-v0.46.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ai:** move online eval scorer counters to eval.* namespace ([#264](https://github.com/axiomhq/ai/issues/264)) ([bef94db](https://github.com/axiomhq/ai/commit/bef94db48b59e923e57b2fca7238cc2a89c66bfd))
+* **ai:** normalize boolean scores in onlineEval scoresSummary ([#263](https://github.com/axiomhq/ai/issues/263)) ([ff75842](https://github.com/axiomhq/ai/commit/ff758426d58cd3d1ca3b0824b55b9656d9b71d17))
+
 ## [0.46.0](https://github.com/axiomhq/ai/compare/axiom-v0.45.0...axiom-v0.46.0) (2026-02-19)
 
 
