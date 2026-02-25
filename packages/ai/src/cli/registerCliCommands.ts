@@ -77,13 +77,30 @@ const formatOptionRows = (options: OptionSpec[]) => {
 };
 
 const formatCommandHelp = (spec: CommandSpec) => {
-  const subcommands = spec.subcommands ?? [];
+  const subcommands = (spec.subcommands ?? []).filter((subcommand) => !subcommand.hidden);
   const commandRows = subcommands.map((subcommand) => ({
     term: `${subcommand.name}${subcommand.args ? ` ${subcommand.args}` : ''}`,
     description: subcommand.description,
   }));
 
   const inheritedFlags = cliCommandSpec.globalOptions.filter((option) => !option.hidden);
+  const commandFlags = spec.options?.filter((option) => !option.hidden) ?? [];
+
+  if (commandRows.length === 0) {
+    return [
+      spec.description,
+      '',
+      'USAGE',
+      `  axiom ${spec.name}${spec.args ? ` ${spec.args}` : ''} [flags]`,
+      '',
+      'FLAGS',
+      formatOptionRows([...commandFlags, ...inheritedFlags]),
+      '',
+      'LEARN MORE',
+      `  Use \`axiom ${spec.name} --help\` for more information about this command.`,
+      '',
+    ].join('\n');
+  }
 
   return [
     spec.description,
@@ -127,7 +144,7 @@ const resolveHandler = (path: string) => {
       return datasetSchema;
     case 'datasets sample':
       return datasetSample;
-    case 'query run':
+    case 'query':
       return queryRun;
     case 'monitors list':
       return monitorList;
@@ -175,6 +192,9 @@ const registerSubcommands = (parent: Command, spec: CommandSpec, parentPath: str
     }
 
     addOptions(subcommand, subcommandSpec.options);
+    if (subcommandSpec.hidden) {
+      (subcommand as Command & { hidden?: boolean }).hidden = true;
+    }
     applyHelpText(subcommand, subcommandSpec.help);
     parent.addCommand(subcommand);
 
@@ -188,8 +208,16 @@ export const registerCliCommands = (program: Command) => {
       .description(spec.description)
       .helpOption('-h, --help', 'display help for command');
 
+    if (spec.args) {
+      command.arguments(spec.args);
+    }
+
+    if (spec.actionPath) {
+      command.action(resolveHandler(spec.actionPath));
+    }
+
     applyHelpText(command, formatCommandHelp(spec));
-    addOptions(command, cliCommandSpec.globalOptions);
+    addOptions(command, [...cliCommandSpec.globalOptions, ...(spec.options ?? [])]);
     registerSubcommands(command, spec, spec.name);
 
     program.addCommand(command);

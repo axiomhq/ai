@@ -7,11 +7,11 @@ import {
   renderNdjson,
   renderTabular,
   resolveOutputFormat,
+  UNLIMITED_MAX_CELLS,
   type OutputFormat,
 } from '../format/output';
 import { getColumnsFromRows } from '../format/shape';
 import { buildJsonMeta } from '../format/meta';
-import { resolveTimeRange } from '../time/range';
 import { toQueryRows } from './queryRows';
 
 const requireAuth = (orgId?: string, token?: string) => {
@@ -32,11 +32,50 @@ const readStdin = async (): Promise<string> => {
   return chunks.join('');
 };
 
-const resolveApl = async (options: {
+type QueryRunOptions = {
   apl?: string;
   file?: string;
   stdin?: boolean;
-}): Promise<string> => {
+  maxBinAutoGroups?: number | string;
+  since?: string;
+  until?: string;
+  start?: string;
+  end?: string;
+};
+
+const flattenPositionalArgs = (values: unknown[]) => {
+  const flattened: string[] = [];
+  values.forEach((value) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item !== undefined && item !== null && typeof item !== 'object') {
+          flattened.push(String(item));
+        }
+      });
+      return;
+    }
+
+    if (typeof value === 'object') {
+      return;
+    }
+
+    flattened.push(String(value));
+  });
+  return flattened;
+};
+
+const resolveApl = async (
+  options: Pick<QueryRunOptions, 'apl' | 'file' | 'stdin'>,
+  positionalApl: string[],
+): Promise<string> => {
+  if (positionalApl.length > 0) {
+    return positionalApl.join(' ');
+  }
+
   if (options.apl) {
     return options.apl;
   }
@@ -53,7 +92,7 @@ const resolveApl = async (options: {
     return content;
   }
 
-  throw new Error('Missing APL input. Use --apl, --file, or --stdin.');
+  throw new Error('Missing APL input. Provide a query string, --file, or --stdin.');
 };
 
 const write = (stdout: string, stderr = '') => {
@@ -65,41 +104,64 @@ const write = (stdout: string, stderr = '') => {
   }
 };
 
-const shouldResolveTimeRange = (options: Record<string, unknown>) =>
-  Boolean(options.since || options.until || options.start || options.end);
+const renderQuerySectionsTable = (
+  timeseriesRows: Record<string, unknown>[],
+  timeseriesColumns: string[],
+  totalsRows: Record<string, unknown>[],
+  totalsColumns: string[],
+) => {
+  const sections: string[] = [];
+
+  if (timeseriesRows.length > 0) {
+    const timeseriesResult = renderTabular(timeseriesRows, timeseriesColumns, {
+      format: 'table',
+      maxCells: UNLIMITED_MAX_CELLS,
+      quiet: true,
+    });
+    const table = timeseriesResult.stdout.trimEnd();
+    if (table.length > 0) {
+      sections.push(`Timeseries\n${table}`);
+    }
+  }
+
+  if (totalsRows.length > 0) {
+    const totalsResult = renderTabular(totalsRows, totalsColumns, {
+      format: 'table',
+      maxCells: UNLIMITED_MAX_CELLS,
+      quiet: true,
+    });
+    const table = totalsResult.stdout.trimEnd();
+    if (table.length > 0) {
+      sections.push(`Totals\n${table}`);
+    }
+  }
+
+  if (sections.length === 0) {
+    return '';
+  }
+
+  return `${sections.join('\n\n')}\n`;
+};
 
 export const queryRun = withCliContext(
   async ({ config, explain }, ...args: unknown[]) => {
     requireAuth(config.orgId, config.token);
-    const command = args[args.length - 1] as Command;
     const positionalArgs = args.slice(0, -1);
-    const dataset = positionalArgs[0] ? String(positionalArgs[0]) : undefined;
+    const command = args[args.length - 1] as Command;
+    const options = command.optsWithGlobals() as QueryRunOptions;
+    const positionalApl = flattenPositionalArgs(positionalArgs);
+    const looksLikeLegacyQueryRun =
+      positionalApl[0] === 'run' && Boolean(options.apl || options.file || options.stdin);
+    if (looksLikeLegacyQueryRun) {
+      throw new Error('`axiom query run` was removed. Use `axiom query "<APL>"`.');
+    }
 
-    const options = command.optsWithGlobals() as {
-      apl?: string;
-      file?: string;
-      stdin?: boolean;
-      maxBinAutoGroups?: number | string;
-      columns?: string;
-      limit?: number | string;
-      since?: string;
-      until?: string;
-      start?: string;
-      end?: string;
-    };
-
-    const apl = (await resolveApl(options)).trim();
+    const apl = (await resolveApl(options, positionalApl)).trim();
     const maxBinAutoGroups =
       options.maxBinAutoGroups !== undefined ? Number(options.maxBinAutoGroups) : 40;
 
-    const timeRange = shouldResolveTimeRange(options)
-      ? resolveTimeRange({
-          since: options.since,
-          until: options.until,
-          start: options.start,
-          end: options.end,
-        })
-      : undefined;
+    const startTime = options.since ?? options.start;
+    const endTime = options.until ?? options.end;
 
     const queryOptions: {
       maxBinAutoGroups: number;
@@ -107,8 +169,8 @@ export const queryRun = withCliContext(
       endTime?: string;
     } = {
       maxBinAutoGroups,
-      startTime: timeRange?.start,
-      endTime: timeRange?.end,
+      startTime,
+      endTime,
     };
 
     const client = createAxiomApiClient({
@@ -118,20 +180,27 @@ export const queryRun = withCliContext(
       explain,
     });
 
-    const response = await client.queryApl(dataset, apl, queryOptions);
-    let rows = toQueryRows(response.data);
-
-    const limit = options.limit !== undefined ? Number(options.limit) : undefined;
-    if (limit !== undefined && Number.isFinite(limit) && limit > 0) {
-      rows = rows.slice(0, limit);
-    }
+    const response = await client.queryApl(undefined, apl, queryOptions);
+    const normalizedRows = toQueryRows(response.data);
+    const rows = normalizedRows.rows;
+    const timeseriesRows = normalizedRows.timeseries;
+    const totalsRows = normalizedRows.totals;
+    const hasTimeseriesAndTotals = timeseriesRows.length > 0 && totalsRows.length > 0;
 
     const columns = getColumnsFromRows(rows);
-    const format = resolveOutputFormat(config.format as OutputFormat, 'query', columns.length > 0);
+    const timeseriesColumns = getColumnsFromRows(timeseriesRows);
+    const totalsColumns = getColumnsFromRows(totalsRows);
+    const resolvedFormat = resolveOutputFormat(
+      config.format as OutputFormat,
+      'query',
+      columns.length > 0,
+    );
+    const format = resolvedFormat;
+    const timeRange = startTime && endTime ? { start: startTime, end: endTime } : undefined;
 
     if (format === 'json') {
       const meta = buildJsonMeta({
-        command: 'axiom query run',
+        command: 'axiom query',
         timeRange,
         meta: {
           truncated: false,
@@ -147,46 +216,45 @@ export const queryRun = withCliContext(
           {
             ...meta,
             apl,
-            ...(dataset ? { dataset } : {}),
           },
-          { rows },
+          hasTimeseriesAndTotals ? { rows, timeseries: timeseriesRows, totals: totalsRows } : { rows },
         ),
       );
       return;
     }
 
     if (format === 'ndjson') {
-      const result = renderNdjson(rows, columns, {
+      const jsonlRows = hasTimeseriesAndTotals
+        ? [
+            ...timeseriesRows.map((row) => ({ section: 'timeseries', row })),
+            ...totalsRows.map((row) => ({ section: 'totals', row })),
+          ]
+        : rows;
+      const jsonlColumns = getColumnsFromRows(jsonlRows);
+      const result = renderNdjson(jsonlRows, jsonlColumns, {
         format,
-        maxCells: config.maxCells,
-        columnsOverride: options.columns,
+        maxCells: UNLIMITED_MAX_CELLS,
       });
       write(result.stdout);
       return;
     }
 
     if (format === 'mcp') {
-      const csvResult = renderTabular(rows, columns, {
+      const csvRows = timeseriesRows.length > 0 ? timeseriesRows : rows;
+      const csvColumns = getColumnsFromRows(csvRows);
+      const csvResult = renderTabular(csvRows, csvColumns, {
         format: 'csv',
-        maxCells: config.maxCells,
-        columnsOverride: options.columns,
+        maxCells: UNLIMITED_MAX_CELLS,
         quiet: true,
       });
 
       const headerLines = [
         '# Query Result',
-        ...(dataset ? [`Dataset: ${dataset}`] : []),
         'APL:',
         '```apl',
         apl,
         '```',
       ];
-
-      if (csvResult.meta.truncated) {
-        headerLines.push(
-          `Truncated to ${csvResult.meta.rowsShown}/${csvResult.meta.rowsTotal} rows (max-cells=${config.maxCells}).`,
-        );
-      }
 
       write(
         formatMcp(headerLines.join('\n'), [
@@ -199,12 +267,26 @@ export const queryRun = withCliContext(
       return;
     }
 
-    const result = renderTabular(rows, columns, {
-      format,
-      maxCells: config.maxCells,
-      quiet: config.quiet,
-      columnsOverride: options.columns,
+    if (format === 'table' && hasTimeseriesAndTotals) {
+      write(
+        renderQuerySectionsTable(
+          timeseriesRows,
+          timeseriesColumns,
+          totalsRows,
+          totalsColumns,
+        ),
+      );
+      return;
+    }
+
+    const tabularRows = format === 'csv' && timeseriesRows.length > 0 ? timeseriesRows : rows;
+    const tabularColumns =
+      format === 'csv' && timeseriesRows.length > 0 ? timeseriesColumns : columns;
+    const result = renderTabular(tabularRows, tabularColumns, {
+      format: format === 'table' ? 'table' : 'csv',
+      maxCells: UNLIMITED_MAX_CELLS,
+      quiet: true,
     });
-    write(result.stdout, result.stderr);
+    write(result.stdout);
   },
 );

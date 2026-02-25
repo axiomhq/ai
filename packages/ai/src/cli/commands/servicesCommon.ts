@@ -303,7 +303,7 @@ export const write = (stdout: string, stderr = '') => {
 };
 
 export const toRows = (data: unknown): Record<string, unknown>[] => {
-  return toQueryRows(data);
+  return toQueryRows(data).rows;
 };
 
 const escapeAplSingleQuoted = (value: string) => value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");

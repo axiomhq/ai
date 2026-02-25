@@ -12,12 +12,14 @@ export type CommandSpec = {
   name: string;
   description: string;
   args?: string;
+  actionPath?: string;
   help?: string;
+  hidden?: boolean;
   options?: OptionSpec[];
   subcommands?: CommandSpec[];
 };
 
-const formatChoices = ['auto', 'table', 'csv', 'json', 'ndjson', 'mcp'];
+const formatChoices = ['auto', 'table', 'csv', 'json', 'ndjson', 'jsonl', 'mcp'];
 const statusChoices = ['ok', 'error', 'unset'];
 
 export const cliCommandSpec = {
@@ -25,7 +27,7 @@ export const cliCommandSpec = {
     {
       name: 'format',
       flags: '--format <format>',
-      description: 'auto|table|csv|json|ndjson|mcp',
+      description: 'auto|table|csv|json|ndjson|jsonl|mcp',
       choices: formatChoices,
     },
     {
@@ -69,7 +71,7 @@ export const cliCommandSpec = {
     {
       name: 'datasets',
       description: 'Discover datasets and schema',
-      help: `Usage:\n  axiom datasets <command>\n\nCommands:\n  list                List datasets\n  get <name>          Show dataset metadata\n  schema <name>       Show dataset schema (fields and types)\n  sample <name>       Show a small sample of recent events\n\nGlobal options:\n  --format <format>   auto|table|csv|json|ndjson|mcp\n  --url <url>         Axiom API base URL\n  --org-id <id>       Organization ID\n  --token <token>     API token\n  --no-color          Disable ANSI color\n  --quiet             Suppress non-data output\n  --explain           Print API calls and queries to stderr\n`,
+      help: `Usage:\n  axiom datasets <command>\n\nCommands:\n  list                List datasets\n  get <name>          Show dataset metadata\n  schema <name>       Show dataset schema (fields and types)\n  sample <name>       Show a small sample of recent events\n\nGlobal options:\n  --format <format>   auto|table|csv|json|ndjson|jsonl|mcp\n  --url <url>         Axiom API base URL\n  --org-id <id>       Organization ID\n  --token <token>     API token\n  --no-color          Disable ANSI color\n  --quiet             Suppress non-data output\n  --explain           Print API calls and queries to stderr\n`,
       subcommands: [
         {
           name: 'list',
@@ -98,34 +100,34 @@ export const cliCommandSpec = {
     {
       name: 'query',
       description: 'Run APL queries',
-      help: `Usage:\n  axiom query <command>\n\nCommands:\n  run [dataset]                 Run an APL query (dataset optional)\n\nOptions for query run:\n  --apl <string>                APL query string\n  --file <path>                 Read APL from file\n  --stdin                        Read APL from stdin\n  --max-bin-auto-groups <n>     Override auto maxBinAutoGroups (positive integer)\n  --columns <csv>               Explicit output columns\n  --limit <n>                   Limit rows (post-query shaping, positive integer)\n  --since / --until / --start / --end\n  --format <format>             auto|table|csv|json|ndjson|mcp\n  --max-cells <n>               Max rendered cells (rows x columns, positive integer)\n  --explain\n`,
-      subcommands: [
+      args: '[query...]',
+      actionPath: 'query',
+      options: [
         {
-          name: 'run',
-          description: 'Run an APL query (dataset optional)',
-          args: '[dataset]',
-          options: [
-            { name: 'apl', flags: '--apl <string>', description: 'APL query string' },
-            { name: 'file', flags: '--file <path>', description: 'Read APL from file' },
-            { name: 'stdin', flags: '--stdin', description: 'Read APL from stdin' },
-            {
-              name: 'maxBinAutoGroups',
-              flags: '--max-bin-auto-groups <n>',
-              description: 'Override auto maxBinAutoGroups (positive integer)',
-            },
-            { name: 'columns', flags: '--columns <csv>', description: 'Explicit output columns' },
-            { name: 'limit', flags: '--limit <n>', description: 'Limit rows (post-query shaping)' },
-            {
-              name: 'maxCells',
-              flags: '--max-cells <n>',
-              description: 'Max rendered cells (rows x columns, positive integer)',
-            },
-            { name: 'since', flags: '--since <since>', description: 'Time range start' },
-            { name: 'until', flags: '--until <until>', description: 'Time range end' },
-            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
-            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
-          ],
+          name: 'apl',
+          flags: '--apl <string>',
+          description: 'APL query string',
+          hidden: true,
         },
+        { name: 'file', flags: '--file <path>', description: 'Read APL from file' },
+        { name: 'stdin', flags: '--stdin', description: 'Read APL from stdin' },
+        {
+          name: 'maxBinAutoGroups',
+          flags: '--max-bin-auto-groups <n>',
+          description: 'Override auto maxBinAutoGroups (positive integer)',
+        },
+        {
+          name: 'since',
+          flags: '--since <time>',
+          description: 'Start time (for example: 30m or 2026-02-24T18:00:00Z)',
+        },
+        {
+          name: 'until',
+          flags: '--until <time>',
+          description: 'End time (for example: 0m or 2026-02-24T19:00:00Z)',
+        },
+        { name: 'start', flags: '--start <time>', description: 'Alias for --since', hidden: true },
+        { name: 'end', flags: '--end <time>', description: 'Alias for --until', hidden: true },
       ],
     },
     {

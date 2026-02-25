@@ -115,6 +115,7 @@ const generateSkillMarkdown = () => `# Axiom CLI
 Prefer MCP-friendly output for analysis:
 - Use \`--format mcp\` for compact Markdown plus CSV blocks.
 - Use \`--format json\` or \`--format ndjson\` when you need strict machine parsing.
+- For raw event streams, \`--format jsonl\` is accepted as an alias for \`ndjson\`.
 
 If a command fails due to missing datasets or fields:
 1. Run: \`axiom services detect --format mcp --explain\`
@@ -146,7 +147,8 @@ If not logged in:
   - \`axiom traces spans <trace-id> --format mcp\`
 
 ### 6) Use raw APL when needed
-- \`axiom query run --apl "<APL>" --format mcp --explain\`
+- \`axiom query "<APL>" --format mcp --explain\`
+- To keep output manageable, add \`| limit <n>\` in APL or set \`--max-bin-auto-groups <n>\`.
 
 ## Commands
 
@@ -157,7 +159,7 @@ If not logged in:
 - \`axiom datasets sample <name>\`
 
 ### query
-- \`axiom query run --apl "<APL>"\`
+- \`axiom query "<APL>"\`
 
 ### monitor
 - \`axiom monitors list\`

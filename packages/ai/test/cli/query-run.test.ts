@@ -11,12 +11,41 @@ const env = {
   AXIOM_URL: 'https://api.axiom.co',
 };
 
-describe('query run', () => {
+const bucketResponse = {
+  matches: [],
+  buckets: {
+    series: [
+      {
+        groups: [
+          {
+            group: { _time: '2026-02-24T18:00:00Z' },
+            aggregations: [{ op: 'Count', value: 2 }],
+          },
+          {
+            group: { _time: '2026-02-24T19:00:00Z' },
+            aggregations: [{ op: 'Count', value: 3 }],
+          },
+        ],
+      },
+    ],
+    totals: [
+      {
+        group: {},
+        aggregations: [{ op: 'Count', value: 5 }],
+      },
+    ],
+  },
+  request: {
+    project: [{ field: 'Count', alias: 'Count' }],
+  },
+};
+
+describe('query', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('uses --apl input and default maxBinAutoGroups', async () => {
+  it('uses positional APL input and default maxBinAutoGroups', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -30,12 +59,13 @@ describe('query run', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['query', 'run', '--apl', "['traces'] | group by service | count()", '--format', 'csv'], {
+    const result = await runCli(['query', "['traces'] | group by service | count()", '--format', 'csv'], {
       env,
     });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('service,count');
+    expect(result.stderr).toBe('');
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.axiom.co/v1/datasets/_apl?format=legacy',
       expect.objectContaining({
@@ -58,7 +88,7 @@ describe('query run', () => {
     const file = join(dir, 'query.apl');
     await writeFile(file, 'limit 1\n', 'utf8');
 
-    const result = await runCli(['query', 'run', '--file', file, '--format', 'json'], {
+    const result = await runCli(['query', '--file', file, '--format', 'json'], {
       env,
     });
 
@@ -77,7 +107,7 @@ describe('query run', () => {
     await writeFile(file, 'limit 999\n', 'utf8');
 
     await runCli(
-      ['query', 'run', '--apl', "['events'] | limit 1", '--file', file, '--format', 'json'],
+      ['query', '--apl', "['events'] | limit 1", '--file', file, '--format', 'json'],
       {
         env,
       },
@@ -103,7 +133,7 @@ describe('query run', () => {
     Object.defineProperty(stdin, 'isTTY', { value: false, configurable: true });
     Object.defineProperty(process, 'stdin', { value: stdin, configurable: true });
 
-    const result = await runCli(['query', 'run', '--stdin', '--format', 'mcp'], {
+    const result = await runCli(['query', '--stdin', '--format', 'mcp'], {
       env,
     });
 
@@ -119,10 +149,10 @@ describe('query run', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['query', 'run', '--format', 'json'], { env });
+    const result = await runCli(['query', '--format', 'json'], { env });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr.trim()).toBe('Missing APL input. Use --apl, --file, or --stdin.');
+    expect(result.stderr.trim()).toBe('Missing APL input. Provide a query string, --file, or --stdin.');
     expect(result.stderr).not.toContain('at resolveApl');
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -136,7 +166,7 @@ describe('query run', () => {
     Object.defineProperty(stdin, 'isTTY', { value: false, configurable: true });
     Object.defineProperty(process, 'stdin', { value: stdin, configurable: true });
 
-    const result = await runCli(['query', 'run', '--stdin', '--format', 'json'], { env });
+    const result = await runCli(['query', '--stdin', '--format', 'json'], { env });
 
     Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true });
 
@@ -146,24 +176,18 @@ describe('query run', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('still accepts legacy optional dataset argument', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ matches: [{ value: 1 }] }), { status: 200 }),
-    );
+  it('rejects removed `query run` syntax with a migration hint', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['query', 'run', 'events', '--apl', 'limit 1', '--format', 'json'], {
-      env,
-    });
-
-    expect(result.exitCode).toBe(0);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ apl: "['events'] | limit 1", maxBinAutoGroups: 40 }),
-      }),
+    const result = await runCli(
+      ['query', 'run', 'events', '--apl', 'limit 1', '--format', 'json'],
+      { env },
     );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.trim()).toBe('`axiom query run` was removed. Use `axiom query \"<APL>\"`.');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('renders rows from legacy bucket aggregates', async () => {
@@ -188,12 +212,146 @@ describe('query run', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['query', 'run', '--apl', "['events'] | count", '--format', 'csv'], {
-      env,
-    });
+    const result = await runCli(['query', "['events'] | count", '--format', 'csv'], { env });
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Count');
     expect(result.stdout).toContain('42');
+  });
+
+  it('normalizes --format jsonl to ndjson output', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', 'limit 1', '--format', 'jsonl'], { env });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe('{"ok":true}');
+    expect(result.stderr).toBe('');
+  });
+
+  it('renders separate timeseries and totals sections for table output', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(bucketResponse), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(
+      ['query', "vercel | summarize count() by bin_auto(_time)", '--format', 'table'],
+      { env },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Timeseries');
+    expect(result.stdout).toContain('Totals');
+    expect(result.stdout).toContain('_time');
+    expect(result.stdout).toContain('Count');
+    expect(result.stderr).toBe('');
+  });
+
+  it('defaults query auto format to table on tty', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(bucketResponse), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', "vercel | summarize count() by bin_auto(_time)"], {
+      env,
+      stdoutIsTTY: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Timeseries');
+    expect(result.stdout).toContain('Totals');
+  });
+
+  it('renders both timeseries and totals in json output', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(bucketResponse), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(
+      ['query', "vercel | summarize count() by bin_auto(_time)", '--format', 'json'],
+      { env },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      data: {
+        rows: Array<Record<string, unknown>>;
+        timeseries: Array<Record<string, unknown>>;
+        totals: Array<Record<string, unknown>>;
+      };
+    };
+    expect(payload.data.timeseries).toHaveLength(2);
+    expect(payload.data.totals).toEqual([{ Count: 5 }]);
+    expect(payload.data.rows).toEqual(payload.data.timeseries);
+  });
+
+  it('renders both timeseries and totals in jsonl output without extra text', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(bucketResponse), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(
+      ['query', "vercel | summarize count() by bin_auto(_time)", '--format', 'jsonl'],
+      { env },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+    const lines = result.stdout.trim().split('\n').filter(Boolean);
+    expect(lines).toHaveLength(3);
+    const parsed = lines.map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(parsed[0]).toHaveProperty('section', 'timeseries');
+    expect(parsed[1]).toHaveProperty('section', 'timeseries');
+    expect(parsed[2]).toHaveProperty('section', 'totals');
+  });
+
+  it('renders csv from timeseries rows when both timeseries and totals exist', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(bucketResponse), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(
+      ['query', "vercel | summarize count() by bin_auto(_time)", '--format', 'csv'],
+      { env },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain('_time,Count');
+    expect(result.stdout).toContain('2026-02-24T18:00:00Z,2');
+    expect(result.stdout).toContain('2026-02-24T19:00:00Z,3');
+    expect(result.stdout).not.toContain('\n5\n');
+  });
+
+  it('never prints truncation messages for csv output', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          matches: [
+            { service: 'checkout', count: 12 },
+            { service: 'api', count: 4 },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', "['traces'] | group by service | count()", '--format', 'csv'], {
+      env: { ...env, AXIOM_MAX_CELLS: '1' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('service,count');
+    expect(result.stdout).toContain('checkout,12');
+    expect(result.stderr).toBe('');
   });
 });
