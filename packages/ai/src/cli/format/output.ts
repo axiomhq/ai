@@ -11,7 +11,7 @@ import type { TimeRangeMeta } from './meta';
 import { buildJsonMeta } from './meta';
 import { isStdoutTty } from './tty';
 
-export type OutputFormat = 'auto' | 'table' | 'csv' | 'json' | 'ndjson' | 'mcp';
+export type OutputFormat = 'auto' | 'table' | 'csv' | 'json' | 'ndjson' | 'jsonl' | 'mcp';
 export type OutputKind = 'list' | 'get' | 'query';
 
 export type OutputOptions = {
@@ -35,8 +35,17 @@ export const resolveOutputFormat = (
   kind: OutputKind,
   isTabular: boolean,
 ): OutputFormat => {
-  if (format !== 'auto') {
-    return format;
+  const normalized = format === 'jsonl' ? 'ndjson' : format;
+
+  if (normalized !== 'auto') {
+    return normalized;
+  }
+
+  if (kind === 'query') {
+    if (isStdoutTty()) {
+      return 'table';
+    }
+    return isTabular ? 'csv' : 'ndjson';
   }
   if (isStdoutTty()) {
     return 'table';

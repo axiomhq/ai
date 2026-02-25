@@ -38,7 +38,7 @@ describe.skipIf(!shouldRunLive)('cli live smoke', () => {
     { timeout: 20_000 },
     async () => {
       const result = await runCli(
-        ['services', 'list', '--since', '5m', '--format', 'json', '--limit', '5'],
+        ['services', 'list', '--since', '5m', '--format', 'json'],
         { env: liveEnv },
       );
 
@@ -49,7 +49,7 @@ describe.skipIf(!shouldRunLive)('cli live smoke', () => {
   );
 
   it(
-    'runs query run limit 1 against detected traces dataset',
+    'runs query limit 1 against detected traces dataset',
     { timeout: 20_000 },
     async () => {
       let dataset = datasetOverride;
@@ -69,7 +69,7 @@ describe.skipIf(!shouldRunLive)('cli live smoke', () => {
       expect(dataset).toBeTruthy();
 
       const result = await runCli(
-        ['query', 'run', dataset!, '--apl', 'limit 1', '--format', 'json'],
+        ['query', `['${dataset!}'] | limit 1`, '--format', 'json'],
         {
           env: liveEnv,
         },

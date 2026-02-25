@@ -399,7 +399,7 @@ describe('cli command integration contracts', () => {
       { env },
     );
     const queryRun = await runCli(
-      ['query', 'run', 'alpha', '--apl', 'limit 1', '--format', 'mcp', '--explain'],
+      ['query', "['alpha'] | limit 1", '--format', 'mcp', '--explain'],
       { env },
     );
     const monitorHistory = await runCli(
@@ -440,7 +440,8 @@ describe('cli command integration contracts', () => {
     expect(queryRun.exitCode).toBe(0);
     expect(queryRun.stdout).toContain('```apl');
     expect(queryRun.stderr).toContain('/v1/datasets/_apl?format=legacy');
-    expect(queryRun.stderr).toContain('apl="limit 1"');
+    expect(queryRun.stderr).toContain('apl=');
+    expect(queryRun.stderr).toContain('limit 1');
 
     expect(monitorHistory.exitCode).toBe(0);
     expect(monitorHistory.stdout).toContain('```csv');
