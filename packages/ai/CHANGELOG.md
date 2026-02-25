@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/axiomhq/ai/compare/axiom-v0.46.1...axiom-v0.47.0) (2026-02-25)
+
+
+### Features
+
+* make packages/ai ESM-only ([#265](https://github.com/axiomhq/ai/issues/265)) ([2c5a9f4](https://github.com/axiomhq/ai/commit/2c5a9f4159d98cfa9c65f664289f152ea1803b1a))
+
 ## [0.46.1](https://github.com/axiomhq/ai/compare/axiom-v0.46.0...axiom-v0.46.1) (2026-02-25)
 
 
