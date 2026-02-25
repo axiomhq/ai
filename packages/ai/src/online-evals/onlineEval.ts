@@ -9,6 +9,7 @@ import type {
   ScorerSampling,
 } from './types';
 import { executeScorer } from './executor';
+import { normalizeBooleanScore } from '../evals/normalize-score';
 import { Attr } from '../otel/semconv/attributes';
 import type { ValidateName } from '../util/name-validation';
 import { isValidName } from '../util/name-validation-runtime';
@@ -359,11 +360,16 @@ async function executeOnlineEvalInternal<
 
     const scoresSummary: Record<string, ScorerResult> = {};
     for (const [name, result] of Object.entries(results)) {
+      const { score: normalizedScore, metadata: normalizedMetadata } = normalizeBooleanScore(
+        result.score,
+        result.metadata,
+      );
+
       scoresSummary[name] = {
         name: result.name,
-        score: result.score,
-        ...(result.metadata &&
-          Object.keys(result.metadata).length > 0 && { metadata: result.metadata }),
+        score: normalizedScore,
+        ...(normalizedMetadata &&
+          Object.keys(normalizedMetadata).length > 0 && { metadata: normalizedMetadata }),
         ...(result.error && { error: result.error }),
       };
     }
