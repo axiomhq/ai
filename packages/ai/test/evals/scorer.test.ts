@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Attr } from '../../src/otel/semconv/attributes';
-import { Scorer } from '../../src/evals';
+import { Scorer } from '../../src/evals/scorers';
 import { Mean, PassAtK } from '../../src/evals/aggregations';
 
 describe('Scorer runtime behavior', () => {

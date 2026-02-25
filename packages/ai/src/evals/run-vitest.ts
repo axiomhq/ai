@@ -2,6 +2,7 @@ import c from 'tinyrainbow';
 import { resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -11,6 +12,16 @@ import { AxiomReporter } from './reporter';
 import { flush, initInstrumentation } from './instrument';
 import { setAxiomConfig } from './context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
+
+const getCurrentDir = (): string => {
+  if (typeof __dirname !== 'undefined') {
+    return __dirname;
+  }
+
+  return path.dirname(fileURLToPath(import.meta.url));
+};
+
+const evalsRunnerPath = resolve(getCurrentDir(), 'evals', 'custom-runner.js');
 
 const printCollectedEvals = (result: TestRunResult, rootDir: string) => {
   if (!result.testModules || result.testModules.length === 0) {
@@ -117,7 +128,7 @@ export const runVitest = async (
       disableConsoleIntercept: true,
       testTimeout: opts.config?.eval?.timeoutMs || 60_000,
       globals: true,
-      runner: resolve(__dirname, 'evals', 'custom-runner.js'),
+      runner: evalsRunnerPath,
       provide: {
         baseline: opts.baseline,
         debug: opts.debug,
