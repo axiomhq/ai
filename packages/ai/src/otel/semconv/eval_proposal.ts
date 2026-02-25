@@ -45,6 +45,11 @@ export const ATTR_EVAL_SCORE_SCORER = 'eval.score.scorer' as const;
 export const ATTR_EVAL_SCORE_METADATA = 'eval.score.metadata' as const;
 export const ATTR_EVAL_SCORE_AGGREGATION = 'eval.score.aggregation' as const;
 export const ATTR_EVAL_SCORE_TRIALS = 'eval.score.trials' as const;
+// online
+export const ATTR_EVAL_ONLINE_SCORERS_TOTAL = 'eval.online.scorers.total' as const;
+export const ATTR_EVAL_ONLINE_SCORERS_RAN = 'eval.online.scorers.ran' as const;
+export const ATTR_EVAL_ONLINE_SCORERS_SAMPLED_OUT = 'eval.online.scorers.sampled_out' as const;
+export const ATTR_EVAL_ONLINE_SCORERS_FAILED = 'eval.online.scorers.failed' as const;
 // user
 export const ATTR_EVAL_USER_NAME = 'eval.user.name';
 export const ATTR_EVAL_USER_EMAIL = 'eval.user.email';

@@ -376,10 +376,10 @@ async function executeOnlineEvalInternal<
 
     evalSpan.setAttributes({
       [Attr.Eval.Case.Scores]: JSON.stringify(scoresSummary),
-      'axiom.eval.online.scorers.total': normalizedScorers.length,
-      'axiom.eval.online.scorers.ran': ranCount,
-      'axiom.eval.online.scorers.sampled_out': sampledOutCount,
-      'axiom.eval.online.scorers.failed': failedCount,
+      [Attr.Eval.Online.Scorers.Total]: normalizedScorers.length,
+      [Attr.Eval.Online.Scorers.Ran]: ranCount,
+      [Attr.Eval.Online.Scorers.SampledOut]: sampledOutCount,
+      [Attr.Eval.Online.Scorers.Failed]: failedCount,
     });
 
     if (failedCount > 0) {
