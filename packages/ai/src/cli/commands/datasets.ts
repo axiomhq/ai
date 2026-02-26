@@ -90,9 +90,14 @@ export const datasetList = withCliContext(async ({ config, explain }, _args, _co
     explain,
   });
 
-  const response = await client.listDatasets();
+  const response = await client
+    .listInternalDatasets()
+    .catch(() => client.listDatasets());
   const rows = normalizeDatasetList(response.data);
-  const columns = ['name', 'description', 'created_at'];
+  const hasRegionColumn = rows.some((row) => Object.prototype.hasOwnProperty.call(row, 'region'));
+  const columns = hasRegionColumn
+    ? ['name', 'region', 'created_at', 'description']
+    : ['name', 'created_at', 'description'];
   const format = resolveOutputFormat(config.format as any, 'list', true);
 
   if (format === 'json') {
@@ -257,10 +262,7 @@ export const datasetSample = withCliContext(
     explain,
   });
 
-  const apl = `let start = datetime(${timeRange.start});
-let end = datetime(${timeRange.end});
-where _time >= start and _time <= end
-| limit ${sampleSize}`;
+  const apl = `limit ${sampleSize}`;
   const response = await client.queryApl<{ matches: Record<string, unknown>[] }>(name, apl, {
     startTime: timeRange.start,
     endTime: timeRange.end,

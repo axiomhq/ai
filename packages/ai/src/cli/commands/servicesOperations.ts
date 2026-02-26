@@ -70,8 +70,6 @@ export const serviceOperations = withCliContext(async ({ config, explain }, ...a
     SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
     STATUS_FIELD: aplFieldRef(statusField),
     DURATION_FIELD: aplFieldRef(durationField),
-    START: timeRange.start,
-    END: timeRange.end,
     SERVICE: aplStringLiteral(service),
   });
 

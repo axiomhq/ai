@@ -87,10 +87,7 @@ export const serviceLogs = withCliContext(async ({ config, explain }, ...args: u
 
   const projection = buildProjection(fields);
 
-  const apl = `let start = datetime(${timeRange.start});
-let end = datetime(${timeRange.end});
-where _time >= start and _time <= end
-| where ${aplFieldRef(fields.serviceField)} == ${aplStringLiteral(service)}
+  const apl = `where ${aplFieldRef(fields.serviceField)} == ${aplStringLiteral(service)}
 | project ${projection}
 | sort by _time desc`;
 

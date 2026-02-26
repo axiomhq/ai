@@ -80,8 +80,6 @@ export const serviceList = withCliContext(async ({ config, explain }, ...args: u
     SERVICE_FIELD: aplFieldRef(fields.serviceField!),
     STATUS_FIELD: aplFieldRef(statusField),
     DURATION_FIELD: aplFieldRef(durationField),
-    START: timeRange.start,
-    END: timeRange.end,
   });
 
   const queryResponse = await client.queryApl(dataset, apl, {

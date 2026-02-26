@@ -69,8 +69,6 @@ export const serviceGet = withCliContext(async ({ config, explain }, ...args: un
     SERVICE_FIELD: aplFieldRef(fields.serviceField!),
     STATUS_FIELD: aplFieldRef(statusField),
     DURATION_FIELD: aplFieldRef(durationField),
-    START: timeRange.start,
-    END: timeRange.end,
     SERVICE: aplStringLiteral(service),
   });
 
@@ -79,8 +77,6 @@ export const serviceGet = withCliContext(async ({ config, explain }, ...args: un
     SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
     STATUS_FIELD: aplFieldRef(statusField),
     DURATION_FIELD: aplFieldRef(durationField),
-    START: timeRange.start,
-    END: timeRange.end,
     SERVICE: aplStringLiteral(service),
   });
 

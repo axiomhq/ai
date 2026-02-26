@@ -152,7 +152,7 @@ describe('cli command integration contracts', () => {
     expect(traceList.exitCode).toBe(0);
 
     expect(datasetList.stdout).toMatchInlineSnapshot(
-      `"{\"name\":\"alpha\",\"description\":null,\"created_at\":\"2026-01-01T00:00:00Z\"}\n"`,
+      `"{\"name\":\"alpha\",\"created_at\":\"2026-01-01T00:00:00Z\",\"description\":null}\n"`,
     );
     expect(monitorList.stdout).toMatchInlineSnapshot(
       `"{\"id\":\"mon_1\",\"name\":\"High errors\",\"status\":\"closed\",\"recent_run\":\"2026-01-01T00:05:00Z\",\"type\":\"threshold\",\"dataset\":\"traces\",\"frequency\":\"*/5 * * * *\"}\n"`,

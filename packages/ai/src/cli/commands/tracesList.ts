@@ -102,13 +102,11 @@ export const traceList = withCliContext(async ({ config, explain }, ...args: unk
     : '0';
 
   const apl = expandTemplate(TRACE_LIST_APL_TEMPLATE, {
-    FILTERS: filterClauses.length > 0 ? `| ${filterClauses.join('\n| ')}` : '',
+    FILTERS: filterClauses.length > 0 ? `${filterClauses.join('\n| ')}\n| ` : '',
     TRACE_ID_FIELD: aplFieldRef(fields.traceIdField!),
     SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
     DURATION_FIELD: aplFieldRef(durationField),
     ERROR_EXPR: errorExpression,
-    START: timeRange.start,
-    END: timeRange.end,
   });
 
   const queryResponse = await client.queryApl(dataset, apl, {

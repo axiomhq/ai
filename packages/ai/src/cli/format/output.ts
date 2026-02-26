@@ -20,6 +20,7 @@ export type OutputOptions = {
   quiet?: boolean;
   noHeader?: boolean;
   columnsOverride?: string;
+  widthTruncationFooter?: string;
 };
 
 export type RenderResult = {
@@ -78,6 +79,7 @@ export const renderTabular = (
     maxCells: options.maxCells,
     quiet: options.quiet,
     noHeader: options.noHeader,
+    widthTruncationFooter: options.widthTruncationFooter,
   });
   return result;
 };
