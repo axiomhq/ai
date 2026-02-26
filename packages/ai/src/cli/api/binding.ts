@@ -3,6 +3,7 @@ export type AxiomDataset = {
   description: string | null;
   kind?: string | null;
   created_at?: string | null;
+  region?: string | null;
 };
 
 export type AxiomDatasetField = {
@@ -73,8 +74,9 @@ const collectDatasetRecords = (input: DatasetInput) => {
 
 export const normalizeDataset = (input: DatasetInput): AxiomDataset => {
   const records = collectDatasetRecords(input);
+  const region = pickFirstDefined(records, ['region']) as string | null | undefined;
 
-  return {
+  const dataset: AxiomDataset = {
     name: (pickFirstDefined(records, ['name']) as string | undefined) ?? '',
     description: (pickFirstDefined(records, ['description']) as string | null | undefined) ?? null,
     kind: (pickFirstDefined(records, ['kind']) as string | null | undefined) ?? null,
@@ -83,6 +85,12 @@ export const normalizeDataset = (input: DatasetInput): AxiomDataset => {
       | null
       | undefined) ?? null,
   };
+
+  if (region !== undefined) {
+    dataset.region = region;
+  }
+
+  return dataset;
 };
 
 export const normalizeDatasetList = (input: unknown): AxiomDataset[] => {

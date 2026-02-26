@@ -84,8 +84,6 @@ export const serviceTraces = withCliContext(async ({ config, explain }, ...args:
     SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
     DURATION_FIELD: aplFieldRef(durationField),
     ERROR_EXPR: errorExpression,
-    START: timeRange.start,
-    END: timeRange.end,
     SERVICE: aplStringLiteral(service),
   });
 

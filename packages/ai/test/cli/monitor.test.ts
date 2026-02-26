@@ -303,7 +303,7 @@ describe('monitor commands', () => {
     expect(result.stdout).toContain('"alert_state": "open"');
     expect(result.stdout).toContain('"/oteldemo.CartService/AddItem"');
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://app.axiom.co/api/internal/monitors/history?monitorIds=mon_1',
+      'https://app.axiom.co/api/internal/monitors/history?monitorIds=mon_1&startTime=7d&endTime=0m',
       expect.objectContaining({ method: 'GET' }),
     );
   });

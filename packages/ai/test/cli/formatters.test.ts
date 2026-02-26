@@ -24,8 +24,31 @@ describe('cli formatters', () => {
       "
     `);
     expect(result.stderr).toMatchInlineSnapshot(
-      `"truncated: showing 1/3 rows (max-cells=4). rerun with --limit or --max-cells.\n"`,
+      `"\ntruncated: showing 1/3 rows (max-cells=4). rerun with --limit or --max-cells.\n"`,
     );
+  });
+
+  it('formats table without width truncation note by default', () => {
+    const result = formatTable(
+      [{ id: 'svc-a', value: 12, extra: 'alpha-beta-gamma-delta' }],
+      columns,
+      { maxCells: 100, terminalWidth: 20 },
+    );
+
+    expect(result.stdout).toContain('svc-a');
+    expect(result.stderr).toBe('');
+  });
+
+  it('formats table with an explicit width truncation note', () => {
+    const note = 'note: use --format [csv,json,jsonl] for complete values.';
+    const result = formatTable(
+      [{ id: 'svc-a', value: 12, extra: 'alpha-beta-gamma-delta' }],
+      columns,
+      { maxCells: 100, terminalWidth: 20, widthTruncationFooter: note },
+    );
+
+    expect(result.stdout).toContain('svc-a');
+    expect(result.stderr).toBe(`\n${note}\n`);
   });
 
   it('formats csv with truncation footer', () => {

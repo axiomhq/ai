@@ -20,6 +20,7 @@ describe('dataset commands', () => {
             {
               name: 'alpha',
               description: 'Alpha dataset',
+              region: 'cloud.us-east-1.aws',
               created_at: '2026-01-01T00:00:00Z',
               modified_at: '2026-01-02T00:00:00Z',
             },
@@ -36,15 +37,15 @@ describe('dataset commands', () => {
     });
 
     expect(tableResult.stdout).toMatchInlineSnapshot(`
-      "name   description    created_at          
-      alpha  Alpha dataset  2026-01-01T00:00:00Z
+      "name   region               created_at            description  
+      alpha  cloud.us-east-1.aws  2026-01-01T00:00:00Z  Alpha dataset
       "
     `);
 
     const csvResult = await runCli(['datasets', 'list', '--format', 'csv'], { env });
     expect(csvResult.exitCode).toBe(0);
-    expect(csvResult.stdout).toContain('name,description,created_at');
-    expect(csvResult.stdout).toContain('alpha,Alpha dataset,2026-01-01T00:00:00Z');
+    expect(csvResult.stdout).toContain('name,region,created_at,description');
+    expect(csvResult.stdout).toContain('alpha,cloud.us-east-1.aws,2026-01-01T00:00:00Z,Alpha dataset');
   });
 
   it('renders dataset get in json and mcp', async () => {
@@ -319,8 +320,8 @@ describe('dataset commands', () => {
       data: Array<{ message: string }>;
     };
     expect(jsonSample.meta.command).toBe('axiom datasets sample');
-    expect(jsonSample.meta.time_range.start).toBe('2026-01-01T00:00:00.000Z');
-    expect(jsonSample.meta.time_range.end).toBe('2026-01-02T00:00:00.000Z');
+    expect(jsonSample.meta.time_range.start).toBe('24h');
+    expect(jsonSample.meta.time_range.end).toBe('0m');
     expect(jsonSample.data[0]?.message).toBe('hello');
 
     const ndjsonResult = await runCli(
@@ -356,13 +357,10 @@ describe('dataset commands', () => {
         endTime: string;
       };
 
-      expect(body.apl).toContain('let start = datetime(2026-01-01T00:00:00.000Z);');
-      expect(body.apl).toContain('let end = datetime(2026-01-02T00:00:00.000Z);');
-      expect(body.apl).toContain("['alpha'] | where _time >= start and _time <= end");
-      expect(body.apl).toContain('| limit 20');
+      expect(body.apl).toBe("['alpha'] | limit 20");
       expect(body.apl).not.toContain('range ');
-      expect(body.startTime).toBe('2026-01-01T00:00:00.000Z');
-      expect(body.endTime).toBe('2026-01-02T00:00:00.000Z');
+      expect(body.startTime).toBe('24h');
+      expect(body.endTime).toBe('0m');
     }
 
     vi.useRealTimers();

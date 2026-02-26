@@ -104,23 +104,49 @@ const write = (stdout: string, stderr = '') => {
   }
 };
 
+const QUERY_TABLE_WIDTH_NOTE =
+  'note: table values were truncated to fit terminal width. rerun with --format [csv,json,jsonl] for complete values.';
+const TABLE_WIDTH_NOTE_MATCH = QUERY_TABLE_WIDTH_NOTE;
+const QUERY_PROJECT_NOTE =
+  'tip: use APL project to select only the fields you need (for example: | project _time, message).';
+
+const withQueryProjectNote = (stderr: string) => {
+  if (!stderr.includes(TABLE_WIDTH_NOTE_MATCH)) {
+    return stderr;
+  }
+
+  const trimmed = stderr.trimEnd();
+  if (trimmed.includes(QUERY_PROJECT_NOTE)) {
+    return `${trimmed}\n`;
+  }
+
+  return `${trimmed}\n${QUERY_PROJECT_NOTE}\n`;
+};
+
 const renderQuerySectionsTable = (
   timeseriesRows: Record<string, unknown>[],
   timeseriesColumns: string[],
   totalsRows: Record<string, unknown>[],
   totalsColumns: string[],
+  quiet = false,
 ) => {
   const sections: string[] = [];
+  const stderrLines: string[] = [];
 
   if (timeseriesRows.length > 0) {
     const timeseriesResult = renderTabular(timeseriesRows, timeseriesColumns, {
       format: 'table',
       maxCells: UNLIMITED_MAX_CELLS,
-      quiet: true,
+      quiet,
+      widthTruncationFooter: QUERY_TABLE_WIDTH_NOTE,
     });
     const table = timeseriesResult.stdout.trimEnd();
     if (table.length > 0) {
       sections.push(`Timeseries\n${table}`);
+    }
+    const stderr = timeseriesResult.stderr.trimEnd();
+    if (stderr.length > 0) {
+      stderrLines.push(stderr);
     }
   }
 
@@ -128,19 +154,28 @@ const renderQuerySectionsTable = (
     const totalsResult = renderTabular(totalsRows, totalsColumns, {
       format: 'table',
       maxCells: UNLIMITED_MAX_CELLS,
-      quiet: true,
+      quiet,
+      widthTruncationFooter: QUERY_TABLE_WIDTH_NOTE,
     });
     const table = totalsResult.stdout.trimEnd();
     if (table.length > 0) {
       sections.push(`Totals\n${table}`);
     }
+    const stderr = totalsResult.stderr.trimEnd();
+    if (stderr.length > 0) {
+      stderrLines.push(stderr);
+    }
   }
 
   if (sections.length === 0) {
-    return '';
+    return { stdout: '', stderr: '' };
   }
 
-  return `${sections.join('\n\n')}\n`;
+  const uniqueStderr = Array.from(new Set(stderrLines));
+  return {
+    stdout: `${sections.join('\n\n')}\n`,
+    stderr: uniqueStderr.length > 0 ? `${uniqueStderr.join('\n')}\n` : '',
+  };
 };
 
 export const queryRun = withCliContext(
@@ -268,14 +303,14 @@ export const queryRun = withCliContext(
     }
 
     if (format === 'table' && hasTimeseriesAndTotals) {
-      write(
-        renderQuerySectionsTable(
-          timeseriesRows,
-          timeseriesColumns,
-          totalsRows,
-          totalsColumns,
-        ),
+      const rendered = renderQuerySectionsTable(
+        timeseriesRows,
+        timeseriesColumns,
+        totalsRows,
+        totalsColumns,
+        Boolean(config.quiet),
       );
+      write(rendered.stdout, withQueryProjectNote(rendered.stderr));
       return;
     }
 
@@ -285,8 +320,9 @@ export const queryRun = withCliContext(
     const result = renderTabular(tabularRows, tabularColumns, {
       format: format === 'table' ? 'table' : 'csv',
       maxCells: UNLIMITED_MAX_CELLS,
-      quiet: true,
+      quiet: format === 'table' ? Boolean(config.quiet) : true,
+      widthTruncationFooter: format === 'table' ? QUERY_TABLE_WIDTH_NOTE : undefined,
     });
-    write(result.stdout);
+    write(result.stdout, withQueryProjectNote(result.stderr));
   },
 );

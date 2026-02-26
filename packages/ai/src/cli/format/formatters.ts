@@ -6,6 +6,7 @@ export type FormatOptions = {
   noHeader?: boolean;
   quiet?: boolean;
   terminalWidth?: number;
+  widthTruncationFooter?: string;
 };
 
 export type FormatMeta = {
@@ -83,10 +84,14 @@ export const formatTable = (
     return Math.min(Math.max(3, maxCell), maxColumnWidth);
   });
 
+  let truncatedForWidth = false;
   const formatRow = (row: Record<string, unknown>) =>
     shape.columns
       .map((column, index) => {
         const raw = formatValue(row[column]);
+        if (raw.length > columnWidths[index]) {
+          truncatedForWidth = true;
+        }
         const truncated = truncateString(raw, columnWidths[index]);
         return truncated.padEnd(columnWidths[index], ' ');
       })
@@ -105,8 +110,16 @@ export const formatTable = (
   });
 
   const stdout = lines.length ? `${lines.join('\n')}\n` : '';
-  const stderr =
-    shape.truncated && !options.quiet ? `${buildFooter(meta, options.maxCells)}\n` : '';
+  const stderrLines: string[] = [];
+  if (!options.quiet) {
+    if (shape.truncated) {
+      stderrLines.push(buildFooter(meta, options.maxCells));
+    }
+    if (truncatedForWidth && options.widthTruncationFooter) {
+      stderrLines.push(options.widthTruncationFooter);
+    }
+  }
+  const stderr = stderrLines.length > 0 ? `\n${stderrLines.join('\n')}\n` : '';
 
   return { stdout, stderr, meta };
 };

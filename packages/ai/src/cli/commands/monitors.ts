@@ -497,44 +497,6 @@ const extractColumnarMonitorSummaries = (payload: unknown, monitorIds: string[])
   return summaries;
 };
 
-const resolveInternalHistoryTimestamp = (row: Record<string, unknown>) => {
-  const runTime = row['run_time'];
-  if (typeof runTime === 'string') {
-    return runTime;
-  }
-
-  const time = row._time;
-  if (typeof time === 'string') {
-    return time;
-  }
-
-  return null;
-};
-
-const filterInternalHistoryRows = (
-  rows: Record<string, unknown>[],
-  range: { start: string; end: string },
-) => {
-  const startMs = parseTimestampMs(range.start);
-  const endMs = parseTimestampMs(range.end);
-
-  return rows.filter((row) => {
-    const timestampMs = parseTimestampMs(resolveInternalHistoryTimestamp(row));
-    if (Number.isNaN(timestampMs)) {
-      return true;
-    }
-
-    if (!Number.isNaN(startMs) && timestampMs < startMs) {
-      return false;
-    }
-    if (!Number.isNaN(endMs) && timestampMs > endMs) {
-      return false;
-    }
-
-    return true;
-  });
-};
-
 const extractInternalHistoryRows = (payload: unknown, monitorId: string) => {
   const root = asRecord(payload);
   if (!root) {
@@ -1041,8 +1003,11 @@ export const monitorHistory = withCliContext(async ({ config, explain }, ...args
   let columns: string[];
 
   try {
-    const internalResponse = await client.getMonitorsHistoryBatch<unknown>([id]);
-    rows = filterInternalHistoryRows(extractInternalHistoryRows(internalResponse.data, id), timeRange);
+    const internalResponse = await client.getMonitorsHistoryBatch<unknown>([id], {
+      start: timeRange.start,
+      end: timeRange.end,
+    });
+    rows = extractInternalHistoryRows(internalResponse.data, id);
     columns = INTERNAL_HISTORY_PREFERRED_COLUMNS.filter((column) =>
       rows.some((row) => Object.prototype.hasOwnProperty.call(row, column)),
     );

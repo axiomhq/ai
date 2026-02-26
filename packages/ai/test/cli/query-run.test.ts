@@ -354,4 +354,25 @@ describe('query', () => {
     expect(result.stdout).toContain('checkout,12');
     expect(result.stderr).toBe('');
   });
+
+  it('prints a width-truncation note for table output', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          matches: [{ message: 'x'.repeat(200) }],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', "['traces'] | limit 1", '--format', 'table'], {
+      env: { ...env, COLUMNS: '20' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('message');
+    expect(result.stderr).toContain('--format [csv,json,jsonl] for complete values');
+    expect(result.stderr).toContain('use APL project to select only the fields you need');
+  });
 });
