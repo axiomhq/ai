@@ -22,7 +22,7 @@ import { generateObject, generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { type SpanContext } from '@opentelemetry/api';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
-import { Scorer } from 'axiom/ai/evals/scorers';
+import { Scorer } from 'axiom/ai/scorers';
 import { onlineEval } from 'axiom/ai/evals/online';
 import { z } from 'zod';
 import { initializeTelemetry, flushTelemetry } from './instrumentation';

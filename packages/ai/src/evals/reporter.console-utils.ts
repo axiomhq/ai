@@ -11,7 +11,7 @@ import type {
   OutOfScopeFlagAccess,
 } from './eval.types';
 import type { TestSuite, TestCase } from 'vitest/node';
-import type { Score } from './scorer.types';
+import type { Score } from '../scorers/scorer.types';
 import { flattenObject } from '../util/dot-path';
 import type { AxiomConnectionResolvedConfig } from '../config/resolver';
 

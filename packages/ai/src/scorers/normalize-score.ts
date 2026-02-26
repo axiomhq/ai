@@ -1,5 +1,5 @@
 import { Attr } from '../otel/semconv/attributes';
-import type { Score } from './scorer.types';
+import type { Score } from '../scorers/scorer.types';
 
 /**
  * Normalizes a boolean score to numeric (1/0) and adds eval.score.is_boolean

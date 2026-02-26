@@ -31,13 +31,13 @@ The root cause:
 - **Any import from `axiom/ai/evals` — even just `Scorer` — triggers the vitest import chain**
 - Consumers who don't run evals don't have vitest installed → `ERR_MODULE_NOT_FOUND` for `vitest` or `vite`
 
-The fix is strict entry point separation: vitest-free code has dedicated entry points (`axiom/ai/evals/scorers`, `axiom/ai/evals/online`). The old import paths from `axiom/ai` and `axiom/ai/evals` emit deprecation warnings at runtime and will be removed in a future version.
+The fix is strict entry point separation: vitest-free code has dedicated entry points (`axiom/ai/scorers`, `axiom/ai/evals/online`). The old import paths from `axiom/ai` and `axiom/ai/evals` emit deprecation warnings at runtime and will be removed in a future version.
 
 **Detection — flag ANY of these:**
 
 - New static `import` or `require` of `vitest`, `vitest/node`, `vitest/runners`, or `vite-tsconfig-paths` in files outside `src/evals/eval.ts`, `src/evals/custom-runner.ts`, `src/evals/run-vitest.ts`, or test files
-- New re-exports from `src/evals/eval.ts` added to a non-eval entry point (`src/index.ts`, `src/evals/scorers.ts`, `src/evals/online.ts`, `src/evals/aggregations.ts`, `src/feedback.ts`)
-- Code that imports `Scorer` from `axiom/ai/evals` or `axiom/ai` instead of `axiom/ai/evals/scorers`
+- New re-exports from `src/evals/eval.ts` added to a non-eval entry point (`src/index.ts`, `src/scorers.ts`, `src/evals/online.ts`, `src/evals/aggregations.ts`, `src/feedback.ts`)
+- Code that imports `Scorer` from `axiom/ai/evals` or `axiom/ai` instead of `axiom/ai/scorers`
 - Code that imports `onlineEval` from `axiom/ai` instead of `axiom/ai/evals/online`
 - Adding vitest-dependent code to files reachable from vitest-free entry points
 
@@ -45,7 +45,7 @@ The fix is strict entry point separation: vitest-free code has dedicated entry p
 
 ```typescript
 // Scorers (vitest-free):
-import { Scorer } from 'axiom/ai/evals/scorers';
+import { Scorer } from 'axiom/ai/scorers';
 
 // Online evaluations (vitest-free):
 import { onlineEval } from 'axiom/ai/evals/online';
@@ -62,9 +62,9 @@ const { runVitest } = await import('../../evals/run-vitest');
 | Entry Point | vitest Required | Safe Without vitest |
 |---|---|---|
 | `axiom/ai` | NO | YES |
-| `axiom/ai/evals/scorers` | NO | YES |
+| `axiom/ai/scorers` | NO | YES |
 | `axiom/ai/evals/online` | NO | YES |
-| `axiom/ai/evals/aggregations` | NO | YES |
+| `axiom/ai/scorers/aggregations` | NO | YES |
 | `axiom/ai/feedback` | NO | YES (client-safe) |
 | `axiom/ai/config` | NO | YES |
 | `axiom/ai/evals` | **YES** | NO — offline eval runner only |

@@ -5,7 +5,7 @@ export function warnScorerDeprecation(path: string): void {
   scorerWarned = true;
   console.warn(
     `[axiom] Importing Scorer from '${path}' is deprecated. ` +
-      `Use "import { Scorer } from 'axiom/ai/evals/scorers'" instead.`,
+      `Use "import { Scorer } from 'axiom/ai/scorers'" instead.`,
   );
 }
 

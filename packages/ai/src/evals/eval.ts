@@ -18,8 +18,8 @@ import type {
   Evaluation,
   OutOfScopeFlagAccess,
 } from './eval.types';
-import type { ScoreWithName, ScorerLike, Scorer } from './scorer.types';
-import { Mean, type Aggregation } from './aggregations';
+import type { ScoreWithName, ScorerLike, Scorer } from '../scorers/scorer.types';
+import { Mean, type Aggregation } from '../scorers/aggregations';
 import { EvaluationApiClient, findEvaluationCases } from './eval.service';
 import { getGlobalFlagOverrides, setGlobalFlagOverrides } from './context/global-flags';
 import { deepEqual } from '../util/deep-equal';

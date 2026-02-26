@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Attr } from '../../src/otel/semconv/attributes';
-import { normalizeBooleanScore } from '../../src/evals/normalize-score';
+import { normalizeBooleanScore } from '../../src/scorers/normalize-score';
 
 describe('normalizeBooleanScore', () => {
   it('converts true to 1 with is_boolean metadata', () => {
