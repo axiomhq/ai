@@ -411,6 +411,54 @@ const extractScopedDatasetName = (apl: string): string | undefined => {
   return match[2].replace(/\\(['"\\])/g, '$1');
 };
 
+const inferDatasetFromKnownDatasets = (
+  apl: string,
+  knownDatasetNames: Iterable<string>,
+): string | undefined => {
+  const datasetNames = Array.from(knownDatasetNames).filter((name) => name.length > 0);
+  if (datasetNames.length === 0) {
+    return undefined;
+  }
+
+  const knownDatasets = new Set(datasetNames);
+  let bestMatch: { dataset: string; index: number } | null = null;
+
+  const bracketPattern = /\[\s*(['"])((?:\\.|(?!\1).)+)\1\s*\]/gs;
+  for (const match of apl.matchAll(bracketPattern)) {
+    const candidate = match[2]?.replace(/\\(['"\\])/g, '$1');
+    if (!candidate || !knownDatasets.has(candidate)) {
+      continue;
+    }
+
+    const index = match.index ?? Number.MAX_SAFE_INTEGER;
+    if (!bestMatch || index < bestMatch.index) {
+      bestMatch = { dataset: candidate, index };
+    }
+  }
+
+  if (bestMatch) {
+    return bestMatch.dataset;
+  }
+
+  // FIXME(njpatel): Replace this with AST-backed dataset extraction once the parser is ready.
+  for (const dataset of datasetNames) {
+    const index = apl.indexOf(dataset);
+    if (index < 0) {
+      continue;
+    }
+
+    if (
+      !bestMatch ||
+      index < bestMatch.index ||
+      (index === bestMatch.index && dataset.length > bestMatch.dataset.length)
+    ) {
+      bestMatch = { dataset, index };
+    }
+  }
+
+  return bestMatch?.dataset;
+};
+
 const withAplPrelude = (prelude: string, body: string) => {
   if (!prelude) {
     return body;
@@ -667,13 +715,18 @@ export class AxiomApiClient {
     return new Map<string, string>();
   }
 
-  private async resolveEdgeQueryBaseUrl(datasetName: string | undefined) {
-    if (!datasetName) {
-      return undefined;
-    }
-
+  private async resolveEdgeQueryBaseUrl(queryText: string, explicitDataset: string | undefined) {
     try {
       const regionsByDataset = await this.getDatasetRegionMap();
+      const datasetName =
+        explicitDataset ??
+        extractScopedDatasetName(queryText) ??
+        inferDatasetFromKnownDatasets(queryText, regionsByDataset.keys());
+
+      if (!datasetName) {
+        return undefined;
+      }
+
       const region = regionsByDataset.get(datasetName);
       if (!region) {
         return undefined;
@@ -692,9 +745,8 @@ export class AxiomApiClient {
     }
 
     const queryText = dataset ? qualifyAplWithDataset(dataset, apl) : rewriteAplDatasetShorthand(apl);
-    const scopedDataset = dataset ?? extractScopedDatasetName(queryText);
     const edgeBaseUrl = resolveEdgeRoutingEnabled()
-      ? await this.resolveEdgeQueryBaseUrl(scopedDataset)
+      ? await this.resolveEdgeQueryBaseUrl(queryText, dataset)
       : undefined;
 
     if (edgeBaseUrl) {
