@@ -519,4 +519,68 @@ range start to end | count()`,
       await fs.rm(cacheDir, { recursive: true, force: true });
     }
   });
+
+  it('chooses the earliest known dataset reference in non-leading APL for edge routing', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://app.axiom.co/api/internal/datasets') {
+        return new Response(
+          JSON.stringify([
+            { name: 'dataset-a', region: 'cloud.us-east-1.aws' },
+            { name: 'dataset-b', region: 'cloud.eu-central-1.aws' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://app.axiom.co/api/internal/regions') {
+        return new Response(
+          JSON.stringify({
+            axiom: [
+              { id: 'cloud.us-east-1.aws', domain: 'https://us-east-1.aws.edge.axiom.co' },
+              { id: 'cloud.eu-central-1.aws', domain: 'https://eu-central-1.aws.edge.axiom.co' },
+            ],
+            byoc: [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+        return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    const response = await client.queryApl(
+      undefined,
+      `let threshold = 10;
+print seed=1
+| join kind=inner (['dataset-b'] | summarize total=count()) on seed
+| join kind=inner (['dataset-a'] | summarize total=count()) on seed`,
+      { maxBinAutoGroups: 40 },
+    );
+
+    expect(response.data).toEqual({ matches: [{ ok: true }] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining("['dataset-b']"),
+      }),
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      'https://us-east-1.aws.edge.axiom.co/api/v1/query',
+      expect.anything(),
+    );
+  });
 });
