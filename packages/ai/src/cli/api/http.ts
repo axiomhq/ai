@@ -2,7 +2,7 @@ import { recordRequest, type ExplainContext } from '../explain/context';
 
 export type HttpConfig = {
   url: string;
-  orgId: string;
+  orgId?: string;
   token: string;
   explain?: ExplainContext;
 };
@@ -11,7 +11,9 @@ export type RequestJsonOptions = {
   method: 'GET' | 'POST';
   path: string;
   body?: Record<string, unknown>;
+  rawBody?: BodyInit;
   baseUrl?: string;
+  headers?: Record<string, string>;
 };
 
 export type ApiResponse<T> = {
@@ -97,15 +99,26 @@ export const requestJson = async <T>(
   config: HttpConfig,
   options: RequestJsonOptions,
 ): Promise<ApiResponse<T>> => {
+  if (options.body && options.rawBody !== undefined) {
+    throw new Error('requestJson: cannot set both body and rawBody');
+  }
+
   const baseUrl = (options.baseUrl ?? config.url).replace(/\/$/, '');
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${config.token}`,
+    'Content-Type': 'application/json',
+    ...(options.headers ?? {}),
+  };
+  if (config.orgId && config.orgId.trim().length > 0) {
+    headers['X-Axiom-Org-Id'] = config.orgId;
+  }
+
+  const requestBody = options.body ? JSON.stringify(options.body) : options.rawBody;
+
   const response = await fetch(`${baseUrl}${options.path}`, {
     method: options.method,
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      'X-Axiom-Org-Id': config.orgId,
-      'Content-Type': 'application/json',
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    headers,
+    body: requestBody,
   });
 
   const requestId = response.headers.get('x-request-id') ?? undefined;

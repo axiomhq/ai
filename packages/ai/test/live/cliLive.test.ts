@@ -18,29 +18,24 @@ const liveEnv = {
 
 describe.skipIf(!shouldRunLive)('cli live smoke', () => {
   it(
-    'runs service detect in json mode',
+    'runs datasets list in json mode',
     { timeout: 20_000 },
     async () => {
-      const result = await runCli(['services', 'detect', '--format', 'json'], {
+      const result = await runCli(['datasets', 'list', '--format', 'json'], {
         env: liveEnv,
       });
 
       expect(result.exitCode).toBe(0);
-      const parsed = JSON.parse(result.stdout) as {
-        data: { traces?: { dataset?: string | null } };
-      };
-      expect(parsed.data.traces).toBeDefined();
+      const parsed = JSON.parse(result.stdout) as { data: Array<{ name?: string | null }> };
+      expect(Array.isArray(parsed.data)).toBe(true);
     },
   );
 
   it(
-    'runs service list for the last 5 minutes in json mode',
+    'runs monitors list in json mode',
     { timeout: 20_000 },
     async () => {
-      const result = await runCli(
-        ['services', 'list', '--since', '5m', '--format', 'json'],
-        { env: liveEnv },
-      );
+      const result = await runCli(['monitors', 'list', '--format', 'json'], { env: liveEnv });
 
       expect(result.exitCode).toBe(0);
       const parsed = JSON.parse(result.stdout) as { data: unknown[] };
@@ -55,15 +50,15 @@ describe.skipIf(!shouldRunLive)('cli live smoke', () => {
       let dataset = datasetOverride;
 
       if (!dataset) {
-        const detect = await runCli(['services', 'detect', '--format', 'json'], {
+        const datasets = await runCli(['datasets', 'list', '--format', 'json'], {
           env: liveEnv,
         });
-        expect(detect.exitCode).toBe(0);
+        expect(datasets.exitCode).toBe(0);
 
-        const parsedDetect = JSON.parse(detect.stdout) as {
-          data: { traces?: { dataset?: string | null } };
+        const parsedDatasets = JSON.parse(datasets.stdout) as {
+          data: Array<{ name?: string | null }>;
         };
-        dataset = parsedDetect.data.traces?.dataset ?? undefined;
+        dataset = parsedDatasets.data.map((entry) => entry.name).find((name): name is string => Boolean(name));
       }
 
       expect(dataset).toBeTruthy();

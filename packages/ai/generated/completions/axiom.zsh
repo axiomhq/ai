@@ -2,7 +2,7 @@
 
 _axiom_completion() {
   local -a words
-  words=('--apl' '--dataset' '--end' '--explain' '--file' '--format' '--logs-dataset' '--max-bin-auto-groups' '--no-color' '--operation' '--org-id' '--quiet' '--service' '--since' '--start' '--status' '--stdin' '--time-zone' '--token' '--until' '--url' 'auth' 'auto' 'bash' 'completion' 'csv' 'datasets' 'detect' 'error' 'eval' 'fish' 'get' 'history' 'json' 'jsonl' 'list' 'login' 'logout' 'logs' 'mcp' 'monitors' 'ndjson' 'ok' 'operations' 'powershell' 'query' 'sample' 'schema' 'services' 'spans' 'status' 'switch' 'table' 'traces' 'unset' 'version' 'zsh')
+  words=('--api-token' '--apl' '--content-encoding' '--content-type' '--continue-on-error' '--csv-fields' '--dataset' '--delimiter' '--edge-url' '--end' '--explain' '--file' '--format' '--label' '--max-bin-auto-groups' '--no-color' '--org-id' '--quiet' '--since' '--start' '--stdin' '--time-zone' '--timestamp-field' '--timestamp-format' '--token' '--until' '--url' 'auth' 'auto' 'bash' 'completion' 'csv' 'datasets' 'eval' 'fish' 'get' 'gzip' 'history' 'identity' 'ingest' 'json' 'jsonl' 'list' 'login' 'logout' 'mcp' 'monitors' 'ndjson' 'powershell' 'query' 'sample' 'schema' 'status' 'switch' 'table' 'traces' 'version' 'zsh' 'zstd')
   _describe 'value' words
 }
 

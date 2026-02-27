@@ -61,7 +61,7 @@ describe('otel mapping and dataset detection', () => {
     expect(result.logs).toBeNull();
   });
 
-  it('throws required-field error with service detect guidance', () => {
+  it('throws required-field error with schema guidance', () => {
     expect(() =>
       requireOtelFields(
         'traces',
@@ -79,7 +79,7 @@ describe('otel mapping and dataset detection', () => {
         ['traceIdField', 'spanIdField'],
       ),
     ).toThrow(
-      'Dataset traces is missing required fields: traceIdField. Run `axiom services detect --explain` to inspect mappings.',
+      'Dataset traces is missing required fields: traceIdField. Run `axiom datasets schema traces` to inspect fields.',
     );
   });
 });

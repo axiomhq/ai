@@ -45,9 +45,9 @@ const formatTopLevelHelp = (
     'auth',
     'datasets',
     'eval',
+    'ingest',
     'monitors',
     'query',
-    'services',
     'traces',
   ]);
 

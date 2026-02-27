@@ -314,6 +314,110 @@ range start to end | count()`,
     );
   });
 
+  it('queries explicit edge URL with an edge token override', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      maxBinAutoGroups: 40,
+      edgeUrl: 'https://eu-central-1.aws.edge.axiom.co',
+      apiToken: 'edge-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer edge-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('uses v1 dataset ingest path on API hosts', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ingested: 2, failed: 0, failures: [], processedBytes: 16 }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', Buffer.from('{"ok":true}\n', 'utf8'), {
+      contentType: 'ndjson',
+      contentEncoding: 'identity',
+      timestampField: '_time',
+      timestampFormat: 'RFC3339',
+      delimiter: ',',
+      labels: { env: 'prod' },
+      csvFields: ['a', 'b'],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/logs/ingest?timestamp-field=_time&timestamp-format=RFC3339&csv-delimiter=%2C',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'ndjson',
+          'X-Axiom-Org-Id': 'org',
+          'X-Axiom-Event-Labels': JSON.stringify({ env: 'prod' }),
+        },
+      }),
+    );
+  });
+
+  it('uses edge ingest path and edge token override when edge url is set', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ingested: 1, failed: 0, failures: [], processedBytes: 8 }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', Buffer.from('{"ok":true}\n', 'utf8'), {
+      contentType: 'ndjson',
+      edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+      apiToken: 'edge-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://us-east-1.aws.edge.axiom.co/v1/ingest/logs',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer edge-token',
+          'Content-Type': 'ndjson',
+        },
+      }),
+    );
+  });
+
   it('routes dataset queries to edge endpoints when edge routing is enabled', async () => {
     vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
     vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
