@@ -87,6 +87,18 @@ const splitAplPrelude = (apl: string) => {
   };
 };
 
+const extractLetBindings = (prelude: string) => {
+  const bindings = new Set<string>();
+  const pattern = /\blet\s+([A-Za-z_][A-Za-z0-9_]*)\s*=/g;
+  for (const match of prelude.matchAll(pattern)) {
+    const binding = match[1];
+    if (binding) {
+      bindings.add(binding);
+    }
+  }
+  return bindings;
+};
+
 const parseCacheTtl = (value: string | undefined): number | null => {
   if (value === undefined) {
     return null;
@@ -383,8 +395,15 @@ const writeDiskStringMapCache = async (prefix: string, cacheKey: string, entry: 
   }
 };
 
-const cacheKeyFor = (config: HttpConfig) =>
-  `${config.url.replace(/\/+$/, '')}\u0000${config.orgId ?? ''}`;
+const tokenScopeForCache = (token: string) =>
+  createHash('sha256').update(token).digest('hex');
+
+const cacheKeyFor = (config: HttpConfig) => {
+  const baseUrl = config.url.replace(/\/+$/, '');
+  const orgScope = config.orgId ?? '';
+  const tokenScope = orgScope.length === 0 ? tokenScopeForCache(config.token) : '';
+  return `${baseUrl}\u0000${orgScope}\u0000${tokenScope}`;
+};
 
 const readDatasetRegionCache = async (key: string): Promise<Map<string, string> | null> => {
   const ttlMs = resolveDatasetRegionCacheTtlMs();
@@ -565,6 +584,12 @@ const rewriteAplDatasetShorthand = (apl: string) => {
   if (!match) {
     return withAplPrelude(prelude, body);
   }
+
+  const letBindings = extractLetBindings(prelude);
+  if (letBindings.has(match[1])) {
+    return withAplPrelude(prelude, body);
+  }
+
   return withAplPrelude(prelude, `['${escapeAplDataset(match[1])}'] | ${match[2].trim()}`);
 };
 
@@ -825,6 +850,7 @@ export class AxiomApiClient {
 
     const { edgeUrl, apiToken, ...queryOptions } = options;
     const queryText = dataset ? qualifyAplWithDataset(dataset, apl) : rewriteAplDatasetShorthand(apl);
+    const tokenOverride = trimOrUndefined(apiToken);
 
     const explicitEdgeUrl = trimOrUndefined(edgeUrl);
     if (explicitEdgeUrl) {
@@ -833,7 +859,24 @@ export class AxiomApiClient {
         {
           ...this.config,
           orgId: undefined,
-          token: apiToken ?? this.config.token,
+          token: tokenOverride ?? this.config.token,
+        },
+        {
+          method: 'POST',
+          path: target.path,
+          body: { apl: queryText, ...queryOptions },
+          baseUrl: target.baseUrl,
+        },
+      );
+    }
+
+    if (isLikelyEdgeHost(this.config.url)) {
+      const target = resolveEdgeQueryTarget(this.config.url);
+      return requestJson<T>(
+        {
+          ...this.config,
+          orgId: undefined,
+          token: tokenOverride ?? this.config.token,
         },
         {
           method: 'POST',
@@ -853,7 +896,7 @@ export class AxiomApiClient {
         const edgePath = EDGE_QUERY_PATH;
         const edgeConfig: HttpConfig = {
           ...this.config,
-          token: apiToken ?? this.config.token,
+          token: tokenOverride ?? this.config.token,
           orgId: undefined,
         };
         return await requestJson<T>(edgeConfig, {
@@ -925,7 +968,7 @@ export class AxiomApiClient {
 
     const requestConfig: HttpConfig = {
       ...this.config,
-      token: options.apiToken ?? this.config.token,
+      token: trimOrUndefined(options.apiToken) ?? this.config.token,
       orgId: useEdge ? undefined : this.config.orgId,
     };
 

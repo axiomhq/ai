@@ -114,4 +114,35 @@ describe('ingest', () => {
       }),
     );
   });
+
+  it('preserves literal file paths that contain commas', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ingested: 2,
+          failed: 0,
+          failures: [],
+          processedBytes: 64,
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const dir = await mkdtemp(join(tmpdir(), 'axiom-ingest-comma-'));
+    const file = join(dir, 'events,2026.ndjson');
+    await writeFile(file, '{"message":"ok"}\n', 'utf8');
+
+    const result = await runCli(
+      ['ingest', 'logs', '--file', file, '--content-type', 'ndjson', '--format', 'json'],
+      { env },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      data: Array<Record<string, unknown>>;
+    };
+    expect(payload.data[0]?.source).toBe(file);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

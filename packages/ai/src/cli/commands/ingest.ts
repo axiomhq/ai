@@ -54,18 +54,19 @@ const writeOutput = (stdout: string, stderr = '') => {
   }
 };
 
-const asArray = (value: string | string[] | undefined) => {
+const asList = (value: string | string[] | undefined) => {
   if (value === undefined) {
     return [];
   }
-  if (Array.isArray(value)) {
-    return value.flatMap((item) => item.split(',')).map((item) => item.trim()).filter(Boolean);
-  }
-  return value
-    .split(',')
+  const values = Array.isArray(value) ? value : [value];
+  return values.map((item) => item.trim()).filter(Boolean);
+};
+
+const asCsvList = (value: string | string[] | undefined) =>
+  asList(value)
+    .flatMap((item) => item.split(','))
     .map((item) => item.trim())
     .filter(Boolean);
-};
 
 const readStdin = async () => {
   const chunks: Buffer[] = [];
@@ -200,9 +201,9 @@ export const ingestRun = withCliContext(async ({ config, explain }, ...args: unk
     throw new Error(`Unsupported content type '${options.contentType}'. Use json, ndjson, or csv.`);
   }
 
-  const files = asArray(options.file);
-  const labels = parseLabels(asArray(options.label));
-  const csvFields = asArray(options.csvFields);
+  const files = asList(options.file);
+  const labels = parseLabels(asCsvList(options.label));
+  const csvFields = asCsvList(options.csvFields);
   const inputs = await collectInputs(files);
 
   const client = createAxiomApiClient({

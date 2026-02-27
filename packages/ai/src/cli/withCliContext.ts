@@ -67,6 +67,10 @@ const parseNotFoundTarget = (path: string) => {
     }
   }
 
+  if (pathname === '/v1/datasets/_apl') {
+    return null;
+  }
+
   const genericMatch = pathname.match(/^\/v[0-9]+\/([^/]+)\/([^/]+)$/);
   if (genericMatch) {
     return {
@@ -86,6 +90,9 @@ const formatApiError = (error: AxiomApiError) => {
     }
     if (target?.resource) {
       return `${titleCase(target.resource)} was not found.`;
+    }
+    if (error.detail) {
+      return error.detail;
     }
     return 'Requested resource was not found.';
   }

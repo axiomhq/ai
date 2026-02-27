@@ -133,6 +133,27 @@ const pickFirstStringFromRecords = (records: Record<string, unknown>[], keys: st
   return '';
 };
 
+const pickFirstBooleanFromRecords = (records: Record<string, unknown>[], keys: string[]) => {
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === 'boolean') {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') {
+          return true;
+        }
+        if (normalized === 'false') {
+          return false;
+        }
+      }
+    }
+  }
+  return false;
+};
+
 const stringifyNotifier = (value: unknown) => {
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -250,7 +271,7 @@ const normalizeMonitor = (monitor: MonitorRecord) => {
   return {
     id: pickFirstStringFromRecords(records, ['id']),
     name: pickFirstStringFromRecords(records, ['name']),
-    enabled: Boolean((records[0]?.enabled as boolean | undefined) ?? false),
+    enabled: pickFirstBooleanFromRecords(records, ['enabled']),
     status: normalizeState(pickFirstStringFromRecords(records, ['last_state', 'status'])),
     recent_run:
       pickFirstStringFromRecords(records, [
