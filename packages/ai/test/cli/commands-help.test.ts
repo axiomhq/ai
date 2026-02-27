@@ -9,8 +9,6 @@ const queryHelp = `Run APL queries\n\nUSAGE\n  axiom query [query...] [flags]\n\
 
 const monitorHelp = `Read monitors and run history\n\nUSAGE\n  axiom monitors <command> [flags]\n\nAVAILABLE COMMANDS\n  list:          List monitors\n  get <id>:      Show a monitor\n  history <id>:  Show monitor execution history\n\nINHERITED FLAGS\n  --format <format>   auto|table|csv|json|ndjson|jsonl|mcp\n  --url <url>         Axiom API base URL\n  --org-id <id>       Organization ID\n  --token <token>     API token\n  --no-color          Disable ANSI color\n  --quiet             Suppress non-data output\n  --explain           Print API calls and queries to stderr\n\nLEARN MORE\n  Use \`axiom monitors <command> --help\` for more information about a command.\n`;
 
-const traceHelp = `Trace-centric tools\n\nUSAGE\n  axiom traces <command> [flags]\n\nAVAILABLE COMMANDS\n  get <trace-id>:  Show a trace tree view with span IDs\n\nINHERITED FLAGS\n  --format <format>   auto|table|csv|json|ndjson|jsonl|mcp\n  --url <url>         Axiom API base URL\n  --org-id <id>       Organization ID\n  --token <token>     API token\n  --no-color          Disable ANSI color\n  --quiet             Suppress non-data output\n  --explain           Print API calls and queries to stderr\n\nLEARN MORE\n  Use \`axiom traces <command> --help\` for more information about a command.\n`;
-
 describe('cli command help', () => {
   it('prints top-level help with cli commands', async () => {
     const result = await runCli(['--help'], { stdoutIsTTY: true });
@@ -29,7 +27,6 @@ describe('cli command help', () => {
         ingest:    Ingest structured data into a dataset
         monitors:  Read monitors and run history
         query:     Run APL queries
-        traces:    Trace-centric tools
 
       ADDITIONAL COMMANDS
         completion:  Print shell completion script
@@ -69,10 +66,4 @@ describe('cli command help', () => {
     const result = await runCli(['monitors', '--help'], { stdoutIsTTY: true });
     expect(result.stdout).toBe(monitorHelp);
   });
-
-  it('prints trace help', async () => {
-    const result = await runCli(['traces', '--help'], { stdoutIsTTY: true });
-    expect(result.stdout).toBe(traceHelp);
-  });
-
 });

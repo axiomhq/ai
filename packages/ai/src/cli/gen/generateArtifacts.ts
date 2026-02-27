@@ -29,7 +29,7 @@ const walkCommands = (commands: CommandSpec[], prefix: string[] = []): CommandPa
 
 const collectOptions = (commandPath: string[], command: CommandSpec): OptionSpec[] => {
   const [noun] = commandPath;
-  if (['datasets', 'ingest', 'query', 'monitors', 'traces'].includes(noun)) {
+  if (['datasets', 'ingest', 'query', 'monitors'].includes(noun)) {
     return [...cliCommandSpec.globalOptions, ...(command.options ?? [])];
   }
   return command.options ?? [];

@@ -48,7 +48,6 @@ const formatTopLevelHelp = (
     'ingest',
     'monitors',
     'query',
-    'traces',
   ]);
 
   const coreCommands = commandRows.filter((row) => coreCommandNames.has(row.name));
