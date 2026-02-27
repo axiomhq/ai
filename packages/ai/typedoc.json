@@ -3,8 +3,8 @@
   "entryPoints": [
     "src/index.ts",
     "src/evals.ts",
-    "src/evals/scorers.ts",
-    "src/evals/aggregations.ts",
+    "src/scorers/scorers.ts",
+    "src/scorers/aggregations.ts",
     "src/evals/online.ts",
     "src/config.ts",
     "src/feedback.ts"
