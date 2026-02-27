@@ -851,9 +851,11 @@ export class AxiomApiClient {
     if (edgeBaseUrl) {
       try {
         const edgePath = EDGE_QUERY_PATH;
-        const edgeConfig: HttpConfig = apiToken
-          ? { ...this.config, token: apiToken, orgId: undefined }
-          : this.config;
+        const edgeConfig: HttpConfig = {
+          ...this.config,
+          token: apiToken ?? this.config.token,
+          orgId: undefined,
+        };
         return await requestJson<T>(edgeConfig, {
           method: 'POST',
           path: edgePath,

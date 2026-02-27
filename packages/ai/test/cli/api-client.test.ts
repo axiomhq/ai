@@ -468,6 +468,10 @@ range start to end | count()`,
       'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
       expect.objectContaining({
         method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           apl: "['region-eu-central-1'] | count()",
           maxBinAutoGroups: 40,

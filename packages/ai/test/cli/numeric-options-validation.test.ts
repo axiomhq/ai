@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { runCli } from '../helpers/runCli';
 
 describe('cli numeric option validation', () => {
+  it('rejects invalid --format choices', async () => {
+    const result = await runCli(['query', 'limit 1', '--format', 'jsno']);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(`option '--format <format>' argument 'jsno' is invalid`);
+    expect(result.stderr).toContain(
+      'Allowed choices are auto, table, csv, json, ndjson, jsonl, mcp.',
+    );
+  });
+
   it('rejects removed --limit flag', async () => {
     const result = await runCli(['query', 'limit 1', '--limit', '5', '--format', 'json']);
 

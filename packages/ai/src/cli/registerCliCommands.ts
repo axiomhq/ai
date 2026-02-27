@@ -24,6 +24,9 @@ const parsePositiveInteger = (value: string) => {
 const addOptions = (command: Command, options: OptionSpec[] = []) => {
   options.forEach((option) => {
     const commanderOption = new Option(option.flags, option.description);
+    if (option.choices && option.choices.length > 0) {
+      commanderOption.choices(option.choices);
+    }
     if (POSITIVE_INTEGER_OPTION_NAMES.has(option.name)) {
       commanderOption.argParser(parsePositiveInteger);
     }
