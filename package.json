@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "scripts": {
     "build": "turbo build",
+    "check:vitest-entrypoints": "pnpm -C packages/ai check:vitest-entrypoints",
     "test": "turbo test",
     "format": "turbo run format",
     "format:check": "turbo run format:check",

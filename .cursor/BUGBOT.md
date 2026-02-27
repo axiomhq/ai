@@ -31,13 +31,13 @@ The root cause:
 - **Any import from `axiom/ai/evals` — even just `Scorer` — triggers the vitest import chain**
 - Consumers who don't run evals don't have vitest installed → `ERR_MODULE_NOT_FOUND` for `vitest` or `vite`
 
-The fix is strict entry point separation: vitest-free code has dedicated entry points (`axiom/ai/evals/scorers`, `axiom/ai/evals/online`). The old import paths from `axiom/ai` and `axiom/ai/evals` emit deprecation warnings at runtime and will be removed in a future version.
+The fix is strict entry point separation: vitest-free code has dedicated entry points (`axiom/ai/scorers`, `axiom/ai/evals/online`). The old import paths from `axiom/ai` and `axiom/ai/evals` emit deprecation warnings at runtime and will be removed in a future version.
 
 **Detection — flag ANY of these:**
 
 - New static `import` or `require` of `vitest`, `vitest/node`, `vitest/runners`, or `vite-tsconfig-paths` in files outside `src/evals/eval.ts`, `src/evals/custom-runner.ts`, `src/evals/run-vitest.ts`, or test files
-- New re-exports from `src/evals/eval.ts` added to a non-eval entry point (`src/index.ts`, `src/evals/scorers.ts`, `src/evals/online.ts`, `src/evals/aggregations.ts`, `src/feedback.ts`)
-- Code that imports `Scorer` from `axiom/ai/evals` or `axiom/ai` instead of `axiom/ai/evals/scorers`
+- New re-exports from `src/evals/eval.ts` added to a non-eval entry point (`src/index.ts`, `src/scorers.ts`, `src/evals/online.ts`, `src/evals/aggregations.ts`, `src/feedback.ts`)
+- Code that imports `Scorer` from `axiom/ai/evals` or `axiom/ai` instead of `axiom/ai/scorers`
 - Code that imports `onlineEval` from `axiom/ai` instead of `axiom/ai/evals/online`
 - Adding vitest-dependent code to files reachable from vitest-free entry points
 
@@ -45,7 +45,7 @@ The fix is strict entry point separation: vitest-free code has dedicated entry p
 
 ```typescript
 // Scorers (vitest-free):
-import { Scorer } from 'axiom/ai/evals/scorers';
+import { Scorer } from 'axiom/ai/scorers';
 
 // Online evaluations (vitest-free):
 import { onlineEval } from 'axiom/ai/evals/online';
@@ -62,9 +62,9 @@ const { runVitest } = await import('../../evals/run-vitest');
 | Entry Point | vitest Required | Safe Without vitest |
 |---|---|---|
 | `axiom/ai` | NO | YES |
-| `axiom/ai/evals/scorers` | NO | YES |
+| `axiom/ai/scorers` | NO | YES |
 | `axiom/ai/evals/online` | NO | YES |
-| `axiom/ai/evals/aggregations` | NO | YES |
+| `axiom/ai/scorers/aggregations` | NO | YES |
 | `axiom/ai/feedback` | NO | YES (client-safe) |
 | `axiom/ai/config` | NO | YES |
 | `axiom/ai/evals` | **YES** | NO — offline eval runner only |
@@ -127,6 +127,27 @@ The tsup build has two passes. Client modules (`feedback.ts`) must never import 
 
 - New span attributes containing prompt/completion content that bypass `redaction.ts` utilities
 - Direct `span.setAttribute()` calls with raw user input or model output
+
+### 7. Example Staleness After SDK Changes
+
+**Severity: Medium — examples drift from SDK, confusing users and hiding breakage**
+
+PRs that change SDK source code (`packages/ai/src/`) should update or at minimum verify the examples in `examples/` that exercise the changed code paths. Stale examples give users broken copy-paste snippets and mask API incompatibilities.
+
+**Detection — flag when ALL of these are true:**
+
+- PR modifies files under `packages/ai/src/`
+- PR does NOT modify any files under `examples/`
+- The changed source files export public API surface (entry points, middleware, scorers, wrapTool, withSpan, onlineEval, feedback, config)
+
+**What to flag:**
+
+- "This PR changes public SDK surface in `<file>` but no examples were updated. Please verify the examples in `examples/` still work, or update them to reflect the new behavior."
+
+**Exceptions — do NOT flag if:**
+
+- Changes are purely internal (unexported helpers, type narrowing, refactors with no public API change)
+- Changes only affect test files, CI config, or documentation
 
 ## Excluded Paths
 

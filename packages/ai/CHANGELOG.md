@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.47.0](https://github.com/axiomhq/ai/compare/axiom-v0.46.1...axiom-v0.47.0) (2026-02-25)
+
+
+### Features
+
+* make packages/ai ESM-only ([#265](https://github.com/axiomhq/ai/issues/265)) ([2c5a9f4](https://github.com/axiomhq/ai/commit/2c5a9f4159d98cfa9c65f664289f152ea1803b1a))
+
+## [0.46.1](https://github.com/axiomhq/ai/compare/axiom-v0.46.0...axiom-v0.46.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ai:** move online eval scorer counters to eval.* namespace ([#264](https://github.com/axiomhq/ai/issues/264)) ([bef94db](https://github.com/axiomhq/ai/commit/bef94db48b59e923e57b2fca7238cc2a89c66bfd))
+* **ai:** normalize boolean scores in onlineEval scoresSummary ([#263](https://github.com/axiomhq/ai/issues/263)) ([ff75842](https://github.com/axiomhq/ai/commit/ff758426d58cd3d1ca3b0824b55b9656d9b71d17))
+
+## [0.46.0](https://github.com/axiomhq/ai/compare/axiom-v0.45.0...axiom-v0.46.0) (2026-02-19)
+
+
+### Features
+
+* **ai:** add mandatory name parameter to onlineEval ([#259](https://github.com/axiomhq/ai/issues/259)) ([3e0e44a](https://github.com/axiomhq/ai/commit/3e0e44a884216ad98ca9ff9f6225c55b67f39241))
+
+## [0.45.0](https://github.com/axiomhq/ai/compare/axiom-v0.44.0...axiom-v0.45.0) (2026-02-17)
+
+
+### Features
+
+* **ai:** add eval.case.scores summary attribute to online evals ([#256](https://github.com/axiomhq/ai/issues/256)) ([ca9e6f7](https://github.com/axiomhq/ai/commit/ca9e6f742d51f8f2e959d07a1bc024a2c628ddd9))
+
+
+### Bug Fixes
+
+* **ai:** add 'offline' tag to offline eval spans ([#258](https://github.com/axiomhq/ai/issues/258)) ([07b2f16](https://github.com/axiomhq/ai/commit/07b2f16b1fe0ab6b0cf5355f5b3ddd6beb1afb98))
+* **ai:** normalize boolean scores for precomputed online eval scorers ([#253](https://github.com/axiomhq/ai/issues/253)) ([4fafb59](https://github.com/axiomhq/ai/commit/4fafb59a13008221ed403aeeb839f5f08df7b0f9))
+* rename OnlineEval link attribute to links ([#254](https://github.com/axiomhq/ai/issues/254)) ([4a2d7e4](https://github.com/axiomhq/ai/commit/4a2d7e4f75679fbc02796082df947b86002358fb))
+
+## [0.44.0](https://github.com/axiomhq/ai/compare/axiom-v0.43.0...axiom-v0.44.0) (2026-02-16)
+
+
+### Features
+
+* per-case error handling in SDK ([#236](https://github.com/axiomhq/ai/issues/236)) ([d828ab4](https://github.com/axiomhq/ai/commit/d828ab4fb1d9b553c3143b2817e669ccd0a16e90))
+
+
+### Bug Fixes
+
+* **ai:** CLI dataset override and improved error handling ([#246](https://github.com/axiomhq/ai/issues/246)) ([261d0fa](https://github.com/axiomhq/ai/commit/261d0fa331f875d52d53f404a1cce4023a30dc65))
+* **ai:** use global tracer and fix attribute parity in online evals ([#249](https://github.com/axiomhq/ai/issues/249)) ([3b2ee4e](https://github.com/axiomhq/ai/commit/3b2ee4ede3e2a4e67b756770c20814257fd0dddc))
+
+## [0.43.0](https://github.com/axiomhq/ai/compare/axiom-v0.42.0...axiom-v0.43.0) (2026-02-12)
+
+
+### Features
+
+* **ai:** deprecate old Scorer/onlineEval imports, add evals/online entry point ([#237](https://github.com/axiomhq/ai/issues/237)) ([d5a8068](https://github.com/axiomhq/ai/commit/d5a8068cd6445b50c83bba8eff681b4283067632))
+* allow onlineEval to accept precomputed scorer results, better sampling ([#241](https://github.com/axiomhq/ai/issues/241)) ([c7b1f0a](https://github.com/axiomhq/ai/commit/c7b1f0a768297d4b63601bece56d80b88ce2483a))
+* use `/ai` instead of `/ai-engineering` for result links ([#235](https://github.com/axiomhq/ai/issues/235)) ([87440fd](https://github.com/axiomhq/ai/commit/87440fdebec5b87da06999f193800fc943256a91))
+
 ## [0.42.0](https://github.com/axiomhq/ai/compare/axiom-v0.41.0...axiom-v0.42.0) (2026-02-06)
 
 

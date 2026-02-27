@@ -2,12 +2,11 @@ import { defineConfig } from 'tsup';
 import pkg from './package.json';
 
 const sharedConfig = {
-  format: ['esm', 'cjs'] as ('esm' | 'cjs')[],
+  format: ['esm'],
   external: [
     '@opentelemetry/api',
     'vitest',
     'vitest/node',
-    'vitest/index.cjs',
     'vitest/runners',
     'esbuild',
     'fsevents',
@@ -38,7 +37,7 @@ export default defineConfig([
     clean: true,
     shims: false,
   },
-  // Server-side modules (with Node.js shims) - runs after, no clean
+  // Server-side modules - runs after, no clean
   {
     ...sharedConfig,
     entry: [
@@ -47,12 +46,11 @@ export default defineConfig([
       'src/evals.ts',
       'src/config.ts',
       'src/evals/custom-runner.ts',
-      'src/evals/aggregations.ts',
-      'src/evals/scorers.ts',
+      'src/scorers/aggregations.ts',
+      'src/scorers/scorers.ts',
       'src/evals/online.ts',
     ],
     noExternal: ['handlebars'],
     clean: false,
-    shims: true,
   },
 ]);

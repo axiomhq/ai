@@ -29,6 +29,8 @@
     ".git",
     "coverage",
     "build",
+    "test/build/fixtures/**/*",
+    "test/**/*.smoke.ts",
     "examples",
     "internal",
     ".github"

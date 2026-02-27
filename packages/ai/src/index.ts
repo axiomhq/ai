@@ -5,7 +5,7 @@
 export * from './otel/initAxiomAI';
 export * from './otel/vercel';
 export * from './otel/withSpan';
-import { onlineEval as _onlineEval } from './online-evals';
+import { onlineEval as _onlineEval } from './online-evals/onlineEval';
 import { warnOnlineEvalDeprecation } from './evals/deprecated';
 
 /** @deprecated Import from 'axiom/ai/evals/online' instead. */
@@ -14,10 +14,7 @@ export const onlineEval: typeof _onlineEval = (...args) => {
   return _onlineEval(...args);
 };
 
-/** @deprecated Import from 'axiom/ai/evals/online' instead. */
-export type { EvalSampling, ScorerResult } from './online-evals';
-
-import { createScorer } from './evals/scorer.factory';
+import { createScorer } from './scorers/scorer.factory';
 import { warnScorerDeprecation } from './evals/deprecated';
 
 /** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
@@ -27,9 +24,9 @@ export const Scorer = ((...args: unknown[]) => {
 }) as typeof createScorer;
 
 /** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
-export type { Score } from './evals/scorer.types';
+export type { Score } from './scorers/scorer.types';
 /** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
-export type { Scorer as ScorerType } from './evals/scorer.types';
+export type { Scorer as ScorerType } from './scorers/scorer.types';
 
 export * from './otel/wrapTool';
 export * from './otel/middleware';

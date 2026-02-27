@@ -13,7 +13,7 @@
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { withSpan, wrapAISDKModel } from 'axiom/ai';
-import { Scorer } from 'axiom/ai/evals/scorers';
+import { Scorer } from 'axiom/ai/scorers';
 import { onlineEval } from 'axiom/ai/evals/online';
 import { initializeTelemetry, flushTelemetry } from './instrumentation';
 
@@ -40,10 +40,12 @@ async function main() {
 
     // Await ensures the eval completes before flushTelemetry() shuts down.
     // In a long-running server, use `void onlineEval(...)` instead.
-    await onlineEval(
-      { capability: 'demo', step: 'generate-fact' },
-      { output: response.text, scorers: [formatScorer] },
-    );
+    await onlineEval('evaluate-fact-format', {
+      capability: 'demo',
+      step: 'generate-fact',
+      output: response.text,
+      scorers: [formatScorer],
+    });
 
     return response.text;
   });

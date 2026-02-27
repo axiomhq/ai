@@ -6,7 +6,7 @@ import {
   PassHatK,
   AtLeastOneTrialPasses,
   AllTrialsPass,
-} from '../../src/evals/aggregations';
+} from '../../src/scorers/aggregations';
 
 describe('Mean aggregation', () => {
   it('computes arithmetic mean of scores', () => {

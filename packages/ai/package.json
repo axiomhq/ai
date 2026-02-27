@@ -1,6 +1,6 @@
 {
   "name": "axiom",
-  "version": "0.42.0",
+  "version": "0.47.0",
   "type": "module",
   "author": "Axiom, Inc.",
   "contributors": [
@@ -10,91 +10,59 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup && chmod +x dist/bin.js",
+    "build": "tsup && chmod +x dist/bin.js && pnpm check:vitest-entrypoints",
+    "check:vitest-entrypoints": "node ./scripts/check-vitest-entrypoints.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint './**/*.{js,ts}'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest --watch",
+    "test:wrangler-smoke": "pnpm build && vitest run --config vitest.smoke.config.ts",
     "publint": "npx publint"
   },
   "types": "./dist/index.d.ts",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "bin": {
     "axiom": "./dist/bin.js"
   },
   "exports": {
     "./ai": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./ai/evals": {
-      "import": {
-        "types": "./dist/evals.d.ts",
-        "default": "./dist/evals.js"
-      },
-      "require": {
-        "types": "./dist/evals.d.cts",
-        "default": "./dist/evals.cjs"
-      }
+      "types": "./dist/evals.d.ts",
+      "default": "./dist/evals.js"
     },
     "./ai/evals/aggregations": {
-      "import": {
-        "types": "./dist/evals/aggregations.d.ts",
-        "default": "./dist/evals/aggregations.js"
-      },
-      "require": {
-        "types": "./dist/evals/aggregations.d.cts",
-        "default": "./dist/evals/aggregations.cjs"
-      }
-    },
-    "./ai/evals/scorers": {
-      "import": {
-        "types": "./dist/evals/scorers.d.ts",
-        "default": "./dist/evals/scorers.js"
-      },
-      "require": {
-        "types": "./dist/evals/scorers.d.cts",
-        "default": "./dist/evals/scorers.cjs"
-      }
+      "types": "./dist/scorers/aggregations.d.ts",
+      "default": "./dist/scorers/aggregations.js"
     },
     "./ai/evals/online": {
-      "import": {
-        "types": "./dist/evals/online.d.ts",
-        "default": "./dist/evals/online.js"
-      },
-      "require": {
-        "types": "./dist/evals/online.d.cts",
-        "default": "./dist/evals/online.cjs"
-      }
+      "types": "./dist/evals/online.d.ts",
+      "default": "./dist/evals/online.js"
+    },
+    "./ai/evals/scorers": {
+      "types": "./dist/scorers/scorers.d.ts",
+      "default": "./dist/scorers/scorers.js"
+    },
+    "./ai/scorers": {
+      "types": "./dist/scorers/scorers.d.ts",
+      "default": "./dist/scorers/scorers.js"
+    },
+    "./ai/scorers/aggregations": {
+      "types": "./dist/scorers/aggregations.d.ts",
+      "default": "./dist/scorers/aggregations.js"
     },
     "./ai/config": {
-      "import": {
-        "types": "./dist/config.d.ts",
-        "default": "./dist/config.js"
-      },
-      "require": {
-        "types": "./dist/config.d.cts",
-        "default": "./dist/config.cjs"
-      }
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
     },
     "./ai/feedback": {
-      "import": {
-        "types": "./dist/feedback.d.ts",
-        "default": "./dist/feedback.js"
-      },
-      "require": {
-        "types": "./dist/feedback.d.cts",
-        "default": "./dist/feedback.cjs"
-      }
+      "types": "./dist/feedback.d.ts",
+      "default": "./dist/feedback.js"
     }
   },
   "keywords": [
