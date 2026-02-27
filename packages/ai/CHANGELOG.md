@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.1](https://github.com/axiomhq/ai/compare/axiom-v0.48.0...axiom-v0.48.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* update entry points ([#273](https://github.com/axiomhq/ai/issues/273)) ([c2c4efe](https://github.com/axiomhq/ai/commit/c2c4efe1043c9e4805457cf2bc3164f357a6cb82))
+
 ## [0.48.0](https://github.com/axiomhq/ai/compare/axiom-v0.47.0...axiom-v0.48.0) (2026-02-27)
 
 
