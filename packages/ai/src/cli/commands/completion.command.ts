@@ -1,9 +1,10 @@
-import { Command } from 'commander';
+import { Argument, Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 type Shell = 'bash' | 'zsh' | 'fish' | 'powershell';
+const SUPPORTED_SHELLS: Shell[] = ['bash', 'zsh', 'fish', 'powershell'];
 
 const currentFile = fileURLToPath(import.meta.url);
 const resolvePackageRoot = () => {
@@ -36,11 +37,8 @@ const readCompletion = (shell: Shell) => {
 export const loadCompletionCommand = (program: Command) => {
   const command = new Command('completion')
     .description('Print shell completion script')
-    .arguments('<shell>')
+    .addArgument(new Argument('<shell>', 'Shell type').choices(SUPPORTED_SHELLS))
     .action((shell: Shell) => {
-      if (!['bash', 'zsh', 'fish', 'powershell'].includes(shell)) {
-        throw new Error('Unsupported shell. Use one of: bash, zsh, fish, powershell');
-      }
       process.stdout.write(readCompletion(shell));
     });
 

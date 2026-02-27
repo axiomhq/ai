@@ -748,49 +748,11 @@ const fetchMonitorStatusMap = async (client: AxiomApiClient, monitorIds: string[
 };
 
 const extractMonitorRows = (payload: unknown): MonitorRecord[] => {
-  if (Array.isArray(payload)) {
-    return payload.filter((item): item is MonitorRecord => Boolean(asRecord(item)));
-  }
-
-  const record = asRecord(payload);
-  if (!record) {
+  if (!Array.isArray(payload)) {
     return [];
   }
 
-  const directArrayKeys = ['monitors', 'items', 'results', 'data'];
-  for (const key of directArrayKeys) {
-    const value = record[key];
-    if (Array.isArray(value)) {
-      return value.filter((item): item is MonitorRecord => Boolean(asRecord(item)));
-    }
-  }
-
-  const nestedData = asRecord(record.data);
-  if (nestedData) {
-    for (const key of ['monitors', 'items', 'results']) {
-      const value = nestedData[key];
-      if (Array.isArray(value)) {
-        return value.filter((item): item is MonitorRecord => Boolean(asRecord(item)));
-      }
-    }
-  }
-
-  const objectValues = Object.values(record).filter((value): value is Record<string, unknown> =>
-    Boolean(asRecord(value)),
-  );
-  if (objectValues.length > 0) {
-    const looksLikeMonitorMap = objectValues.every((value) =>
-      ['id', 'name', 'enabled', 'type', 'dataset'].some((key) =>
-        Object.prototype.hasOwnProperty.call(value, key),
-      ),
-    );
-
-    if (looksLikeMonitorMap) {
-      return objectValues as MonitorRecord[];
-    }
-  }
-
-  return [];
+  return payload.filter((item): item is MonitorRecord => Boolean(asRecord(item)));
 };
 
 const fetchMonitors = async (client: AxiomApiClient) => {
@@ -862,12 +824,13 @@ export const monitorList = withCliContext(async ({ config, explain }, ..._args: 
   });
 
   const monitors = await fetchMonitors(client);
+  const normalizedMonitors = monitors.map((monitor) => normalizeMonitor(monitor));
   const statusById = await fetchMonitorStatusMap(
     client,
-    monitors.map((monitor) => monitor.id ?? ''),
+    normalizedMonitors.map((monitor) => monitor.id),
   );
-  const rows = monitors.map((monitor) =>
-    mergeMonitorStatus(normalizeMonitor(monitor), statusById.get(monitor.id ?? '')),
+  const rows = normalizedMonitors.map((monitor) =>
+    mergeMonitorStatus(monitor, statusById.get(monitor.id)),
   );
   const columns = ['id', 'name', 'status', 'recent_run', 'type', 'dataset', 'frequency'];
   const format = resolveOutputFormat(config.format as OutputFormat, 'list', true);

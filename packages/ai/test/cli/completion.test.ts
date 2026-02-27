@@ -19,5 +19,7 @@ describe('completion command', () => {
   it('errors for unsupported shells', async () => {
     const result = await runCli(['completion', 'tcsh']);
     expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('is invalid for argument');
+    expect(result.stderr).not.toContain('at ');
   });
 });
