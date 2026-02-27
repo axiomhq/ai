@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/axiomhq/ai/compare/axiom-v0.47.0...axiom-v0.48.0) (2026-02-27)
+
+
+### Features
+
+* generate API reference docs with typedoc ([#270](https://github.com/axiomhq/ai/issues/270)) ([04215ac](https://github.com/axiomhq/ai/commit/04215ac08bbf253b7d076a04677a4e21c9271416))
+
 ## [0.47.0](https://github.com/axiomhq/ai/compare/axiom-v0.46.1...axiom-v0.47.0) (2026-02-25)
 
 
