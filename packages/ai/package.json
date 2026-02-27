@@ -36,10 +36,6 @@
       "types": "./dist/evals.d.ts",
       "default": "./dist/evals.js"
     },
-    "./ai/evals/aggregations": {
-      "types": "./dist/scorers/aggregations.d.ts",
-      "default": "./dist/scorers/aggregations.js"
-    },
     "./ai/evals/online": {
       "types": "./dist/evals/online.d.ts",
       "default": "./dist/evals/online.js"
