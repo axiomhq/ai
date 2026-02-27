@@ -219,6 +219,24 @@ describe('query', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('surfaces API detail for legacy query 404 responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: "dataset 'missing' not found in query",
+        }),
+        { status: 404 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['query', "['missing'] | count()", '--format', 'json'], { env });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.trim()).toBe("dataset 'missing' not found in query");
+    expect(result.stderr).not.toContain("Dataset '_apl' was not found.");
+  });
+
   it('rejects removed `query run` syntax with a migration hint', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

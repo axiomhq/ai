@@ -229,6 +229,39 @@ describe('monitor commands', () => {
     );
   });
 
+  it('reads enabled from nested monitor records', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: 'mon_nested',
+            name: 'Nested monitor',
+            config: {
+              enabled: true,
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {},
+            fields: [],
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(['monitors', 'get', 'mon_nested', '--format', 'json'], { env });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('"id": "mon_nested"');
+    expect(result.stdout).toContain('"enabled": true');
+  });
+
   it('shows a friendly not found message for missing monitors', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
