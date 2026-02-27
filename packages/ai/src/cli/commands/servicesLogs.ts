@@ -61,8 +61,8 @@ export const serviceLogs = withCliContext(async ({ config, explain }, ...args: u
       end: options.end,
     },
     new Date(),
-    '30m',
-    '0m',
+    'now-30m',
+    'now',
   );
 
   let resolvedLogs:

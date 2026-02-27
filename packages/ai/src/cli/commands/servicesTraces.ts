@@ -59,8 +59,8 @@ export const serviceTraces = withCliContext(async ({ config, explain }, ...args:
       end: options.end,
     },
     new Date(),
-    '30m',
-    '0m',
+    'now-30m',
+    'now',
   );
 
   const { client, dataset, fields } = await resolveTraceDataset({

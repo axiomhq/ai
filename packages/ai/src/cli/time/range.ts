@@ -13,8 +13,8 @@ export type TimeRange = {
 export const resolveTimeRange = (
   input: TimeRangeInput,
   _now: Date = new Date(),
-  defaultSince = '30m',
-  defaultUntil = '0m',
+  defaultSince = 'now-30m',
+  defaultUntil = 'now',
 ): TimeRange => {
   return {
     start: input.since ?? input.start ?? defaultSince,

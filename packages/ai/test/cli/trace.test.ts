@@ -25,67 +25,16 @@ describe('trace commands', () => {
     vi.unstubAllGlobals();
   });
 
-  it('trace list applies filters and returns mcp csv', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [
-              {
-                trace_id: 't-1',
-                root_operation: 'GET /checkout',
-                started_at: '2026-01-01T00:00:00Z',
-                duration_ms: 120,
-                span_count: 4,
-                error: 1,
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      );
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    const result = await runCli(
-      [
-        'traces',
-        'list',
-        '--service',
-        'checkout',
-        '--operation',
-        'GET /checkout',
-        '--status',
-        'error',
-        '--format',
-        'mcp',
-      ],
-      { env },
-    );
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('# Trace Search');
-    expect(result.stdout).toContain('```csv');
-
-    const callBody = JSON.parse(String(fetchMock.mock.calls[2][1].body));
-    expect(callBody.apl).toContain("where ['service.name'] == \"checkout\"");
-    expect(callBody.apl).toContain("where ['name'] == \"GET /checkout\"");
-    expect(callBody.apl).toContain("where ['status.code'] == \"error\"");
-  });
-
   it('trace get builds a tree when parent relationships exist', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
             matches: [
               {
+                _source: 'traces',
                 start: '2026-01-01T00:00:00Z',
                 duration_ms: 100,
                 service: 'checkout',
@@ -96,6 +45,7 @@ describe('trace commands', () => {
                 parent_span_id: null,
               },
               {
+                _source: 'traces',
                 start: '2026-01-01T00:00:01Z',
                 duration_ms: 40,
                 service: 'payments',
@@ -113,23 +63,50 @@ describe('trace commands', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['traces', 'get', 'trace-1', '--format', 'json'], { env });
+    const result = await runCli(
+      [
+        'traces',
+        'get',
+        'trace-1',
+        '--dataset',
+        'traces',
+        '--since',
+        'now-30m',
+        '--until',
+        'now',
+        '--format',
+        'json',
+      ],
+      { env },
+    );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('"tree_mode": "tree"');
-    expect(result.stdout).toContain('|  100 checkout GET /checkout OK');
-    expect(result.stdout).toContain('|    40 payments POST /charge ERR');
+    const payload = JSON.parse(result.stdout) as {
+      data: {
+        metadata: { tree_mode: string };
+        tree: Array<{ spans: string; span_id: string }>;
+      };
+    };
+    expect(payload.data.metadata.tree_mode).toBe('tree');
+    expect(payload.data.tree[0]).toEqual({
+      spans: '\\-100ms checkout GET /checkout',
+      span_id: 'root',
+    });
+    expect(payload.data.tree[1]).toEqual({
+      spans: '  \\-40ms payments (!) POST /charge',
+      span_id: 'child',
+    });
   });
 
   it('trace get falls back to list view when parent links are missing', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
             matches: Array.from({ length: 8 }).map((_, index) => ({
+              _source: 'traces',
               start: `2026-01-01T00:00:0${index}Z`,
               duration_ms: 100 - index,
               service: 'checkout',
@@ -146,58 +123,90 @@ describe('trace commands', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['traces', 'get', 'trace-2', '--format', 'table'], {
-      env,
-      stdoutIsTTY: true,
-    });
+    const result = await runCli(
+      [
+        'traces',
+        'get',
+        'trace-2',
+        '--dataset',
+        'traces',
+        '--since',
+        'now-30m',
+        '--until',
+        'now',
+        '--format',
+        'table',
+      ],
+      {
+        env,
+        stdoutIsTTY: true,
+      },
+    );
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('tree_mode');
     expect(result.stdout).toContain('fallback');
+    expect(result.stdout).toContain('spans');
+    expect(result.stdout).toContain('span_id');
+    expect(result.stdout).not.toContain('dataset  start');
     expect(result.stderr).toBe('');
   });
 
-  it('trace spans returns sorted rows', async () => {
+  it('trace get validates required dataset/since/until', async () => {
+    const missingDataset = await runCli(['traces', 'get', 'trace-1'], { env });
+    expect(missingDataset.exitCode).toBe(1);
+    expect(missingDataset.stderr).toContain('Missing required --dataset');
+
+    const missingSince = await runCli(
+      ['traces', 'get', 'trace-1', '--dataset', 'traces', '--until', 'now'],
+      { env },
+    );
+    expect(missingSince.exitCode).toBe(1);
+    expect(missingSince.stderr).toContain('Missing required --since');
+
+    const missingUntil = await runCli(
+      ['traces', 'get', 'trace-1', '--dataset', 'traces', '--since', 'now-30m'],
+      { env },
+    );
+    expect(missingUntil.exitCode).toBe(1);
+    expect(missingUntil.stderr).toContain('Missing required --until');
+  });
+
+  it('trace get uses dataset and time range from caller', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [
-              {
-                start: '2026-01-01T00:00:00Z',
-                duration_ms: 10,
-                service: 'checkout',
-                operation: 'a',
-                kind: 'server',
-                status: 'ok',
-                span_id: 'a',
-                parent_span_id: null,
-              },
-              {
-                start: '2026-01-01T00:00:00Z',
-                duration_ms: 20,
-                service: 'checkout',
-                operation: 'b',
-                kind: 'server',
-                status: 'ok',
-                span_id: 'b',
-                parent_span_id: null,
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      );
+      .mockResolvedValueOnce(new Response(JSON.stringify({ matches: [] }), { status: 200 }));
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await runCli(['traces', 'spans', 'trace-3', '--format', 'json'], { env });
+    const result = await runCli(
+      [
+        'traces',
+        'get',
+        'trace-1',
+        '--dataset',
+        'traces',
+        '--since',
+        'now-30m',
+        '--until',
+        'now',
+        '--format',
+        'json',
+      ],
+      { env },
+    );
     expect(result.exitCode).toBe(0);
-    const firstDuration = result.stdout.indexOf('\"duration_ms\": 20');
-    const secondDuration = result.stdout.indexOf('\"duration_ms\": 10');
-    expect(firstDuration).toBeLessThan(secondDuration);
+
+    const queryCall = fetchMock.mock.calls[1];
+    const queryBody = JSON.parse(String(queryCall?.[1]?.body)) as {
+      apl: string;
+      startTime: string;
+      endTime: string;
+    };
+    expect(queryBody.apl).toContain("union (['traces']");
+    expect(queryBody.startTime).toBe('now-30m');
+    expect(queryBody.endTime).toBe('now');
   });
+
 });

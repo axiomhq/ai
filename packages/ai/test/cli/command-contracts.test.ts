@@ -96,30 +96,10 @@ describe('cli command integration contracts', () => {
             matches: [
               {
                 service: 'checkout',
-                last_seen: '2026-01-01T00:00:00Z',
-                spans: 12,
-                error_spans: 1,
+                total: 12,
+                errored: 1,
                 error_rate: 0.08,
-                p95_ms: 45,
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [
-              {
-                trace_id: 't-1',
-                root_operation: 'GET /checkout',
-                started_at: '2026-01-01T00:00:00Z',
-                duration_ms: 120,
-                span_count: 4,
-                error: 1,
+                avg_duration_ns: 45000000,
               },
             ],
           }),
@@ -141,15 +121,10 @@ describe('cli command integration contracts', () => {
       env,
       stdoutIsTTY: false,
     });
-    const traceList = await runCli(['traces', 'list', '--format', 'auto'], {
-      env,
-      stdoutIsTTY: false,
-    });
 
     expect(datasetList.exitCode).toBe(0);
     expect(monitorList.exitCode).toBe(0);
     expect(serviceList.exitCode).toBe(0);
-    expect(traceList.exitCode).toBe(0);
 
     expect(datasetList.stdout).toMatchInlineSnapshot(
       `"{\"name\":\"alpha\",\"created_at\":\"2026-01-01T00:00:00Z\",\"description\":null}\n"`,
@@ -158,10 +133,7 @@ describe('cli command integration contracts', () => {
       `"{\"id\":\"mon_1\",\"name\":\"High errors\",\"status\":\"closed\",\"recent_run\":\"2026-01-01T00:05:00Z\",\"type\":\"threshold\",\"dataset\":\"traces\",\"frequency\":\"*/5 * * * *\"}\n"`,
     );
     expect(serviceList.stdout).toMatchInlineSnapshot(
-      `"{\"service\":\"checkout\",\"last_seen\":\"2026-01-01T00:00:00Z\",\"spans\":12,\"error_spans\":1,\"error_rate\":0.08,\"p95_ms\":45}\n"`,
-    );
-    expect(traceList.stdout).toMatchInlineSnapshot(
-      `"{\"trace_id\":\"t-1\",\"root_operation\":\"GET /checkout\",\"started_at\":\"2026-01-01T00:00:00Z\",\"duration_ms\":120,\"span_count\":4,\"error\":1}\n"`,
+      `"{\"service\":\"checkout\",\"total\":12,\"errored\":1,\"error_rate\":0.08,\"avg_duration_ns\":45000000}\n"`,
     );
   });
 
@@ -223,27 +195,18 @@ describe('cli command integration contracts', () => {
           JSON.stringify({
             matches: [
               {
-                spans: 12,
-                last_seen: '2026-01-01T00:00:00Z',
-                error_spans: 1,
+                _source: 'traces',
+                operation: 'GET /checkout',
+                total: 12,
+                errored: 1,
                 error_rate: 0.08,
-                p50_ms: 10,
-                p95_ms: 45,
+                avg_duration_ns: 45000000,
               },
             ],
           }),
           { status: 200 },
         ),
       )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [{ operation: 'GET /checkout', spans: 12, error_rate: 0.08, p95_ms: 45 }],
-          }),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
@@ -270,7 +233,22 @@ describe('cli command integration contracts', () => {
     const datasetGet = await runCli(['datasets', 'get', 'alpha', '--format', 'json'], { env });
     const monitorGet = await runCli(['monitors', 'get', 'mon_1', '--format', 'json'], { env });
     const serviceGet = await runCli(['services', 'get', 'checkout', '--format', 'json'], { env });
-    const traceGet = await runCli(['traces', 'get', 'trace-1', '--format', 'json'], { env });
+    const traceGet = await runCli(
+      [
+        'traces',
+        'get',
+        'trace-1',
+        '--dataset',
+        'traces',
+        '--since',
+        'now-30m',
+        '--until',
+        'now',
+        '--format',
+        'json',
+      ],
+      { env },
+    );
 
     vi.useRealTimers();
 
@@ -383,7 +361,6 @@ describe('cli command integration contracts', () => {
           { status: 200 },
         ),
       )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
@@ -427,8 +404,21 @@ describe('cli command integration contracts', () => {
       ],
       { env },
     );
-    const traceSpans = await runCli(
-      ['traces', 'spans', 'trace-1', '--format', 'mcp', '--explain'],
+    const traceGet = await runCli(
+      [
+        'traces',
+        'get',
+        'trace-1',
+        '--dataset',
+        'traces',
+        '--since',
+        'now-30m',
+        '--until',
+        'now',
+        '--format',
+        'mcp',
+        '--explain',
+      ],
       { env },
     );
 
@@ -459,8 +449,8 @@ describe('cli command integration contracts', () => {
     expect(serviceLogs.stdout).toContain('# Service Logs: checkout');
     expect(serviceLogs.stderr).toContain('/v1/datasets/_apl?format=legacy');
 
-    expect(traceSpans.exitCode).toBe(0);
-    expect(traceSpans.stdout).toContain('# Trace Spans: trace-1');
-    expect(traceSpans.stderr).toContain('/v1/datasets/_apl?format=legacy');
+    expect(traceGet.exitCode).toBe(0);
+    expect(traceGet.stdout).toContain('# Trace trace-1');
+    expect(traceGet.stderr).toContain('/v1/datasets/_apl?format=legacy');
   });
 });

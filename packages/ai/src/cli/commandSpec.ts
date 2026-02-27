@@ -20,7 +20,6 @@ export type CommandSpec = {
 };
 
 const formatChoices = ['auto', 'table', 'csv', 'json', 'ndjson', 'jsonl', 'mcp'];
-const statusChoices = ['ok', 'error', 'unset'];
 
 export const cliCommandSpec = {
   globalOptions: [
@@ -92,7 +91,12 @@ export const cliCommandSpec = {
           description: 'Show a small sample of recent events',
           args: '<name>',
           options: [
-            { name: 'since', flags: '--since <since>', description: 'Time range start', defaultValue: '15m' },
+            {
+              name: 'since',
+              flags: '--since <since>',
+              description: 'Time range start',
+              defaultValue: 'now-15m',
+            },
           ],
         },
       ],
@@ -119,12 +123,12 @@ export const cliCommandSpec = {
         {
           name: 'since',
           flags: '--since <time>',
-          description: 'Start time (for example: 30m or 2026-02-24T18:00:00Z)',
+          description: 'Start time (for example: now-30m or 2026-02-24T18:00:00Z)',
         },
         {
           name: 'until',
           flags: '--until <time>',
-          description: 'End time (for example: 0m or 2026-02-24T19:00:00Z)',
+          description: 'End time (for example: now or 2026-02-24T19:00:00Z)',
         },
         { name: 'start', flags: '--start <time>', description: 'Alias for --since', hidden: true },
         { name: 'end', flags: '--end <time>', description: 'Alias for --until', hidden: true },
@@ -133,7 +137,7 @@ export const cliCommandSpec = {
     {
       name: 'monitors',
       description: 'Read monitors and run history',
-      help: `Usage:\n  axiom monitors <command>\n\nCommands:\n  list                     List monitors\n  get <id>                 Show a monitor\n  history <id>             Show monitor execution history\n\nOptions:\n  --since / --until        Default since=7d for history\n  --format <format>\n  --explain\n`,
+      help: `Usage:\n  axiom monitors <command>\n\nCommands:\n  list                     List monitors\n  get <id>                 Show a monitor\n  history <id>             Show monitor execution history\n\nOptions:\n  --since / --until        Default since=now-7d for history\n  --format <format>\n  --explain\n`,
       subcommands: [
         { name: 'list', description: 'List monitors' },
         { name: 'get', description: 'Show a monitor', args: '<id>' },
@@ -145,8 +149,8 @@ export const cliCommandSpec = {
             {
               name: 'since',
               flags: '--since <since>',
-              description: 'Default since=7d for history',
-              defaultValue: '7d',
+              description: 'Default since=now-7d for history',
+              defaultValue: 'now-7d',
             },
             { name: 'until', flags: '--until <until>', description: 'Time range end' },
             { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
@@ -174,7 +178,7 @@ export const cliCommandSpec = {
         {
           name: 'get',
           description: 'Show service status summary',
-          args: '<service>',
+          args: '<service> [operation]',
           options: [
             { name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' },
             { name: 'since', flags: '--since <since>', description: 'Time range start' },
@@ -230,42 +234,22 @@ export const cliCommandSpec = {
     {
       name: 'traces',
       description: 'Trace-centric tools',
-      help: `Usage:\n  axiom traces <command>\n\nCommands:\n  list                         Search recent traces\n  get <trace-id>               Show a trace tree view plus key span table\n  spans <trace-id>             Show spans as a table\n\nOptions:\n  --dataset <name>             Traces dataset override\n  --service <name>             Filter traces by service\n  --operation <name>           Filter traces by operation\n  --status <ok|error|unset>    Filter by span status where possible\n  --since / --until / --start / --end\n  --format <format>\n  --explain\n`,
+      help: `Usage:\n  axiom traces <command>\n\nCommands:\n  get <trace-id>               Show a trace tree view plus key span table\n\nOptions:\n  --dataset <name>             Required dataset containing the trace\n  --since <since>              Required query start time\n  --until <until>              Required query end time\n  --format <format>\n  --explain\n`,
       subcommands: [
-        {
-          name: 'list',
-          description: 'Search recent traces',
-          options: [
-            { name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' },
-            { name: 'service', flags: '--service <name>', description: 'Filter traces by service' },
-            { name: 'operation', flags: '--operation <name>', description: 'Filter traces by operation' },
-            {
-              name: 'status',
-              flags: '--status <status>',
-              description: 'Filter by span status where possible',
-              choices: statusChoices,
-            },
-            { name: 'since', flags: '--since <since>', description: 'Time range start' },
-            { name: 'until', flags: '--until <until>', description: 'Time range end' },
-            { name: 'start', flags: '--start <start>', description: 'Absolute start time' },
-            { name: 'end', flags: '--end <end>', description: 'Absolute end time' },
-          ],
-        },
         {
           name: 'get',
           description: 'Show a trace tree view plus key span table',
           args: '<trace-id>',
-          options: [{ name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' }],
-        },
-        {
-          name: 'spans',
-          description: 'Show spans as a table',
-          args: '<trace-id>',
-          options: [{ name: 'dataset', flags: '--dataset <name>', description: 'Traces dataset override' }],
+          options: [
+            { name: 'dataset', flags: '--dataset <name>', description: 'Required dataset containing the trace' },
+            { name: 'since', flags: '--since <since>', description: 'Required query start time' },
+            { name: 'until', flags: '--until <until>', description: 'Required query end time' },
+            { name: 'start', flags: '--start <start>', description: 'Alias for --since', hidden: true },
+            { name: 'end', flags: '--end <end>', description: 'Alias for --until', hidden: true },
+          ],
         },
       ],
     },
   ] satisfies CommandSpec[],
-  statusChoices,
   formatChoices,
 };

@@ -160,4 +160,59 @@ describe('query rows normalization', () => {
       totals: [],
     });
   });
+
+  it('maps bucket aggregations by alias instead of relying on aggregation order', () => {
+    const result = toQueryRows({
+      buckets: {
+        totals: [
+          {
+            group: { _source: 'traces' },
+            aggregations: [
+              { op: 'total', value: 10 },
+              { op: 'errored', value: 2 },
+              { op: 'avg_duration_ns', value: 1000 },
+              { op: 'error_rate', value: 0.2 },
+            ],
+          },
+        ],
+      },
+      request: {
+        aggregations: [
+          { op: 'count', alias: 'total' },
+          { op: 'count', alias: 'errored' },
+          { op: 'computed', alias: 'error_rate' },
+          { op: 'avg', alias: 'avg_duration_ns' },
+        ],
+        project: [
+          { field: '_source', alias: '_source' },
+          { field: 'total', alias: 'total' },
+          { field: 'errored', alias: 'errored' },
+          { field: 'error_rate', alias: 'error_rate' },
+          { field: 'avg_duration_ns', alias: 'avg_duration_ns' },
+        ],
+      },
+    });
+
+    expect(result).toEqual({
+      rows: [
+        {
+          _source: 'traces',
+          total: 10,
+          errored: 2,
+          error_rate: 0.2,
+          avg_duration_ns: 1000,
+        },
+      ],
+      timeseries: [],
+      totals: [
+        {
+          _source: 'traces',
+          total: 10,
+          errored: 2,
+          error_rate: 0.2,
+          avg_duration_ns: 1000,
+        },
+      ],
+    });
+  });
 });

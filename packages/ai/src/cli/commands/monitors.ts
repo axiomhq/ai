@@ -988,8 +988,8 @@ export const monitorHistory = withCliContext(async ({ config, explain }, ...args
       end: options.end,
     },
     new Date(),
-    '7d',
-    '0m',
+    'now-7d',
+    'now',
   );
 
   const client = createAxiomApiClient({

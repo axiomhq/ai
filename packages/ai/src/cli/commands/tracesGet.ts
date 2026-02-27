@@ -9,17 +9,20 @@ import {
   type OutputFormat,
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
-import { TRACE_SPANS_APL_TEMPLATE } from '../otel/aplTemplates';
+import { getStdoutColumns } from '../format/tty';
+import { resolveTimeRange } from '../time/range';
 import {
   aplFieldRef,
   aplStringLiteral,
   requireAuth,
-  resolveTraceDataset,
+  resolveTraceDatasets,
   toRows,
   write,
 } from './servicesCommon';
 
 type SpanRow = {
+  trace_id?: string;
+  dataset?: string;
   start?: string;
   duration_ms?: number;
   service?: string;
@@ -30,12 +33,114 @@ type SpanRow = {
   parent_span_id?: string;
 };
 
-const expandTemplate = (template: string, replacements: Record<string, string>) => {
-  let output = template;
-  for (const [key, value] of Object.entries(replacements)) {
-    output = output.split(`\${${key}}`).join(value);
+type TreeRow = {
+  spans: string;
+  spanId: string;
+};
+
+const toNumberOrNull = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeTimestamp = (value: unknown): string | undefined => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
   }
-  return output;
+
+  const rawNumber = typeof value === 'bigint' ? Number(value) : value;
+  if (typeof rawNumber !== 'number' || !Number.isFinite(rawNumber)) {
+    return undefined;
+  }
+
+  const abs = Math.abs(rawNumber);
+  let milliseconds: number;
+  if (abs >= 1e18) {
+    milliseconds = rawNumber / 1_000_000;
+  } else if (abs >= 1e15) {
+    milliseconds = rawNumber / 1_000;
+  } else if (abs >= 1e12) {
+    milliseconds = rawNumber;
+  } else if (abs >= 1e9) {
+    milliseconds = rawNumber * 1_000;
+  } else {
+    return undefined;
+  }
+
+  const date = new Date(milliseconds);
+  if (!Number.isFinite(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+};
+
+const durationToMillisecondsExpr = (durationField: string) => {
+  const field = aplFieldRef(durationField);
+  const normalized = durationField.toLowerCase();
+
+  if (
+    normalized === 'duration' ||
+    normalized.endsWith('_ns') ||
+    normalized.endsWith('.ns') ||
+    normalized.endsWith('nanoseconds')
+  ) {
+    return `toreal(${field}) / 1000000`;
+  }
+  if (normalized.endsWith('_us') || normalized.endsWith('.us') || normalized.endsWith('microseconds')) {
+    return `toreal(${field}) / 1000`;
+  }
+  if (normalized.endsWith('_s') || normalized.endsWith('.s') || normalized.endsWith('seconds')) {
+    return `toreal(${field}) * 1000`;
+  }
+  return `toreal(${field})`;
+};
+
+const groupByRegion = <T extends { dataset: string; region?: string }>(datasets: T[]) => {
+  const groups = new Map<string, T[]>();
+  datasets.forEach((dataset) => {
+    const key = dataset.region ? `region:${dataset.region}` : `dataset:${dataset.dataset}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(dataset);
+      return;
+    }
+    groups.set(key, [dataset]);
+  });
+  return [...groups.values()].map((group) =>
+    [...group].sort((left, right) => left.dataset.localeCompare(right.dataset)),
+  );
+};
+
+const buildSourceProjection = (
+  traceId: string,
+  dataset: {
+    dataset: string;
+    fields: {
+      traceIdField?: string | null;
+      spanIdField?: string | null;
+      parentSpanIdField?: string | null;
+      serviceField?: string | null;
+      spanNameField?: string | null;
+      spanKindField?: string | null;
+      statusField?: string | null;
+      durationField?: string | null;
+    };
+  },
+) => {
+  const traceIdExpr = `tolower(tostring(${aplFieldRef(dataset.fields.traceIdField!)}))`;
+  const kindExpr = dataset.fields.spanKindField ? aplFieldRef(dataset.fields.spanKindField) : '""';
+  const statusExpr = dataset.fields.statusField ? aplFieldRef(dataset.fields.statusField) : '""';
+  const spanIdExpr = dataset.fields.spanIdField ? aplFieldRef(dataset.fields.spanIdField) : '""';
+  const parentSpanIdExpr = dataset.fields.parentSpanIdField
+    ? aplFieldRef(dataset.fields.parentSpanIdField)
+    : '""';
+  const durationExpr = durationToMillisecondsExpr(dataset.fields.durationField ?? 'duration_ms');
+
+  return `(${aplFieldRef(dataset.dataset)}
+| where ${traceIdExpr} == ${aplStringLiteral(traceId)}
+| project trace_id=${traceIdExpr}, _source=${aplStringLiteral(dataset.dataset)}, start=_time, duration_ms=${durationExpr}, service=${aplFieldRef(dataset.fields.serviceField!)}, operation=${aplFieldRef(dataset.fields.spanNameField!)}, kind=${kindExpr}, status=${statusExpr}, span_id=${spanIdExpr}, parent_span_id=${parentSpanIdExpr})`;
 };
 
 const sortByStartAndDuration = (rows: SpanRow[]) =>
@@ -48,14 +153,24 @@ const sortByStartAndDuration = (rows: SpanRow[]) =>
     return Number(b.duration_ms ?? 0) - Number(a.duration_ms ?? 0);
   });
 
-const marker = (status?: string) => {
-  if (!status) {
-    return 'OK';
+const formatDurationMs = (value: number | undefined) => {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) {
+    return '0ms';
   }
-  return status.toLowerCase() === 'error' ? 'ERR' : 'OK';
+
+  const rounded = Math.round(numeric * 100) / 100;
+  return `${rounded.toFixed(2).replace(/\.?0+$/, '')}ms`;
 };
 
-const buildTreeLines = (rows: SpanRow[]): string[] | null => {
+const isErrorStatus = (status?: string) => Boolean(status && status.toLowerCase() === 'error');
+
+const formatOperationLabel = (row: SpanRow) => {
+  const operation = String(row.operation ?? '-');
+  return isErrorStatus(row.status) ? `(!) ${operation}` : operation;
+};
+
+const buildTreeRows = (rows: SpanRow[]): TreeRow[] | null => {
   const byId = new Map<string, SpanRow>();
   for (const row of rows) {
     if (row.span_id) {
@@ -88,38 +203,86 @@ const buildTreeLines = (rows: SpanRow[]): string[] | null => {
   }
 
   const sortedRoots = sortByStartAndDuration(roots);
-  const lines: string[] = [];
+  const treeRows: TreeRow[] = [];
 
-  const visit = (row: SpanRow, depth: number) => {
-    const prefix = '|'.concat('  '.repeat(depth));
-    lines.push(
-      `${prefix}${String(row.duration_ms ?? 0)} ${String(row.service ?? 'unknown')} ${String(row.operation ?? '-')} ${marker(row.status)}`,
-    );
+  const visit = (row: SpanRow, prefix: string, isLast: boolean) => {
+    const connector = isLast ? '\\-' : '|-';
+    treeRows.push({
+      spans: `${prefix}${connector}${formatDurationMs(row.duration_ms)} ${String(row.service ?? 'unknown')} ${formatOperationLabel(row)}`,
+      spanId: String(row.span_id ?? '-'),
+    });
 
     const nextRows = sortByStartAndDuration(children.get(String(row.span_id ?? '')) ?? []);
-    for (const child of nextRows) {
-      visit(child, depth + 1);
-    }
+    const childPrefix = `${prefix}${isLast ? '  ' : '| '}`;
+    nextRows.forEach((child, childIndex) => {
+      visit(child, childPrefix, childIndex === nextRows.length - 1);
+    });
   };
 
-  for (const root of sortedRoots) {
-    visit(root, 1);
-  }
+  sortedRoots.forEach((root, rootIndex) => {
+    visit(root, '', rootIndex === sortedRoots.length - 1);
+  });
 
-  return lines;
+  return treeRows;
 };
 
-const buildFallbackLines = (rows: SpanRow[]) =>
-  sortByStartAndDuration(rows).map(
-    (row) =>
-      `|  ${String(row.duration_ms ?? 0)} ${String(row.service ?? 'unknown')} ${String(row.operation ?? '-')} ${marker(row.status)}`,
+const buildFallbackRows = (rows: SpanRow[]): TreeRow[] => {
+  const sorted = sortByStartAndDuration(rows);
+  if (sorted.length === 0) {
+    return [];
+  }
+
+  return sorted.map((row) => ({
+    spans: `-${formatDurationMs(row.duration_ms)} ${String(row.service ?? 'unknown')} ${formatOperationLabel(row)}`,
+    spanId: String(row.span_id ?? '-'),
+  }));
+};
+
+const truncateWithEllipsis = (value: string, maxLength: number) => {
+  if (maxLength <= 0) {
+    return '';
+  }
+  if (value.length <= maxLength) {
+    return value;
+  }
+  if (maxLength <= 3) {
+    return value.slice(0, maxLength);
+  }
+  return `${value.slice(0, maxLength - 3)}...`;
+};
+
+const renderTreeRows = (rows: TreeRow[]) => {
+  if (rows.length === 0) {
+    return '(no spans)\n';
+  }
+
+  const headerLeft = 'spans';
+  const headerRight = 'span_id';
+  const rightWidth = Math.max(headerRight.length, ...rows.map((row) => row.spanId.length));
+  const separator = '  ';
+  const terminalWidth = getStdoutColumns();
+  const leftWidth = Math.max(
+    headerLeft.length,
+    Math.max(20, terminalWidth - rightWidth - separator.length),
   );
+
+  const lines = [
+    `${headerLeft.padEnd(leftWidth, ' ')}${separator}${headerRight}`,
+    ...rows.map((row) => {
+      const left = truncateWithEllipsis(row.spans, leftWidth);
+      return `${left.padEnd(leftWidth, ' ')}${separator}${row.spanId}`;
+    }),
+  ];
+
+  return `${lines.join('\n')}\n`;
+};
 
 const topSpans = (rows: SpanRow[]) =>
   [...rows]
     .sort((a, b) => Number(b.duration_ms ?? 0) - Number(a.duration_ms ?? 0))
     .slice(0, 20)
     .map((row) => ({
+      dataset: row.dataset ?? null,
       start: row.start ?? null,
       duration_ms: row.duration_ms ?? 0,
       service: row.service ?? null,
@@ -133,50 +296,100 @@ const topSpans = (rows: SpanRow[]) =>
 export const traceGet = withCliContext(async ({ config, explain }, ...args: unknown[]) => {
   requireAuth(config.orgId, config.token);
 
-  const traceId = String(args[0] ?? '');
+  const requestedTraceId = String(args[0] ?? '').trim();
+  const queryTraceId = requestedTraceId.toLowerCase();
   const command = args[args.length - 1] as Command;
   const options = command.optsWithGlobals() as {
     dataset?: string;
+    since?: string;
+    until?: string;
+    start?: string;
+    end?: string;
   };
 
-  const { client, dataset, fields } = await resolveTraceDataset({
+  const since = options.since ?? options.start;
+  const until = options.until ?? options.end;
+  if (!options.dataset || options.dataset.trim().length === 0) {
+    throw new Error('Missing required --dataset. Example: axiom traces get <trace-id> --dataset <name> --since now-30m --until now');
+  }
+  if (!since || since.trim().length === 0) {
+    throw new Error('Missing required --since. Example: axiom traces get <trace-id> --dataset <name> --since now-30m --until now');
+  }
+  if (!until || until.trim().length === 0) {
+    throw new Error('Missing required --until. Example: axiom traces get <trace-id> --dataset <name> --since now-30m --until now');
+  }
+
+  const timeRange = resolveTimeRange(
+    {
+      since: options.since,
+      until: options.until,
+      start: options.start,
+      end: options.end,
+    },
+    new Date(),
+    since,
+    until,
+  );
+
+  const { client, datasets } = await resolveTraceDatasets({
     url: config.url,
     orgId: config.orgId!,
     token: config.token!,
     explain,
     overrideDataset: options.dataset,
-    requiredFields: ['traceIdField', 'spanIdField', 'serviceField', 'spanNameField'],
+    requiredFields: ['traceIdField', 'serviceField', 'spanNameField'],
   });
 
-  const apl = expandTemplate(TRACE_SPANS_APL_TEMPLATE, {
-    FILTER: `where ${aplFieldRef(fields.traceIdField!)} == ${aplStringLiteral(traceId)}`,
-    DURATION_FIELD: aplFieldRef(fields.durationField ?? 'duration_ms'),
-    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
-    SPAN_NAME_FIELD: aplFieldRef(fields.spanNameField!),
-    SPAN_KIND_FIELD: aplFieldRef(fields.spanKindField ?? 'kind'),
-    STATUS_FIELD: aplFieldRef(fields.statusField ?? 'status.code'),
-    SPAN_ID_FIELD: aplFieldRef(fields.spanIdField!),
-    PARENT_SPAN_ID_FIELD: aplFieldRef(fields.parentSpanIdField ?? 'parent_span_id'),
-  });
+  const datasetsByRegion = groupByRegion(datasets);
+  const rows = (
+    await Promise.all(
+      datasetsByRegion.map(async (regionDatasets) => {
+        const apl = `union ${regionDatasets
+          .map((dataset) => buildSourceProjection(queryTraceId, dataset))
+          .join(', ')}
+| sort by start asc, duration_ms desc`;
 
-  const queryResponse = await client.queryApl(dataset, apl, {
-    maxBinAutoGroups: 40,
-  });
+        const queryResponse = await client.queryApl(undefined, apl, {
+          startTime: timeRange.start,
+          endTime: timeRange.end,
+          maxBinAutoGroups: 40,
+        });
 
-  const rows = toRows(queryResponse.data) as SpanRow[];
+        return toRows(queryResponse.data).map(
+          (row): SpanRow => ({
+            trace_id: typeof row.trace_id === 'string' ? row.trace_id : undefined,
+            dataset: typeof row._source === 'string' ? row._source : undefined,
+            start: normalizeTimestamp(row.start),
+            duration_ms: toNumberOrNull(row.duration_ms) ?? undefined,
+            service: typeof row.service === 'string' ? row.service : undefined,
+            operation: typeof row.operation === 'string' ? row.operation : undefined,
+            kind: typeof row.kind === 'string' ? row.kind : undefined,
+            status: typeof row.status === 'string' ? row.status : undefined,
+            span_id: typeof row.span_id === 'string' ? row.span_id : undefined,
+            parent_span_id: typeof row.parent_span_id === 'string' ? row.parent_span_id : undefined,
+          }),
+        );
+      }),
+    )
+  ).flat();
   const sortedRows = sortByStartAndDuration(rows);
-  const reconstructedTree = buildTreeLines(sortedRows);
-  const treeLines = reconstructedTree ?? buildFallbackLines(sortedRows);
+  const resolvedTraceId = sortedRows.find((row) => row.trace_id)?.trace_id ?? requestedTraceId;
+
+  const reconstructedTree = buildTreeRows(sortedRows);
+  const treeRows = reconstructedTree ?? buildFallbackRows(sortedRows);
   const usedFallback = reconstructedTree === null;
   const topRows = topSpans(sortedRows);
 
   const services = Array.from(new Set(sortedRows.map((row) => row.service).filter(Boolean))).slice(0, 10);
   const start = sortedRows[0]?.start ?? null;
   const end = sortedRows[sortedRows.length - 1]?.start ?? null;
-  const errorSpans = sortedRows.filter((row) => marker(row.status) === 'ERR').length;
+  const errorSpans = sortedRows.filter((row) => isErrorStatus(row.status)).length;
+  const traceFound = sortedRows.length > 0;
 
   const metadata = {
-    trace_id: traceId,
+    trace_id: resolvedTraceId,
+    found: traceFound,
+    searched_datasets: datasets.length,
     time_range: start && end ? `${start} .. ${end}` : null,
     span_count: sortedRows.length,
     services,
@@ -189,35 +402,50 @@ export const traceGet = withCliContext(async ({ config, explain }, ...args: unkn
   if (format === 'json') {
     const meta = buildJsonMeta({
       command: 'axiom traces get',
+      timeRange,
       meta: {
         truncated: false,
         rowsShown: topRows.length,
         rowsTotal: sortedRows.length,
-        columnsShown: 8,
-        columnsTotal: 8,
+        columnsShown: 9,
+        columnsTotal: 9,
       },
     });
-    write(formatJson(meta, { metadata, tree: treeLines, top_spans: topRows }));
+    write(
+      formatJson(meta, {
+        metadata,
+        tree: treeRows.map((row) => ({ spans: row.spans, span_id: row.spanId })),
+        top_spans: topRows,
+      }),
+    );
     return;
   }
 
   if (format === 'ndjson') {
-    const result = renderNdjson(topRows, ['start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'], {
-      format,
-      maxCells: UNLIMITED_MAX_CELLS,
-    });
+    const result = renderNdjson(
+      topRows,
+      ['dataset', 'start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'],
+      {
+        format,
+        maxCells: UNLIMITED_MAX_CELLS,
+      },
+    );
     write(result.stdout);
     return;
   }
 
   if (format === 'mcp') {
-    const csvResult = renderTabular(topRows, ['start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'], {
-      format: 'csv',
-      maxCells: UNLIMITED_MAX_CELLS,
-      quiet: true,
-    });
+    const csvResult = renderTabular(
+      topRows,
+      ['dataset', 'start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'],
+      {
+        format: 'csv',
+        maxCells: UNLIMITED_MAX_CELLS,
+        quiet: true,
+      },
+    );
 
-    const header = `# Trace ${traceId}\n- span_count: ${String(metadata.span_count)}\n- services: ${services.join(', ') || 'none'}\n- errors: ${metadata.error_summary}`;
+    const header = `# Trace ${resolvedTraceId}\n- span_count: ${String(metadata.span_count)}\n- services: ${services.join(', ') || 'none'}\n- errors: ${metadata.error_summary}`;
 
     write(
       formatMcp(header, [
@@ -234,6 +462,20 @@ export const traceGet = withCliContext(async ({ config, explain }, ...args: unkn
     return;
   }
 
+  if (format === 'csv') {
+    const result = renderTabular(
+      topRows,
+      ['dataset', 'start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'],
+      {
+        format,
+        maxCells: UNLIMITED_MAX_CELLS,
+        quiet: config.quiet,
+      },
+    );
+    write(result.stdout, result.stderr);
+    return;
+  }
+
   const metadataRows = Object.entries(metadata).map(([key, value]) => ({ key, value }));
   const metadataTable = renderTabular(metadataRows, ['key', 'value'], {
     format,
@@ -241,12 +483,10 @@ export const traceGet = withCliContext(async ({ config, explain }, ...args: unkn
     quiet: config.quiet,
   });
 
-  const topTable = renderTabular(topRows, ['start', 'duration_ms', 'service', 'operation', 'kind', 'status', 'span_id', 'parent_span_id'], {
-    format,
-    maxCells: UNLIMITED_MAX_CELLS,
-    quiet: config.quiet,
-  });
-
-  const treeOutput = treeLines.length === 0 ? '' : `${treeLines.join('\n')}\n`;
-  write(`${metadataTable.stdout}\n${treeOutput}\n${topTable.stdout}`, `${metadataTable.stderr}${topTable.stderr}`);
+  const treeOutput = renderTreeRows(treeRows);
+  const emptyHint =
+    sortedRows.length === 0
+      ? `No spans found for trace ${requestedTraceId} in detected trace datasets.\n\n`
+      : '';
+  write(`${metadataTable.stdout}\n${emptyHint}${treeOutput}`, metadataTable.stderr);
 });

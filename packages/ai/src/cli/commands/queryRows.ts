@@ -89,7 +89,66 @@ const getAggregationColumns = (projectColumns: string[], aggregationCount: numbe
   return projectColumns.slice(projectColumns.length - aggregationCount);
 };
 
-const rowFromBucketEntry = (entry: unknown, projectColumns: string[]): QueryRow | null => {
+type AggregationAliasMap = Map<string, string[]>;
+
+const cloneAggregationAliasMap = (map: AggregationAliasMap): AggregationAliasMap =>
+  new Map([...map.entries()].map(([key, aliases]) => [key, [...aliases]]));
+
+const getAggregationAliasMap = (request: unknown): AggregationAliasMap => {
+  if (!isObject(request)) {
+    return new Map();
+  }
+
+  const aggregations = Array.isArray(request.aggregations) ? request.aggregations : [];
+  const aliasMap: AggregationAliasMap = new Map();
+
+  const appendAlias = (key: string, alias: string) => {
+    const existing = aliasMap.get(key);
+    if (existing) {
+      existing.push(alias);
+      return;
+    }
+    aliasMap.set(key, [alias]);
+  };
+
+  aggregations.forEach((aggregation) => {
+    if (!isObject(aggregation)) {
+      return;
+    }
+
+    const op = typeof aggregation.op === 'string' ? aggregation.op : '';
+    const alias = typeof aggregation.alias === 'string' ? aggregation.alias : '';
+    if (alias.length === 0) {
+      return;
+    }
+
+    if (op.length > 0) {
+      appendAlias(op, alias);
+    }
+    appendAlias(alias, alias);
+  });
+
+  return aliasMap;
+};
+
+const consumeAlias = (aliasMap: AggregationAliasMap, op: string) => {
+  const aliases = aliasMap.get(op);
+  if (!aliases || aliases.length === 0) {
+    return '';
+  }
+
+  const alias = aliases.shift() ?? '';
+  if (aliases.length === 0) {
+    aliasMap.delete(op);
+  }
+  return alias;
+};
+
+const rowFromBucketEntry = (
+  entry: unknown,
+  projectColumns: string[],
+  aggregationAliasMap: AggregationAliasMap,
+): QueryRow | null => {
   if (!isObject(entry)) {
     return null;
   }
@@ -98,6 +157,8 @@ const rowFromBucketEntry = (entry: unknown, projectColumns: string[]): QueryRow 
   const aggregations = Array.isArray(entry.aggregations) ? entry.aggregations : [];
   const aggregationColumns = getAggregationColumns(projectColumns, aggregations.length);
   const usedColumns = new Set(Object.keys(group));
+  const projectColumnSet = new Set(projectColumns);
+  const aliasQueues = cloneAggregationAliasMap(aggregationAliasMap);
   const aggregateColumns: QueryRow = {};
 
   aggregations.forEach((aggregation, index) => {
@@ -108,7 +169,9 @@ const rowFromBucketEntry = (entry: unknown, projectColumns: string[]): QueryRow 
     }
 
     const op = typeof aggregation.op === 'string' ? aggregation.op : `agg_${index}`;
-    const alias = aggregationColumns[index] ?? '';
+    const aliasFromOp = consumeAlias(aliasQueues, op);
+    const aliasFromProject = projectColumnSet.has(op) ? op : '';
+    const alias = aliasFromOp || aliasFromProject || aggregationColumns[index] || '';
     const columnName = withUniqueName(alias, usedColumns, op);
     aggregateColumns[columnName] = aggregation.value ?? null;
   });
@@ -122,17 +185,22 @@ const rowFromBucketEntry = (entry: unknown, projectColumns: string[]): QueryRow 
 const rowsFromBucketEntries = (
   entries: unknown,
   projectColumns: string[],
+  aggregationAliasMap: AggregationAliasMap,
 ): QueryRow[] => {
   if (!Array.isArray(entries)) {
     return [];
   }
 
   return entries
-    .map((entry) => rowFromBucketEntry(entry, projectColumns))
+    .map((entry) => rowFromBucketEntry(entry, projectColumns, aggregationAliasMap))
     .filter((row): row is QueryRow => row !== null);
 };
 
-const rowsFromBucketSeries = (series: unknown, projectColumns: string[]): QueryRow[] => {
+const rowsFromBucketSeries = (
+  series: unknown,
+  projectColumns: string[],
+  aggregationAliasMap: AggregationAliasMap,
+): QueryRow[] => {
   if (!Array.isArray(series)) {
     return [];
   }
@@ -151,7 +219,7 @@ const rowsFromBucketSeries = (series: unknown, projectColumns: string[]): QueryR
       seriesWindow._time_end = item.endTime;
     }
 
-    const groupedRows = rowsFromBucketEntries(item.groups, projectColumns).map((row) => ({
+    const groupedRows = rowsFromBucketEntries(item.groups, projectColumns, aggregationAliasMap).map((row) => ({
       ...seriesGroup,
       ...seriesWindow,
       ...row,
@@ -160,7 +228,7 @@ const rowsFromBucketSeries = (series: unknown, projectColumns: string[]): QueryR
       return groupedRows;
     }
 
-    const row = rowFromBucketEntry(item, projectColumns);
+    const row = rowFromBucketEntry(item, projectColumns, aggregationAliasMap);
     return row ? [{ ...seriesWindow, ...row }] : [];
   });
 };
@@ -186,9 +254,10 @@ export const toQueryRows = (data: unknown): QueryRows => {
   const rows = objectRows(data.rows);
 
   const projectColumns = getProjectColumns(data.request);
+  const aggregationAliasMap = getAggregationAliasMap(data.request);
   const buckets = isObject(data.buckets) ? data.buckets : {};
-  const totalsRows = rowsFromBucketEntries(buckets.totals, projectColumns);
-  const seriesRows = rowsFromBucketSeries(buckets.series, projectColumns);
+  const totalsRows = rowsFromBucketEntries(buckets.totals, projectColumns, aggregationAliasMap);
+  const seriesRows = rowsFromBucketSeries(buckets.series, projectColumns, aggregationAliasMap);
 
   return {
     rows:

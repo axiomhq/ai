@@ -11,8 +11,6 @@ import { serviceGet } from './commands/servicesGet';
 import { serviceOperations } from './commands/servicesOperations';
 import { serviceTraces } from './commands/servicesTraces';
 import { serviceLogs } from './commands/servicesLogs';
-import { traceList } from './commands/tracesList';
-import { traceSpans } from './commands/tracesSpans';
 import { traceGet } from './commands/tracesGet';
 
 const POSITIVE_INTEGER_OPTION_NAMES = new Set<OptionSpec['name']>([
@@ -164,10 +162,6 @@ const resolveHandler = (path: string) => {
       return serviceTraces;
     case 'services logs':
       return serviceLogs;
-    case 'traces list':
-      return traceList;
-    case 'traces spans':
-      return traceSpans;
     case 'traces get':
       return traceGet;
     default:
