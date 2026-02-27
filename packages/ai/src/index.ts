@@ -17,15 +17,15 @@ export const onlineEval: typeof _onlineEval = (...args) => {
 import { createScorer } from './scorers/scorer.factory';
 import { warnScorerDeprecation } from './evals/deprecated';
 
-/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+/** @deprecated Import from 'axiom/ai/scorers' instead. */
 export const Scorer = ((...args: unknown[]) => {
   warnScorerDeprecation('axiom/ai');
   return (createScorer as Function)(...args);
 }) as typeof createScorer;
 
-/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+/** @deprecated Import from 'axiom/ai/scorers' instead. */
 export type { Score } from './scorers/scorer.types';
-/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+/** @deprecated Import from 'axiom/ai/scorers' instead. */
 export type { Scorer as ScorerType } from './scorers/scorer.types';
 
 export * from './otel/wrapTool';

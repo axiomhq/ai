@@ -44,10 +44,6 @@
       "types": "./dist/evals/online.d.ts",
       "default": "./dist/evals/online.js"
     },
-    "./ai/evals/scorers": {
-      "types": "./dist/scorers/scorers.d.ts",
-      "default": "./dist/scorers/scorers.js"
-    },
     "./ai/scorers": {
       "types": "./dist/scorers/scorers.d.ts",
       "default": "./dist/scorers/scorers.js"

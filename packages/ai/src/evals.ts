@@ -10,7 +10,7 @@ export { type Score, type ScorerOptions } from './scorers/scorer.types';
 import { createScorer } from './scorers/scorer.factory';
 import { warnScorerDeprecation } from './evals/deprecated';
 
-/** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
+/** @deprecated Import from 'axiom/ai/scorers' instead. */
 export const Scorer = ((...args: unknown[]) => {
   warnScorerDeprecation('axiom/ai/evals');
   return (createScorer as Function)(...args);
