@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { Attr } from '../../src/otel/semconv/attributes';
 import { onlineEval } from '../../src/online-evals/onlineEval';
-import type { ScorerLike } from '../../src/evals/scorers';
+import type { ScorerLike } from '../../src/scorers/scorers';
 
 function createTestScorer<TInput = unknown, TOutput = unknown>(
   name: string,

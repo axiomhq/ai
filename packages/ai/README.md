@@ -83,7 +83,7 @@ For running scorers in production (without vitest dependency):
 
 ```ts
 import { withSpan } from 'axiom/ai';
-import { Scorer } from 'axiom/ai/evals/scorers';
+import { Scorer } from 'axiom/ai/scorers';
 import { onlineEval } from 'axiom/ai/evals/online';
 
 const formatScorer = Scorer('format-check', ({ output }: { output: string }) => {

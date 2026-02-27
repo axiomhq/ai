@@ -37,16 +37,24 @@
       "default": "./dist/evals.js"
     },
     "./ai/evals/aggregations": {
-      "types": "./dist/evals/aggregations.d.ts",
-      "default": "./dist/evals/aggregations.js"
-    },
-    "./ai/evals/scorers": {
-      "types": "./dist/evals/scorers.d.ts",
-      "default": "./dist/evals/scorers.js"
+      "types": "./dist/scorers/aggregations.d.ts",
+      "default": "./dist/scorers/aggregations.js"
     },
     "./ai/evals/online": {
       "types": "./dist/evals/online.d.ts",
       "default": "./dist/evals/online.js"
+    },
+    "./ai/evals/scorers": {
+      "types": "./dist/scorers/scorers.d.ts",
+      "default": "./dist/scorers/scorers.js"
+    },
+    "./ai/scorers": {
+      "types": "./dist/scorers/scorers.d.ts",
+      "default": "./dist/scorers/scorers.js"
+    },
+    "./ai/scorers/aggregations": {
+      "types": "./dist/scorers/aggregations.d.ts",
+      "default": "./dist/scorers/aggregations.js"
     },
     "./ai/config": {
       "types": "./dist/config.d.ts",

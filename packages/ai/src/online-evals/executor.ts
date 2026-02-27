@@ -1,5 +1,5 @@
 import { context, trace, SpanStatusCode, type Span } from '@opentelemetry/api';
-import { normalizeBooleanScore } from '../evals/normalize-score';
+import { normalizeBooleanScore } from '../scorers/normalize-score';
 import { getGlobalTracer } from '../otel/initAxiomAI';
 import type { Scorer, ScorerResult } from './types';
 import { Attr } from '../otel/semconv/attributes';

@@ -14,7 +14,7 @@ export const onlineEval: typeof _onlineEval = (...args) => {
   return _onlineEval(...args);
 };
 
-import { createScorer } from './evals/scorer.factory';
+import { createScorer } from './scorers/scorer.factory';
 import { warnScorerDeprecation } from './evals/deprecated';
 
 /** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
@@ -24,9 +24,9 @@ export const Scorer = ((...args: unknown[]) => {
 }) as typeof createScorer;
 
 /** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
-export type { Score } from './evals/scorer.types';
+export type { Score } from './scorers/scorer.types';
 /** @deprecated Import from 'axiom/ai/evals/scorers' instead. */
-export type { Scorer as ScorerType } from './evals/scorer.types';
+export type { Scorer as ScorerType } from './scorers/scorer.types';
 
 export * from './otel/wrapTool';
 export * from './otel/middleware';

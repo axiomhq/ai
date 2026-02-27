@@ -9,8 +9,8 @@ Axiom AI SDK (`axiom` on npm) — TypeScript toolkit for adding OpenTelemetry-ba
 Published as a single package with multiple entry points:
 - `axiom/ai` — Instrumentation (middleware, withSpan, wrapTool, onlineEval)
 - `axiom/ai/evals` — Offline evaluation framework (vitest-based)
-- `axiom/ai/evals/scorers` — Vitest-free scorer entry point
-- `axiom/ai/evals/aggregations` — Score aggregation utilities
+- `axiom/ai/scorers` — Vitest-free scorer entry point
+- `axiom/ai/scorers/aggregations` — Score aggregation utilities
 - `axiom/ai/config` — Configuration loading (c12-based)
 - `axiom/ai/feedback` — Client-side feedback (no Node.js shims)
 
