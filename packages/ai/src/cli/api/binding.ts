@@ -94,22 +94,13 @@ export const normalizeDataset = (input: DatasetInput): AxiomDataset => {
 };
 
 export const normalizeDatasetList = (input: unknown): AxiomDataset[] => {
-  if (Array.isArray(input)) {
-    return input
-      .filter((entry): entry is DatasetInput => typeof entry === 'object' && !!entry)
-      .map(normalizeDataset);
+  if (!Array.isArray(input)) {
+    return [];
   }
 
-  if (typeof input === 'object' && input) {
-    const data = input as { datasets?: unknown };
-    if (Array.isArray(data.datasets)) {
-      return data.datasets
-        .filter((entry): entry is DatasetInput => typeof entry === 'object' && !!entry)
-        .map(normalizeDataset);
-    }
-  }
-
-  return [];
+  return input
+    .filter((entry): entry is DatasetInput => typeof entry === 'object' && !!entry)
+    .map(normalizeDataset);
 };
 
 export const normalizeDatasetField = (input: FieldInput): AxiomDatasetField => {

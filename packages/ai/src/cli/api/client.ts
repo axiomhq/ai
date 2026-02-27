@@ -615,27 +615,13 @@ const deriveAppUrl = (url: string) => {
 };
 
 const extractDatasetRows = (payload: unknown): Record<string, unknown>[] => {
-  if (Array.isArray(payload)) {
-    return payload.map((item) => asRecord(item)).filter((item): item is Record<string, unknown> => item !== null);
-  }
-
-  const record = asRecord(payload);
-  if (!record) {
+  if (!Array.isArray(payload)) {
     return [];
   }
 
-  for (const key of ['datasets', 'items', 'results', 'data']) {
-    const value = record[key];
-    if (!Array.isArray(value)) {
-      continue;
-    }
-    const rows = value.map((item) => asRecord(item)).filter((item): item is Record<string, unknown> => item !== null);
-    if (rows.length > 0) {
-      return rows;
-    }
-  }
-
-  return [];
+  return payload
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null);
 };
 
 const regionMapFromDatasets = (payload: unknown): Map<string, string> => {
