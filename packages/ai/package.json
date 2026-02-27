@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup && chmod +x dist/bin.js && pnpm check:vitest-entrypoints",
+    "build": "tsup && chmod +x dist/bin.js && typedoc && pnpm check:vitest-entrypoints",
     "check:vitest-entrypoints": "node ./scripts/check-vitest-entrypoints.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -126,6 +126,8 @@
     "prettier": "catalog:",
     "tinyrainbow": "^2.0.0",
     "tsup": "catalog:",
+    "typedoc": "^0.28.17",
+    "typedoc-plugin-markdown": "^4.10.0",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"

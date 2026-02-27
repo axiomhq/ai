@@ -1,0 +1,22 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/evals.ts",
+    "src/evals/scorers.ts",
+    "src/evals/aggregations.ts",
+    "src/evals/online.ts",
+    "src/config.ts",
+    "src/feedback.ts"
+  ],
+  "tsconfig": "tsconfig.build.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "dist/docs",
+  "readme": "none",
+  "disableSources": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "hideGenerator": true,
+  "includeVersion": true
+}
