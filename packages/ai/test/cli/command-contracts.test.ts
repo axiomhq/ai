@@ -7,19 +7,6 @@ const env = {
   AXIOM_URL: 'https://api.axiom.co',
 };
 
-const tracesSchema = {
-  fields: [
-    { name: 'trace_id' },
-    { name: 'span_id' },
-    { name: 'parent_span_id' },
-    { name: 'service.name' },
-    { name: 'name' },
-    { name: 'kind' },
-    { name: 'status.code' },
-    { name: 'duration_ms' },
-  ],
-};
-
 describe('cli command integration contracts', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -161,57 +148,19 @@ describe('cli command integration contracts', () => {
           }),
           { status: 200 },
         ),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [
-              {
-                start: '2026-01-01T00:00:00Z',
-                duration_ms: 100,
-                service: 'checkout',
-                operation: 'GET /checkout',
-                kind: 'server',
-                status: 'ok',
-                span_id: 'root',
-                parent_span_id: null,
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
       );
 
     vi.stubGlobal('fetch', fetchMock);
 
     const datasetGet = await runCli(['datasets', 'get', 'alpha', '--format', 'json'], { env });
     const monitorGet = await runCli(['monitors', 'get', 'mon_1', '--format', 'json'], { env });
-    const traceGet = await runCli(
-      [
-        'traces',
-        'get',
-        'trace-1',
-        '--dataset',
-        'traces',
-        '--since',
-        'now-30m',
-        '--until',
-        'now',
-        '--format',
-        'json',
-      ],
-      { env },
-    );
 
     vi.useRealTimers();
 
     expect(datasetGet.exitCode).toBe(0);
     expect(monitorGet.exitCode).toBe(0);
-    expect(traceGet.exitCode).toBe(0);
 
     const parsedDataset = JSON.parse(datasetGet.stdout);
-    const parsedTrace = JSON.parse(traceGet.stdout);
 
     expect(parsedDataset).toMatchInlineSnapshot(`
       {
@@ -233,8 +182,6 @@ describe('cli command integration contracts', () => {
     `);
     expect(monitorGet.stdout).toContain('"id": "mon_1"');
     expect(monitorGet.stdout).toContain('"command": "axiom monitors get"');
-    expect(parsedTrace.meta.command).toBe('axiom traces get');
-    expect(parsedTrace.data.metadata.trace_id).toBe('trace-1');
   });
 
   it('renders mcp for querying commands and writes explain to stderr', async () => {
@@ -286,13 +233,6 @@ describe('cli command integration contracts', () => {
           }),
           { status: 200 },
         ),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ matches: [{ start: '2026-01-01T00:00:00Z', duration_ms: 10, service: 'checkout', operation: 'op', kind: 'server', status: 'ok', span_id: 's1', parent_span_id: null }] }),
-          { status: 200 },
-        ),
       );
 
     vi.stubGlobal('fetch', fetchMock);
@@ -307,23 +247,6 @@ describe('cli command integration contracts', () => {
     );
     const monitorHistory = await runCli(
       ['monitors', 'history', 'mon_1', '--format', 'mcp', '--explain'],
-      { env },
-    );
-    const traceGet = await runCli(
-      [
-        'traces',
-        'get',
-        'trace-1',
-        '--dataset',
-        'traces',
-        '--since',
-        'now-30m',
-        '--until',
-        'now',
-        '--format',
-        'mcp',
-        '--explain',
-      ],
       { env },
     );
 
@@ -341,9 +264,5 @@ describe('cli command integration contracts', () => {
     expect(monitorHistory.exitCode).toBe(0);
     expect(monitorHistory.stdout).toContain('```csv');
     expect(monitorHistory.stderr).toContain('/api/internal/monitors/history?monitorIds=mon_1');
-
-    expect(traceGet.exitCode).toBe(0);
-    expect(traceGet.stdout).toContain('# Trace trace-1');
-    expect(traceGet.stderr).toContain('/v1/datasets/_apl?format=legacy');
   });
 });

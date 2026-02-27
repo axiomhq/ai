@@ -8,7 +8,6 @@ Register-ArgumentCompleter -Native -CommandName axiom -ScriptBlock {
     '--content-type',
     '--continue-on-error',
     '--csv-fields',
-    '--dataset',
     '--delimiter',
     '--edge-url',
     '--end',
@@ -57,7 +56,6 @@ Register-ArgumentCompleter -Native -CommandName axiom -ScriptBlock {
     'status',
     'switch',
     'table',
-    'traces',
     'version',
     'zsh',
     'zstd'

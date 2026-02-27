@@ -1,12 +1,25 @@
 import { Command } from 'commander';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 type Shell = 'bash' | 'zsh' | 'fish' | 'powershell';
 
 const currentFile = fileURLToPath(import.meta.url);
-const packageRoot = resolve(dirname(currentFile), '../../../');
+const resolvePackageRoot = () => {
+  const currentDir = dirname(currentFile);
+  const candidates = [resolve(currentDir, '../../../'), resolve(currentDir, '..')];
+
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'generated/completions/axiom.bash'))) {
+      return candidate;
+    }
+  }
+
+  return candidates[0];
+};
+
+const packageRoot = resolvePackageRoot();
 
 const completionFiles: Record<Shell, string> = {
   bash: resolve(packageRoot, 'generated/completions/axiom.bash'),

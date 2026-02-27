@@ -6,7 +6,6 @@ import { datasetGet, datasetList, datasetSample, datasetSchema } from './command
 import { ingestRun } from './commands/ingest';
 import { queryRun } from './commands/queryRun';
 import { monitorGet, monitorHistory, monitorList } from './commands/monitors';
-import { traceGet } from './commands/tracesGet';
 
 const POSITIVE_INTEGER_OPTION_NAMES = new Set<OptionSpec['name']>([
   'limit',
@@ -147,8 +146,6 @@ const resolveHandler = (path: string) => {
       return monitorGet;
     case 'monitors history':
       return monitorHistory;
-    case 'traces get':
-      return traceGet;
     default:
       return notImplemented;
   }

@@ -191,25 +191,6 @@ export const cliCommandSpec = {
         },
       ],
     },
-    {
-      name: 'traces',
-      description: 'Trace-centric tools',
-      help: `Usage:\n  axiom traces <command>\n\nCommands:\n  get <trace-id>               Show a trace tree view with span IDs\n\nOptions:\n  --dataset <name>             Required dataset containing the trace\n  --since <since>              Required query start time\n  --until <until>              Required query end time\n  --format <format>\n  --explain\n`,
-      subcommands: [
-        {
-          name: 'get',
-          description: 'Show a trace tree view with span IDs',
-          args: '<trace-id>',
-          options: [
-            { name: 'dataset', flags: '--dataset <name>', description: 'Required dataset containing the trace' },
-            { name: 'since', flags: '--since <since>', description: 'Required query start time' },
-            { name: 'until', flags: '--until <until>', description: 'Required query end time' },
-            { name: 'start', flags: '--start <start>', description: 'Alias for --since', hidden: true },
-            { name: 'end', flags: '--end <end>', description: 'Alias for --until', hidden: true },
-          ],
-        },
-      ],
-    },
   ] satisfies CommandSpec[],
   formatChoices,
 };
