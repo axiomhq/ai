@@ -14,12 +14,6 @@ import { getColumnsFromRows } from '../format/shape';
 import { buildJsonMeta } from '../format/meta';
 import { toQueryRows } from './queryRows';
 
-const requireAuth = (orgId?: string, token?: string) => {
-  if (!orgId || !token) {
-    throw new Error('Missing Axiom credentials. Run `axiom auth login`.');
-  }
-};
-
 const readStdin = async (): Promise<string> => {
   if (process.stdin.isTTY) {
     return '';
@@ -41,6 +35,8 @@ type QueryRunOptions = {
   until?: string;
   start?: string;
   end?: string;
+  edgeUrl?: string;
+  apiToken?: string;
 };
 
 const flattenPositionalArgs = (values: unknown[]) => {
@@ -180,10 +176,14 @@ const renderQuerySectionsTable = (
 
 export const queryRun = withCliContext(
   async ({ config, explain }, ...args: unknown[]) => {
-    requireAuth(config.orgId, config.token);
     const positionalArgs = args.slice(0, -1);
     const command = args[args.length - 1] as Command;
     const options = command.optsWithGlobals() as QueryRunOptions;
+    const apiToken = options.apiToken?.trim();
+    const token = apiToken || config.token;
+    if (!token) {
+      throw new Error('Missing API token. Provide --token or --api-token.');
+    }
     const positionalApl = flattenPositionalArgs(positionalArgs);
     const looksLikeLegacyQueryRun =
       positionalApl[0] === 'run' && Boolean(options.apl || options.file || options.stdin);
@@ -210,12 +210,16 @@ export const queryRun = withCliContext(
 
     const client = createAxiomApiClient({
       url: config.url,
-      orgId: config.orgId!,
-      token: config.token!,
+      orgId: config.orgId,
+      token,
       explain,
     });
 
-    const response = await client.queryApl(undefined, apl, queryOptions);
+    const response = await client.queryApl(undefined, apl, {
+      ...queryOptions,
+      edgeUrl: options.edgeUrl,
+      apiToken,
+    });
     const normalizedRows = toQueryRows(response.data);
     const rows = normalizedRows.rows;
     const timeseriesRows = normalizedRows.timeseries;

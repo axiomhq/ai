@@ -20,7 +20,7 @@
     "test:live": "vitest run test/live/cliLive.test.ts",
     "test:watch": "vitest --watch",
     "gen": "tsx ./src/cli/gen/generateArtifacts.ts",
-    "check:gen": "pnpm gen && git diff --exit-code -- generated/completions generated/skills",
+    "check:gen": "pnpm gen && git diff --exit-code -- generated/completions",
     "publint": "npx publint"
   },
   "types": "./dist/index.d.ts",
@@ -169,8 +169,7 @@
   },
   "files": [
     "dist",
-    "generated/completions",
-    "generated/skills"
+    "generated/completions"
   ],
   "packageManager": "pnpm@10.16.1"
 }

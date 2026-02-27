@@ -10,6 +10,23 @@ export type QueryAplOptions = {
   endTime?: string;
   maxBinAutoGroups?: number;
   limit?: number;
+  edgeUrl?: string;
+  apiToken?: string;
+};
+
+export type IngestContentType = 'json' | 'ndjson' | 'csv';
+export type IngestContentEncoding = 'identity' | 'gzip' | 'zstd';
+
+export type IngestDatasetOptions = {
+  contentType: IngestContentType;
+  contentEncoding?: IngestContentEncoding;
+  timestampField?: string;
+  timestampFormat?: string;
+  delimiter?: string;
+  labels?: Record<string, string>;
+  csvFields?: string[];
+  edgeUrl?: string;
+  apiToken?: string;
 };
 
 export type MonitorHistoryRange = {
@@ -43,6 +60,8 @@ const DEFAULT_DATASET_REGION_CACHE_TTL_MS = 5 * 60_000;
 const DEFAULT_REGION_ENDPOINT_CACHE_TTL_MS = 60 * 60_000;
 const EDGE_QUERY_PATH = '/api/v1/query';
 const LEGACY_QUERY_PATH = '/v1/datasets/_apl?format=legacy';
+const EDGE_INGEST_PATH_PREFIX = '/v1/ingest';
+const API_INGEST_PATH_PREFIX = '/v1/datasets';
 const DISK_CACHE_VERSION = 1;
 const CACHE_DIR_NAME = 'axiom';
 const CACHE_NAMESPACE_DIR = 'cli';
@@ -135,6 +154,65 @@ const trimOrUndefined = (value: string | undefined) => {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const stripTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+
+const parseUrlOrNull = (value: string): URL | null => {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+};
+
+const hasCustomPath = (value: URL) => {
+  const normalizedPath = value.pathname.replace(/\/+$/, '');
+  return normalizedPath.length > 0;
+};
+
+const resolveEdgeQueryTarget = (edgeUrl: string) => {
+  const parsed = parseUrlOrNull(edgeUrl);
+  if (!parsed) {
+    return { baseUrl: stripTrailingSlash(edgeUrl), path: EDGE_QUERY_PATH };
+  }
+
+  const baseUrl = `${parsed.protocol}//${parsed.host}`;
+  if (hasCustomPath(parsed) || parsed.search.length > 0) {
+    return { baseUrl, path: `${parsed.pathname}${parsed.search}` };
+  }
+
+  return { baseUrl, path: EDGE_QUERY_PATH };
+};
+
+const resolveEdgeIngestTarget = (edgeUrl: string, dataset: string) => {
+  const parsed = parseUrlOrNull(edgeUrl);
+  const encodedDataset = encodeURIComponent(dataset);
+
+  if (!parsed) {
+    return {
+      baseUrl: stripTrailingSlash(edgeUrl),
+      path: `${EDGE_INGEST_PATH_PREFIX}/${encodedDataset}`,
+    };
+  }
+
+  const baseUrl = `${parsed.protocol}//${parsed.host}`;
+  if (hasCustomPath(parsed) || parsed.search.length > 0) {
+    return { baseUrl, path: `${parsed.pathname}${parsed.search}` };
+  }
+
+  return {
+    baseUrl,
+    path: `${EDGE_INGEST_PATH_PREFIX}/${encodedDataset}`,
+  };
+};
+
+const isLikelyEdgeHost = (url: string) => {
+  const parsed = parseUrlOrNull(url);
+  if (!parsed) {
+    return false;
+  }
+  return parsed.hostname.includes('.edge.') || parsed.hostname.endsWith('edge.axiom.co');
 };
 
 const resolveCliCacheDir = () => {
@@ -305,7 +383,8 @@ const writeDiskStringMapCache = async (prefix: string, cacheKey: string, entry: 
   }
 };
 
-const cacheKeyFor = (config: HttpConfig) => `${config.url.replace(/\/+$/, '')}\u0000${config.orgId}`;
+const cacheKeyFor = (config: HttpConfig) =>
+  `${config.url.replace(/\/+$/, '')}\u0000${config.orgId ?? ''}`;
 
 const readDatasetRegionCache = async (key: string): Promise<Map<string, string> | null> => {
   const ttlMs = resolveDatasetRegionCacheTtlMs();
@@ -744,17 +823,41 @@ export class AxiomApiClient {
       recordQuery(this.config.explain, { dataset, apl, options });
     }
 
+    const { edgeUrl, apiToken, ...queryOptions } = options;
     const queryText = dataset ? qualifyAplWithDataset(dataset, apl) : rewriteAplDatasetShorthand(apl);
+
+    const explicitEdgeUrl = trimOrUndefined(edgeUrl);
+    if (explicitEdgeUrl) {
+      const target = resolveEdgeQueryTarget(explicitEdgeUrl);
+      return requestJson<T>(
+        {
+          ...this.config,
+          orgId: undefined,
+          token: apiToken ?? this.config.token,
+        },
+        {
+          method: 'POST',
+          path: target.path,
+          body: { apl: queryText, ...queryOptions },
+          baseUrl: target.baseUrl,
+        },
+      );
+    }
+
     const edgeBaseUrl = resolveEdgeRoutingEnabled()
       ? await this.resolveEdgeQueryBaseUrl(queryText, dataset)
       : undefined;
 
     if (edgeBaseUrl) {
       try {
-        return await requestJson<T>(this.config, {
+        const edgePath = EDGE_QUERY_PATH;
+        const edgeConfig: HttpConfig = apiToken
+          ? { ...this.config, token: apiToken, orgId: undefined }
+          : this.config;
+        return await requestJson<T>(edgeConfig, {
           method: 'POST',
-          path: EDGE_QUERY_PATH,
-          body: { apl: queryText, ...options },
+          path: edgePath,
+          body: { apl: queryText, ...queryOptions },
           baseUrl: edgeBaseUrl,
         });
       } catch (error) {
@@ -767,7 +870,74 @@ export class AxiomApiClient {
     return requestJson<T>(this.config, {
       method: 'POST',
       path: LEGACY_QUERY_PATH,
-      body: { apl: queryText, ...options },
+      body: { apl: queryText, ...queryOptions },
+    });
+  }
+
+  ingestDataset<T = unknown>(
+    dataset: string,
+    payload: string | Uint8Array,
+    options: IngestDatasetOptions,
+  ) {
+    const queryParams = new URLSearchParams();
+    if (options.timestampField) {
+      queryParams.set('timestamp-field', options.timestampField);
+    }
+    if (options.timestampFormat) {
+      queryParams.set('timestamp-format', options.timestampFormat);
+    }
+    if (options.delimiter) {
+      queryParams.set('csv-delimiter', options.delimiter);
+    }
+
+    const explicitEdgeUrl = trimOrUndefined(options.edgeUrl);
+    const useEdge = Boolean(explicitEdgeUrl) || isLikelyEdgeHost(this.config.url);
+    let baseUrl = this.config.url;
+    let path = useEdge
+      ? `${EDGE_INGEST_PATH_PREFIX}/${encodeURIComponent(dataset)}`
+      : `${API_INGEST_PATH_PREFIX}/${encodeURIComponent(dataset)}/ingest`;
+
+    if (explicitEdgeUrl) {
+      const target = resolveEdgeIngestTarget(explicitEdgeUrl, dataset);
+      baseUrl = target.baseUrl;
+      path = target.path;
+    }
+
+    const query = queryParams.toString();
+    if (query.length > 0) {
+      path = `${path}${path.includes('?') ? '&' : '?'}${query}`;
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': options.contentType,
+    };
+    if (options.contentEncoding && options.contentEncoding !== 'identity') {
+      headers['Content-Encoding'] = options.contentEncoding;
+    }
+    if (options.labels && Object.keys(options.labels).length > 0) {
+      headers['X-Axiom-Event-Labels'] = JSON.stringify(options.labels);
+    }
+    if (options.contentType === 'csv' && options.csvFields && options.csvFields.length > 0) {
+      headers['X-Axiom-CSV-Fields'] = options.csvFields.join(',');
+    }
+
+    const requestConfig: HttpConfig = {
+      ...this.config,
+      token: options.apiToken ?? this.config.token,
+      orgId: useEdge ? undefined : this.config.orgId,
+    };
+
+    const normalizedPayload =
+      typeof payload === 'string' ? payload : Uint8Array.from(payload);
+    const rawBody =
+      typeof normalizedPayload === 'string' ? normalizedPayload : new Blob([normalizedPayload]);
+
+    return requestJson<T>(requestConfig, {
+      method: 'POST',
+      path,
+      rawBody,
+      baseUrl,
+      headers,
     });
   }
 

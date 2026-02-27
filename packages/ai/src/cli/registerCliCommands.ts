@@ -3,14 +3,9 @@ import { cliCommandSpec, type CommandSpec, type OptionSpec } from './commandSpec
 import { createExplainContext, emitExplainToStderr } from './explain/context';
 import { resolveCliConfig } from './config/resolve';
 import { datasetGet, datasetList, datasetSample, datasetSchema } from './commands/datasets';
+import { ingestRun } from './commands/ingest';
 import { queryRun } from './commands/queryRun';
 import { monitorGet, monitorHistory, monitorList } from './commands/monitors';
-import { serviceDetect } from './commands/servicesDetect';
-import { serviceList } from './commands/servicesList';
-import { serviceGet } from './commands/servicesGet';
-import { serviceOperations } from './commands/servicesOperations';
-import { serviceTraces } from './commands/servicesTraces';
-import { serviceLogs } from './commands/servicesLogs';
 import { traceGet } from './commands/tracesGet';
 
 const POSITIVE_INTEGER_OPTION_NAMES = new Set<OptionSpec['name']>([
@@ -144,24 +139,14 @@ const resolveHandler = (path: string) => {
       return datasetSample;
     case 'query':
       return queryRun;
+    case 'ingest':
+      return ingestRun;
     case 'monitors list':
       return monitorList;
     case 'monitors get':
       return monitorGet;
     case 'monitors history':
       return monitorHistory;
-    case 'services detect':
-      return serviceDetect;
-    case 'services list':
-      return serviceList;
-    case 'services get':
-      return serviceGet;
-    case 'services operations':
-      return serviceOperations;
-    case 'services traces':
-      return serviceTraces;
-    case 'services logs':
-      return serviceLogs;
     case 'traces get':
       return traceGet;
     default:

@@ -87,24 +87,6 @@ describe('cli command integration contracts', () => {
           }),
           { status: 200 },
         ),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [
-              {
-                service: 'checkout',
-                total: 12,
-                errored: 1,
-                error_rate: 0.08,
-                avg_duration_ns: 45000000,
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
       );
 
     vi.stubGlobal('fetch', fetchMock);
@@ -117,23 +99,15 @@ describe('cli command integration contracts', () => {
       env,
       stdoutIsTTY: false,
     });
-    const serviceList = await runCli(['services', 'list', '--format', 'auto'], {
-      env,
-      stdoutIsTTY: false,
-    });
 
     expect(datasetList.exitCode).toBe(0);
     expect(monitorList.exitCode).toBe(0);
-    expect(serviceList.exitCode).toBe(0);
 
     expect(datasetList.stdout).toMatchInlineSnapshot(
       `"{\"name\":\"alpha\",\"created_at\":\"2026-01-01T00:00:00Z\",\"description\":null}\n"`,
     );
     expect(monitorList.stdout).toMatchInlineSnapshot(
       `"{\"id\":\"mon_1\",\"name\":\"High errors\",\"status\":\"closed\",\"recent_run\":\"2026-01-01T00:05:00Z\",\"type\":\"threshold\",\"dataset\":\"traces\",\"frequency\":\"*/5 * * * *\"}\n"`,
-    );
-    expect(serviceList.stdout).toMatchInlineSnapshot(
-      `"{\"service\":\"checkout\",\"total\":12,\"errored\":1,\"error_rate\":0.08,\"avg_duration_ns\":45000000}\n"`,
     );
   });
 
@@ -188,25 +162,6 @@ describe('cli command integration contracts', () => {
           { status: 200 },
         ),
       )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            matches: [
-              {
-                _source: 'traces',
-                operation: 'GET /checkout',
-                total: 12,
-                errored: 1,
-                error_rate: 0.08,
-                avg_duration_ns: 45000000,
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      )
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
@@ -232,7 +187,6 @@ describe('cli command integration contracts', () => {
 
     const datasetGet = await runCli(['datasets', 'get', 'alpha', '--format', 'json'], { env });
     const monitorGet = await runCli(['monitors', 'get', 'mon_1', '--format', 'json'], { env });
-    const serviceGet = await runCli(['services', 'get', 'checkout', '--format', 'json'], { env });
     const traceGet = await runCli(
       [
         'traces',
@@ -254,7 +208,6 @@ describe('cli command integration contracts', () => {
 
     expect(datasetGet.exitCode).toBe(0);
     expect(monitorGet.exitCode).toBe(0);
-    expect(serviceGet.exitCode).toBe(0);
     expect(traceGet.exitCode).toBe(0);
 
     const parsedDataset = JSON.parse(datasetGet.stdout);
@@ -280,8 +233,6 @@ describe('cli command integration contracts', () => {
     `);
     expect(monitorGet.stdout).toContain('"id": "mon_1"');
     expect(monitorGet.stdout).toContain('"command": "axiom monitors get"');
-    expect(serviceGet.stdout).toContain('"service": "checkout"');
-    expect(serviceGet.stdout).toContain('"command": "axiom services get"');
     expect(parsedTrace.meta.command).toBe('axiom traces get');
     expect(parsedTrace.data.metadata.trace_id).toBe('trace-1');
   });
@@ -336,31 +287,6 @@ describe('cli command integration contracts', () => {
           { status: 200 },
         ),
       )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ matches: [{ operation: 'GET /checkout', spans: 3, error_spans: 0, error_rate: 0, p95_ms: 30, last_seen: '2026-01-01T00:00:00Z' }] }),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ name: 'traces' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ matches: [{ trace_id: 't-1', root_operation: 'GET /checkout', started_at: '2026-01-01T00:00:00Z', duration_ms: 120, span_count: 4, error: 1 }] }),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ fields: [{ name: 'service.name' }, { name: 'trace_id' }, { name: 'severity_text' }, { name: 'message' }] }), { status: 200 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ matches: [{ _time: '2026-01-01T00:00:00Z', severity: 'error', message: 'boom', trace_id: 't-1' }] }),
-          { status: 200 },
-        ),
-      )
       .mockResolvedValueOnce(new Response(JSON.stringify(tracesSchema), { status: 200 }))
       .mockResolvedValueOnce(
         new Response(
@@ -381,27 +307,6 @@ describe('cli command integration contracts', () => {
     );
     const monitorHistory = await runCli(
       ['monitors', 'history', 'mon_1', '--format', 'mcp', '--explain'],
-      { env },
-    );
-    const serviceOps = await runCli(
-      ['services', 'operations', 'checkout', '--format', 'mcp', '--explain'],
-      { env },
-    );
-    const serviceTraces = await runCli(
-      ['services', 'traces', 'checkout', '--format', 'mcp', '--explain'],
-      { env },
-    );
-    const serviceLogs = await runCli(
-      [
-        'services',
-        'logs',
-        'checkout',
-        '--logs-dataset',
-        'logs',
-        '--format',
-        'mcp',
-        '--explain',
-      ],
       { env },
     );
     const traceGet = await runCli(
@@ -436,18 +341,6 @@ describe('cli command integration contracts', () => {
     expect(monitorHistory.exitCode).toBe(0);
     expect(monitorHistory.stdout).toContain('```csv');
     expect(monitorHistory.stderr).toContain('/api/internal/monitors/history?monitorIds=mon_1');
-
-    expect(serviceOps.exitCode).toBe(0);
-    expect(serviceOps.stdout).toContain('# Service Operations: checkout');
-    expect(serviceOps.stderr).toContain('/v1/datasets/_apl?format=legacy');
-
-    expect(serviceTraces.exitCode).toBe(0);
-    expect(serviceTraces.stdout).toContain('# Service Traces: checkout');
-    expect(serviceTraces.stderr).toContain('/v1/datasets/_apl?format=legacy');
-
-    expect(serviceLogs.exitCode).toBe(0);
-    expect(serviceLogs.stdout).toContain('# Service Logs: checkout');
-    expect(serviceLogs.stderr).toContain('/v1/datasets/_apl?format=legacy');
 
     expect(traceGet.exitCode).toBe(0);
     expect(traceGet.stdout).toContain('# Trace trace-1');

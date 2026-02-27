@@ -216,7 +216,7 @@ export const resolveTraceDataset = async (params: {
 
     if (!fields) {
       throw new Error(
-        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom services detect --explain\` to inspect mappings.`,
+        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom datasets schema ${params.overrideDataset}\` to inspect fields.`,
       );
     }
 
@@ -236,7 +236,9 @@ export const resolveTraceDataset = async (params: {
 
   const detection = detectOtelDatasets(schemaMap);
   if (!detection.traces) {
-    throw new Error('No trace dataset detected. Run `axiom services detect --explain` to inspect mappings.');
+    throw new Error(
+      'No trace dataset detected. Re-run with --dataset <name> and ensure the dataset contains trace fields.',
+    );
   }
 
   requireOtelFields(detection.traces.dataset, detection.traces.fields, params.requiredFields);
@@ -299,7 +301,7 @@ export const resolveTraceDatasets = async (params: {
 
     if (!candidate) {
       throw new Error(
-        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom services detect --explain\` to inspect mappings.`,
+        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom datasets schema ${params.overrideDataset}\` to inspect fields.`,
       );
     }
 
@@ -323,7 +325,9 @@ export const resolveTraceDatasets = async (params: {
     .sort((left, right) => left.dataset.localeCompare(right.dataset));
 
   if (datasets.length === 0) {
-    throw new Error('No trace dataset detected. Run `axiom services detect --explain` to inspect mappings.');
+    throw new Error(
+      'No trace dataset detected. Re-run with --dataset <name> and ensure the dataset contains trace fields.',
+    );
   }
 
   return {
@@ -387,7 +391,7 @@ export const resolveLogsDataset = async (params: {
     const logs = detection.logs;
     if (!logs) {
       throw new Error(
-        `No logs dataset detected. Run \`axiom services detect --explain\` and re-run with --logs-dataset <name>.`,
+        `No logs dataset detected. Run \`axiom datasets schema ${params.overrideDataset}\` and re-run with --logs-dataset <name>.`,
       );
     }
 
@@ -406,7 +410,7 @@ export const resolveLogsDataset = async (params: {
   const detection = detectOtelDatasets(schemaMap);
   if (!detection.logs) {
     throw new Error(
-      'No logs dataset detected. Run `axiom services detect --explain` and re-run with --logs-dataset <name>.',
+      'No logs dataset detected. Re-run with --logs-dataset <name>.',
     );
   }
 

@@ -78,6 +78,49 @@ describe('query', () => {
     );
   });
 
+  it('supports explicit edge url and api token without org auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          matches: [{ ok: true }],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runCli(
+      [
+        'query',
+        "['traces'] | limit 1",
+        '--edge-url',
+        'https://eu-central-1.aws.edge.axiom.co',
+        '--api-token',
+        'edge-token',
+        '--format',
+        'json',
+      ],
+      { env: {} },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer edge-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apl: "['traces'] | limit 1",
+          maxBinAutoGroups: 40,
+        }),
+      }),
+    );
+  });
+
   it('uses --file when apl is not provided', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 }),

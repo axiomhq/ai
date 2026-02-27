@@ -29,7 +29,7 @@ const walkCommands = (commands: CommandSpec[], prefix: string[] = []): CommandPa
 
 const collectOptions = (commandPath: string[], command: CommandSpec): OptionSpec[] => {
   const [noun] = commandPath;
-  if (['datasets', 'query', 'monitors', 'services', 'traces'].includes(noun)) {
+  if (['datasets', 'ingest', 'query', 'monitors', 'traces'].includes(noun)) {
     return [...cliCommandSpec.globalOptions, ...(command.options ?? [])];
   }
   return command.options ?? [];
@@ -109,76 +109,6 @@ ${tokens.map((token) => `    '${token}'`).join(',\n')}
 }
 `;
 
-const generateSkillMarkdown = () => `# Axiom CLI
-
-## Output mode
-Prefer MCP-friendly output for analysis:
-- Use \`--format mcp\` for compact Markdown plus CSV blocks.
-- Use \`--format json\` or \`--format ndjson\` when you need strict machine parsing.
-- For raw event streams, \`--format jsonl\` is accepted as an alias for \`ndjson\`.
-
-If a command fails due to missing datasets or fields:
-1. Run: \`axiom services detect --format mcp --explain\`
-2. Re-run the command with \`--dataset <name>\` (and \`--logs-dataset <name>\` for logs).
-
-## Authentication checks
-Before running queries:
-- \`axiom auth status\`
-If not logged in:
-- \`axiom auth login\`
-
-## Primary investigation workflows
-
-### 1) Find what services exist
-- \`axiom services list --since now-30m --format mcp\`
-
-### 2) Get a service status summary
-- \`axiom services get <service> --since now-30m --format mcp\`
-
-### 3) List operations for a service
-- \`axiom services operations <service> --since now-30m --format mcp\`
-
-### 4) Find recent failing traces for a service
-- \`axiom services traces <service> --since now-30m --format mcp\`
-
-### 5) Inspect a trace
-- \`axiom traces get <trace-id> --dataset <name> --since now-30m --until now --format mcp\`
-
-### 6) Use raw APL when needed
-- \`axiom query "<APL>" --format mcp --explain\`
-- To keep output manageable, add \`| limit <n>\` in APL or set \`--max-bin-auto-groups <n>\`.
-
-## Commands
-
-### dataset
-- \`axiom datasets list\`
-- \`axiom datasets get <name>\`
-- \`axiom datasets schema <name>\`
-- \`axiom datasets sample <name>\`
-
-### query
-- \`axiom query "<APL>"\`
-
-### monitor
-- \`axiom monitors list\`
-- \`axiom monitors get <id>\`
-- \`axiom monitors history <id>\`
-
-### service (OpenTelemetry)
-- \`axiom services detect\`
-- \`axiom services list\`
-- \`axiom services get <service>\`
-- \`axiom services operations <service>\`
-- \`axiom services traces <service>\`
-- \`axiom services logs <service>\`
-
-### trace (OpenTelemetry)
-- \`axiom traces get <trace-id>\`
-
-## Safety and scope
-All commands in this skill are read-only. Do not attempt to create, update, or delete Axiom resources via this CLI workflow.
-`;
-
 const writeGeneratedFile = (path: string, content: string) => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, 'utf8');
@@ -194,7 +124,6 @@ export const generateArtifacts = (options: GenerateOptions = {}) => {
     [join(generatedDir, 'completions/axiom.zsh')]: generateZsh(tokens),
     [join(generatedDir, 'completions/axiom.fish')]: generateFish(tokens),
     [join(generatedDir, 'completions/axiom.ps1')]: generatePowerShell(tokens),
-    [join(generatedDir, 'skills/axiom-cli.md')]: generateSkillMarkdown(),
   };
 
   for (const [path, content] of Object.entries(files)) {
