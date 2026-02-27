@@ -321,7 +321,7 @@ describe('dataset commands', () => {
     };
     expect(jsonSample.meta.command).toBe('axiom datasets sample');
     expect(jsonSample.meta.time_range.start).toBe('24h');
-    expect(jsonSample.meta.time_range.end).toBe('0m');
+    expect(jsonSample.meta.time_range.end).toBe('now');
     expect(jsonSample.data[0]?.message).toBe('hello');
 
     const ndjsonResult = await runCli(
@@ -360,7 +360,7 @@ describe('dataset commands', () => {
       expect(body.apl).toBe("['alpha'] | limit 20");
       expect(body.apl).not.toContain('range ');
       expect(body.startTime).toBe('24h');
-      expect(body.endTime).toBe('0m');
+      expect(body.endTime).toBe('now');
     }
 
     vi.useRealTimers();

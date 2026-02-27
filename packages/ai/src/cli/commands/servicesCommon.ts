@@ -17,6 +17,12 @@ export const requireAuth = (orgId?: string, token?: string) => {
 };
 
 type SchemaMap = Record<string, string[]>;
+type DatasetRegionMap = Record<string, string>;
+
+type SchemaLookupResult = {
+  schemaMap: SchemaMap;
+  regionsByDataset: DatasetRegionMap;
+};
 
 type CliSchemaCacheScope = {
   url: string;
@@ -26,7 +32,7 @@ type CliSchemaCacheScope = {
 
 type CliSchemaCacheEntry = {
   expiresAtMs: number;
-  schemaMap: SchemaMap;
+  schemaLookup: SchemaLookupResult;
 };
 
 const DEFAULT_SCHEMA_CACHE_TTL_MS = 30_000;
@@ -61,7 +67,16 @@ const buildSchemaCacheKey = (scope: CliSchemaCacheScope) =>
 const cloneSchemaMap = (schemaMap: SchemaMap): SchemaMap =>
   Object.fromEntries(Object.entries(schemaMap).map(([dataset, fields]) => [dataset, [...fields]]));
 
-const readSchemaCache = (cacheKey: string): SchemaMap | null => {
+const cloneDatasetRegionMap = (regionsByDataset: DatasetRegionMap): DatasetRegionMap => ({
+  ...regionsByDataset,
+});
+
+const cloneSchemaLookupResult = (schemaLookup: SchemaLookupResult): SchemaLookupResult => ({
+  schemaMap: cloneSchemaMap(schemaLookup.schemaMap),
+  regionsByDataset: cloneDatasetRegionMap(schemaLookup.regionsByDataset),
+});
+
+const readSchemaCache = (cacheKey: string): SchemaLookupResult | null => {
   const ttlMs = resolveSchemaCacheTtlMs();
   if (ttlMs <= 0) {
     return null;
@@ -77,10 +92,10 @@ const readSchemaCache = (cacheKey: string): SchemaMap | null => {
     return null;
   }
 
-  return cloneSchemaMap(cached.schemaMap);
+  return cloneSchemaLookupResult(cached.schemaLookup);
 };
 
-const writeSchemaCache = (cacheKey: string, schemaMap: SchemaMap) => {
+const writeSchemaCache = (cacheKey: string, schemaLookup: SchemaLookupResult) => {
   const ttlMs = resolveSchemaCacheTtlMs();
   if (ttlMs <= 0) {
     return;
@@ -88,7 +103,7 @@ const writeSchemaCache = (cacheKey: string, schemaMap: SchemaMap) => {
 
   cliSchemaCache.set(cacheKey, {
     expiresAtMs: Date.now() + ttlMs,
-    schemaMap: cloneSchemaMap(schemaMap),
+    schemaLookup: cloneSchemaLookupResult(schemaLookup),
   });
 };
 
@@ -110,6 +125,26 @@ const listSchemas = async (
 
   const datasetsResponse = await client.listDatasets();
   const datasets = normalizeDatasetList(datasetsResponse.data);
+  const regionsByDataset: DatasetRegionMap = {};
+  datasets.forEach((dataset) => {
+    if (dataset.region && dataset.region.trim().length > 0) {
+      regionsByDataset[dataset.name] = dataset.region;
+    }
+  });
+
+  if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+    try {
+      const internalDatasetsResponse = await client.listInternalDatasets();
+      const internalDatasets = normalizeDatasetList(internalDatasetsResponse.data);
+      internalDatasets.forEach((dataset) => {
+        if (dataset.region && dataset.region.trim().length > 0) {
+          regionsByDataset[dataset.name] = dataset.region;
+        }
+      });
+    } catch {
+      // Internal datasets may be unavailable in some environments.
+    }
+  }
 
   const fetchFields = async (datasetName: string) => {
     try {
@@ -141,17 +176,22 @@ const listSchemas = async (
     }
   }
 
+  const schemaLookup = {
+    schemaMap,
+    regionsByDataset,
+  } satisfies SchemaLookupResult;
+
   if (cacheKey) {
-    writeSchemaCache(cacheKey, schemaMap);
+    writeSchemaCache(cacheKey, schemaLookup);
   }
 
-  return cloneSchemaMap(schemaMap);
+  return cloneSchemaLookupResult(schemaLookup);
 };
 
 export const listDatasetSchemas = async (
   client: ReturnType<typeof createAxiomApiClient>,
   cacheScope: CliSchemaCacheScope,
-) => listSchemas(client, cacheScope);
+) => (await listSchemas(client, cacheScope)).schemaMap;
 
 export const resolveTraceDataset = async (params: {
   url: string;
@@ -205,6 +245,90 @@ export const resolveTraceDataset = async (params: {
     client,
     dataset: detection.traces.dataset,
     fields: detection.traces.fields,
+  };
+};
+
+type ResolvedTraceDataset = {
+  dataset: string;
+  fields: OtelFieldMap;
+  region?: string;
+};
+
+export const resolveTraceDatasets = async (params: {
+  url: string;
+  orgId: string;
+  token: string;
+  explain: unknown;
+  overrideDataset?: string;
+  requiredFields: Array<keyof Omit<OtelFieldMap, 'timestampField'>>;
+}) => {
+  const client = createAxiomApiClient({
+    url: params.url,
+    orgId: params.orgId,
+    token: params.token,
+    explain: params.explain as never,
+  });
+
+  const normalizeTraceCandidate = (
+    dataset: string,
+    schemaFields: string[],
+    failOnMissingRequired: boolean,
+    region?: string,
+  ): ResolvedTraceDataset | null => {
+    const fields = detectOtelDatasets({ [dataset]: schemaFields }).traces?.fields;
+    if (!fields) {
+      return null;
+    }
+
+    try {
+      requireOtelFields(dataset, fields, params.requiredFields);
+    } catch (error) {
+      if (failOnMissingRequired) {
+        throw error;
+      }
+      return null;
+    }
+
+    return { dataset, fields, region };
+  };
+
+  if (params.overrideDataset) {
+    const schema = await client.getDatasetFields(params.overrideDataset);
+    const schemaFields = fieldNamesFromDatasetFields(normalizeDatasetFields(schema.data));
+    const candidate = normalizeTraceCandidate(params.overrideDataset, schemaFields, true);
+
+    if (!candidate) {
+      throw new Error(
+        `Dataset ${params.overrideDataset} is not a trace candidate. Run \`axiom services detect --explain\` to inspect mappings.`,
+      );
+    }
+
+    return {
+      client,
+      datasets: [candidate],
+    };
+  }
+
+  const schemaLookup = await listSchemas(client, {
+    url: params.url,
+    orgId: params.orgId,
+    token: params.token,
+  });
+
+  const datasets = Object.entries(schemaLookup.schemaMap)
+    .map(([dataset, schemaFields]) =>
+      normalizeTraceCandidate(dataset, schemaFields, false, schemaLookup.regionsByDataset[dataset]),
+    )
+    .filter((candidate): candidate is ResolvedTraceDataset => candidate !== null)
+    .sort((left, right) => left.dataset.localeCompare(right.dataset));
+
+  if (datasets.length === 0) {
+    throw new Error('No trace dataset detected. Run `axiom services detect --explain` to inspect mappings.');
+  }
+
+  return {
+    client,
+    datasets,
   };
 };
 

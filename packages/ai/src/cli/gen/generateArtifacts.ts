@@ -130,21 +130,19 @@ If not logged in:
 ## Primary investigation workflows
 
 ### 1) Find what services exist
-- \`axiom services list --since 30m --format mcp\`
+- \`axiom services list --since now-30m --format mcp\`
 
 ### 2) Get a service status summary
-- \`axiom services get <service> --since 30m --format mcp\`
+- \`axiom services get <service> --since now-30m --format mcp\`
 
 ### 3) List operations for a service
-- \`axiom services operations <service> --since 30m --format mcp\`
+- \`axiom services operations <service> --since now-30m --format mcp\`
 
 ### 4) Find recent failing traces for a service
-- \`axiom services traces <service> --since 30m --format mcp\`
+- \`axiom services traces <service> --since now-30m --format mcp\`
 
 ### 5) Inspect a trace
-- \`axiom traces get <trace-id> --format mcp\`
-- If you need a table of all spans:
-  - \`axiom traces spans <trace-id> --format mcp\`
+- \`axiom traces get <trace-id> --dataset <name> --since now-30m --until now --format mcp\`
 
 ### 6) Use raw APL when needed
 - \`axiom query "<APL>" --format mcp --explain\`
@@ -175,9 +173,7 @@ If not logged in:
 - \`axiom services logs <service>\`
 
 ### trace (OpenTelemetry)
-- \`axiom traces list\`
 - \`axiom traces get <trace-id>\`
-- \`axiom traces spans <trace-id>\`
 
 ## Safety and scope
 All commands in this skill are read-only. Do not attempt to create, update, or delete Axiom resources via this CLI workflow.

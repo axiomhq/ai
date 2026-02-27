@@ -250,10 +250,10 @@ export const datasetSample = withCliContext(
   async ({ config, explain }, name: string, _options: unknown, command: Command) => {
   requireAuth(config.orgId, config.token);
   const options = command.optsWithGlobals();
-  const since = options.since ?? '15m';
+  const since = options.since ?? 'now-15m';
   const sampleSize = 20;
 
-  const timeRange = resolveTimeRange({ since }, new Date(), since, '0m');
+  const timeRange = resolveTimeRange({ since }, new Date(), since, 'now');
 
   const client = createAxiomApiClient({
     url: config.url,

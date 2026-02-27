@@ -28,6 +28,20 @@ const expandTemplate = (template: string, replacements: Record<string, string>) 
   return output;
 };
 
+const roundToTwoDecimals = (value: number) => Number(value.toFixed(2));
+
+const roundErrorRates = (rows: Record<string, unknown>[]) =>
+  rows.map((row) => {
+    const parsedRate = Number(row.error_rate);
+    if (!Number.isFinite(parsedRate)) {
+      return row;
+    }
+    return {
+      ...row,
+      error_rate: roundToTwoDecimals(parsedRate),
+    };
+  });
+
 export const serviceOperations = withCliContext(async ({ config, explain }, ...args: unknown[]) => {
   requireAuth(config.orgId, config.token);
 
@@ -49,8 +63,8 @@ export const serviceOperations = withCliContext(async ({ config, explain }, ...a
       end: options.end,
     },
     new Date(),
-    '30m',
-    '0m',
+    'now-30m',
+    'now',
   );
 
   const { client, dataset, fields } = await resolveTraceDataset({
@@ -79,7 +93,7 @@ export const serviceOperations = withCliContext(async ({ config, explain }, ...a
     maxBinAutoGroups: 40,
   });
 
-  let rows = toRows(queryResponse.data);
+  let rows = roundErrorRates(toRows(queryResponse.data));
 
   const includeErrorColumns = rows.some((row) => row.error_spans !== undefined || row.error_rate !== undefined);
   const includeDuration = rows.some((row) => row.p95_ms !== undefined);

@@ -11,7 +11,7 @@ import {
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
 import { SERVICE_LIST_APL_TEMPLATE } from '../otel/aplTemplates';
-import { aplFieldRef, requireAuth, resolveTraceDataset, toRows, write } from './servicesCommon';
+import { aplFieldRef, requireAuth, resolveTraceDatasets, toRows, write } from './servicesCommon';
 
 const expandTemplate = (template: string, replacements: Record<string, string>) => {
   let output = template;
@@ -21,25 +21,159 @@ const expandTemplate = (template: string, replacements: Record<string, string>) 
   return output;
 };
 
-const hasServiceName = (row: Record<string, unknown>) =>
-  typeof row.service === 'string' && row.service.trim().length > 0;
+type ServiceListRow = {
+  service: string;
+  total: number;
+  errored: number;
+  error_rate: number;
+  avg_duration_ns: number | null;
+};
 
-const sortRows = (rows: Record<string, unknown>[]) =>
-  [...rows].sort((a, b) => {
-    const errorA = Number(a.error_rate ?? 0);
-    const errorB = Number(b.error_rate ?? 0);
-    if (errorB !== errorA) {
-      return errorB - errorA;
+const hasService = (row: Record<string, unknown>) => {
+  const service = row.service;
+  return typeof service === 'string' && service.trim().length > 0;
+};
+
+const sortRows = (rows: ServiceListRow[]) =>
+  [...rows].sort((left, right) => {
+    if (right.total !== left.total) {
+      return right.total - left.total;
     }
-
-    const spansA = Number(a.spans ?? 0);
-    const spansB = Number(b.spans ?? 0);
-    if (spansB !== spansA) {
-      return spansB - spansA;
+    if (right.errored !== left.errored) {
+      return right.errored - left.errored;
     }
-
-    return String(a.service ?? '').localeCompare(String(b.service ?? ''));
+    return left.service.localeCompare(right.service);
   });
+
+const durationMultiplierNs = (durationField: string) => {
+  const normalized = durationField.toLowerCase();
+  if (normalized.endsWith('_ms') || normalized.endsWith('.ms')) {
+    return 1_000_000;
+  }
+  if (normalized.endsWith('_us') || normalized.endsWith('.us')) {
+    return 1_000;
+  }
+  if (normalized.endsWith('_s') || normalized.endsWith('.s')) {
+    return 1_000_000_000;
+  }
+  return 1;
+};
+
+const groupByRegion = <T extends { dataset: string; region?: string }>(datasets: T[]) => {
+  const groups = new Map<string, T[]>();
+  datasets.forEach((dataset) => {
+    const key = dataset.region ? `region:${dataset.region}` : `dataset:${dataset.dataset}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(dataset);
+      return;
+    }
+    groups.set(key, [dataset]);
+  });
+  return [...groups.values()].map((group) => [...group].sort((left, right) => left.dataset.localeCompare(right.dataset)));
+};
+
+const buildSourceProjection = (dataset: {
+  dataset: string;
+  fields: { serviceField?: string | null; statusField?: string | null; durationField?: string | null };
+}) => {
+  const statusExpr = dataset.fields.statusField ? aplFieldRef(dataset.fields.statusField) : '""';
+  const durationExpr = `toreal(${aplFieldRef(dataset.fields.durationField!)}) * ${durationMultiplierNs(dataset.fields.durationField!)}`;
+  return `(${aplFieldRef(dataset.dataset)} | project service=${aplFieldRef(dataset.fields.serviceField!)}, __status=${statusExpr}, __duration_ns=${durationExpr})`;
+};
+
+const toNumberOrZero = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toNumberOrNull = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const roundToTwoDecimals = (value: number) => Number(value.toFixed(2));
+
+const aggregateRowsByService = (rows: Record<string, unknown>[]): ServiceListRow[] => {
+  const byService = new Map<
+    string,
+    {
+      total: number;
+      errored: number;
+      weightedDurationNs: number;
+      durationWeight: number;
+    }
+  >();
+
+  rows.forEach((row) => {
+    const service = String(row.service ?? '').trim();
+    if (!service) {
+      return;
+    }
+
+    const total = toNumberOrZero(row.total);
+    const errored = toNumberOrZero(row.errored);
+    const averageDurationNs = toNumberOrNull(row.avg_duration_ns);
+
+    const existing = byService.get(service) ?? {
+      total: 0,
+      errored: 0,
+      weightedDurationNs: 0,
+      durationWeight: 0,
+    };
+
+    existing.total += total;
+    existing.errored += errored;
+    if (averageDurationNs !== null && total > 0) {
+      existing.weightedDurationNs += averageDurationNs * total;
+      existing.durationWeight += total;
+    }
+
+    byService.set(service, existing);
+  });
+
+  return [...byService.entries()].map(([service, aggregate]) => ({
+    service,
+    total: aggregate.total,
+    errored: aggregate.errored,
+    error_rate: aggregate.total > 0 ? roundToTwoDecimals(aggregate.errored / aggregate.total) : 0,
+    avg_duration_ns:
+      aggregate.durationWeight > 0 ? aggregate.weightedDurationNs / aggregate.durationWeight : null,
+  }));
+};
+
+const trimFraction = (value: number) => value.toFixed(2).replace(/\.?0+$/, '');
+
+const formatDurationNs = (value: unknown) => {
+  const ns = Number(value);
+  if (!Number.isFinite(ns)) {
+    return 'n/a';
+  }
+
+  const abs = Math.abs(ns);
+  if (abs >= 60 * 1_000_000_000) {
+    return `${trimFraction(ns / (60 * 1_000_000_000))}m`;
+  }
+  if (abs >= 1_000_000_000) {
+    return `${trimFraction(ns / 1_000_000_000)}s`;
+  }
+  if (abs >= 1_000_000) {
+    return `${trimFraction(ns / 1_000_000)}ms`;
+  }
+  if (abs >= 1_000) {
+    return `${trimFraction(ns / 1_000)}us`;
+  }
+  return `${trimFraction(ns)}ns`;
+};
+
+const toTableRows = (rows: ServiceListRow[]) =>
+  rows.map((row) => ({
+    service: row.service,
+    total: row.total,
+    errored: row.errored,
+    error_rate: row.error_rate,
+    avg_duration: formatDurationNs(row.avg_duration_ns),
+  }));
 
 export const serviceList = withCliContext(async ({ config, explain }, ...args: unknown[]) => {
   requireAuth(config.orgId, config.token);
@@ -61,45 +195,43 @@ export const serviceList = withCliContext(async ({ config, explain }, ...args: u
       end: options.end,
     },
     new Date(),
-    '30m',
-    '0m',
+    'now-30m',
+    'now',
   );
 
-  const { client, dataset, fields } = await resolveTraceDataset({
+  const { client, datasets } = await resolveTraceDatasets({
     url: config.url,
     orgId: config.orgId!,
     token: config.token!,
     explain,
     overrideDataset: options.dataset,
-    requiredFields: ['serviceField', 'traceIdField', 'spanIdField'],
+    requiredFields: ['serviceField', 'durationField'],
   });
 
-  const statusField = fields.statusField ?? 'status.code';
-  const durationField = fields.durationField ?? 'duration_ms';
-  const apl = expandTemplate(SERVICE_LIST_APL_TEMPLATE, {
-    SERVICE_FIELD: aplFieldRef(fields.serviceField!),
-    STATUS_FIELD: aplFieldRef(statusField),
-    DURATION_FIELD: aplFieldRef(durationField),
-  });
+  const datasetsByRegion = groupByRegion(datasets);
+  const rawRows = (
+    await Promise.all(
+      datasetsByRegion.map(async (regionDatasets) => {
+        const apl = expandTemplate(SERVICE_LIST_APL_TEMPLATE, {
+          UNION_SOURCES: regionDatasets.map(buildSourceProjection).join(', '),
+        });
 
-  const queryResponse = await client.queryApl(dataset, apl, {
-    startTime: timeRange.start,
-    endTime: timeRange.end,
-    maxBinAutoGroups: 40,
-  });
+        const queryResponse = await client.queryApl(undefined, apl, {
+          startTime: timeRange.start,
+          endTime: timeRange.end,
+          maxBinAutoGroups: 40,
+        });
 
-  let rows = sortRows(toRows(queryResponse.data).filter(hasServiceName));
+        return toRows(queryResponse.data).filter(hasService);
+      }),
+    )
+  ).flat();
 
-  const includeErrorColumns = rows.some((row) => row.error_spans !== undefined || row.error_rate !== undefined);
-  const includeDuration = rows.some((row) => row.p95_ms !== undefined);
+  const rows = sortRows(aggregateRowsByService(rawRows));
 
-  const columns = ['service', 'last_seen', 'spans'];
-  if (includeErrorColumns) {
-    columns.push('error_spans', 'error_rate');
-  }
-  if (includeDuration) {
-    columns.push('p95_ms');
-  }
+  const columns = ['service', 'total', 'errored', 'error_rate', 'avg_duration_ns'];
+  const tableColumns = ['service', 'total', 'errored', 'error_rate', 'avg_duration'];
+  const tableRows = toTableRows(rows);
 
   const format = resolveOutputFormat(config.format as OutputFormat, 'list', true);
 
@@ -142,7 +274,10 @@ export const serviceList = withCliContext(async ({ config, explain }, ...args: u
     return;
   }
 
-  const result = renderTabular(rows, columns, {
+  const tabularRows = format === 'table' ? tableRows : rows;
+  const tabularColumns = format === 'table' ? tableColumns : columns;
+
+  const result = renderTabular(tabularRows, tabularColumns, {
     format,
     maxCells: UNLIMITED_MAX_CELLS,
     quiet: config.quiet,

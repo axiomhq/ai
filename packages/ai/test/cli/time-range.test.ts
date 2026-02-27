@@ -5,8 +5,8 @@ describe('resolveTimeRange', () => {
   it('defaults to since/until durations', () => {
     const range = resolveTimeRange({});
     expect(range).toEqual({
-      start: '30m',
-      end: '0m',
+      start: 'now-30m',
+      end: 'now',
     });
   });
 
