@@ -106,3 +106,12 @@ HTTP mocking uses `msw` (Mock Service Worker).
 - **TypeScript**: Strict mode, `verbatimModuleSyntax`, bundler module resolution
 - **Imports**: `type` keyword required for type-only imports (enforced by `verbatimModuleSyntax`)
 - **Peer dependencies**: `@opentelemetry/api` ^1.9.0, `zod` ^3.25 || ^4.0
+
+## Cursor Cloud specific instructions
+
+This is a pure TypeScript SDK library — no services, databases, or Docker needed. The environment requires only Node.js 22.x and pnpm 10.16.1 (both pre-installed).
+
+- **Build before testing**: `pnpm test` depends on `pnpm build` (Turborepo handles this automatically via the `dependsOn` config). If you only run `pnpm test`, it will build first.
+- **CI parity**: The CI pipeline runs `pnpm format:check`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test` — in that order. Replicate this locally to catch issues before pushing.
+- **Install flags**: Use `pnpm install --frozen-lockfile --ignore-scripts` for reproducible installs. The `--ignore-scripts` flag is safe here; the `dist/bin.js` warnings during install are expected and resolve after `pnpm build`.
+- **Examples require external secrets**: The `examples/` apps need `OPENAI_API_KEY`, `AXIOM_TOKEN`, and `AXIOM_DATASET` environment variables. These are not needed for SDK development or testing — all tests use in-memory OTEL exporters and MSW mocks.
