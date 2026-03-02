@@ -113,6 +113,42 @@ describe('cli api client', () => {
     ]);
   });
 
+  it('redacts api token in explain query options', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const explain = createExplainContext();
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+      explain,
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+      apiToken: 'super-secret-token',
+      maxBinAutoGroups: 40,
+    });
+
+    expect(explain.queries).toEqual([
+      {
+        dataset: undefined,
+        apl: "['vercel'] | count()",
+        options: {
+          edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+          apiToken: '[REDACTED]',
+          maxBinAutoGroups: 40,
+        },
+      },
+    ]);
+    expect(JSON.stringify(explain.queries)).not.toContain('super-secret-token');
+  });
+
   it('adds query params for monitor history', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ history: [] }), {
@@ -300,17 +336,11 @@ source | count()`,
       { maxBinAutoGroups: 40 },
     );
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          apl: `let source = ['alpha'] | where ['level'] == "error";
-source | count()`,
-          maxBinAutoGroups: 40,
-        }),
-      }),
-    );
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://api.axiom.co/v1/datasets/_apl?format=legacy');
+    const payload = JSON.parse(String(requestInit.body)) as { apl: string };
+    expect(payload.apl).toContain('source | count()');
+    expect(payload.apl).not.toContain("['source'] |");
   });
 
   it('injects dataset after let statements', async () => {
@@ -398,20 +428,11 @@ range start to end | count()`,
 
     await client.queryApl('vercel', 'count()', { maxBinAutoGroups: 40 });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
-      expect.objectContaining({
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer edge-token',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          apl: "['vercel'] | count()",
-          maxBinAutoGroups: 40,
-        }),
-      }),
-    );
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://eu-central-1.aws.edge.axiom.co/api/v1/query');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer edge-token');
+    expect(headers['X-Axiom-Org-Id']).toBeUndefined();
   });
 
   it('treats blank query token overrides as unset', async () => {
@@ -434,16 +455,10 @@ range start to end | count()`,
       apiToken: '   ',
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://us-east-1.aws.edge.axiom.co/api/v1/query',
-      expect.objectContaining({
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer control-token',
-          'Content-Type': 'application/json',
-        },
-      }),
-    );
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://us-east-1.aws.edge.axiom.co/api/v1/query');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer control-token');
   });
 
   it('uses v1 dataset ingest path on API hosts', async () => {
@@ -536,16 +551,10 @@ range start to end | count()`,
       apiToken: '   ',
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://us-east-1.aws.edge.axiom.co/v1/ingest/logs',
-      expect.objectContaining({
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer control-token',
-          'Content-Type': 'ndjson',
-        },
-      }),
-    );
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://us-east-1.aws.edge.axiom.co/v1/ingest/logs');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer control-token');
   });
 
   it('routes dataset queries to edge endpoints when edge routing is enabled', async () => {

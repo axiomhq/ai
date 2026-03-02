@@ -831,7 +831,11 @@ export class AxiomApiClient {
 
   async queryApl<T = unknown>(dataset: string | undefined, apl: string, options: QueryAplOptions = {}) {
     if (this.config.explain) {
-      recordQuery(this.config.explain, { dataset, apl, options });
+      const explainOptions: Record<string, unknown> = { ...options };
+      if (Object.prototype.hasOwnProperty.call(explainOptions, 'apiToken')) {
+        explainOptions.apiToken = '[REDACTED]';
+      }
+      recordQuery(this.config.explain, { dataset, apl, options: explainOptions });
     }
 
     const { edgeUrl, apiToken, ...queryOptions } = options;
