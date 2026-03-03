@@ -93,7 +93,7 @@ export const findEvaluationCases = async (
   evalId: string,
   config: ResolvedAxiomConfig,
 ): Promise<Evaluation | null> => {
-  const { dataset, edgeUrl, token, orgId } = resolveAxiomConnection(config);
+  const { dataset, edgeUrl, url, token, orgId } = resolveAxiomConnection(config);
 
   const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
 
@@ -103,8 +103,15 @@ export const findEvaluationCases = async (
     ...(orgId ? { 'X-AXIOM-ORG-ID': orgId } : {}),
   });
 
-  // Use edgeUrl for query operations
-  const resp = await fetch(`${edgeUrl}/v1/datasets/_apl?format=legacy`, {
+  // If edgeUrl is explicitly configured, use the edge query endpoint.
+  // Otherwise use the regular API query endpoint.
+  const hasExplicitEdgeUrl = !!config.eval.edgeUrl;
+  const queryBaseUrl = hasExplicitEdgeUrl ? edgeUrl : url;
+  const queryPath = hasExplicitEdgeUrl
+    ? '/v1/query/_apl?format=legacy'
+    : '/v1/datasets/_apl?format=legacy';
+
+  const resp = await fetch(`${queryBaseUrl}${queryPath}`, {
     headers: headers,
     method: 'POST',
     body: JSON.stringify({ apl }),
@@ -112,7 +119,9 @@ export const findEvaluationCases = async (
   const payload = await resp.json();
 
   if (!resp.ok) {
-    throw new Error(`Failed to query evaluation cases: ${payload.message || resp.statusText}`);
+    throw new Error(
+      `Failed to query evaluation cases: ${payload?.message || resp?.statusText || 'Unknown error'}`,
+    );
   }
 
   return payload.matches.length ? buildSpanTree(payload.matches) : null;
