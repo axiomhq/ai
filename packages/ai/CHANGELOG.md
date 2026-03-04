@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.49.0](https://github.com/axiomhq/ai/compare/axiom-v0.48.1...axiom-v0.49.0) (2026-03-04)
+
+
+### Features
+
+* usage and finish reason on `chat <model> stream` spans ([#278](https://github.com/axiomhq/ai/issues/278)) ([8e238f2](https://github.com/axiomhq/ai/commit/8e238f2cce0714b9aa3125c477c196b8c01d77a0))
+
+
+### Bug Fixes
+
+* telemetry token accumulation and finish reason ([#276](https://github.com/axiomhq/ai/issues/276)) ([b857fd2](https://github.com/axiomhq/ai/commit/b857fd2013655ba1eb5d1362c64da5c27a701f01))
+
 ## [0.48.1](https://github.com/axiomhq/ai/compare/axiom-v0.48.0...axiom-v0.48.1) (2026-03-03)
 
 
