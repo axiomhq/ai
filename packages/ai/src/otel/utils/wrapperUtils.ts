@@ -437,7 +437,6 @@ export async function withSpanHandling<T>(
     }
     activeSpan.updateName(name);
 
-    // Reuse existing context for multi-step token accumulation, or create on first call
     let spanContext = spanContextStore.get(activeSpan);
     if (!spanContext) {
       spanContext = createSpanContext();
