@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Attr } from '../../src/otel/semconv/attributes';
-import { Scorer } from '../../src/evals/scorers';
-import { Mean, PassAtK } from '../../src/evals/aggregations';
+import { Scorer } from '../../src/scorers/scorers';
+import { Mean, PassAtK } from '../../src/scorers/aggregations';
 
 describe('Scorer runtime behavior', () => {
   it('scorer has name property', () => {

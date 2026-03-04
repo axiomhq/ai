@@ -27,7 +27,7 @@ type NormalizeScorerReturn<T, TMetadata extends Record<string, any>> =
  *
  * @example
  * // With aggregation for trials
- * import { PassAtK } from '@axiomhq/ai/evals/aggregations';
+ * import { PassAtK } from '@axiomhq/ai/scorers/aggregations';
  * const scorer = createScorer('tool-called',
  *   (args: { output: string }) => args.output.includes('tool') ? 1 : 0,
  *   { aggregation: PassAtK({ threshold: 0.8 }) }

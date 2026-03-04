@@ -1,4 +1,4 @@
-import type { Score as EvalScore } from '../evals/scorers';
+import type { Score as EvalScore } from '../scorers/scorer.types';
 
 /**
  * Sampling decision for an individual scorer.

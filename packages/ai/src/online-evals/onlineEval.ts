@@ -9,7 +9,7 @@ import type {
   ScorerSampling,
 } from './types';
 import { executeScorer } from './executor';
-import { normalizeBooleanScore } from '../evals/normalize-score';
+import { normalizeBooleanScore } from '../scorers/normalize-score';
 import { Attr } from '../otel/semconv/attributes';
 import type { ValidateName } from '../util/name-validation';
 import { isValidName } from '../util/name-validation-runtime';

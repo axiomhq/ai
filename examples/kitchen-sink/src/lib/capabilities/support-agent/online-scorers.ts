@@ -31,7 +31,7 @@
  * ```
  */
 
-import { Scorer } from 'axiom/ai/evals/scorers';
+import { Scorer } from 'axiom/ai/scorers';
 import { messageCategories, type MessageCategory } from './categorize-messages';
 
 /**
