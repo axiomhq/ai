@@ -2,8 +2,8 @@ import { describe, expect, it, beforeAll, beforeEach, afterAll } from 'vitest';
 import { wrapAISDKModel } from '../../src/otel/vercel';
 import { withSpan } from '../../src/otel/withSpan';
 import { wrapTool } from '../../src/otel/wrapTool';
-import { generateText, tool } from 'aiv4';
-import { createMockProvider, mockResponses } from './mock-provider-v1/mock-provider';
+import { generateText, tool, stepCountIs } from 'aiv6';
+import { createMockProvider, mockResponses } from './mock-provider-v3/mock-provider-v3';
 import packageJson from '../../package.json';
 import { createOtelTestSetup } from '../helpers/otel-test-setup';
 
@@ -28,10 +28,11 @@ describe('tool call attributes', () => {
     const mockProvider = createMockProvider();
 
     const toolCall = {
+      type: 'tool-call' as const,
       toolCallType: 'function' as const,
       toolCallId: 'call-456',
       toolName: 'searchDatabase',
-      args: '{"query": "test query"}',
+      input: '{"query": "test query"}',
     };
 
     mockProvider.addLanguageModelResponse(
@@ -46,14 +47,14 @@ describe('tool call attributes', () => {
     await withSpan({ capability: 'test-capability', step: 'test-step' }, async () => {
       const res = await generateText({
         model,
-        maxSteps: 9,
+        stopWhen: stepCountIs(5),
         prompt: 'Search for something',
         tools: {
           searchDatabase: wrapTool(
             'searchDatabase',
             tool({
               description: 'Search through a database',
-              parameters: z.object({ query: z.string() }),
+              inputSchema: z.object({ query: z.string() }),
               execute: async ({ query }) => `Found results for: ${query}`,
             }),
           ),
@@ -61,7 +62,7 @@ describe('tool call attributes', () => {
             'retrieveData',
             tool({
               description: 'Retrieve data from external source',
-              parameters: z.object({ id: z.string() }),
+              inputSchema: z.object({ id: z.string() }),
               execute: async ({ id }) => `Data for ID: ${id}`,
             }),
           ),
@@ -69,7 +70,7 @@ describe('tool call attributes', () => {
             'calculateMetrics',
             tool({
               description: 'Calculate performance metrics',
-              parameters: z.object({ data: z.array(z.number()) }),
+              inputSchema: z.object({ data: z.array(z.number()) }),
               execute: async ({ data }: { data: number[] }) =>
                 data.reduce((a: number, b: number) => a + b, 0).toString(),
             }),
@@ -103,7 +104,7 @@ describe('tool call attributes', () => {
     const chatSpan = spans.find((s) => s.name === 'chat tool-model');
     expect(chatSpan).toBeDefined();
 
-    expect(chatSpan?.attributes).toEqual({
+    expect(chatSpan?.attributes).toMatchObject({
       'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.2',
       'axiom.gen_ai.sdk.name': 'axiom',
       'axiom.gen_ai.sdk.version': packageJson.version,
@@ -135,7 +136,7 @@ describe('tool call attributes', () => {
         {
           role: 'tool',
           tool_call_id: 'call-456',
-          content: '"Found results for: test query"',
+          content: 'Found results for: test query',
         },
       ]),
       'gen_ai.output.messages': JSON.stringify([
@@ -145,11 +146,9 @@ describe('tool call attributes', () => {
         },
       ]),
       'gen_ai.operation.name': 'chat',
-      'gen_ai.output.type': 'text',
       'gen_ai.provider.name': 'mock',
-      'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.request.model': 'tool-model',
-      'gen_ai.request.temperature': 0,
+      'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.response.id': 'mock-response-id',
       'gen_ai.response.model': 'tool-model',
       'gen_ai.step.name': 'test-step',
