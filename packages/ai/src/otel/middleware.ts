@@ -443,12 +443,16 @@ async function setPostCallAttributesV1(
 
   const inputTokens = ensureNumber(result.usage?.promptTokens);
   if (inputTokens !== undefined) {
-    span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
+    const curr = context.accumulatedInputTokens ?? 0;
+    context.accumulatedInputTokens = curr + inputTokens;
+    span.setAttribute(Attr.GenAI.Usage.InputTokens, context.accumulatedInputTokens);
   }
 
   const outputTokens = ensureNumber(result.usage?.completionTokens);
   if (outputTokens !== undefined) {
-    span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
+    const curr = context.accumulatedOutputTokens ?? 0;
+    context.accumulatedOutputTokens = curr + outputTokens;
+    span.setAttribute(Attr.GenAI.Usage.OutputTokens, context.accumulatedOutputTokens);
   }
 
   if (result.finishReason) {
@@ -515,26 +519,25 @@ async function setPostCallAttributesV2(
     (c) => c.type === 'tool-call',
   ) as LanguageModelV2ToolCall[];
 
-  // Only set response metadata once per span to prevent overwriting when generateText() makes multiple calls
-  const alreadySet = (span as any).attributes?.[Attr.GenAI.Response.FinishReasons] !== undefined;
+  if (result.response?.id) {
+    span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
+  }
+  if (result.response?.modelId) {
+    span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
+  }
 
-  if (!alreadySet) {
-    if (result.response?.id) {
-      span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
-    }
-    if (result.response?.modelId) {
-      span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
-    }
+  const inputTokens = ensureNumber(result.usage?.inputTokens);
+  if (inputTokens !== undefined) {
+    const curr = context.accumulatedInputTokens ?? 0;
+    context.accumulatedInputTokens = curr + inputTokens;
+    span.setAttribute(Attr.GenAI.Usage.InputTokens, context.accumulatedInputTokens);
+  }
 
-    const inputTokens = ensureNumber(result.usage?.inputTokens);
-    if (inputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
-    }
-
-    const outputTokens = ensureNumber(result.usage?.outputTokens);
-    if (outputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
-    }
+  const outputTokens = ensureNumber(result.usage?.outputTokens);
+  if (outputTokens !== undefined) {
+    const curr = context.accumulatedOutputTokens ?? 0;
+    context.accumulatedOutputTokens = curr + outputTokens;
+    span.setAttribute(Attr.GenAI.Usage.OutputTokens, context.accumulatedOutputTokens);
   }
 
   // Update prompt to include tool calls and tool results if they exist
@@ -583,8 +586,7 @@ async function setPostCallAttributesV2(
     );
   }
 
-  // Store finish reason separately as per semantic conventions (only on first call to prevent overwriting)
-  if (result.finishReason && !alreadySet) {
+  if (result.finishReason) {
     span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([result.finishReason]));
   }
 }
@@ -793,35 +795,34 @@ async function setPostCallAttributesV3(
     (c) => c.type === 'tool-call',
   ) as LanguageModelV3ToolCall[];
 
-  // Only set response metadata once per span to prevent overwriting when generateText() makes multiple calls
-  const alreadySet = (span as any).attributes?.[Attr.GenAI.Response.FinishReasons] !== undefined;
+  if (result.response?.id) {
+    span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
+  }
+  if (result.response?.modelId) {
+    span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
+  }
 
-  if (!alreadySet) {
-    if (result.response?.id) {
-      span.setAttribute(Attr.GenAI.Response.ID, result.response.id);
-    }
-    if (result.response?.modelId) {
-      span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
-    }
+  // V3 has structured token usage - extract totals for OTel attributes
+  // TODO: When OTel semantic conventions add support for cached/reasoning tokens,
+  // add these attributes:
+  // - result.usage?.inputTokens.cacheRead -> gen_ai.usage.cache_read_tokens (or similar)
+  // - result.usage?.inputTokens.cacheWrite -> gen_ai.usage.cache_write_tokens (or similar)
+  // - result.usage?.inputTokens.noCache -> gen_ai.usage.no_cache_tokens (or similar)
+  // - result.usage?.outputTokens.reasoning -> gen_ai.usage.reasoning_tokens (or similar)
+  // - result.usage?.outputTokens.text -> gen_ai.usage.text_tokens (or similar)
+  // Access: result.usage?.inputTokens.cacheRead, result.usage?.outputTokens.reasoning, etc.
+  const inputTokens = ensureNumber(result.usage?.inputTokens?.total);
+  if (inputTokens !== undefined) {
+    const curr = context.accumulatedInputTokens ?? 0;
+    context.accumulatedInputTokens = curr + inputTokens;
+    span.setAttribute(Attr.GenAI.Usage.InputTokens, context.accumulatedInputTokens);
+  }
 
-    // V3 has structured token usage - extract totals for OTel attributes
-    // TODO: When OTel semantic conventions add support for cached/reasoning tokens,
-    // add these attributes:
-    // - result.usage?.inputTokens.cacheRead -> gen_ai.usage.cache_read_tokens (or similar)
-    // - result.usage?.inputTokens.cacheWrite -> gen_ai.usage.cache_write_tokens (or similar)
-    // - result.usage?.inputTokens.noCache -> gen_ai.usage.no_cache_tokens (or similar)
-    // - result.usage?.outputTokens.reasoning -> gen_ai.usage.reasoning_tokens (or similar)
-    // - result.usage?.outputTokens.text -> gen_ai.usage.text_tokens (or similar)
-    // Access: result.usage?.inputTokens.cacheRead, result.usage?.outputTokens.reasoning, etc.
-    const inputTokens = ensureNumber(result.usage?.inputTokens?.total);
-    if (inputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
-    }
-
-    const outputTokens = ensureNumber(result.usage?.outputTokens?.total);
-    if (outputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
-    }
+  const outputTokens = ensureNumber(result.usage?.outputTokens?.total);
+  if (outputTokens !== undefined) {
+    const curr = context.accumulatedOutputTokens ?? 0;
+    context.accumulatedOutputTokens = curr + outputTokens;
+    span.setAttribute(Attr.GenAI.Usage.OutputTokens, context.accumulatedOutputTokens);
   }
 
   // Update prompt to include tool calls and tool results if they exist
@@ -874,7 +875,7 @@ async function setPostCallAttributesV3(
   // TODO: When OTel adds support for raw finish reasons, consider adding:
   // - result.finishReason.raw -> gen_ai.response.raw_finish_reason (or similar)
   // Access: result.finishReason?.raw
-  if (result.finishReason && !alreadySet) {
+  if (result.finishReason) {
     span.setAttribute(
       Attr.GenAI.Response.FinishReasons,
       JSON.stringify([result.finishReason.unified]),

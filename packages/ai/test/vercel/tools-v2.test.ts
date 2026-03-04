@@ -101,9 +101,9 @@ describe('tool call attributes', () => {
       'gen_ai.tool.message': '\"Found results for: test query\"',
     });
 
-    const chatSpan = spans.find((s) => s.name.startsWith('chat'));
+    const chatSpan = spans.find((s) => s.name === 'chat tool-model');
     expect(chatSpan).toBeDefined();
-    expect(chatSpan?.name).toBe('chat tool-model');
+
     expect(chatSpan?.attributes).toEqual({
       'axiom.gen_ai.schema_url': 'https://axiom.co/ai/schemas/0.0.2',
       'axiom.gen_ai.sdk.name': 'axiom',
@@ -147,13 +147,14 @@ describe('tool call attributes', () => {
       ]),
       'gen_ai.operation.name': 'chat',
       'gen_ai.provider.name': 'mock',
-      'gen_ai.response.finish_reasons': '["tool-calls"]',
+      'gen_ai.response.finish_reasons': '["stop"]',
       'gen_ai.request.model': 'tool-model',
       'gen_ai.response.id': 'mock-response-id',
       'gen_ai.response.model': 'tool-model',
       'gen_ai.step.name': 'test-step',
-      'gen_ai.usage.input_tokens': 10,
-      'gen_ai.usage.output_tokens': 27,
+      'gen_ai.usage.input_tokens': 20,
+      'gen_ai.usage.output_tokens': 46,
     });
+    expect(chatSpan?.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
   });
 });

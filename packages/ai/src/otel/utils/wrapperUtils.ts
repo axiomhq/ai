@@ -29,16 +29,22 @@ type GenAiSpanContext =
         rawPrompt?: unknown[];
         rawSettings?: unknown;
       };
+      accumulatedInputTokens?: number;
+      accumulatedOutputTokens?: number;
     }
   | {
       version: 'v2';
       originalPrompt: OpenAIMessage[];
       originalV2Prompt?: LanguageModelV2Prompt;
+      accumulatedInputTokens?: number;
+      accumulatedOutputTokens?: number;
     }
   | {
       version: 'v3';
       originalPrompt: OpenAIMessage[];
       originalV3Prompt?: LanguageModelV3Prompt;
+      accumulatedInputTokens?: number;
+      accumulatedOutputTokens?: number;
     };
 
 export type GenAiSpanContextV1 = Extract<GenAiSpanContext, { version: 'v1' }>;
@@ -399,6 +405,14 @@ function recordSpanError(span: Span, err: unknown): void {
   }
 }
 
+const spanContextStore = new WeakMap<Span, GenAiSpanContext>();
+
+const spanContextFactories: Record<string, () => GenAiSpanContext> = {
+  v1: () => ({ version: 'v1', originalPrompt: [], rawCall: undefined }),
+  v2: () => ({ version: 'v2', originalPrompt: [], originalV2Prompt: undefined }),
+  v3: () => ({ version: 'v3', originalPrompt: [], originalV3Prompt: undefined }),
+};
+
 /**
  * Common span handling logic for V1, V2 and V3
  * Returns a SpanLease that indicates whether the middleware owns the span
@@ -411,12 +425,7 @@ export async function withSpanHandling<T>(
   const bag = propagation.getActiveBaggage();
   const isWithinWithSpan = bag?.getEntry(WITHSPAN_BAGGAGE_KEY)?.value === 'true';
 
-  const spanContext: GenAiSpanContext =
-    options?.version === 'v3'
-      ? { version: 'v3', originalPrompt: [], originalV3Prompt: undefined }
-      : options?.version === 'v2'
-        ? { version: 'v2', originalPrompt: [], originalV2Prompt: undefined }
-        : { version: 'v1', originalPrompt: [], rawCall: undefined };
+  const createSpanContext = spanContextFactories[options?.version ?? 'v1'];
 
   const name = createGenAISpanName(Attr.GenAI.Operation.Name_Values.Chat, modelId);
 
@@ -427,6 +436,13 @@ export async function withSpanHandling<T>(
       throw new Error('Expected active span when within withSpan');
     }
     activeSpan.updateName(name);
+
+    // Reuse existing context for multi-step token accumulation, or create on first call
+    let spanContext = spanContextStore.get(activeSpan);
+    if (!spanContext) {
+      spanContext = createSpanContext();
+      spanContextStore.set(activeSpan, spanContext);
+    }
 
     const lease: SpanLease = {
       owned: false,
@@ -452,7 +468,7 @@ export async function withSpanHandling<T>(
           owned: true,
           end: () => span.end(),
         };
-        return await operation(span, spanContext, lease);
+        return await operation(span, createSpanContext(), lease);
       },
       {
         manualEnd: options?.streaming ?? false,
