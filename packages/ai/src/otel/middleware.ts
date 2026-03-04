@@ -103,6 +103,25 @@ const appendPromptMetadataToSpan = (
   }
 };
 
+function setStreamStepAttributes(
+  span: Span,
+  values: { inputTokens?: number; outputTokens?: number; finishReason?: string },
+) {
+  const inputTokens = ensureNumber(values.inputTokens);
+  if (inputTokens !== undefined) {
+    span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
+  }
+
+  const outputTokens = ensureNumber(values.outputTokens);
+  if (outputTokens !== undefined) {
+    span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
+  }
+
+  if (values.finishReason) {
+    span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([values.finishReason]));
+  }
+}
+
 /**
  * Creates Axiom telemetry middleware for LanguageModelV1
  */
@@ -175,11 +194,13 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
                 },
                 async flush(controller) {
                   try {
+                    const statsResult = stats.result;
+
                     await setPostCallAttributesV1(
                       span,
                       {
                         ...head,
-                        ...stats.result,
+                        ...statsResult,
                         toolCalls:
                           toolAggregator.result.length > 0 ? toolAggregator.result : undefined,
                         text: textAggregator.text,
@@ -187,6 +208,12 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
                       context,
                       model,
                     );
+
+                    setStreamStepAttributes(childSpan, {
+                      inputTokens: statsResult.usage?.promptTokens,
+                      outputTokens: statsResult.usage?.completionTokens,
+                      finishReason: statsResult.finishReason,
+                    });
 
                     childSpan.end();
                     if (lease.owned) lease.end();
@@ -301,8 +328,9 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
                 },
                 async flush(controller) {
                   try {
+                    const statsResult = stats.result;
                     const streamResult = {
-                      ...stats.result,
+                      ...statsResult,
                       content: [
                         ...(textAggregator.text
                           ? [{ type: 'text' as const, text: textAggregator.text }]
@@ -312,6 +340,12 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
                     };
 
                     await setPostCallAttributesV2(span, streamResult, context, model);
+
+                    setStreamStepAttributes(childSpan, {
+                      inputTokens: statsResult.usage?.inputTokens,
+                      outputTokens: statsResult.usage?.outputTokens,
+                      finishReason: statsResult.finishReason,
+                    });
 
                     childSpan.end();
                     if (lease.owned) lease.end();
@@ -714,6 +748,12 @@ export function axiomAIMiddlewareV3(/* _config?: AxiomTelemetryConfig */): Langu
                       context,
                       model,
                     );
+
+                    setStreamStepAttributes(childSpan, {
+                      inputTokens: statsResult.usage?.inputTokens?.total,
+                      outputTokens: statsResult.usage?.outputTokens?.total,
+                      finishReason: statsResult.finishReason?.unified,
+                    });
 
                     childSpan.end();
                     if (lease.owned) lease.end();

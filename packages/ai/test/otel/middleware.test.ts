@@ -234,6 +234,11 @@ describe('Axiom Telemetry Middleware', () => {
       expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(20);
       expect(parentSpan!.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
 
+      // Stream child span should have per-step usage and finish reason attributes
+      expect(childSpan!.attributes['gen_ai.usage.input_tokens']).toBe(10);
+      expect(childSpan!.attributes['gen_ai.usage.output_tokens']).toBe(20);
+      expect(childSpan!.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
+
       expect(parentSpan!.endTime).toBeDefined();
       expect(childSpan!.endTime).toBeDefined();
       expect(parentSpan!.startTime).toBeDefined();
@@ -255,6 +260,71 @@ describe('Axiom Telemetry Middleware', () => {
 
   describe('Span Ownership & Lifecycle', () => {
     describe('withSpan integration - middleware must not end user-owned spans', () => {
+      it('should capture tool-calls then stop finish reasons across two stream child spans (V1)', async () => {
+        const mockProvider = createMockProvider();
+        mockProvider.addStreamResponse('gpt-4-stream', {
+          chunks: ['first', ' response'],
+          finishReason: 'tool-calls',
+          usage: { promptTokens: 10, completionTokens: 20 },
+        });
+        mockProvider.addStreamResponse('gpt-4-stream', {
+          chunks: ['second', ' response'],
+          finishReason: 'stop',
+          usage: { promptTokens: 12, completionTokens: 24 },
+        });
+
+        const baseModel = mockProvider.languageModel('gpt-4-stream');
+        const instrumentedModel = wrapLanguageModel({
+          model: baseModel,
+          middleware: axiomAIMiddlewareV1(),
+        });
+
+        await withSpan({ capability: 'test', step: 'stream' }, async () => {
+          const first = streamText({
+            model: instrumentedModel,
+            prompt: 'First streaming call',
+          });
+          let firstText = '';
+          for await (const chunk of first.textStream) {
+            firstText += chunk;
+          }
+          expect(firstText).toBe('first response');
+
+          const second = streamText({
+            model: instrumentedModel,
+            prompt: 'Second streaming call',
+          });
+          let secondText = '';
+          for await (const chunk of second.textStream) {
+            secondText += chunk;
+          }
+          expect(secondText).toBe('second response');
+        });
+
+        const spans = otelTestSetup.getSpans();
+        const parentSpan = spans.find((s) => s.name === 'chat gpt-4-stream');
+        const streamSpans = spans.filter((s) => s.name === 'chat gpt-4-stream stream');
+
+        expect(parentSpan).toBeDefined();
+        expect(streamSpans).toHaveLength(2);
+        expect(parentSpan!.attributes['gen_ai.usage.input_tokens']).toBe(22);
+        expect(parentSpan!.attributes['gen_ai.usage.output_tokens']).toBe(44);
+        expect(parentSpan!.attributes['gen_ai.response.finish_reasons']).toBe('["stop"]');
+
+        const usagePairs = streamSpans
+          .map((s) => [
+            s.attributes['gen_ai.usage.input_tokens'],
+            s.attributes['gen_ai.usage.output_tokens'],
+            s.attributes['gen_ai.response.finish_reasons'],
+          ])
+          .sort((a, b) => Number(a[0]) - Number(b[0]));
+
+        expect(usagePairs).toEqual([
+          [10, 20, '["tool-calls"]'],
+          [12, 24, '["stop"]'],
+        ]);
+      });
+
       it('should not end user-owned span during streaming (V1)', async () => {
         const mockProvider = createMockProvider();
         mockProvider.addStreamResponse('gpt-4-stream', {
