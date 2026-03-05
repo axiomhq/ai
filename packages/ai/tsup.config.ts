@@ -13,11 +13,8 @@ const sharedConfig = {
     'c12',
     'defu',
     'vite-tsconfig-paths',
-    // Ensure Node builtins used via createRequire stay external in ESM bundle
-    'async_hooks',
+    // Keep async_hooks external so the ESM build preserves Node's builtin import.
     'node:async_hooks',
-    'module',
-    'node:module',
   ],
   dts: true,
   sourcemap: true,
@@ -27,6 +24,7 @@ const sharedConfig = {
   define: {
     __SDK_VERSION__: JSON.stringify(pkg.version),
   },
+  removeNodeProtocol: false,
 };
 
 export default defineConfig([
