@@ -1,12 +1,14 @@
-import { createRequire } from 'node:module';
-import { join } from 'node:path';
-
 interface ContextManager<T = any> {
   getStore(): T | undefined;
   run<R>(value: T, fn: () => R): R;
 }
 
+type AsyncLocalStorageLikeConstructor = new <T = any>() => ContextManager<T>;
+type NodeRequireLike = (id: string) => unknown;
+
 const CONTEXT_MANAGER_SYMBOL = Symbol.for('axiom.context_manager');
+const FALLBACK_CONCURRENCY_ERROR =
+  'AsyncLocalStorage fallback does not support concurrent async contexts';
 
 function getGlobalContextManager(): ContextManager | undefined {
   return (globalThis as any)[CONTEXT_MANAGER_SYMBOL];
@@ -16,15 +18,137 @@ function setGlobalContextManager(manager: ContextManager): void {
   (globalThis as any)[CONTEXT_MANAGER_SYMBOL] = manager;
 }
 
-const isNodeJS = typeof process !== 'undefined' && !!process.versions?.node;
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    (typeof value === 'object' || typeof value === 'function') &&
+    value !== null &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  );
+}
 
-function getNodeRequire(): NodeJS.Require {
-  if (typeof require === 'function') {
-    return require;
+function createFallbackManager(): ContextManager {
+  let currentContext: any = undefined;
+  let activeAsyncRuns = 0;
+
+  return {
+    getStore: () => currentContext,
+    run: <R>(value: any, fn: () => R): R => {
+      if (activeAsyncRuns > 0) {
+        throw new Error(FALLBACK_CONCURRENCY_ERROR);
+      }
+
+      const previousContext = currentContext;
+      currentContext = value;
+
+      let result: R;
+      try {
+        result = fn();
+      } catch (error) {
+        currentContext = previousContext;
+        throw error;
+      }
+
+      if (isPromiseLike(result)) {
+        if (activeAsyncRuns > 0) {
+          currentContext = previousContext;
+          throw new Error(FALLBACK_CONCURRENCY_ERROR);
+        }
+
+        activeAsyncRuns += 1;
+
+        return Promise.resolve(result).finally(() => {
+          activeAsyncRuns -= 1;
+          if (currentContext === value) {
+            currentContext = previousContext;
+          }
+        }) as R;
+      }
+
+      currentContext = previousContext;
+      return result;
+    },
+  };
+}
+
+function getAsyncLocalStorageFromModule(
+  module: unknown,
+): AsyncLocalStorageLikeConstructor | undefined {
+  const asyncLocalStorageCtor = (module as { AsyncLocalStorage?: AsyncLocalStorageLikeConstructor })
+    ?.AsyncLocalStorage;
+  return typeof asyncLocalStorageCtor === 'function' ? asyncLocalStorageCtor : undefined;
+}
+
+function getLegacyNodeRequire(): NodeRequireLike | undefined {
+  const processRef = (globalThis as any).process as { mainModule?: { require?: NodeRequireLike } };
+  const globalRequire = (globalThis as any).require as NodeRequireLike | undefined;
+
+  if (typeof globalRequire === 'function') {
+    return globalRequire;
   }
 
-  // We only require Node builtins, so any absolute path is valid as a createRequire base.
-  return createRequire(join(process.cwd(), '__axiom_require__.js'));
+  const mainModuleRequire = processRef?.mainModule?.require;
+  if (typeof mainModuleRequire === 'function') {
+    return mainModuleRequire;
+  }
+
+  return undefined;
+}
+
+function getAsyncLocalStorageFromLegacyRequire(
+  legacyRequire: NodeRequireLike,
+): AsyncLocalStorageLikeConstructor | undefined {
+  let asyncHooksModule: unknown;
+
+  try {
+    asyncHooksModule = legacyRequire('node:async_hooks');
+  } catch {
+    try {
+      asyncHooksModule = legacyRequire('async_hooks');
+    } catch {
+      return undefined;
+    }
+  }
+
+  return getAsyncLocalStorageFromModule(asyncHooksModule);
+}
+
+function getAsyncLocalStorageConstructor(): AsyncLocalStorageLikeConstructor | undefined {
+  const getBuiltinModule = (globalThis as any).process?.getBuiltinModule as
+    | ((id: string) => unknown)
+    | undefined;
+
+  if (typeof getBuiltinModule === 'function') {
+    try {
+      const asyncHooksModule =
+        getBuiltinModule('node:async_hooks') ?? getBuiltinModule('async_hooks');
+
+      const asyncLocalStorageCtor = getAsyncLocalStorageFromModule(asyncHooksModule);
+      if (asyncLocalStorageCtor) {
+        return asyncLocalStorageCtor;
+      }
+    } catch (error) {
+      console.warn('Failed to load AsyncLocalStorage from node:async_hooks:', error);
+    }
+  }
+
+  const legacyRequire = getLegacyNodeRequire();
+  if (typeof legacyRequire === 'function') {
+    try {
+      const asyncLocalStorageCtor = getAsyncLocalStorageFromLegacyRequire(legacyRequire);
+      if (asyncLocalStorageCtor) {
+        return asyncLocalStorageCtor;
+      }
+    } catch (error) {
+      console.warn('Failed to load AsyncLocalStorage via legacy require fallback:', error);
+    }
+  }
+
+  const globalAsyncLocalStorage = (globalThis as any).AsyncLocalStorage;
+  if (typeof globalAsyncLocalStorage === 'function') {
+    return globalAsyncLocalStorage as AsyncLocalStorageLikeConstructor;
+  }
+
+  return undefined;
 }
 
 function getContextManager(): ContextManager {
@@ -32,31 +156,11 @@ function getContextManager(): ContextManager {
   const existing = getGlobalContextManager();
   if (existing) return existing;
 
-  let manager: ContextManager;
+  const AsyncLocalStorageCtor = getAsyncLocalStorageConstructor();
+  const manager = AsyncLocalStorageCtor ? new AsyncLocalStorageCtor() : createFallbackManager();
 
-  if (isNodeJS) {
-    try {
-      // Resolve AsyncLocalStorage in both ESM and CJS Node contexts without bundler interference
-      let AsyncLocalStorage: any;
-
-      // Obtain require in both CJS and ESM Node runtimes without relying on tsup shims.
-      const req = getNodeRequire();
-      try {
-        AsyncLocalStorage = req('node:async_hooks').AsyncLocalStorage;
-      } catch {
-        AsyncLocalStorage = req('async_hooks').AsyncLocalStorage;
-      }
-
-      manager = new AsyncLocalStorage();
-    } catch (error) {
-      // Fallback if AsyncLocalStorage cannot be loaded
-      console.warn('AsyncLocalStorage not available, using fallback context manager:', error);
-      manager = createFallbackManager();
-    }
-  } else {
-    // Browser/CF Workers - simple fallback (no warning needed here)
+  if (!AsyncLocalStorageCtor) {
     console.warn('AsyncLocalStorage not available, using fallback context manager');
-    manager = createFallbackManager();
   }
 
   // Cache using Symbol to share across VM contexts
@@ -65,34 +169,13 @@ function getContextManager(): ContextManager {
   return manager;
 }
 
-function createFallbackManager(): ContextManager {
-  let currentContext: any = null;
-  return {
-    getStore: () => currentContext,
-    run: <R>(value: any, fn: () => R): R => {
-      const prev = currentContext;
-      currentContext = value;
-      try {
-        return fn();
-      } finally {
-        currentContext = prev;
-      }
-    },
-  };
-}
-
 export function createAsyncHook<T>(_name: string) {
   return {
     get(): T | undefined {
-      const manager = getContextManager();
-      if (manager.getStore) {
-        return manager.getStore();
-      }
-      return undefined;
+      return getContextManager().getStore();
     },
     run<R>(value: T, fn: () => R): R {
-      const manager = getContextManager();
-      return manager.run(value, fn);
+      return getContextManager().run(value, fn);
     },
   };
 }
