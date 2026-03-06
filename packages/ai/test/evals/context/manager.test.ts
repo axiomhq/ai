@@ -140,4 +140,33 @@ describe('eval context manager', () => {
     releaseFirst?.();
     await firstRun;
   });
+
+  it('detects and prevents context leakage in fallback mode', async () => {
+    processRef.getBuiltinModule = vi.fn(() => undefined);
+    (globalThis as any).require = undefined;
+    processRef.mainModule = { require: undefined };
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const hook = createAsyncHook<{ requestId: string }>('test-context');
+
+    let resolveInner: (v: any) => void = () => {};
+    const innerPromise = new Promise((r) => {
+      resolveInner = r;
+    });
+
+    hook.run({ requestId: 'outer' }, () => {
+      // Start an async run but don't return it
+      hook.run({ requestId: 'inner' }, () => innerPromise);
+    });
+
+    // Outer run finished synchronously. Context should be restored to undefined.
+    expect(hook.get()).toBeUndefined();
+
+    resolveInner(null);
+    await innerPromise;
+    await new Promise((resolve) => setTimeout(resolve, 0)); // Ensure finally runs
+
+    // After inner promise finished, context should still be undefined, not 'outer'.
+    expect(hook.get()).toBeUndefined();
+  });
 });
