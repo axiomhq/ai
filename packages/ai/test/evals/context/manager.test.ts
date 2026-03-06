@@ -113,8 +113,7 @@ describe('eval context manager', () => {
     expect(hook.get()).toBeUndefined();
   });
 
-  it('throws on concurrent async fallback contexts to prevent context corruption', async () => {
-    console.log('globalThis.AsyncLocalStorage:', (globalThis as any).AsyncLocalStorage);
+  it('rejects nested runs while a fallback run is active', async () => {
     processRef.getBuiltinModule = vi.fn(() => undefined);
     (globalThis as any).require = undefined;
     processRef.mainModule = { require: undefined };
@@ -140,13 +139,13 @@ describe('eval context manager', () => {
       hook.run({ requestId: 'second' }, secondRun);
     }).toThrowError('AsyncLocalStorage fallback does not support concurrent async contexts');
 
-    expect(secondRun).toHaveBeenCalledTimes(1);
+    expect(secondRun).not.toHaveBeenCalled();
 
     releaseFirst?.();
     await firstRun;
   });
 
-  it('throws when nested async runs bubble a promise to parent fallback run', async () => {
+  it('blocks nested async runs before they can leak context', async () => {
     processRef.getBuiltinModule = vi.fn(() => undefined);
     (globalThis as any).require = undefined;
     processRef.mainModule = { require: undefined };
@@ -168,7 +167,7 @@ describe('eval context manager', () => {
     expect(hook.get()).toBeUndefined();
   });
 
-  it('allows nested synchronous runs while async fallback context is active', async () => {
+  it('allows nested synchronous runs when no async fallback run is active', () => {
     processRef.getBuiltinModule = vi.fn(() => undefined);
     (globalThis as any).require = undefined;
     processRef.mainModule = { require: undefined };
@@ -176,9 +175,7 @@ describe('eval context manager', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const hook = createAsyncHook<{ requestId: string }>('test-context');
 
-    await hook.run({ requestId: 'outer' }, async () => {
-      await Promise.resolve();
-
+    hook.run({ requestId: 'outer' }, () => {
       const nested = hook.run({ requestId: 'inner' }, () => hook.get());
       expect(nested).toEqual({ requestId: 'inner' });
       expect(hook.get()).toEqual({ requestId: 'outer' });
