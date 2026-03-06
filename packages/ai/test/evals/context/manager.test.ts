@@ -131,17 +131,21 @@ describe('eval context manager', () => {
 
     await Promise.resolve();
 
+    const secondRun = vi.fn(async () => {
+      await Promise.resolve();
+    });
+
     expect(() => {
-      hook.run({ requestId: 'second' }, async () => {
-        await Promise.resolve();
-      });
+      hook.run({ requestId: 'second' }, secondRun);
     }).toThrowError('AsyncLocalStorage fallback does not support concurrent async contexts');
+
+    expect(secondRun).not.toHaveBeenCalled();
 
     releaseFirst?.();
     await firstRun;
   });
 
-  it('allows nested synchronous runs while async fallback context is active', async () => {
+  it('rejects nested runs while async fallback context is active', async () => {
     processRef.getBuiltinModule = vi.fn(() => undefined);
     (globalThis as any).require = undefined;
     processRef.mainModule = { require: undefined };
@@ -149,14 +153,21 @@ describe('eval context manager', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const hook = createAsyncHook<{ requestId: string }>('test-context');
 
-    await hook.run({ requestId: 'outer' }, async () => {
-      await Promise.resolve();
-
-      const nested = hook.run({ requestId: 'inner' }, () => hook.get());
-      expect(nested).toEqual({ requestId: 'inner' });
-      expect(hook.get()).toEqual({ requestId: 'outer' });
+    let releaseOuter: (() => void) | undefined;
+    const outerRun = hook.run({ requestId: 'outer' }, async () => {
+      await new Promise<void>((resolve) => {
+        releaseOuter = resolve;
+      });
     });
 
+    await Promise.resolve();
+
+    expect(() => {
+      hook.run({ requestId: 'inner' }, () => hook.get());
+    }).toThrowError('AsyncLocalStorage fallback does not support concurrent async contexts');
+
+    releaseOuter?.();
+    await outerRun;
     expect(hook.get()).toBeUndefined();
   });
 

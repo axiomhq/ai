@@ -35,6 +35,10 @@ function createFallbackManager(): ContextManager {
   return {
     getStore: () => currentContext,
     run: <R>(value: any, fn: () => R): R => {
+      if (activeAsyncRuns > 0) {
+        throw new Error(FALLBACK_CONCURRENCY_ERROR);
+      }
+
       const previousContext = currentContext;
       currentContext = value;
 
@@ -47,11 +51,6 @@ function createFallbackManager(): ContextManager {
       }
 
       if (isPromiseLike(result)) {
-        if (activeAsyncRuns > 0) {
-          currentContext = previousContext;
-          throw new Error(FALLBACK_CONCURRENCY_ERROR);
-        }
-
         activeAsyncRuns += 1;
 
         return Promise.resolve(result).finally(() => {
