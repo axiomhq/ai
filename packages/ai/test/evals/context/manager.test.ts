@@ -53,6 +53,9 @@ describe('eval context manager', () => {
     processRef.getBuiltinModule = undefined;
     (globalThis as any).require = vi.fn((id: string) => {
       if (id === 'node:async_hooks') {
+        throw new Error('MODULE_NOT_FOUND');
+      }
+      if (id === 'async_hooks') {
         return { AsyncLocalStorage };
       }
       return undefined;
@@ -86,5 +89,55 @@ describe('eval context manager', () => {
 
     expect(hook.get()).toBeUndefined();
     expect(warn).toHaveBeenCalledWith('AsyncLocalStorage not available, using fallback context manager');
+  });
+
+  it('handles thenables without a finally method in fallback mode', async () => {
+    processRef.getBuiltinModule = vi.fn(() => undefined);
+    (globalThis as any).require = undefined;
+    processRef.mainModule = { require: undefined };
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const hook = createAsyncHook<{ requestId: string }>('test-context');
+
+    const thenable = {
+      then(onFulfilled: (value: string) => void) {
+        onFulfilled('ok');
+      },
+    };
+
+    const result = hook.run({ requestId: 'req-thenable' }, () => thenable as any) as unknown as Promise<
+      string
+    >;
+
+    await expect(result).resolves.toBe('ok');
+    expect(hook.get()).toBeUndefined();
+  });
+
+  it('throws on concurrent async fallback contexts to prevent context corruption', async () => {
+    processRef.getBuiltinModule = vi.fn(() => undefined);
+    (globalThis as any).require = undefined;
+    processRef.mainModule = { require: undefined };
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const hook = createAsyncHook<{ requestId: string }>('test-context');
+
+    let releaseFirst: (() => void) | undefined;
+    const firstRun = hook.run({ requestId: 'first' }, async () => {
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      expect(hook.get()).toEqual({ requestId: 'first' });
+    });
+
+    await Promise.resolve();
+
+    expect(() => {
+      hook.run({ requestId: 'second' }, async () => {
+        await Promise.resolve();
+      });
+    }).toThrowError('AsyncLocalStorage fallback does not support concurrent async contexts');
+
+    releaseFirst?.();
+    await firstRun;
   });
 });
