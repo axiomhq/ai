@@ -30,39 +30,39 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
 
 function createFallbackManager(): ContextManager {
   let currentContext: any = undefined;
-  let activeRuns = 0;
+  let activeAsyncRuns = 0;
 
   return {
     getStore: () => currentContext,
     run: <R>(value: any, fn: () => R): R => {
-      if (activeRuns > 0) {
-        throw new Error(FALLBACK_CONCURRENCY_ERROR);
-      }
-
-      activeRuns += 1;
       const previousContext = currentContext;
       currentContext = value;
-
-      const cleanup = () => {
-        activeRuns -= 1;
-        if (currentContext === value) {
-          currentContext = previousContext;
-        }
-      };
 
       let result: R;
       try {
         result = fn();
       } catch (error) {
-        cleanup();
+        currentContext = previousContext;
         throw error;
       }
 
       if (isPromiseLike(result)) {
-        return Promise.resolve(result).finally(cleanup) as R;
+        if (activeAsyncRuns > 0) {
+          currentContext = previousContext;
+          throw new Error(FALLBACK_CONCURRENCY_ERROR);
+        }
+
+        activeAsyncRuns += 1;
+
+        return Promise.resolve(result).finally(() => {
+          activeAsyncRuns -= 1;
+          if (currentContext === value) {
+            currentContext = previousContext;
+          }
+        }) as R;
       }
 
-      cleanup();
+      currentContext = previousContext;
       return result;
     },
   };
