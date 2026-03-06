@@ -145,7 +145,7 @@ describe('eval context manager', () => {
     await firstRun;
   });
 
-  it('rejects nested runs while async fallback context is active', async () => {
+  it('throws when nested async runs bubble a promise to parent fallback run', async () => {
     processRef.getBuiltinModule = vi.fn(() => undefined);
     (globalThis as any).require = undefined;
     processRef.mainModule = { require: undefined };
@@ -153,21 +153,36 @@ describe('eval context manager', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const hook = createAsyncHook<{ requestId: string }>('test-context');
 
-    let releaseOuter: (() => void) | undefined;
-    const outerRun = hook.run({ requestId: 'outer' }, async () => {
-      await new Promise<void>((resolve) => {
-        releaseOuter = resolve;
-      });
-    });
-
-    await Promise.resolve();
-
     expect(() => {
-      hook.run({ requestId: 'inner' }, () => hook.get());
+      hook.run({ requestId: 'outer' }, () => {
+        return hook.run({ requestId: 'inner' }, async () => {
+          await Promise.resolve();
+          return 'ok';
+        });
+      });
     }).toThrowError('AsyncLocalStorage fallback does not support concurrent async contexts');
 
-    releaseOuter?.();
-    await outerRun;
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(hook.get()).toBeUndefined();
+  });
+
+  it('allows nested synchronous runs while async fallback context is active', async () => {
+    processRef.getBuiltinModule = vi.fn(() => undefined);
+    (globalThis as any).require = undefined;
+    processRef.mainModule = { require: undefined };
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const hook = createAsyncHook<{ requestId: string }>('test-context');
+
+    await hook.run({ requestId: 'outer' }, async () => {
+      await Promise.resolve();
+
+      const nested = hook.run({ requestId: 'inner' }, () => hook.get());
+      expect(nested).toEqual({ requestId: 'inner' });
+      expect(hook.get()).toEqual({ requestId: 'outer' });
+    });
+
     expect(hook.get()).toBeUndefined();
   });
 
