@@ -70,7 +70,9 @@ function createFallbackManager(): ContextManager {
   };
 }
 
-function getAsyncLocalStorageFromModule(module: unknown): AsyncLocalStorageLikeConstructor | undefined {
+function getAsyncLocalStorageFromModule(
+  module: unknown,
+): AsyncLocalStorageLikeConstructor | undefined {
   const asyncLocalStorageCtor = (module as { AsyncLocalStorage?: AsyncLocalStorageLikeConstructor })
     ?.AsyncLocalStorage;
   return typeof asyncLocalStorageCtor === 'function' ? asyncLocalStorageCtor : undefined;

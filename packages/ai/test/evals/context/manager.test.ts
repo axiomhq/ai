@@ -88,7 +88,9 @@ describe('eval context manager', () => {
     });
 
     expect(hook.get()).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith('AsyncLocalStorage not available, using fallback context manager');
+    expect(warn).toHaveBeenCalledWith(
+      'AsyncLocalStorage not available, using fallback context manager',
+    );
   });
 
   it('handles thenables without a finally method in fallback mode', async () => {
@@ -105,9 +107,10 @@ describe('eval context manager', () => {
       },
     };
 
-    const result = hook.run({ requestId: 'req-thenable' }, () => thenable as any) as unknown as Promise<
-      string
-    >;
+    const result = hook.run(
+      { requestId: 'req-thenable' },
+      () => thenable as any,
+    ) as unknown as Promise<string>;
 
     await expect(result).resolves.toBe('ok');
     expect(hook.get()).toBeUndefined();
