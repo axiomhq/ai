@@ -141,6 +141,25 @@ describe('eval context manager', () => {
     await firstRun;
   });
 
+  it('allows nested synchronous runs while async fallback context is active', async () => {
+    processRef.getBuiltinModule = vi.fn(() => undefined);
+    (globalThis as any).require = undefined;
+    processRef.mainModule = { require: undefined };
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const hook = createAsyncHook<{ requestId: string }>('test-context');
+
+    await hook.run({ requestId: 'outer' }, async () => {
+      await Promise.resolve();
+
+      const nested = hook.run({ requestId: 'inner' }, () => hook.get());
+      expect(nested).toEqual({ requestId: 'inner' });
+      expect(hook.get()).toEqual({ requestId: 'outer' });
+    });
+
+    expect(hook.get()).toBeUndefined();
+  });
+
   it('detects and prevents context leakage in fallback mode', async () => {
     processRef.getBuiltinModule = vi.fn(() => undefined);
     (globalThis as any).require = undefined;

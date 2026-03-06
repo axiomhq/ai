@@ -56,7 +56,9 @@ function createFallbackManager(): ContextManager {
 
         return Promise.resolve(result).finally(() => {
           activeAsyncRuns -= 1;
-          currentContext = previousContext;
+          if (currentContext === value) {
+            currentContext = previousContext;
+          }
         }) as R;
       }
 
