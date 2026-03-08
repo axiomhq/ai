@@ -106,7 +106,7 @@ describe('query', () => {
     expect(result.exitCode).toBe(0);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -407,7 +407,7 @@ describe('query', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await runCli(['query', "['traces'] | group by service | count()", '--format', 'csv'], {
-      env: { ...env, AXIOM_MAX_CELLS: '1' },
+      env,
     });
 
     expect(result.exitCode).toBe(0);

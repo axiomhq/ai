@@ -59,7 +59,7 @@ describe('ingest', () => {
         method: 'POST',
         headers: {
           Authorization: 'Bearer token',
-          'Content-Type': 'ndjson',
+          'Content-Type': 'application/x-ndjson',
           'X-Axiom-Org-Id': 'org',
         },
       }),
@@ -109,7 +109,7 @@ describe('ingest', () => {
         method: 'POST',
         headers: {
           Authorization: 'Bearer edge-token',
-          'Content-Type': 'ndjson',
+          'Content-Type': 'application/x-ndjson',
         },
       }),
     );

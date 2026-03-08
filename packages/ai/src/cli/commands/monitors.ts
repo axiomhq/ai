@@ -12,6 +12,7 @@ import {
 } from '../format/output';
 import { buildJsonMeta } from '../format/meta';
 import { resolveTimeRange } from '../time/range';
+import { asRecord } from '../utils/type-guards';
 
 type MonitorRecord = {
   id?: string;
@@ -302,13 +303,6 @@ const resolveHistoryTimestamp = (row: MonitorHistoryRecord) =>
   row.created_at ??
   row.createdAt ??
   null;
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== 'object') {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
 
 const asHistoryRows = (value: unknown): MonitorHistoryRecord[] => {
   if (!Array.isArray(value)) {
@@ -789,10 +783,9 @@ const normalizeHistory = (row: MonitorHistoryRecord) => {
   if (row.state !== undefined) {
     normalized.state = row.state;
   }
-  if (row.timestamp !== undefined) {
-    normalized.timestamp = row.timestamp;
-  } else if (row.started_at !== undefined) {
-    normalized.timestamp = row.started_at;
+  const timestamp = resolveHistoryTimestamp(row);
+  if (timestamp !== null) {
+    normalized.timestamp = timestamp;
   }
   if (row.duration_ms !== undefined) {
     normalized.duration_ms = row.duration_ms;

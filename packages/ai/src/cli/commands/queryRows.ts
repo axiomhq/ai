@@ -2,6 +2,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 const LEGACY_MATCH_METADATA_FIELDS = new Set(['_time', '_sysTime', '_rowId']);
+const LEGACY_ENVELOPE_MARKERS = new Set(['_sysTime', '_rowId']);
 
 export type QueryRow = Record<string, unknown>;
 
@@ -12,7 +13,13 @@ export type QueryRows = {
 };
 
 const flattenLegacyEnvelope = (row: QueryRow): QueryRow => {
-  const envelopeKey = ['data', 'fields', 'row'].find((key) => isObject(row[key]));
+  const envelopeKey = ['data', 'fields', 'row'].find(
+    (key) =>
+      isObject(row[key]) &&
+      [...LEGACY_ENVELOPE_MARKERS].some((marker) =>
+        Object.prototype.hasOwnProperty.call(row, marker),
+      ),
+  );
   if (!envelopeKey) {
     return row;
   }

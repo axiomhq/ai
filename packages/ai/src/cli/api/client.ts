@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { AxiomApiError, requestJson, type HttpConfig } from './http';
 import { recordQuery, type ExplainContext } from '../explain/context';
+import { asRecord } from '../utils/type-guards';
 
 export type QueryAplOptions = {
   startTime?: string;
@@ -58,10 +59,15 @@ const regionEndpointCache = new Map<string, RegionEndpointCacheEntry>();
 
 const DEFAULT_DATASET_REGION_CACHE_TTL_MS = 5 * 60_000;
 const DEFAULT_REGION_ENDPOINT_CACHE_TTL_MS = 60 * 60_000;
-const EDGE_QUERY_PATH = '/api/v1/query';
+const EDGE_QUERY_PATH = '/v1/query/_apl?format=legacy';
 const LEGACY_QUERY_PATH = '/v1/datasets/_apl?format=legacy';
 const EDGE_INGEST_PATH_PREFIX = '/v1/ingest';
 const API_INGEST_PATH_PREFIX = '/v1/datasets';
+const INGEST_CONTENT_TYPE_HEADERS: Record<IngestContentType, string> = {
+  json: 'application/json',
+  ndjson: 'application/x-ndjson',
+  csv: 'text/csv',
+};
 const DISK_CACHE_VERSION = 1;
 const CACHE_DIR_NAME = 'axiom';
 const CACHE_NAMESPACE_DIR = 'cli';
@@ -273,13 +279,6 @@ const mergeStringMaps = (maps: Map<string, string>[]) => {
     });
   });
   return merged;
-};
-
-const asRecord = (value: unknown): Record<string, unknown> | null => {
-  if (typeof value === 'object' && value !== null) {
-    return value as Record<string, unknown>;
-  }
-  return null;
 };
 
 const getString = (record: Record<string, unknown>, key: string): string | undefined => {
@@ -621,7 +620,7 @@ const extractDatasetRows = (payload: unknown): Record<string, unknown>[] => {
 
   return payload
     .map((item) => asRecord(item))
-    .filter((item): item is Record<string, unknown> => item !== null);
+    .filter((item): item is Record<string, unknown> => item !== undefined);
 };
 
 const regionMapFromDatasets = (payload: unknown): Map<string, string> => {
@@ -642,7 +641,9 @@ const regionMapFromDatasets = (payload: unknown): Map<string, string> => {
 
 const extractRegionRows = (payload: unknown): Record<string, unknown>[] => {
   if (Array.isArray(payload)) {
-    return payload.map((item) => asRecord(item)).filter((item): item is Record<string, unknown> => item !== null);
+    return payload
+      .map((item) => asRecord(item))
+      .filter((item): item is Record<string, unknown> => item !== undefined);
   }
 
   const record = asRecord(payload);
@@ -656,7 +657,7 @@ const extractRegionRows = (payload: unknown): Record<string, unknown>[] => {
     }
     return value
       .map((item) => asRecord(item))
-      .filter((item): item is Record<string, unknown> => item !== null);
+      .filter((item): item is Record<string, unknown> => item !== undefined);
   });
 };
 
@@ -902,7 +903,12 @@ export class AxiomApiClient {
       }
     }
 
-    return requestJson<T>(this.config, {
+    const legacyConfig: HttpConfig = {
+      ...this.config,
+      token: tokenOverride ?? this.config.token,
+    };
+
+    return requestJson<T>(legacyConfig, {
       method: 'POST',
       path: LEGACY_QUERY_PATH,
       body: { apl: queryText, ...queryOptions },
@@ -944,7 +950,7 @@ export class AxiomApiClient {
     }
 
     const headers: Record<string, string> = {
-      'Content-Type': options.contentType,
+      'Content-Type': INGEST_CONTENT_TYPE_HEADERS[options.contentType],
     };
     if (options.contentEncoding && options.contentEncoding !== 'identity') {
       headers['Content-Encoding'] = options.contentEncoding;

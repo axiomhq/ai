@@ -400,7 +400,7 @@ range start to end | count()`,
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -429,7 +429,7 @@ range start to end | count()`,
     await client.queryApl('vercel', 'count()', { maxBinAutoGroups: 40 });
 
     const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(requestUrl).toBe('https://eu-central-1.aws.edge.axiom.co/api/v1/query');
+    expect(requestUrl).toBe('https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy');
     const headers = requestInit.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer edge-token');
     expect(headers['X-Axiom-Org-Id']).toBeUndefined();
@@ -456,9 +456,36 @@ range start to end | count()`,
     });
 
     const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(requestUrl).toBe('https://us-east-1.aws.edge.axiom.co/api/v1/query');
+    expect(requestUrl).toBe('https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy');
     const headers = requestInit.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer control-token');
+  });
+
+  it('uses apiToken override on legacy query endpoint', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '0');
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      maxBinAutoGroups: 40,
+      apiToken: 'override-token',
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://api.axiom.co/v1/datasets/_apl?format=legacy');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer override-token');
   });
 
   it('uses v1 dataset ingest path on API hosts', async () => {
@@ -491,12 +518,39 @@ range start to end | count()`,
         method: 'POST',
         headers: {
           Authorization: 'Bearer token',
-          'Content-Type': 'ndjson',
+          'Content-Type': 'application/x-ndjson',
           'X-Axiom-Org-Id': 'org',
           'X-Axiom-Event-Labels': JSON.stringify({ env: 'prod' }),
         },
       }),
     );
+  });
+
+  it('maps ingest content types to MIME headers', async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ingested: 1, failed: 0, failures: [], processedBytes: 8 }), {
+          status: 200,
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', '{"ok":true}', { contentType: 'json' });
+    await client.ingestDataset('logs', 'a,b\n1,2\n', { contentType: 'csv' });
+    await client.ingestDataset('logs', '{"ok":true}\n', { contentType: 'ndjson' });
+
+    const headers = fetchMock.mock.calls.map(([, init]) => (init as RequestInit).headers);
+    expect(headers).toEqual([
+      expect.objectContaining({ 'Content-Type': 'application/json' }),
+      expect.objectContaining({ 'Content-Type': 'text/csv' }),
+      expect.objectContaining({ 'Content-Type': 'application/x-ndjson' }),
+    ]);
   });
 
   it('uses edge ingest path and edge token override when edge url is set', async () => {
@@ -525,7 +579,7 @@ range start to end | count()`,
         method: 'POST',
         headers: {
           Authorization: 'Bearer edge-token',
-          'Content-Type': 'ndjson',
+          'Content-Type': 'application/x-ndjson',
         },
       }),
     );
@@ -585,7 +639,7 @@ range start to end | count()`,
           { status: 200 },
         );
       }
-      if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
         return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
       }
       return new Response('not found', { status: 404 });
@@ -604,7 +658,7 @@ range start to end | count()`,
 
     expect(response.data).toEqual({ matches: [{ ok: true }] });
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -640,7 +694,7 @@ range start to end | count()`,
           { status: 200 },
         );
       }
-      if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
         return new Response(JSON.stringify({ message: 'not found' }), { status: 404 });
       }
       if (url === 'https://api.axiom.co/v1/datasets/_apl?format=legacy') {
@@ -688,7 +742,7 @@ range start to end | count()`,
           { status: 200 },
         );
       }
-      if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
         return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
       }
       return new Response('not found', { status: 404 });
@@ -707,7 +761,7 @@ range start to end | count()`,
     const calls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/datasets')).toHaveLength(1);
     expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/regions')).toHaveLength(1);
-    expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query')).toHaveLength(2);
+    expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(2);
   });
 
   it('scopes edge-routing caches by token when org id is absent', async () => {
@@ -745,10 +799,10 @@ range start to end | count()`,
           { status: 200 },
         );
       }
-      if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
         return new Response(JSON.stringify({ matches: [{ region: 'eu' }] }), { status: 200 });
       }
-      if (url === 'https://us-east-1.aws.edge.axiom.co/api/v1/query') {
+      if (url === 'https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
         return new Response(JSON.stringify({ matches: [{ region: 'us' }] }), { status: 200 });
       }
       return new Response('not found', { status: 404 });
@@ -772,8 +826,8 @@ range start to end | count()`,
 
     const calls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/datasets')).toHaveLength(2);
-    expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query')).toHaveLength(1);
-    expect(calls.filter((url) => url === 'https://us-east-1.aws.edge.axiom.co/api/v1/query')).toHaveLength(1);
+    expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(1);
+    expect(calls.filter((url) => url === 'https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(1);
   });
 
   it('persists dataset and region caches on disk across client instances', async () => {
@@ -801,7 +855,7 @@ range start to end | count()`,
             { status: 200 },
           );
         }
-        if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+        if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
           return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
         }
         return new Response('not found', { status: 404 });
@@ -827,7 +881,7 @@ range start to end | count()`,
       const calls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/datasets')).toHaveLength(1);
       expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/regions')).toHaveLength(1);
-      expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query')).toHaveLength(2);
+      expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(2);
     } finally {
       await fs.rm(cacheDir, { recursive: true, force: true });
     }
@@ -861,7 +915,7 @@ range start to end | count()`,
           { status: 200 },
         );
       }
-      if (url === 'https://eu-central-1.aws.edge.axiom.co/api/v1/query') {
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
         return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
       }
       return new Response('not found', { status: 404 });
@@ -885,14 +939,14 @@ print seed=1
 
     expect(response.data).toEqual({ matches: [{ ok: true }] });
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://eu-central-1.aws.edge.axiom.co/api/v1/query',
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining("['dataset-b']"),
       }),
     );
     expect(fetchMock).not.toHaveBeenCalledWith(
-      'https://us-east-1.aws.edge.axiom.co/api/v1/query',
+      'https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
       expect.anything(),
     );
   });

@@ -1,3 +1,5 @@
+import { asRecord } from '../utils/type-guards';
+
 export type AxiomDataset = {
   name: string;
   description: string | null;
@@ -31,13 +33,6 @@ type FieldInput = {
   type?: string;
   description?: string | null;
   unit?: string | null;
-};
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (typeof value === 'object' && value) {
-    return value as Record<string, unknown>;
-  }
-  return undefined;
 };
 
 const pickFirstDefined = (records: Record<string, unknown>[], keys: string[]) => {

@@ -46,7 +46,7 @@ const truncateString = (value: string, maxLength: number) => {
 };
 
 const buildFooter = (meta: FormatMeta, maxCells: number) =>
-  `truncated: showing ${meta.rowsShown}/${meta.rowsTotal} rows (max-cells=${maxCells}). rerun with --limit or --max-cells.`;
+  `truncated: showing ${meta.rowsShown}/${meta.rowsTotal} rows (max-cells=${maxCells}). narrow the result set.`;
 
 const buildMeta = (shape: ShapeResult<Record<string, unknown>>): FormatMeta => ({
   truncated: shape.truncated,

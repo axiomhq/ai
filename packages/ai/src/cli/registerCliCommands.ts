@@ -9,7 +9,6 @@ import { monitorGet, monitorHistory, monitorList } from './commands/monitors';
 
 const POSITIVE_INTEGER_OPTION_NAMES = new Set<OptionSpec['name']>([
   'limit',
-  'maxCells',
   'maxBinAutoGroups',
 ]);
 

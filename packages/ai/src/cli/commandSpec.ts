@@ -51,11 +51,6 @@ export const cliCommandSpec = {
       hidden: true,
     },
     {
-      name: 'noColor',
-      flags: '--no-color',
-      description: 'Disable ANSI color',
-    },
-    {
       name: 'quiet',
       flags: '--quiet',
       description: 'Suppress non-data output',
@@ -70,7 +65,7 @@ export const cliCommandSpec = {
     {
       name: 'datasets',
       description: 'Discover datasets and schema',
-      help: `Usage:\n  axiom datasets <command>\n\nCommands:\n  list                List datasets\n  get <name>          Show dataset metadata\n  schema <name>       Show dataset schema (fields and types)\n  sample <name>       Show a small sample of recent events\n\nGlobal options:\n  --format <format>   auto|table|csv|json|ndjson|jsonl|mcp\n  --url <url>         Axiom API base URL\n  --org-id <id>       Organization ID\n  --token <token>     API token\n  --no-color          Disable ANSI color\n  --quiet             Suppress non-data output\n  --explain           Print API calls and queries to stderr\n`,
+      help: `Usage:\n  axiom datasets <command>\n\nCommands:\n  list                List datasets\n  get <name>          Show dataset metadata\n  schema <name>       Show dataset schema (fields and types)\n  sample <name>       Show a small sample of recent events\n\nGlobal options:\n  --format <format>   auto|table|csv|json|ndjson|jsonl|mcp\n  --url <url>         Axiom API base URL\n  --org-id <id>       Organization ID\n  --token <token>     API token\n  --quiet             Suppress non-data output\n  --explain           Print API calls and queries to stderr\n`,
       subcommands: [
         {
           name: 'list',

@@ -359,13 +359,13 @@ describe('monitor commands', () => {
               checkId: 'mon_1',
               name: 'Triggered: API endpoint performance monitor',
               state: 'open',
-              timestamp: '2026-01-23T07:04:06.143Z',
+              runAt: '2026-01-23T07:04:06.143Z',
             },
             {
               checkId: 'mon_1',
               name: 'Resolved: API endpoint performance monitor',
               state: 'closed',
-              timestamp: '2026-01-23T08:04:05.619Z',
+              created_at: '2026-01-23T08:04:05.619Z',
             },
           ]),
           { status: 200 },
@@ -377,6 +377,7 @@ describe('monitor commands', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('"timestamp": "2026-01-23T07:04:06.143Z"');
+    expect(result.stdout).toContain('"timestamp": "2026-01-23T08:04:05.619Z"');
     expect(result.stdout).toContain('"checkId": "mon_1"');
     expect(result.stdout).toContain('"state": "closed"');
     expect(fetchMock).toHaveBeenCalledTimes(2);

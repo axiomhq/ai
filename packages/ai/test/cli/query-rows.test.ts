@@ -33,6 +33,8 @@ describe('query rows normalization', () => {
     const result = toQueryRows({
       matches: [
         {
+          _rowId: 'row-2',
+          _sysTime: '1970-01-01T00:00:00Z',
           source: 'ingest-a',
           data: {
             value: 42,
@@ -46,6 +48,34 @@ describe('query rows normalization', () => {
         {
           source: 'ingest-a',
           value: 42,
+        },
+      ],
+      timeseries: [],
+      totals: [],
+    });
+  });
+
+  it('does not flatten regular object columns named like legacy envelope keys', () => {
+    const result = toQueryRows({
+      matches: [
+        {
+          service: 'checkout',
+          data: {
+            nested: true,
+            count: 5,
+          },
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      rows: [
+        {
+          service: 'checkout',
+          data: {
+            nested: true,
+            count: 5,
+          },
         },
       ],
       timeseries: [],

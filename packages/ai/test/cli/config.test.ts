@@ -9,7 +9,6 @@ describe('resolveCliConfig', () => {
         orgId: 'flag-org',
         token: 'flag-token',
         format: 'json',
-        maxCells: 250,
         explain: true,
       },
       {
@@ -17,7 +16,6 @@ describe('resolveCliConfig', () => {
         AXIOM_ORG_ID: 'env-org',
         AXIOM_TOKEN: 'env-token',
         AXIOM_FORMAT: 'csv',
-        AXIOM_MAX_CELLS: '123',
         AXIOM_EXPLAIN: '0',
       },
       {
@@ -32,7 +30,6 @@ describe('resolveCliConfig', () => {
       orgId: 'flag-org',
       token: 'flag-token',
       format: 'json',
-      maxCells: 250,
       explain: true,
     });
   });
@@ -42,7 +39,6 @@ describe('resolveCliConfig', () => {
       {},
       {
         AXIOM_FORMAT: 'ndjson',
-        AXIOM_MAX_CELLS: '600',
         AXIOM_QUIET: '1',
       },
       {
@@ -57,7 +53,6 @@ describe('resolveCliConfig', () => {
       orgId: 'auth-org',
       token: 'auth-token',
       format: 'ndjson',
-      maxCells: 600,
       quiet: true,
     });
   });

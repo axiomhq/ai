@@ -16,7 +16,6 @@ Register-ArgumentCompleter -Native -CommandName axiom -ScriptBlock {
     '--format',
     '--label',
     '--max-bin-auto-groups',
-    '--no-color',
     '--org-id',
     '--quiet',
     '--since',

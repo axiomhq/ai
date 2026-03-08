@@ -24,7 +24,7 @@ describe('cli formatters', () => {
       "
     `);
     expect(result.stderr).toMatchInlineSnapshot(
-      `"\ntruncated: showing 1/3 rows (max-cells=4). rerun with --limit or --max-cells.\n"`,
+      `"\ntruncated: showing 1/3 rows (max-cells=4). narrow the result set.\n"`,
     );
   });
 
@@ -58,7 +58,7 @@ describe('cli formatters', () => {
       "id,value,extra\nsvc-a,12,alpha\n"
     `);
     expect(result.stderr).toMatchInlineSnapshot(
-      `"truncated: showing 1/3 rows (max-cells=4). rerun with --limit or --max-cells.\n"`,
+      `"truncated: showing 1/3 rows (max-cells=4). narrow the result set.\n"`,
     );
   });
 
