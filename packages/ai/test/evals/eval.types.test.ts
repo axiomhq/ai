@@ -76,4 +76,24 @@ describe('Eval type inference', () => {
 
     invalid;
   });
+
+  it('rejects a scorer whose input type conflicts with data', () => {
+    const inputAwareScorer = Scorer(
+      'input-aware',
+      ({ input, output }: { input: { id: number }; output: string }) => {
+        return input.id > 0 && output.length > 0;
+      },
+    );
+
+    const invalid = () =>
+      Eval('scorer-input-mismatch', {
+        capability: 'test',
+        data: [{ input: 'hello', expected: 'world' }],
+        task: ({ input }) => input,
+        // @ts-expect-error scorer input type conflicts with data input type
+        scorers: [inputAwareScorer],
+      });
+
+    invalid;
+  });
 });
