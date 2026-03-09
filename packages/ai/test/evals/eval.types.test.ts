@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it, expectTypeOf } from 'vitest';
 import { Eval } from '../../src/evals';
 import { Scorer } from '../../src/scorers/scorers';
 
@@ -29,6 +29,31 @@ describe('Eval type inference', () => {
     compileOnly;
   });
 
+  it('preserves contextual task input typing from data when scorer omits input', () => {
+    const exactMatch = Scorer(
+      'exact-match',
+      ({ expected, output }: { expected: string; output: string }) => expected === output,
+    );
+
+    const compileOnly = () =>
+      Eval('categorize-messages', {
+        capability: 'support-agent',
+        data: [
+          {
+            input: 'Hello world',
+            expected: 'support',
+          },
+        ],
+        task: ({ input }) => {
+          expectTypeOf(input).toEqualTypeOf<string>();
+          return input;
+        },
+        scorers: [exactMatch],
+      });
+
+    compileOnly;
+  });
+
   it('rejects task input that conflicts with the data source', () => {
     const OutputOnlyScorer = Scorer(
       'output-only',
@@ -38,13 +63,13 @@ describe('Eval type inference', () => {
     const invalid = () =>
       Eval('mismatched-task-input', {
         capability: 'name_query',
+        // @ts-expect-error task input must match the data input type
         data: () => [
           {
             input: 'foo',
             expected: 'bar',
           },
         ],
-        // @ts-expect-error task input must match the data input type
         task: async ({ input }: { input: number }) => String(input),
         scorers: [OutputOnlyScorer],
       });
