@@ -50,6 +50,30 @@ declare module 'vitest' {
 
 const createVersionId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
+type EvalDataSourceBase = { input: unknown; expected: unknown };
+type EvalDataSource =
+  | readonly EvalDataSourceBase[]
+  | Promise<readonly EvalDataSourceBase[]>
+  | (() => readonly EvalDataSourceBase[] | Promise<readonly EvalDataSourceBase[]>);
+
+type ResolveEvalData<TData extends EvalDataSource> = Awaited<
+  TData extends (...args: any[]) => infer TResult ? TResult : TData
+>;
+
+type InferEvalDataInput<TData extends EvalDataSource> =
+  ResolveEvalData<TData> extends readonly (infer TRecord)[]
+    ? TRecord extends { input: infer TInput }
+      ? TInput
+      : never
+    : never;
+
+type InferEvalDataExpected<TData extends EvalDataSource> =
+  ResolveEvalData<TData> extends readonly (infer TRecord)[]
+    ? TRecord extends { expected: infer TExpected }
+      ? TExpected
+      : never
+    : never;
+
 type RunTaskFailureDetails = {
   duration: number;
   outOfScopeFlags: OutOfScopeFlagAccess[];
@@ -111,17 +135,24 @@ function getRunTaskFailureDetails(error: unknown): RunTaskFailureDetails | undef
  * ```
  */
 export function Eval<
-  TInput,
-  TExpected,
-  TOutput,
+  TData extends EvalDataSource,
+  TInput extends string | Record<string, any> = InferEvalDataInput<TData>,
+  TExpected extends string | Record<string, any> = InferEvalDataExpected<TData>,
+  TOutput extends string | Record<string, any> = string | Record<string, any>,
   Name extends string = string,
   Capability extends string = string,
   Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability' | 'step'> & {
+  params: Omit<
+    EvalParams<TInput, TExpected, TOutput>,
+    'capability' | 'step' | 'data' | 'task' | 'scorers'
+  > & {
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
+    data: TData;
+    task: EvalTask<TInput, TExpected, TOutput>;
+    scorers: ReadonlyArray<ScorerLike<TInput, TExpected, TOutput>>;
   },
 ): void {
   // Record eval name for validation

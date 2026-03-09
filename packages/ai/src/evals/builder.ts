@@ -95,7 +95,7 @@ class EvalBuilderImpl<
     }
 
     // Call existing Eval function - this handles all Vitest registration
-    Eval<TInput, TExpected, TOutput>(finalName, finalParams);
+    Eval(finalName, finalParams);
   }
 }
 
