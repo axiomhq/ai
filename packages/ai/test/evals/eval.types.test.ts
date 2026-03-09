@@ -54,6 +54,45 @@ describe('Eval type inference', () => {
     compileOnly;
   });
 
+  it('keeps structured task input inference anchored to data when scorers only use output', () => {
+    const queueMatchScorer = Scorer(
+      'queue-match',
+      ({ expected, output }: { expected: { queue: string }; output: { queue: string } }) =>
+        expected.queue === output.queue,
+    );
+
+    const compileOnly = () =>
+      Eval('route-support-ticket', {
+        capability: 'support-routing',
+        data: [
+          {
+            input: {
+              ticketId: 'ticket-123',
+              message: 'Need help with a refund',
+              customer: {
+                tier: 'enterprise' as const,
+              },
+            },
+            expected: {
+              queue: 'billing' as const,
+            },
+          },
+        ],
+        task: ({ input, expected }) => {
+          expectTypeOf(input.ticketId).toEqualTypeOf<string>();
+          expectTypeOf(input.customer.tier).toEqualTypeOf<'enterprise'>();
+          expectTypeOf(expected.queue).toEqualTypeOf<'billing'>();
+
+          return {
+            queue: input.customer.tier === 'enterprise' ? 'billing' : 'general',
+          };
+        },
+        scorers: [queueMatchScorer],
+      });
+
+    compileOnly;
+  });
+
   it('rejects task input that conflicts with the data source', () => {
     const OutputOnlyScorer = Scorer(
       'output-only',
