@@ -90,7 +90,13 @@
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
+    "typescript": ">=5.4",
     "zod": "^3.25.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@ai-sdk/anthropicv1": "npm:@ai-sdk/anthropic@^1.2.12",

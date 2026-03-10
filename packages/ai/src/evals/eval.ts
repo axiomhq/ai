@@ -119,9 +119,10 @@ export function Eval<
   Step extends string = string,
 >(
   name: ValidateName<Name>,
-  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability' | 'step'> & {
+  params: Omit<EvalParams<TInput, TExpected, TOutput>, 'capability' | 'step' | 'scorers'> & {
     capability: ValidateName<Capability>;
     step?: ValidateName<Step> | undefined;
+    scorers: ReadonlyArray<ScorerLike<NoInfer<TInput>, NoInfer<TExpected>, TOutput>>;
   },
 ): void {
   // Record eval name for validation
