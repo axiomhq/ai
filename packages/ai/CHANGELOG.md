@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.1](https://github.com/axiomhq/ai/compare/axiom-v0.49.0...axiom-v0.49.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* **evals:** infer task input types from eval data ([#281](https://github.com/axiomhq/ai/issues/281)) ([4635813](https://github.com/axiomhq/ai/commit/4635813f952fccaedabeaa01a094cee90c530dd9))
+
 ## [0.49.0](https://github.com/axiomhq/ai/compare/axiom-v0.48.1...axiom-v0.49.0) (2026-03-04)
 
 
