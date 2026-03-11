@@ -41,6 +41,7 @@ export type SuiteData = {
   }>;
   outOfScopeFlags?: OutOfScopeFlag[];
   registrationStatus?: RegistrationStatus;
+  instrumentationError?: string;
 };
 
 export type Logger = (message?: string, ...optionalParams: any[]) => void;
@@ -601,6 +602,7 @@ export function printFinalReport({
       logger('');
     }
   }
+  const anyInstrumentationErrors = suiteData.some((s) => !!s.instrumentationError);
 
   if (anyRegistered && orgId && config?.consoleEndpointUrl) {
     if (suiteData.length === 1) {
@@ -630,6 +632,20 @@ export function printFinalReport({
         }
         logger(c.dim(`   Results for this evaluation will not be available in the Axiom UI.`));
       }
+    }
+  }
+
+  if (anyInstrumentationErrors) {
+    logger('');
+    for (const suite of suiteData) {
+      if (!suite.instrumentationError) continue;
+      logger(c.yellow(`⚠️  Warning: Instrumentation error in "${suite.name}"`));
+      logger(c.dim(`   Error: ${suite.instrumentationError}`));
+      logger(
+        c.dim(
+          '   Some instrumentation or baseline features may be unavailable for this evaluation.',
+        ),
+      );
     }
   }
 }
