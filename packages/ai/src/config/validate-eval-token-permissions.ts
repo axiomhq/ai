@@ -67,6 +67,7 @@ export async function validateTokenPermissions(config: ResolvedAxiomConfig) {
 
   try {
     const headers: Record<string, string> = {
+      'X-Axiom-Org-Id': connection.orgId ?? '',
       'X-Axiom-Dataset': connection.dataset,
     };
 
@@ -74,11 +75,10 @@ export async function validateTokenPermissions(config: ResolvedAxiomConfig) {
       headers.Authorization = `Bearer ${connection.token}`;
     }
 
-    const edge = new URL(connection.edgeUrl);
-    const region = edge.hostname || 'us-east-1';
-    console.log({ region });
+    console.log({ region: connection.edgeRegion });
+
     const response = await fetch(
-      `${connection.url}/api/v3/evaluations/validate?dataset=${connection.dataset}&region=${region}`,
+      `${connection.url}/api/v3/evaluations/validate?dataset=${connection.dataset}&region=${connection.edgeRegion}`,
       {
         headers,
       },
@@ -88,6 +88,7 @@ export async function validateTokenPermissions(config: ResolvedAxiomConfig) {
       let serverMessage: string | undefined;
       try {
         const data = await response.json();
+        console.debug('validation response', { data })
         serverMessage = data?.error || data?.message;
       } catch {
         serverMessage = undefined;
