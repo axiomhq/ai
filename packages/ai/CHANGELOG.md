@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.2](https://github.com/axiomhq/ai/compare/axiom-v0.49.1...axiom-v0.49.2) (2026-03-12)
+
+
+### Bug Fixes
+
+* propagate eval failures in CLI exit code ([#284](https://github.com/axiomhq/ai/issues/284)) ([bc6048d](https://github.com/axiomhq/ai/commit/bc6048dea055f32e35cbc3dd80edc2ebc50bd97a))
+
 ## [0.49.1](https://github.com/axiomhq/ai/compare/axiom-v0.49.0...axiom-v0.49.1) (2026-03-10)
 
 
