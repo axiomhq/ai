@@ -50,6 +50,24 @@ const printCollectedEvals = (result: TestRunResult, rootDir: string) => {
   console.log(c.bold(`Total: ${totalEvals} evaluations, ${totalCases} test cases\n`));
 };
 
+const hasVitestFailures = (
+  result: TestRunResult,
+  failedTestCount: number,
+  dangerouslyIgnoreUnhandledErrors: boolean,
+): boolean => {
+  if (failedTestCount > 0) {
+    return true;
+  }
+
+  if (result.unhandledErrors.length > 0 && !dangerouslyIgnoreUnhandledErrors) {
+    return true;
+  }
+
+  return result.testModules.some(
+    (testModule) => testModule.state() === 'failed' || !testModule.ok(),
+  );
+};
+
 export const runVitest = async (
   dir: string,
   opts: {
@@ -153,7 +171,7 @@ export const runVitest = async (
   }
 
   // Start collection and execution
-  await vi.start();
+  const result = await vi.start();
 
   // After execution, check if validation failed
   if (existsSync(abortFile)) {
@@ -166,10 +184,17 @@ export const runVitest = async (
   const dispose = registerConsoleShortcuts(vi, process.stdin, process.stdout);
 
   if (!vi.shouldKeepServer()) {
+    const exitCode = hasVitestFailures(
+      result,
+      vi.state.getCountOfFailedTests(),
+      vi.config.dangerouslyIgnoreUnhandledErrors,
+    )
+      ? 1
+      : 0;
     dispose();
     await flush();
     await vi.close();
-    process.exit(0);
+    process.exit(exitCode);
   }
 
   await flush();
