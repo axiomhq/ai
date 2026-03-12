@@ -1,0 +1,9 @@
+#compdef axiom
+
+_axiom_completion() {
+  local -a words
+  words=('--api-token' '--apl' '--content-encoding' '--content-type' '--continue-on-error' '--csv-fields' '--delimiter' '--edge-url' '--end' '--explain' '--file' '--format' '--label' '--max-bin-auto-groups' '--org-id' '--quiet' '--since' '--start' '--stdin' '--time-zone' '--timestamp-field' '--timestamp-format' '--token' '--until' '--url' 'auth' 'auto' 'bash' 'completion' 'csv' 'datasets' 'eval' 'fish' 'get' 'gzip' 'history' 'identity' 'ingest' 'json' 'jsonl' 'list' 'login' 'logout' 'mcp' 'monitors' 'ndjson' 'powershell' 'query' 'sample' 'schema' 'status' 'switch' 'table' 'version' 'zsh' 'zstd')
+  _describe 'value' words
+}
+
+compdef _axiom_completion axiom
