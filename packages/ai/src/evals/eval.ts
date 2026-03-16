@@ -73,13 +73,10 @@ const RUN_TASK_FAILURE_DETAILS = Symbol.for('axiom.eval.runTaskFailureDetails');
 function withCompatibleSuiteHook(
   fn: (suite: EvalHookSuite) => Promise<void> | void,
 ): CompatibleSuiteHook {
-  return (async function (
-    {}: any,
-    maybeSuite?: RunnerTestSuite | RunnerTestFile,
-  ): Promise<void> {
+  return async function ({}: any, maybeSuite?: RunnerTestSuite | RunnerTestFile): Promise<void> {
     const suite = (maybeSuite ?? arguments[0]) as EvalHookSuite;
     await fn(suite);
-  }) as CompatibleSuiteHook;
+  } as CompatibleSuiteHook;
 }
 
 function attachRunTaskFailureDetails(
