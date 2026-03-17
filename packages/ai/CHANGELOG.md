@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/axiomhq/ai/compare/axiom-v0.49.2...axiom-v0.50.0) (2026-03-17)
+
+
+### Features
+
+* **evals:** expose eval mode via AXIOM_EVAL env var and Vite mode ([#289](https://github.com/axiomhq/ai/issues/289)) ([2a82a66](https://github.com/axiomhq/ai/commit/2a82a6616de5c2275bfe2a5f51939233148f6490))
+
 ## [0.49.2](https://github.com/axiomhq/ai/compare/axiom-v0.49.1...axiom-v0.49.2) (2026-03-12)
 
 
