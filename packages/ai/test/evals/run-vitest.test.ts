@@ -123,8 +123,27 @@ describe('runVitest', () => {
 
   afterEach(() => {
     exitSpy.mockRestore();
+    delete process.env.AXIOM_EVAL;
     delete process.env.AXIOM_NAME_REGISTRY_FILE;
     delete process.env.AXIOM_ABORT_FILE;
+  });
+
+  it('marks eval runs with AXIOM_EVAL and eval mode', async () => {
+    const vitest = createVitestInstance();
+
+    mocks.createVitest.mockResolvedValue(vitest);
+
+    await expect(runVitest('.', baseOptions)).rejects.toThrow('process.exit:0');
+
+    expect(process.env.AXIOM_EVAL).toBe('true');
+    expect(mocks.createVitest).toHaveBeenCalledWith(
+      'test',
+      expect.objectContaining({
+        mode: 'eval',
+        name: 'axiom:eval',
+      }),
+      expect.any(Object),
+    );
   });
 
   it('exits 0 after a successful non-watch run', async () => {

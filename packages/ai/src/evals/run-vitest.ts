@@ -13,6 +13,8 @@ import { flush, initInstrumentation } from './instrument';
 import { setAxiomConfig } from './context/storage';
 import type { ResolvedAxiomConfig } from '../config/index';
 
+const VITEST_MODE = 'eval';
+
 const getCurrentDir = (): string => {
   if (typeof __dirname !== 'undefined') {
     return __dirname;
@@ -84,6 +86,8 @@ export const runVitest = async (
     consoleUrl?: string;
   },
 ) => {
+  process.env.AXIOM_EVAL = 'true';
+
   // Store config globally so reporters can access it
   setAxiomConfig(opts.config);
   // Initialize instrumentation explicitly based on debug or list flag
@@ -131,7 +135,7 @@ export const runVitest = async (
     'test',
     {
       root: dir ? dir : process.cwd(),
-      mode: 'test',
+      mode: VITEST_MODE,
       include: opts.include,
       exclude: opts.exclude,
       testNamePattern: opts.testNamePattern,
@@ -139,7 +143,7 @@ export const runVitest = async (
       environment: 'node',
       browser: undefined,
       watch: opts.watch,
-      setupFiles: [], // ignore user vitest.config.ts etc
+      setupFiles: [],
       name: 'axiom:eval',
       printConsoleTrace: true,
       silent: false,
