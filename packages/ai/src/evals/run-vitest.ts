@@ -134,6 +134,7 @@ export const runVitest = async (
   const vi = await createVitest(
     'test',
     {
+      config: false,
       root: dir ? dir : process.cwd(),
       mode: VITEST_MODE,
       include: opts.include,

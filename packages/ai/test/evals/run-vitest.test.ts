@@ -139,6 +139,7 @@ describe('runVitest', () => {
     expect(mocks.createVitest).toHaveBeenCalledWith(
       'test',
       expect.objectContaining({
+        config: false,
         mode: 'eval',
         name: 'axiom:eval',
       }),
