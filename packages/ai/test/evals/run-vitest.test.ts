@@ -245,6 +245,23 @@ describe('runVitest', () => {
     expect(mocks.flush).not.toHaveBeenCalled();
   });
 
+  it('configures hookTimeout to cover exporter flush and API completion hooks', async () => {
+    const vitest = createVitestInstance();
+
+    mocks.createVitest.mockResolvedValue(vitest);
+
+    await expect(runVitest('.', baseOptions)).rejects.toThrow('process.exit:0');
+
+    expect(mocks.createVitest).toHaveBeenCalledWith(
+      'test',
+      expect.objectContaining({
+        testTimeout: 60_000,
+        hookTimeout: 60_000,
+      }),
+      expect.anything(),
+    );
+  });
+
   it('preserves validation abort failures with exit code 1', async () => {
     const vitest = createVitestInstance({
       startResult: {
