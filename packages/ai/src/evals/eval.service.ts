@@ -95,7 +95,7 @@ export const findEvaluationCases = async (
 ): Promise<Evaluation | null> => {
   const { dataset, edgeUrl, url, token, orgId } = resolveAxiomConnection(config);
 
-  const apl = `['${dataset}'] | where trace_id == "${evalId}" | order by _time`;
+  const apl = `['${dataset}'] | where column_ifexists('trace_id', '') == "${evalId}" | order by _time`;
 
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
