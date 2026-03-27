@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.51.0](https://github.com/axiomhq/ai/compare/axiom-v0.50.0...axiom-v0.51.0) (2026-03-27)
+
+
+### Features
+
+* override vitest hookTimeout ([#294](https://github.com/axiomhq/ai/issues/294)) ([5b6f5fd](https://github.com/axiomhq/ai/commit/5b6f5fdc3db7ead3eec865d3264aeec5a2e9d846))
+
+
+### Bug Fixes
+
+* don't assume `trace_id` column exists in `findEvaluationCases` ([#292](https://github.com/axiomhq/ai/issues/292)) ([58dc4ff](https://github.com/axiomhq/ai/commit/58dc4ff129adf3cf92601ab25d90e94ec7b018a2))
+* **evals:** disable app Vite config during eval runs ([#295](https://github.com/axiomhq/ai/issues/295)) ([10c8376](https://github.com/axiomhq/ai/commit/10c83767bb08db0df7fadef74279fead60b2b662))
+
 ## [0.50.0](https://github.com/axiomhq/ai/compare/axiom-v0.49.2...axiom-v0.50.0) (2026-03-17)
 
 
