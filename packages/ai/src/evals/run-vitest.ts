@@ -131,6 +131,9 @@ export const runVitest = async (
     console.log(c.bgWhite(c.blackBright(' List mode ')));
   }
 
+  const evalTimeoutMs = opts.config?.eval?.timeoutMs || 60_000;
+  const hookTimeoutMs = Math.max(evalTimeoutMs, 60_000);
+
   const vi = await createVitest(
     'test',
     {
@@ -149,7 +152,9 @@ export const runVitest = async (
       printConsoleTrace: true,
       silent: false,
       disableConsoleIntercept: true,
-      testTimeout: opts.config?.eval?.timeoutMs || 60_000,
+      testTimeout: evalTimeoutMs,
+      // Vitest default is 10s, which might not be enough to flush OTLP exporters and update the evaluation via API in `afterAll`
+      hookTimeout: hookTimeoutMs,
       globals: true,
       runner: evalsRunnerPath,
       provide: {
