@@ -2,11 +2,10 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { createAsyncHook } from '../../src/evals/context/manager';
 
 const CONTEXT_MANAGER_SYMBOL = Symbol.for('axiom.context_manager');
-const originalGetBuiltinModule = (
-  process as NodeJS.Process & {
-    getBuiltinModule?: (id: string) => unknown;
-  }
-).getBuiltinModule;
+const processWithBuiltinModule = process as unknown as {
+  getBuiltinModule?: (id: string) => unknown;
+};
+const originalGetBuiltinModule = processWithBuiltinModule.getBuiltinModule;
 
 class FakeAsyncLocalStorage<T = unknown> {
   private currentStore: T | undefined;
@@ -31,8 +30,12 @@ function resetContextManagerSingleton(): void {
 }
 
 function setGetBuiltinModule(fn?: (id: string) => unknown): void {
-  (process as NodeJS.Process & { getBuiltinModule?: (id: string) => unknown }).getBuiltinModule =
-    fn;
+  if (typeof fn === 'function') {
+    processWithBuiltinModule.getBuiltinModule = fn;
+    return;
+  }
+
+  delete processWithBuiltinModule.getBuiltinModule;
 }
 
 describe('evals context manager async_hooks detection', () => {
