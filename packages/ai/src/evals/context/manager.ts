@@ -1,30 +1,48 @@
-import { createRequire } from 'node:module';
-import { join } from 'node:path';
-
 interface ContextManager<T = any> {
   getStore(): T | undefined;
   run<R>(value: T, fn: () => R): R;
 }
 
+type AsyncLocalStorageLike = new () => ContextManager;
+type AsyncHooksModuleLike = { AsyncLocalStorage?: AsyncLocalStorageLike };
+type ProcessWithBuiltinModule = NodeJS.Process & {
+  getBuiltinModule?: (id: string) => AsyncHooksModuleLike | undefined;
+};
+
 const CONTEXT_MANAGER_SYMBOL = Symbol.for('axiom.context_manager');
+const globalScope = globalThis as typeof globalThis & {
+  process?: ProcessWithBuiltinModule;
+  [key: symbol]: unknown;
+};
 
 function getGlobalContextManager(): ContextManager | undefined {
-  return (globalThis as any)[CONTEXT_MANAGER_SYMBOL];
+  return globalScope[CONTEXT_MANAGER_SYMBOL] as ContextManager | undefined;
 }
 
 function setGlobalContextManager(manager: ContextManager): void {
-  (globalThis as any)[CONTEXT_MANAGER_SYMBOL] = manager;
+  globalScope[CONTEXT_MANAGER_SYMBOL] = manager;
 }
 
-const isNodeJS = typeof process !== 'undefined' && !!process.versions?.node;
+const isBrowser = typeof window !== 'undefined';
 
-function getNodeRequire(): NodeJS.Require {
-  if (typeof require === 'function') {
-    return require;
+function getAsyncLocalStorageConstructor(): AsyncLocalStorageLike | undefined {
+  const processWithBuiltinModule = globalScope.process;
+
+  if (
+    !processWithBuiltinModule ||
+    typeof processWithBuiltinModule.getBuiltinModule !== 'function'
+  ) {
+    return undefined;
   }
 
-  // We only require Node builtins, so any absolute path is valid as a createRequire base.
-  return createRequire(join(process.cwd(), '__axiom_require__.js'));
+  try {
+    const asyncHooksModule =
+      processWithBuiltinModule.getBuiltinModule('node:async_hooks') ??
+      processWithBuiltinModule.getBuiltinModule('async_hooks');
+    return asyncHooksModule?.AsyncLocalStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 function getContextManager(): ContextManager {
@@ -34,28 +52,17 @@ function getContextManager(): ContextManager {
 
   let manager: ContextManager;
 
-  if (isNodeJS) {
-    try {
-      // Resolve AsyncLocalStorage in both ESM and CJS Node contexts without bundler interference
-      let AsyncLocalStorage: any;
-
-      // Obtain require in both CJS and ESM Node runtimes without relying on tsup shims.
-      const req = getNodeRequire();
-      try {
-        AsyncLocalStorage = req('node:async_hooks').AsyncLocalStorage;
-      } catch {
-        AsyncLocalStorage = req('async_hooks').AsyncLocalStorage;
-      }
-
-      manager = new AsyncLocalStorage();
-    } catch (error) {
-      // Fallback if AsyncLocalStorage cannot be loaded
-      console.warn('AsyncLocalStorage not available, using fallback context manager:', error);
-      manager = createFallbackManager();
+  try {
+    const AsyncLocalStorage = getAsyncLocalStorageConstructor();
+    if (!AsyncLocalStorage) {
+      throw new Error('Unable to resolve AsyncLocalStorage');
     }
-  } else {
-    // Browser/CF Workers - simple fallback (no warning needed here)
-    console.warn('AsyncLocalStorage not available, using fallback context manager');
+    manager = new AsyncLocalStorage();
+  } catch (error) {
+    // In browser fallback is expected, so avoid noisy warnings there.
+    if (!isBrowser) {
+      console.warn('AsyncLocalStorage not available, using fallback context manager:', error);
+    }
     manager = createFallbackManager();
   }
 
@@ -66,10 +73,10 @@ function getContextManager(): ContextManager {
 }
 
 function createFallbackManager(): ContextManager {
-  let currentContext: any = null;
+  let currentContext: unknown;
   return {
     getStore: () => currentContext,
-    run: <R>(value: any, fn: () => R): R => {
+    run: <R>(value: unknown, fn: () => R): R => {
       const prev = currentContext;
       currentContext = value;
       try {
@@ -84,24 +91,11 @@ function createFallbackManager(): ContextManager {
 export function createAsyncHook<T>(_name: string) {
   return {
     get(): T | undefined {
-      const manager = getContextManager();
-      if (manager.getStore) {
-        return manager.getStore();
-      }
-      return undefined;
+      return getContextManager().getStore() as T | undefined;
     },
     run<R>(value: T, fn: () => R): R {
       const manager = getContextManager();
       return manager.run(value, fn);
     },
   };
-}
-
-/**
- * Reset the context manager singleton for tests.
- * This clears the global cache and forces a new AsyncLocalStorage instance to be created.
- * Useful for test isolation when needed.
- */
-export function __resetContextManagerForTests(): void {
-  delete (globalThis as any)[CONTEXT_MANAGER_SYMBOL];
 }
