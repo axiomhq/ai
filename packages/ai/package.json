@@ -81,7 +81,7 @@
     "@sinclair/typebox": "^0.34.37",
     "c12": "^3.3.3",
     "commander": "^14.0.0",
-    "defu": "^6.1.4",
+    "defu": "^6.1.5",
     "handlebars": "^4.7.8",
     "nanoid": "^5.1.5",
     "open": "^10.1.0",
