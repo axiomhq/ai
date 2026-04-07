@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1](https://github.com/axiomhq/ai/compare/axiom-v0.51.0...axiom-v0.51.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **evals:** resolve async context manager via getBuiltinModule ([#297](https://github.com/axiomhq/ai/issues/297)) ([e96dde8](https://github.com/axiomhq/ai/commit/e96dde8f9427926fd431240bec17597a4d2250b9))
+
 ## [0.51.0](https://github.com/axiomhq/ai/compare/axiom-v0.50.0...axiom-v0.51.0) (2026-03-27)
 
 
