@@ -344,11 +344,7 @@ export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomC
   }
 
   const vitestConfig = config.eval?.vitestConfig;
-  if (
-    vitestConfig !== undefined &&
-    vitestConfig !== false &&
-    typeof vitestConfig !== 'string'
-  ) {
+  if (vitestConfig !== undefined && vitestConfig !== false && typeof vitestConfig !== 'string') {
     errors.push('eval.vitestConfig must be a string path or false.');
   }
 
