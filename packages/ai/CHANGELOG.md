@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/axiomhq/ai/compare/axiom-v0.51.1...axiom-v0.52.0) (2026-04-17)
+
+
+### Features
+
+* add  `vitestConfig` to axiom.config.ts ([#306](https://github.com/axiomhq/ai/issues/306)) ([e9a59c6](https://github.com/axiomhq/ai/commit/e9a59c626989e17bba70a6b12d6848d1156a5ce6))
+
 ## [0.51.1](https://github.com/axiomhq/ai/compare/axiom-v0.51.0...axiom-v0.51.1) (2026-04-07)
 
 
