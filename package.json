@@ -5,7 +5,10 @@
   "scripts": {
     "build": "turbo build",
     "check:vitest-entrypoints": "pnpm -C packages/ai check:vitest-entrypoints",
+    "gen": "pnpm -C packages/ai gen",
+    "check:gen": "pnpm -C packages/ai check:gen",
     "test": "turbo test",
+    "test:live": "pnpm -C packages/ai test:live",
     "format": "turbo run format",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",

@@ -1,0 +1,953 @@
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AxiomApiClient, clearAxiomApiClientCache } from '../../src/cli/api/client';
+import { createExplainContext } from '../../src/cli/explain/context';
+
+describe('cli api client', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    clearAxiomApiClientCache();
+  });
+
+  it('builds requests and captures explain context', async () => {
+    const fetchMock = vi.fn();
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ name: 'demo' }]), {
+          status: 200,
+          headers: { 'x-request-id': 'req-1' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ name: 'field', type: 'string' }]), {
+          status: 200,
+          headers: { 'x-request-id': 'req-1b' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ matches: [] }), {
+          status: 200,
+          headers: { 'x-request-id': 'req-2' },
+        }),
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const explain = createExplainContext();
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+      explain,
+    });
+
+    await client.listDatasets();
+    await client.getDatasetFields('team/logs');
+    await client.queryApl('dataset/group', 'limit 1', { maxBinAutoGroups: 40 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://api.axiom.co/v2/datasets',
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+          'X-Axiom-Org-Id': 'org',
+        },
+      }),
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api.axiom.co/v2/datasets/team%2Flogs/fields',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+          'X-Axiom-Org-Id': 'org',
+        },
+        body: JSON.stringify({ apl: "['dataset/group'] | limit 1", maxBinAutoGroups: 40 }),
+      }),
+    );
+
+    expect(explain.requests).toEqual([
+      {
+        method: 'GET',
+        path: '/v2/datasets',
+        status: 200,
+        requestId: 'req-1',
+      },
+      {
+        method: 'GET',
+        path: '/v2/datasets/team%2Flogs/fields',
+        status: 200,
+        requestId: 'req-1b',
+      },
+      {
+        method: 'POST',
+        path: '/v1/datasets/_apl?format=legacy',
+        status: 200,
+        requestId: 'req-2',
+      },
+    ]);
+
+    expect(explain.queries).toEqual([
+      {
+        dataset: 'dataset/group',
+        apl: 'limit 1',
+        options: { maxBinAutoGroups: 40 },
+      },
+    ]);
+  });
+
+  it('redacts api token in explain query options', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const explain = createExplainContext();
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+      explain,
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+      apiToken: 'super-secret-token',
+      maxBinAutoGroups: 40,
+    });
+
+    expect(explain.queries).toEqual([
+      {
+        dataset: undefined,
+        apl: "['vercel'] | count()",
+        options: {
+          edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+          apiToken: '[REDACTED]',
+          maxBinAutoGroups: 40,
+        },
+      },
+    ]);
+    expect(JSON.stringify(explain.queries)).not.toContain('super-secret-token');
+  });
+
+  it('adds query params for monitor history', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ history: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.getMonitorHistory('monitor', {
+      start: '2026-01-01T00:00:00Z',
+      end: '2026-01-02T00:00:00Z',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v2/monitors/monitor/history?startTime=2026-01-01T00%3A00%3A00Z&endTime=2026-01-02T00%3A00%3A00Z',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('uses app internal endpoint for monitor list', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.listInternalMonitors();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://app.axiom.co/api/internal/monitors',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('uses app internal endpoint for batch monitor history', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ history: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.getMonitorsHistoryBatch(['mon_1', 'mon_2']);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://app.axiom.co/api/internal/monitors/history?monitorIds=mon_1%2Cmon_2',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('passes raw time range to batch monitor history endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ history: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.getMonitorsHistoryBatch(['mon_1'], { start: 'now-1hr', end: 'now' });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://app.axiom.co/api/internal/monitors/history?monitorIds=mon_1&startTime=now-1hr&endTime=now',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('normalizes leading dataset pipe syntax in apl', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl('vercel', 'vercel | count()', { maxBinAutoGroups: 40 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('keeps raw apl unchanged when dataset is not provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", { maxBinAutoGroups: 40 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('normalizes dataset shorthand when dataset is not provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, 'vercel | count()', { maxBinAutoGroups: 40 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('preserves let-bound table references when dataset is not provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(
+      undefined,
+      `let source = ['alpha'] | where ['level'] == "error";
+source | count()`,
+      { maxBinAutoGroups: 40 },
+    );
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://api.axiom.co/v1/datasets/_apl?format=legacy');
+    const payload = JSON.parse(String(requestInit.body)) as { apl: string };
+    expect(payload.apl).toContain('source | count()');
+    expect(payload.apl).not.toContain("['source'] |");
+  });
+
+  it('injects dataset after let statements', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(
+      'traces',
+      `let start = datetime(2026-01-01T00:00:00Z);
+let end = datetime(2026-01-01T01:00:00Z);
+range start to end | count()`,
+      { maxBinAutoGroups: 40 },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          apl:
+            "let start = datetime(2026-01-01T00:00:00Z);\nlet end = datetime(2026-01-01T01:00:00Z);\n['traces'] | range start to end | count()",
+          maxBinAutoGroups: 40,
+        }),
+      }),
+    );
+  });
+
+  it('queries explicit edge URL with an edge token override', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      maxBinAutoGroups: 40,
+      edgeUrl: 'https://eu-central-1.aws.edge.axiom.co',
+      apiToken: 'edge-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer edge-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apl: "['vercel'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('uses configured edge host for query requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://eu-central-1.aws.edge.axiom.co',
+      token: 'edge-token',
+      orgId: 'org',
+    });
+
+    await client.queryApl('vercel', 'count()', { maxBinAutoGroups: 40 });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer edge-token');
+    expect(headers['X-Axiom-Org-Id']).toBeUndefined();
+  });
+
+  it('treats blank query token overrides as unset', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      maxBinAutoGroups: 40,
+      edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+      apiToken: '   ',
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer control-token');
+  });
+
+  it('uses apiToken override on legacy query endpoint', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '0');
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ matches: [{ ok: true }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.queryApl(undefined, "['vercel'] | count()", {
+      maxBinAutoGroups: 40,
+      apiToken: 'override-token',
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://api.axiom.co/v1/datasets/_apl?format=legacy');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer override-token');
+  });
+
+  it('uses v1 dataset ingest path on API hosts', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ingested: 2, failed: 0, failures: [], processedBytes: 16 }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', Buffer.from('{"ok":true}\n', 'utf8'), {
+      contentType: 'ndjson',
+      contentEncoding: 'identity',
+      timestampField: '_time',
+      timestampFormat: 'RFC3339',
+      delimiter: ',',
+      labels: { env: 'prod' },
+      csvFields: ['a', 'b'],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/logs/ingest?timestamp-field=_time&timestamp-format=RFC3339&csv-delimiter=%2C',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/x-ndjson',
+          'X-Axiom-Org-Id': 'org',
+          'X-Axiom-Event-Labels': JSON.stringify({ env: 'prod' }),
+        },
+      }),
+    );
+  });
+
+  it('maps ingest content types to MIME headers', async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ingested: 1, failed: 0, failures: [], processedBytes: 8 }), {
+          status: 200,
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', '{"ok":true}', { contentType: 'json' });
+    await client.ingestDataset('logs', 'a,b\n1,2\n', { contentType: 'csv' });
+    await client.ingestDataset('logs', '{"ok":true}\n', { contentType: 'ndjson' });
+
+    const headers = fetchMock.mock.calls.map(([, init]) => (init as RequestInit).headers);
+    expect(headers).toEqual([
+      expect.objectContaining({ 'Content-Type': 'application/json' }),
+      expect.objectContaining({ 'Content-Type': 'text/csv' }),
+      expect.objectContaining({ 'Content-Type': 'application/x-ndjson' }),
+    ]);
+  });
+
+  it('uses edge ingest path and edge token override when edge url is set', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ingested: 1, failed: 0, failures: [], processedBytes: 8 }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', Buffer.from('{"ok":true}\n', 'utf8'), {
+      contentType: 'ndjson',
+      edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+      apiToken: 'edge-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://us-east-1.aws.edge.axiom.co/v1/ingest/logs',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer edge-token',
+          'Content-Type': 'application/x-ndjson',
+        },
+      }),
+    );
+  });
+
+  it('treats blank ingest token overrides as unset', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ingested: 1, failed: 0, failures: [], processedBytes: 8 }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'control-token',
+      orgId: 'org',
+    });
+
+    await client.ingestDataset('logs', Buffer.from('{"ok":true}\n', 'utf8'), {
+      contentType: 'ndjson',
+      edgeUrl: 'https://us-east-1.aws.edge.axiom.co',
+      apiToken: '   ',
+    });
+
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe('https://us-east-1.aws.edge.axiom.co/v1/ingest/logs');
+    const headers = requestInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer control-token');
+  });
+
+  it('routes dataset queries to edge endpoints when edge routing is enabled', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://app.axiom.co/api/internal/datasets') {
+        return new Response(
+          JSON.stringify([{ name: 'region-eu-central-1', region: 'cloud.eu-central-1.aws' }]),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://app.axiom.co/api/internal/regions') {
+        return new Response(
+          JSON.stringify({
+            axiom: [
+              {
+                id: 'cloud.eu-central-1.aws',
+                instanceName: 'eu-central-1',
+                domain: 'https://eu-central-1.aws.edge.axiom.co',
+              },
+            ],
+            byoc: [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+        return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    const response = await client.queryApl('region-eu-central-1', 'count()', {
+      maxBinAutoGroups: 40,
+    });
+
+    expect(response.data).toEqual({ matches: [{ ok: true }] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apl: "['region-eu-central-1'] | count()",
+          maxBinAutoGroups: 40,
+        }),
+      }),
+    );
+  });
+
+  it('falls back to legacy query endpoint when edge query fails with 404', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://app.axiom.co/api/internal/datasets') {
+        return new Response(JSON.stringify([{ name: 'eu', region: 'cloud.eu-central-1.aws' }]), {
+          status: 200,
+        });
+      }
+      if (url === 'https://app.axiom.co/api/internal/regions') {
+        return new Response(
+          JSON.stringify({
+            axiom: [{ id: 'cloud.eu-central-1.aws', domain: 'https://eu-central-1.aws.edge.axiom.co' }],
+            byoc: [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+        return new Response(JSON.stringify({ message: 'not found' }), { status: 404 });
+      }
+      if (url === 'https://api.axiom.co/v1/datasets/_apl?format=legacy') {
+        return new Response(JSON.stringify({ matches: [{ fallback: true }] }), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    const response = await client.queryApl('eu', 'count()', { maxBinAutoGroups: 40 });
+    expect(response.data).toEqual({ matches: [{ fallback: true }] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.axiom.co/v1/datasets/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ apl: "['eu'] | count()", maxBinAutoGroups: 40 }),
+      }),
+    );
+  });
+
+  it('reuses cached dataset regions and region endpoints across queries', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://app.axiom.co/api/internal/datasets') {
+        return new Response(JSON.stringify([{ name: 'eu', region: 'cloud.eu-central-1.aws' }]), {
+          status: 200,
+        });
+      }
+      if (url === 'https://app.axiom.co/api/internal/regions') {
+        return new Response(
+          JSON.stringify({
+            axiom: [{ id: 'cloud.eu-central-1.aws', domain: 'https://eu-central-1.aws.edge.axiom.co' }],
+            byoc: [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+        return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    await client.queryApl('eu', 'count()', { maxBinAutoGroups: 40 });
+    await client.queryApl('eu', 'count()', { maxBinAutoGroups: 40 });
+
+    const calls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/datasets')).toHaveLength(1);
+    expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/regions')).toHaveLength(1);
+    expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(2);
+  });
+
+  it('scopes edge-routing caches by token when org id is absent', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      const token = headers.Authorization?.replace(/^Bearer\s+/i, '');
+
+      if (url === 'https://app.axiom.co/api/internal/datasets') {
+        if (token === 'token-a') {
+          return new Response(JSON.stringify([{ name: 'shared', region: 'cloud.eu-central-1.aws' }]), {
+            status: 200,
+          });
+        }
+        if (token === 'token-b') {
+          return new Response(JSON.stringify([{ name: 'shared', region: 'cloud.us-east-1.aws' }]), {
+            status: 200,
+          });
+        }
+        return new Response('forbidden', { status: 403 });
+      }
+      if (url === 'https://app.axiom.co/api/internal/regions') {
+        return new Response(
+          JSON.stringify({
+            axiom: [
+              { id: 'cloud.eu-central-1.aws', domain: 'https://eu-central-1.aws.edge.axiom.co' },
+              { id: 'cloud.us-east-1.aws', domain: 'https://us-east-1.aws.edge.axiom.co' },
+            ],
+            byoc: [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+        return new Response(JSON.stringify({ matches: [{ region: 'eu' }] }), { status: 200 });
+      }
+      if (url === 'https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+        return new Response(JSON.stringify({ matches: [{ region: 'us' }] }), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const clientA = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token-a',
+    });
+    const clientB = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token-b',
+    });
+
+    const responseA = await clientA.queryApl('shared', 'count()', { maxBinAutoGroups: 40 });
+    const responseB = await clientB.queryApl('shared', 'count()', { maxBinAutoGroups: 40 });
+
+    expect(responseA.data).toEqual({ matches: [{ region: 'eu' }] });
+    expect(responseB.data).toEqual({ matches: [{ region: 'us' }] });
+
+    const calls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/datasets')).toHaveLength(2);
+    expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(1);
+    expect(calls.filter((url) => url === 'https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(1);
+  });
+
+  it('persists dataset and region caches on disk across client instances', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'axiom-cli-cache-'));
+    vi.stubEnv('AXIOM_CLI_CACHE_DIR', cacheDir);
+
+    try {
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === 'https://app.axiom.co/api/internal/datasets') {
+          return new Response(JSON.stringify([{ name: 'eu', region: 'cloud.eu-central-1.aws' }]), {
+            status: 200,
+          });
+        }
+        if (url === 'https://app.axiom.co/api/internal/regions') {
+          return new Response(
+            JSON.stringify({
+              axiom: [{ id: 'cloud.eu-central-1.aws', domain: 'https://eu-central-1.aws.edge.axiom.co' }],
+              byoc: [],
+            }),
+            { status: 200 },
+          );
+        }
+        if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+          return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
+        }
+        return new Response('not found', { status: 404 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const clientOne = new AxiomApiClient({
+        url: 'https://api.axiom.co',
+        token: 'token',
+        orgId: 'org',
+      });
+      await clientOne.queryApl('eu', 'count()', { maxBinAutoGroups: 40 });
+
+      clearAxiomApiClientCache();
+
+      const clientTwo = new AxiomApiClient({
+        url: 'https://api.axiom.co',
+        token: 'token',
+        orgId: 'org',
+      });
+      await clientTwo.queryApl('eu', 'count()', { maxBinAutoGroups: 40 });
+
+      const calls = fetchMock.mock.calls.map(([url]) => String(url));
+      expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/datasets')).toHaveLength(1);
+      expect(calls.filter((url) => url === 'https://app.axiom.co/api/internal/regions')).toHaveLength(1);
+      expect(calls.filter((url) => url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy')).toHaveLength(2);
+    } finally {
+      await fs.rm(cacheDir, { recursive: true, force: true });
+    }
+  });
+
+  it('chooses the earliest known dataset reference in non-leading APL for edge routing', async () => {
+    vi.stubEnv('AXIOM_CLI_EDGE_ROUTING', '1');
+    vi.stubEnv('AXIOM_CLI_DATASET_REGION_CACHE_TTL_MS', '300000');
+    vi.stubEnv('AXIOM_CLI_REGION_ENDPOINT_CACHE_TTL_MS', '300000');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://app.axiom.co/api/internal/datasets') {
+        return new Response(
+          JSON.stringify([
+            { name: 'dataset-a', region: 'cloud.us-east-1.aws' },
+            { name: 'dataset-b', region: 'cloud.eu-central-1.aws' },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://app.axiom.co/api/internal/regions') {
+        return new Response(
+          JSON.stringify({
+            axiom: [
+              { id: 'cloud.us-east-1.aws', domain: 'https://us-east-1.aws.edge.axiom.co' },
+              { id: 'cloud.eu-central-1.aws', domain: 'https://eu-central-1.aws.edge.axiom.co' },
+            ],
+            byoc: [],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url === 'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy') {
+        return new Response(JSON.stringify({ matches: [{ ok: true }] }), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new AxiomApiClient({
+      url: 'https://api.axiom.co',
+      token: 'token',
+      orgId: 'org',
+    });
+
+    const response = await client.queryApl(
+      undefined,
+      `let threshold = 10;
+print seed=1
+| join kind=inner (['dataset-b'] | summarize total=count()) on seed
+| join kind=inner (['dataset-a'] | summarize total=count()) on seed`,
+      { maxBinAutoGroups: 40 },
+    );
+
+    expect(response.data).toEqual({ matches: [{ ok: true }] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://eu-central-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining("['dataset-b']"),
+      }),
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      'https://us-east-1.aws.edge.axiom.co/v1/query/_apl?format=legacy',
+      expect.anything(),
+    );
+  });
+});

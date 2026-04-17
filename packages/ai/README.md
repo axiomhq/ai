@@ -105,3 +105,18 @@ await withSpan({ capability: 'qa', step: 'answer' }, async () => {
 ## Documentation
 
 For more information about how to set up and use the Axiom JavaScript SDK, read documentation on [axiom.co/docs/ai-engineering/quickstart](https://axiom.co/docs/ai-engineering/quickstart).
+
+## CLI Completions
+
+The package ships generated completion scripts:
+
+- `generated/completions/axiom.bash`
+- `generated/completions/axiom.zsh`
+- `generated/completions/axiom.fish`
+- `generated/completions/axiom.ps1`
+
+You can also print them directly from the CLI:
+
+```bash
+axiom completion bash | source /dev/stdin
+```

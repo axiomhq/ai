@@ -1,0 +1,68 @@
+Register-ArgumentCompleter -Native -CommandName axiom -ScriptBlock {
+  param($wordToComplete, $commandAst, $cursorPosition)
+
+  $values = @(
+    '--api-token',
+    '--apl',
+    '--content-encoding',
+    '--content-type',
+    '--continue-on-error',
+    '--csv-fields',
+    '--delimiter',
+    '--edge-url',
+    '--end',
+    '--explain',
+    '--file',
+    '--format',
+    '--label',
+    '--max-bin-auto-groups',
+    '--org-id',
+    '--quiet',
+    '--since',
+    '--start',
+    '--stdin',
+    '--time-zone',
+    '--timestamp-field',
+    '--timestamp-format',
+    '--token',
+    '--until',
+    '--url',
+    'auth',
+    'auto',
+    'bash',
+    'completion',
+    'csv',
+    'datasets',
+    'eval',
+    'fish',
+    'get',
+    'gzip',
+    'history',
+    'identity',
+    'ingest',
+    'json',
+    'jsonl',
+    'list',
+    'login',
+    'logout',
+    'mcp',
+    'monitors',
+    'ndjson',
+    'powershell',
+    'query',
+    'sample',
+    'schema',
+    'status',
+    'switch',
+    'table',
+    'version',
+    'zsh',
+    'zstd'
+  )
+
+  $values |
+    Where-Object { $_ -like "$wordToComplete*" } |
+    ForEach-Object {
+      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+    }
+}
