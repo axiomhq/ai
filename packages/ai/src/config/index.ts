@@ -180,6 +180,16 @@ export interface AxiomConfigBase {
      * @example ['**\/node_modules/**', '**\/.next/**']
      */
     exclude?: string[];
+    /**
+     * Optional Vitest config file to load for eval runs.
+     *
+     * When omitted or set to false, evals run without loading any Vitest config,
+     * keeping them isolated from the application's Vite/Vitest plugin graph.
+     *
+     * @default false
+     * @example './vitest.eval.config.ts'
+     */
+    vitestConfig?: string | false;
   };
 }
 
@@ -286,6 +296,7 @@ export function createPartialDefaults(): Partial<AxiomConfigBase> {
       include: [...DEFAULT_EVAL_INCLUDE],
       exclude: [],
       timeoutMs: 60_000,
+      vitestConfig: false,
     },
   };
 }
@@ -330,6 +341,15 @@ export function validateConfig(config: Partial<AxiomConfigBase>): ResolvedAxiomC
     errors.push(
       'eval.instrumentation must be a function returning OTEL setup information or null.',
     );
+  }
+
+  const vitestConfig = config.eval?.vitestConfig;
+  if (
+    vitestConfig !== undefined &&
+    vitestConfig !== false &&
+    typeof vitestConfig !== 'string'
+  ) {
+    errors.push('eval.vitestConfig must be a string path or false.');
   }
 
   if (errors.length > 0) {

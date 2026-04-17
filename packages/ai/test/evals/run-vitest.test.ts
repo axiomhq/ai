@@ -56,6 +56,7 @@ const resolvedConfig: ResolvedAxiomConfig = {
     timeoutMs: 60_000,
     include: ['**/*.eval.ts'],
     exclude: ['**/node_modules/**'],
+    vitestConfig: false,
   },
 };
 
@@ -142,9 +143,41 @@ describe('runVitest', () => {
         config: false,
         mode: 'eval',
         name: 'axiom:eval',
+        setupFiles: [],
       }),
       expect.any(Object),
     );
+  });
+
+  it('uses an explicit vitest config path when configured', async () => {
+    const vitest = createVitestInstance();
+
+    mocks.createVitest.mockResolvedValue(vitest);
+
+    await expect(
+      runVitest('.', {
+        ...baseOptions,
+        configPath: '/tmp/project/axiom.config.ts',
+        config: {
+          ...resolvedConfig,
+          eval: {
+            ...resolvedConfig.eval,
+            vitestConfig: './vitest.eval.config.ts',
+          },
+        },
+      }),
+    ).rejects.toThrow('process.exit:0');
+
+    expect(mocks.createVitest).toHaveBeenCalledWith(
+      'test',
+      expect.objectContaining({
+        config: '/tmp/project/vitest.eval.config.ts',
+        mode: 'eval',
+        name: 'axiom:eval',
+      }),
+      expect.any(Object),
+    );
+    expect(mocks.createVitest.mock.calls[0]?.[1]).not.toHaveProperty('setupFiles');
   });
 
   it('exits 0 after a successful non-watch run', async () => {

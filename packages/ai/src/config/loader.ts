@@ -32,6 +32,7 @@ function customMerger(target: any, source: any): any {
  */
 export interface LoadConfigResult {
   config: ResolvedAxiomConfig;
+  configPath?: string;
 }
 
 /**
@@ -68,6 +69,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<LoadConfi
 
     return {
       config: validatedConfig,
+      configPath: result._configFile,
     };
   } catch (error) {
     if (error instanceof AxiomCLIError) {

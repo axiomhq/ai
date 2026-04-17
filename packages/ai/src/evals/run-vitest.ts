@@ -1,5 +1,5 @@
 import c from 'tinyrainbow';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -82,6 +82,7 @@ export const runVitest = async (
     list?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
+    configPath?: string;
     runId: string;
     consoleUrl?: string;
   },
@@ -133,11 +134,18 @@ export const runVitest = async (
 
   const evalTimeoutMs = opts.config?.eval?.timeoutMs || 60_000;
   const hookTimeoutMs = Math.max(evalTimeoutMs, 60_000);
+  const vitestConfig =
+    typeof opts.config.eval.vitestConfig === 'string'
+      ? resolve(
+          opts.configPath ? dirname(opts.configPath) : dir || process.cwd(),
+          opts.config.eval.vitestConfig,
+        )
+      : false;
 
   const vi = await createVitest(
     'test',
     {
-      config: false,
+      config: vitestConfig,
       root: dir ? dir : process.cwd(),
       mode: VITEST_MODE,
       include: opts.include,
@@ -147,7 +155,6 @@ export const runVitest = async (
       environment: 'node',
       browser: undefined,
       watch: opts.watch,
-      setupFiles: [],
       name: 'axiom:eval',
       printConsoleTrace: true,
       silent: false,
@@ -166,6 +173,7 @@ export const runVitest = async (
         runId: opts.runId,
         consoleUrl: opts.consoleUrl,
       },
+      ...(vitestConfig === false ? { setupFiles: [] } : {}),
     },
     {
       plugins: [tsconfigPaths({ root: dir || process.cwd() })],

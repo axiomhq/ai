@@ -36,6 +36,7 @@ const createConfig = (overrides: TestHookOverrides = {}) => {
       include: [],
       exclude: [],
       timeoutMs: 60_000,
+      vitestConfig: false,
     },
   } as ResolvedAxiomConfig;
 };

@@ -26,6 +26,7 @@ const createConfig = (): ResolvedAxiomConfig =>
       include: [],
       exclude: [],
       timeoutMs: 10_000,
+      vitestConfig: false,
     },
   }) as ResolvedAxiomConfig;
 
