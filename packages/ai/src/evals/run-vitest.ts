@@ -25,6 +25,18 @@ const getCurrentDir = (): string => {
 
 const evalsRunnerPath = resolve(getCurrentDir(), 'evals', 'custom-runner.js');
 
+export const resolveVitestConfigPath = (
+  vitestConfig: ResolvedAxiomConfig['eval']['vitestConfig'],
+  configPath?: string,
+  rootDir?: string,
+): string | false => {
+  if (typeof vitestConfig !== 'string') {
+    return false;
+  }
+
+  return resolve(configPath ? dirname(configPath) : rootDir || process.cwd(), vitestConfig);
+};
+
 const printCollectedEvals = (result: TestRunResult, rootDir: string) => {
   if (!result.testModules || result.testModules.length === 0) {
     console.log(c.yellow('\nNo evaluations found\n'));
@@ -134,13 +146,7 @@ export const runVitest = async (
 
   const evalTimeoutMs = opts.config?.eval?.timeoutMs || 60_000;
   const hookTimeoutMs = Math.max(evalTimeoutMs, 60_000);
-  const vitestConfig =
-    typeof opts.config.eval.vitestConfig === 'string'
-      ? resolve(
-          opts.configPath ? dirname(opts.configPath) : dir || process.cwd(),
-          opts.config.eval.vitestConfig,
-        )
-      : false;
+  const vitestConfig = resolveVitestConfigPath(opts.config.eval.vitestConfig, opts.configPath, dir);
 
   const vi = await createVitest(
     'test',
