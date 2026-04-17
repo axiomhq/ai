@@ -83,7 +83,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
           const isGlobPattern = isGlob(target);
 
           // Load config file first to get defaults
-          const { config: loadedConfig } = await loadConfig('.');
+          const { config: loadedConfig, configPath } = await loadConfig('.');
 
           // Validate CLI flags against schema
           validateFlagOverrides(flagOverrides, loadedConfig.eval.flagSchema);
@@ -164,6 +164,7 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               list: options.list,
               overrides: flagOverrides,
               config,
+              configPath,
               runId,
               consoleUrl: options.consoleUrl,
             });

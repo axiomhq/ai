@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadConfig } from '../../src/config/loader';
 import { DEFAULT_EVAL_INCLUDE } from '../../src/config/index';
@@ -35,6 +35,7 @@ describe('loadConfig', () => {
       async (dir) => {
         const { config } = await loadConfig(dir);
         expect(config.eval.include).toEqual([...DEFAULT_EVAL_INCLUDE]);
+        expect(config.eval.vitestConfig).toBe(false);
       },
     );
   });
@@ -57,6 +58,26 @@ describe('loadConfig', () => {
       },
     );
   });
+
+  it('preserves a user provided vitest config path', async () => {
+    await withTempConfigDir(
+      `
+        module.exports = {
+          eval: {
+            token: 'test-token',
+            dataset: 'test-dataset',
+            vitestConfig: './vitest.eval.config.ts',
+          },
+        };
+      `,
+      async (dir) => {
+        const { config, configPath } = await loadConfig(dir);
+        expect(config.eval.vitestConfig).toBe('./vitest.eval.config.ts');
+        expect(configPath).toBeDefined();
+        expect(basename(configPath!)).toBe('axiom.config.cjs');
+      },
+    );
+  });
 });
 
 describe('resolveAxiomConnection', () => {
@@ -75,6 +96,7 @@ describe('resolveAxiomConnection', () => {
         include: [],
         exclude: [],
         timeoutMs: 60_000,
+        vitestConfig: false,
         ...overrides,
       },
     }) as ResolvedAxiomConfig;

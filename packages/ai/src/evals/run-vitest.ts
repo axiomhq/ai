@@ -1,5 +1,5 @@
 import c from 'tinyrainbow';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +24,18 @@ const getCurrentDir = (): string => {
 };
 
 const evalsRunnerPath = resolve(getCurrentDir(), 'evals', 'custom-runner.js');
+
+export const resolveVitestConfigPath = (
+  vitestConfig: ResolvedAxiomConfig['eval']['vitestConfig'],
+  configPath?: string,
+  rootDir?: string,
+): string | false => {
+  if (typeof vitestConfig !== 'string') {
+    return false;
+  }
+
+  return resolve(configPath ? dirname(configPath) : rootDir || process.cwd(), vitestConfig);
+};
 
 const printCollectedEvals = (result: TestRunResult, rootDir: string) => {
   if (!result.testModules || result.testModules.length === 0) {
@@ -82,6 +94,7 @@ export const runVitest = async (
     list?: boolean;
     overrides?: Record<string, any>;
     config: ResolvedAxiomConfig;
+    configPath?: string;
     runId: string;
     consoleUrl?: string;
   },
@@ -133,11 +146,12 @@ export const runVitest = async (
 
   const evalTimeoutMs = opts.config?.eval?.timeoutMs || 60_000;
   const hookTimeoutMs = Math.max(evalTimeoutMs, 60_000);
+  const vitestConfig = resolveVitestConfigPath(opts.config.eval.vitestConfig, opts.configPath, dir);
 
   const vi = await createVitest(
     'test',
     {
-      config: false,
+      config: vitestConfig,
       root: dir ? dir : process.cwd(),
       mode: VITEST_MODE,
       include: opts.include,
@@ -147,7 +161,6 @@ export const runVitest = async (
       environment: 'node',
       browser: undefined,
       watch: opts.watch,
-      setupFiles: [],
       name: 'axiom:eval',
       printConsoleTrace: true,
       silent: false,
@@ -166,6 +179,7 @@ export const runVitest = async (
         runId: opts.runId,
         consoleUrl: opts.consoleUrl,
       },
+      ...(vitestConfig === false ? { setupFiles: [] } : {}),
     },
     {
       plugins: [tsconfigPaths({ root: dir || process.cwd() })],
