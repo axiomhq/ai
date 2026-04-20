@@ -10,7 +10,7 @@
     "@ai-sdk/openaiv3": "npm:@ai-sdk/openai@3.0.9",
     "@opentelemetry/api": "^1.4.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.41.0",
-    "@opentelemetry/resources": "^1.13.0",
+    "@opentelemetry/resources": "^2.7.0",
     "@opentelemetry/sdk-trace-base": "^1.13.0",
     "@opentelemetry/sdk-trace-node": "^1.13.0",
     "@opentelemetry/semantic-conventions": "^1.13.0",

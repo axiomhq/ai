@@ -75,7 +75,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.60.1",
     "@opentelemetry/context-async-hooks": "^2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.202.0",
-    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/resources": "^2.7.0",
     "@opentelemetry/sdk-trace-node": "^2.0.1",
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "@sinclair/typebox": "^0.34.37",
