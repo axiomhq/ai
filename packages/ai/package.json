@@ -72,7 +72,7 @@
   "license": "MIT",
   "dependencies": {
     "@next/env": "^15.4.2",
-    "@opentelemetry/auto-instrumentations-node": "^0.60.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.75.0",
     "@opentelemetry/context-async-hooks": "^2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.202.0",
     "@opentelemetry/resources": "^2.0.1",
