@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/axiomhq/ai/compare/axiom-v0.52.0...axiom-v0.52.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* update @opentelemetry/* to address CVE-2026-44902 ([#316](https://github.com/axiomhq/ai/issues/316)) ([831d6d0](https://github.com/axiomhq/ai/commit/831d6d0459f32c2fb0b7bbf1ba1aeb8c2bb4fbd3))
+
 ## [0.52.0](https://github.com/axiomhq/ai/compare/axiom-v0.51.1...axiom-v0.52.0) (2026-04-17)
 
 
