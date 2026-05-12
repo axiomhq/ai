@@ -125,7 +125,7 @@
     "tinyrainbow": "^2.0.0",
     "tsup": "catalog:",
     "typedoc": "^0.28.17",
-    "typedoc-plugin-markdown": "^4.10.0",
+    "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"
