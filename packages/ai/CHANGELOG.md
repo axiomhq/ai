@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.2](https://github.com/axiomhq/ai/compare/axiom-v0.52.1...axiom-v0.52.2) (2026-05-12)
+
+
+### Bug Fixes
+
+* **deps:** patch protobufjs vulnerabilities CVE-2026-44290 [AXM-12006] ([#328](https://github.com/axiomhq/ai/issues/328)) ([222d511](https://github.com/axiomhq/ai/commit/222d511feaef76b17f930ef3fa74d3ec27534f80))
+
 ## [0.52.1](https://github.com/axiomhq/ai/compare/axiom-v0.52.0...axiom-v0.52.1) (2026-05-11)
 
 
