@@ -137,6 +137,7 @@ export class AxiomReporter implements Reporter {
       cases,
       outOfScopeFlags: meta.evaluation.outOfScopeFlags,
       registrationStatus: meta.evaluation.registrationStatus,
+      instrumentationError: meta.evaluation.instrumentationError,
     });
 
     printEvalNameAndFileName(testSuite, meta);
