@@ -1,0 +1,40 @@
+{
+  "name": "example-instrumentations-nextjs-v7",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint './**/*.{js,ts}'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.0-beta.44",
+    "@ai-sdk/otel": "1.0.0-beta.62",
+    "@ai-sdk/react": "4.0.0-beta.116",
+    "@ai-sdk/rsc": "^2.0.191",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-jaeger": "^2.7.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
+    "@opentelemetry/resources": "^2.7.1",
+    "@opentelemetry/sdk-trace-node": "^2.7.1",
+    "@opentelemetry/semantic-conventions": "^1.41.1",
+    "ai": "7.0.0-beta.116",
+    "axiom": "workspace:*",
+    "next": "latest",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@types/node": "^22.19.19",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

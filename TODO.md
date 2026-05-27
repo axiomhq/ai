@@ -1,0 +1,2 @@
+- have only done the generate-text example so far
+- how to add root attributes to the span
