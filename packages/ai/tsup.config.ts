@@ -8,7 +8,6 @@ const sharedConfig = {
     'vitest',
     'vitest/node',
     'vitest/runners',
-    'esbuild',
     'fsevents',
     'c12',
     'defu',
@@ -50,7 +49,6 @@ export default defineConfig([
       'src/scorers/scorers.ts',
       'src/evals/online.ts',
     ],
-    noExternal: ['handlebars'],
     clean: false,
   },
 ]);

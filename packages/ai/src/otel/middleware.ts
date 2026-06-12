@@ -1,7 +1,6 @@
 import {
   type LanguageModelV1,
   type LanguageModelV1CallOptions,
-  type LanguageModelV1Prompt,
   type LanguageModelV1StreamPart,
 } from '@ai-sdk/providerv1';
 import {
@@ -14,7 +13,6 @@ import {
   type LanguageModelV2Usage,
   type LanguageModelV2ResponseMetadata,
   type LanguageModelV2FinishReason,
-  type LanguageModelV2Prompt,
 } from '@ai-sdk/providerv2';
 import {
   type LanguageModelV3,
@@ -26,7 +24,6 @@ import {
   type LanguageModelV3Usage,
   type LanguageModelV3ResponseMetadata,
   type LanguageModelV3FinishReason,
-  type LanguageModelV3Prompt,
 } from '@ai-sdk/providerv3';
 import { type LanguageModelV1Middleware } from 'aiv4';
 
@@ -74,34 +71,11 @@ import {
   TextAggregatorV3,
   StreamStatsV3,
 } from './streaming/aggregators';
-import type { AxiomPromptMetadata } from '../types/metadata';
 import { getRedactionPolicy, handleMaybeRedactedAttribute } from './utils/redaction';
 
 export interface AxiomTelemetryConfig {
   // Future configuration options can be added here
 }
-
-const appendPromptMetadataToSpan = (
-  span: Span,
-  messages: LanguageModelV1Prompt | LanguageModelV2Prompt | LanguageModelV3Prompt,
-) => {
-  const lastMessage = messages?.[messages.length - 1];
-
-  let axiomMeta: AxiomPromptMetadata | undefined;
-
-  if ('providerMetadata' in lastMessage) {
-    axiomMeta = lastMessage?.providerMetadata?._axiomMeta as AxiomPromptMetadata | undefined;
-  } else if ('providerOptions' in lastMessage) {
-    axiomMeta = lastMessage?.providerOptions?._axiomMeta as AxiomPromptMetadata | undefined;
-  }
-
-  if (axiomMeta) {
-    if (axiomMeta.id) span.setAttribute(Attr.GenAI.PromptMetadata.ID, axiomMeta.id);
-    if (axiomMeta.name) span.setAttribute(Attr.GenAI.PromptMetadata.Name, axiomMeta.name);
-    if (axiomMeta.slug) span.setAttribute(Attr.GenAI.PromptMetadata.Slug, axiomMeta.slug);
-    if (axiomMeta.version) span.setAttribute(Attr.GenAI.PromptMetadata.Version, axiomMeta.version);
-  }
-};
 
 function setStreamStepAttributes(
   span: Span,
@@ -133,8 +107,6 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
         async (span, commonContext, _lease) => {
           const context = commonContext as GenAiSpanContextV1;
 
-          appendPromptMetadataToSpan(span, params.prompt);
-
           // Pre-call setup
           setScopeAttributes(span);
           setPreCallAttributesV1(span, params, context, model);
@@ -158,8 +130,6 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
         model.modelId,
         async (span, commonContext, lease) => {
           const context = commonContext as GenAiSpanContextV1;
-
-          appendPromptMetadataToSpan(span, params.prompt);
 
           // Pre-call setup
           setScopeAttributes(span);
@@ -270,8 +240,6 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
         async (span, commonContext, _lease) => {
           const context = commonContext as GenAiSpanContextV2;
 
-          appendPromptMetadataToSpan(span, params.prompt);
-
           // Pre-call setup
           setScopeAttributes(span);
           setPreCallAttributesV2(span, params, context, model);
@@ -292,8 +260,6 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
         model.modelId,
         async (span, commonContext, lease) => {
           const context = commonContext as GenAiSpanContextV2;
-
-          appendPromptMetadataToSpan(span, params.prompt);
 
           // Pre-call setup
           setScopeAttributes(span);
@@ -671,8 +637,6 @@ export function axiomAIMiddlewareV3(/* _config?: AxiomTelemetryConfig */): Langu
         async (span, commonContext, _lease) => {
           const context = commonContext as GenAiSpanContextV3;
 
-          appendPromptMetadataToSpan(span, params.prompt);
-
           // Pre-call setup
           setScopeAttributes(span);
           setPreCallAttributesV3(span, params, context, model);
@@ -693,8 +657,6 @@ export function axiomAIMiddlewareV3(/* _config?: AxiomTelemetryConfig */): Langu
         model.modelId,
         async (span, commonContext, lease) => {
           const context = commonContext as GenAiSpanContextV3;
-
-          appendPromptMetadataToSpan(span, params.prompt);
 
           // Pre-call setup
           setScopeAttributes(span);

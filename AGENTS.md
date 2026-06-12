@@ -87,7 +87,7 @@ Two-pass build:
 1. Client-compatible modules (`feedback.ts`) — `clean: true`, `shims: false`
 2. Server-side modules (everything else) — `clean: false`, `shims: true`
 
-Both passes output ESM + CJS. `handlebars` is bundled (`noExternal`); vitest and OTEL are external.
+Both passes output ESM + CJS. Vitest and OTEL are external.
 
 `__SDK_VERSION__` is defined at build time from `package.json`.
 
