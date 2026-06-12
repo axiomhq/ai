@@ -1,6 +1,25 @@
-import { generateText, stepCountIs, tool } from 'ai';
+import { generateText, stepCountIs, tool, zodSchema } from 'ai';
 import { z } from 'zod';
 import { gpt4oMini } from '@/shared/openai';
+
+type DirectionsInput = {
+  from: string;
+  to: string;
+};
+
+type DirectionsContext = {
+  userId: number;
+  routePreference: 'fastest' | 'scenic';
+};
+
+type DirectionsOutput = {
+  from: string;
+  to: string;
+  directions: string;
+  routePreference: DirectionsContext['routePreference'];
+  toolCallId: string;
+  userId: number;
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +34,17 @@ export default async function Page() {
       'flat.foo': 'bar', // arrives
       nested: { foo: 'bar' }, // does not arrive
     },
-    sensitiveRuntimeContext: {
-      userId: true,
-    },
     telemetry: {
       functionId: 'generate-text-directions',
       isEnabled: true,
+      includeRuntimeContext: {
+        requestId: true,
+      },
+      includeToolsContext: {
+        findDirections: {
+          routePreference: true,
+        },
+      },
     },
     model: gpt4oMini,
     stopWhen: stepCountIs(5),
@@ -33,19 +57,20 @@ export default async function Page() {
       },
     ],
     tools: {
-      findDirections: tool({
+      findDirections: tool<DirectionsInput, DirectionsOutput, DirectionsContext>({
         description: 'Find directions to a location',
-        inputSchema: z.object({
-          from: z.string().describe('The location to start from'),
-          to: z.string().describe('The location to find directions to'),
-        }),
-        contextSchema: z.object({
-          userId: z.number(),
-          routePreference: z.enum(['fastest', 'scenic']),
-        }),
-        sensitiveContext: {
-          userId: true,
-        },
+        inputSchema: zodSchema(
+          z.object({
+            from: z.string().describe('The location to start from'),
+            to: z.string().describe('The location to find directions to'),
+          }),
+        ),
+        contextSchema: zodSchema(
+          z.object({
+            userId: z.number(),
+            routePreference: z.enum(['fastest', 'scenic']),
+          }),
+        ),
         execute: async (params, { abortSignal, context, toolCallId }) => {
           const { from, to } = params;
           // Simulate API call delay

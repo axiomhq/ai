@@ -1,17 +1,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Next.js with OpenTelemetry',
-  description: 'Next.js with OpenTelemetry',
+  title: 'Next.js with Vercel AI SDK v7 telemetry',
+  description: 'Next.js with Vercel AI SDK v7 OpenTelemetry',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <h1>Next.js with Vercel AI SDK v7 and axiom</h1>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -25,9 +25,7 @@ export default function StreamText2() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-2">Stream Text 2</h1>
-      <p className="text-gray-600 mb-6">
-        Demo using withSpan with Response streams (proper usage pattern)
-      </p>
+      <p className="text-gray-600 mb-6">Demo using AI SDK telemetry with Response streams</p>
 
       <form onSubmit={handleSubmit} className="mb-6">
         <div className="flex gap-2">

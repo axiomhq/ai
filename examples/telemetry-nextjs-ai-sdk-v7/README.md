@@ -1,11 +1,12 @@
 # Next.js with Opentelemetry example
 
-This is a reference example for using Axiom with the Vercel AI SDK v7 with Next.js. The example shows steps for:
+This is a reference example for using Axiom with the Vercel AI SDK v7 with Next.js. It uses the AI SDK's built-in OpenTelemetry integration and does not require `axiom/ai` middleware or wrappers. The example shows steps for:
 
 - Setting up an OpenTelemetry tracer under `src/instrumentation.ts` that points to Axiom
 - Registering AI SDK v7 OpenTelemetry integration under `src/instrumentation.node.ts`
 - Configuring an OpenAI model under `src/shared/openai.ts`
 - Using runtime context and tool context with `generateText()` under `src/app/generate-text/page.tsx`
+- Running a `ToolLoopAgent` demo with direct tools and subagents under `src/app/tools-and-subagents/page.tsx`
 
 ## How to use
 

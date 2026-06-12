@@ -10,6 +10,9 @@ export default function Page() {
           <Link href="/generate-text">Generate Text Example</Link>
         </li>
         <li>
+          <Link href="/tools-and-subagents">Tools and Subagents Example</Link>
+        </li>
+        <li>
           <Link href="/stream-text-ai-sdk-react">Stream Text Example (@ai-sdk/react)</Link>
         </li>
         <li>
