@@ -22,5 +22,3 @@ onlyBuiltDependencies:
   - protobufjs
   - sharp
   - unrs-resolver
-minimumReleaseAgeExclude:
-  - "next@16.0.7"
