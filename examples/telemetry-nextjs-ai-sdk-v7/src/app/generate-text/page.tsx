@@ -31,12 +31,9 @@ export default async function Page() {
     runtimeContext: {
       requestId,
       userId,
-      'flat.foo': 'bar', // arrives
-      nested: { foo: 'bar' }, // does not arrive
     },
     telemetry: {
       functionId: 'generate-text-directions',
-      isEnabled: true,
       includeRuntimeContext: {
         requestId: true,
       },

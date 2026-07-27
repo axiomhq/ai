@@ -5,7 +5,6 @@ import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { OpenTelemetry } from '@ai-sdk/otel';
 import { registerTelemetry } from 'ai';
-import { tracer } from './tracer';
 
 export function setupTelemetry(config: {
   url: string;
@@ -37,7 +36,6 @@ export function setupTelemetry(config: {
 
   registerTelemetry(
     new OpenTelemetry({
-      tracer,
       providerMetadata: true,
       runtimeContext: true,
       toolChoice: true,
