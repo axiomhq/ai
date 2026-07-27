@@ -1,13 +1,15 @@
 import { Command, Argument, Option } from 'commander';
 import { customAlphabet } from 'nanoid';
 import { lstatSync } from 'node:fs';
+import c from 'tinyrainbow';
+
 import { runEvalWithContext } from '../utils/eval-context-runner';
 import { validateFlagOverrides, type FlagOverrides } from '../utils/parse-flag-overrides';
 import { isGlob } from '../utils/glob-utils';
 import { loadConfig } from '../../config/loader';
 import { AxiomCLIError } from '../../util/errors';
 import { getAuthContext } from '../auth/global-auth';
-import c from 'tinyrainbow';
+import { validateTokenPermissions } from '../../config/validate-eval-token-permissions';
 
 const createRunId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
@@ -130,6 +132,15 @@ export const loadEvalCommand = (program: Command, flagOverrides: FlagOverrides =
               ),
             );
             console.log('');
+          }
+
+          // Validate token permissions before running evals (skip in debug mode)
+          if (!options.debug) {
+            const result = await validateTokenPermissions(config);
+            if (!result.valid) {
+              console.error(`\n❌ ${result.errors.join('\n')} \n`);
+              process.exit(1);
+            }
           }
 
           const runId = createRunId();

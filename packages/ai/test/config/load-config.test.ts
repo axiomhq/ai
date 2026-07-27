@@ -107,6 +107,7 @@ describe('resolveAxiomConnection', () => {
 
     expect(connection.edgeUrl).toBe('https://api.axiom.co');
     expect(connection.url).toBe('https://api.axiom.co');
+    expect(connection.edgeRegion).toBe('us-east-1');
   });
 
   it('uses edgeUrl when explicitly set', () => {
@@ -118,6 +119,7 @@ describe('resolveAxiomConnection', () => {
 
     expect(connection.edgeUrl).toBe('https://eu-central-1.aws.edge.axiom.co');
     expect(connection.url).toBe('https://api.axiom.co');
+    expect(connection.edgeRegion).toBe('eu-central-1');
   });
 
   it('falls back to url when edgeUrl is empty string', () => {
@@ -125,5 +127,33 @@ describe('resolveAxiomConnection', () => {
     const connection = resolveAxiomConnection(config);
 
     expect(connection.edgeUrl).toBe('https://api.axiom.co');
+    expect(connection.edgeRegion).toBe('us-east-1');
+  });
+
+  it('defaults edgeRegion to us-east-1 for non-edge hosts', () => {
+    const config = createConfig({
+      url: 'https://api.axiom.co',
+      edgeUrl: 'https://api.dev.axiomtestlabs.co',
+    });
+    const connection = resolveAxiomConnection(config);
+
+    expect(connection.edgeRegion).toBe('us-east-1');
+  });
+
+  it('defaults edgeRegion to us-east-1 for localhost edgeUrl', () => {
+    const config = createConfig({ url: 'https://api.axiom.co', edgeUrl: 'http://localhost:3000' });
+    const connection = resolveAxiomConnection(config);
+
+    expect(connection.edgeRegion).toBe('us-east-1');
+  });
+
+  it('resolves edgeRegion when edge host does not include edge segment', () => {
+    const config = createConfig({
+      url: 'https://api.axiom.co',
+      edgeUrl: 'https://us-east-1.aws.axiom.co',
+    });
+    const connection = resolveAxiomConnection(config);
+
+    expect(connection.edgeRegion).toBe('us-east-1');
   });
 });
