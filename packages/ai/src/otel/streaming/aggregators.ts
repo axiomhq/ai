@@ -2,6 +2,7 @@ import {
   type LanguageModelV1StreamPart,
   type LanguageModelV1FunctionToolCall,
   type LanguageModelV1FinishReason,
+  type LanguageModelV1ProviderMetadata,
 } from '@ai-sdk/providerv1';
 
 import {
@@ -10,6 +11,7 @@ import {
   type LanguageModelV2FinishReason,
   type LanguageModelV2Usage,
   type LanguageModelV2ResponseMetadata,
+  type SharedV2ProviderMetadata,
 } from '@ai-sdk/providerv2';
 
 import {
@@ -73,6 +75,7 @@ export class StreamStats {
   private startTime: number;
   private timeToFirstToken?: number;
   private _usage?: { promptTokens: number; completionTokens: number };
+  private _providerMetadata?: LanguageModelV1ProviderMetadata;
   private _finishReason?: LanguageModelV1FinishReason;
   private _responseId?: string;
   private _responseModelId?: string;
@@ -99,6 +102,7 @@ export class StreamStats {
         break;
       case 'finish':
         this._usage = chunk.usage;
+        this._providerMetadata = chunk.providerMetadata;
         this._finishReason = chunk.finishReason;
         break;
     }
@@ -115,6 +119,7 @@ export class StreamStats {
           : undefined,
       finishReason: this._finishReason,
       usage: this._usage,
+      providerMetadata: this._providerMetadata,
     };
   }
 
@@ -164,6 +169,7 @@ export class StreamStatsV2 {
   private startTime: number;
   private timeToFirstToken?: number;
   private _usage?: LanguageModelV2Usage;
+  private _providerMetadata?: SharedV2ProviderMetadata;
   private _finishReason?: LanguageModelV2FinishReason;
   private _responseMetadata?: LanguageModelV2ResponseMetadata;
 
@@ -187,6 +193,7 @@ export class StreamStatsV2 {
         break;
       case 'finish':
         this._usage = chunk.usage;
+        this._providerMetadata = chunk.providerMetadata;
         this._finishReason = chunk.finishReason;
         break;
     }
@@ -197,6 +204,7 @@ export class StreamStatsV2 {
       response: this._responseMetadata,
       finishReason: this._finishReason,
       usage: this._usage,
+      providerMetadata: this._providerMetadata,
     };
   }
 

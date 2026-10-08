@@ -17,6 +17,7 @@ import packageJson from '../../../package.json';
 import type { OpenAIMessage } from '../vercelTypes';
 import type { LanguageModelV2Prompt } from '@ai-sdk/providerv2';
 import type { LanguageModelV3Prompt } from '@ai-sdk/providerv3';
+import type { GenAiUsage } from './usage';
 
 /**
  * Common span context discriminated union for V1, V2 and V3
@@ -29,22 +30,19 @@ type GenAiSpanContext =
         rawPrompt?: unknown[];
         rawSettings?: unknown;
       };
-      accumulatedInputTokens?: number;
-      accumulatedOutputTokens?: number;
+      accumulatedUsage?: GenAiUsage;
     }
   | {
       version: 'v2';
       originalPrompt: OpenAIMessage[];
       originalV2Prompt?: LanguageModelV2Prompt;
-      accumulatedInputTokens?: number;
-      accumulatedOutputTokens?: number;
+      accumulatedUsage?: GenAiUsage;
     }
   | {
       version: 'v3';
       originalPrompt: OpenAIMessage[];
       originalV3Prompt?: LanguageModelV3Prompt;
-      accumulatedInputTokens?: number;
-      accumulatedOutputTokens?: number;
+      accumulatedUsage?: GenAiUsage;
     };
 
 export type GenAiSpanContextV1 = Extract<GenAiSpanContext, { version: 'v1' }>;
@@ -487,50 +485,6 @@ export async function withSpanHandling<T>(
         },
       },
     );
-  }
-}
-
-/**
- * Sets common response attributes on a span
- */
-export function setResponseAttributes(
-  span: Span,
-  response: {
-    id?: string;
-    modelId?: string;
-    usage?: {
-      inputTokens?: number;
-      outputTokens?: number;
-      promptTokens?: number;
-      completionTokens?: number;
-    };
-    finishReason?: string;
-  },
-): void {
-  if (response.id) {
-    span.setAttribute(Attr.GenAI.Response.ID, response.id);
-  }
-  if (response.modelId) {
-    span.setAttribute(Attr.GenAI.Response.Model, response.modelId);
-  }
-
-  if (response.usage) {
-    // Handle both V1 and V2 usage formats
-    const inputTokens = ensureNumber(response.usage.inputTokens ?? response.usage.promptTokens);
-    const outputTokens = ensureNumber(
-      response.usage.outputTokens ?? response.usage.completionTokens,
-    );
-
-    if (inputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
-    }
-    if (outputTokens !== undefined) {
-      span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
-    }
-  }
-
-  if (response.finishReason) {
-    span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([response.finishReason]));
   }
 }
 
