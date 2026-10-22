@@ -9,6 +9,7 @@ export default defineConfig({
 
     dataset: process.env.NEXT_PUBLIC_AXIOM_DATASET,
     url: process.env.NEXT_PUBLIC_AXIOM_URL,
+    edgeUrl: process.env.NEXT_PUBLIC_AXIOM_EDGE_URL,
     token: process.env.AXIOM_TOKEN,
 
     flagSchema,

@@ -265,6 +265,8 @@ export type EvaluationReport = {
     overrides?: Record<string, any>;
   };
   registrationStatus?: RegistrationStatus;
+  /** Captures instrumentation/baseline loading failures for reporting */
+  instrumentationError?: string;
   /** Number of trials per case (only shown if > 1) */
   trials?: number;
 };
