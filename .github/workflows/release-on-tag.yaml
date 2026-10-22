@@ -6,7 +6,7 @@ on:
 
 env:
   PNPM_VERSION: 10.16.1
-  NODE_VERSION: 24
+  NODE_VERSION: 24.22.1
 
 
 name: release-ai-sdk-on-tag

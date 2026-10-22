@@ -41,7 +41,7 @@ internal/          # Shared tooling (eslint-config)
 examples/          # Reference apps (telemetry-*, evals-*, online-evals-*)
 ```
 
-pnpm workspaces + Turborepo. Node.js 20.x/22.x/24.x.
+pnpm workspaces + Turborepo. CI runs Node.js 22.23.4 and 24.22.1.
 
 ## Architecture
 

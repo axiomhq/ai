@@ -19,7 +19,7 @@ permissions:
 
 env:
   PNPM_VERSION: 10.16.1
-  NODE_VERSION: 22
+  NODE_VERSION: 22.23.4
 
 jobs:
   wrangler-smoke:
@@ -34,5 +34,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
+      - run: npm install --global npm@11.21.1
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm -C packages/ai test:wrangler-smoke
