@@ -121,6 +121,11 @@ const ATTR_GEN_AI_STEP_NAME = 'gen_ai.step.name';
 const ATTR_GEN_AI_TOOL_ARGUMENTS = 'gen_ai.tool.arguments'; // deprecated by OTel
 const ATTR_GEN_AI_TOOL_MESSAGE = 'gen_ai.tool.message'; // deprecated by OTel
 
+// OTel GenAI semantic conventions; not yet exported by the pinned @opentelemetry/semantic-conventions
+const ATTR_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = 'gen_ai.usage.cache_read.input_tokens';
+const ATTR_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = 'gen_ai.usage.cache_creation.input_tokens';
+const ATTR_GEN_AI_USAGE_REASONING_OUTPUT_TOKENS = 'gen_ai.usage.reasoning.output_tokens';
+
 const GEN_AI_PROVIDER_NAME_VALUE_ASSEMBLYAI = 'assemblyai';
 const GEN_AI_PROVIDER_NAME_VALUE_CEREBRAS = 'cerebras';
 const GEN_AI_PROVIDER_NAME_VALUE_DEEPGRAM = 'deepgram';
@@ -292,8 +297,13 @@ export const Attr = {
       Message: ATTR_GEN_AI_TOOL_MESSAGE,
     },
     Usage: {
+      /** Includes cache read and cache creation tokens. */
       InputTokens: ATTR_GEN_AI_USAGE_INPUT_TOKENS,
+      /** Includes reasoning tokens. */
       OutputTokens: ATTR_GEN_AI_USAGE_OUTPUT_TOKENS,
+      CacheReadInputTokens: ATTR_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+      CacheCreationInputTokens: ATTR_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+      ReasoningOutputTokens: ATTR_GEN_AI_USAGE_REASONING_OUTPUT_TOKENS,
     },
   },
   Eval: {

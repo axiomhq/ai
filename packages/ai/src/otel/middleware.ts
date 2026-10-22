@@ -13,6 +13,7 @@ import {
   type LanguageModelV2Usage,
   type LanguageModelV2ResponseMetadata,
   type LanguageModelV2FinishReason,
+  type SharedV2ProviderMetadata,
 } from '@ai-sdk/providerv2';
 import {
   type LanguageModelV3,
@@ -47,7 +48,6 @@ import {
   determineOutputTypeV3,
   classifyToolError,
   createStreamChildSpan,
-  ensureNumber,
   type GenAiSpanContextV1,
   type GenAiSpanContextV2,
   type GenAiSpanContextV3,
@@ -72,24 +72,21 @@ import {
   StreamStatsV3,
 } from './streaming/aggregators';
 import { getRedactionPolicy, handleMaybeRedactedAttribute } from './utils/redaction';
+import {
+  accumulateUsage,
+  setUsageAttributes,
+  usageFromV1,
+  usageFromV2,
+  usageFromV3,
+  type GenAiUsage,
+} from './utils/usage';
 
 export interface AxiomTelemetryConfig {
   // Future configuration options can be added here
 }
 
-function setStreamStepAttributes(
-  span: Span,
-  values: { inputTokens?: number; outputTokens?: number; finishReason?: string },
-) {
-  const inputTokens = ensureNumber(values.inputTokens);
-  if (inputTokens !== undefined) {
-    span.setAttribute(Attr.GenAI.Usage.InputTokens, inputTokens);
-  }
-
-  const outputTokens = ensureNumber(values.outputTokens);
-  if (outputTokens !== undefined) {
-    span.setAttribute(Attr.GenAI.Usage.OutputTokens, outputTokens);
-  }
+function setStreamStepAttributes(span: Span, values: { usage: GenAiUsage; finishReason?: string }) {
+  setUsageAttributes(span, values.usage);
 
   if (values.finishReason) {
     span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([values.finishReason]));
@@ -180,8 +177,7 @@ export function axiomAIMiddlewareV1(/* _config?: AxiomTelemetryConfig */): Langu
                     );
 
                     setStreamStepAttributes(childSpan, {
-                      inputTokens: statsResult.usage?.promptTokens,
-                      outputTokens: statsResult.usage?.completionTokens,
+                      usage: usageFromV1(statsResult.usage, statsResult.providerMetadata),
                       finishReason: statsResult.finishReason,
                     });
 
@@ -308,8 +304,7 @@ export function axiomAIMiddlewareV2(/* _config?: AxiomTelemetryConfig */): Langu
                     await setPostCallAttributesV2(span, streamResult, context, model);
 
                     setStreamStepAttributes(childSpan, {
-                      inputTokens: statsResult.usage?.inputTokens,
-                      outputTokens: statsResult.usage?.outputTokens,
+                      usage: usageFromV2(statsResult.usage, statsResult.providerMetadata),
                       finishReason: statsResult.finishReason,
                     });
 
@@ -441,19 +436,11 @@ async function setPostCallAttributesV1(
     span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
   }
 
-  const inputTokens = ensureNumber(result.usage?.promptTokens);
-  if (inputTokens !== undefined) {
-    const curr = context.accumulatedInputTokens ?? 0;
-    context.accumulatedInputTokens = curr + inputTokens;
-    span.setAttribute(Attr.GenAI.Usage.InputTokens, context.accumulatedInputTokens);
-  }
-
-  const outputTokens = ensureNumber(result.usage?.completionTokens);
-  if (outputTokens !== undefined) {
-    const curr = context.accumulatedOutputTokens ?? 0;
-    context.accumulatedOutputTokens = curr + outputTokens;
-    span.setAttribute(Attr.GenAI.Usage.OutputTokens, context.accumulatedOutputTokens);
-  }
+  context.accumulatedUsage = accumulateUsage(
+    context.accumulatedUsage,
+    usageFromV1(result.usage, result.providerMetadata),
+  );
+  setUsageAttributes(span, context.accumulatedUsage);
 
   if (result.finishReason) {
     span.setAttribute(Attr.GenAI.Response.FinishReasons, JSON.stringify([result.finishReason]));
@@ -507,6 +494,7 @@ async function setPostCallAttributesV2(
     response?: LanguageModelV2ResponseMetadata;
     finishReason?: LanguageModelV2FinishReason;
     usage?: LanguageModelV2Usage;
+    providerMetadata?: SharedV2ProviderMetadata;
     content?: Array<LanguageModelV2Content>;
   },
   context: GenAiSpanContextV2,
@@ -526,19 +514,11 @@ async function setPostCallAttributesV2(
     span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
   }
 
-  const inputTokens = ensureNumber(result.usage?.inputTokens);
-  if (inputTokens !== undefined) {
-    const curr = context.accumulatedInputTokens ?? 0;
-    context.accumulatedInputTokens = curr + inputTokens;
-    span.setAttribute(Attr.GenAI.Usage.InputTokens, context.accumulatedInputTokens);
-  }
-
-  const outputTokens = ensureNumber(result.usage?.outputTokens);
-  if (outputTokens !== undefined) {
-    const curr = context.accumulatedOutputTokens ?? 0;
-    context.accumulatedOutputTokens = curr + outputTokens;
-    span.setAttribute(Attr.GenAI.Usage.OutputTokens, context.accumulatedOutputTokens);
-  }
+  context.accumulatedUsage = accumulateUsage(
+    context.accumulatedUsage,
+    usageFromV2(result.usage, result.providerMetadata),
+  );
+  setUsageAttributes(span, context.accumulatedUsage);
 
   // Update prompt to include tool calls and tool results if they exist
   if (toolCalls && toolCalls.length > 0) {
@@ -712,8 +692,7 @@ export function axiomAIMiddlewareV3(/* _config?: AxiomTelemetryConfig */): Langu
                     );
 
                     setStreamStepAttributes(childSpan, {
-                      inputTokens: statsResult.usage?.inputTokens?.total,
-                      outputTokens: statsResult.usage?.outputTokens?.total,
+                      usage: usageFromV3(statsResult.usage),
                       finishReason: statsResult.finishReason?.unified,
                     });
 
@@ -804,28 +783,10 @@ async function setPostCallAttributesV3(
     span.setAttribute(Attr.GenAI.Response.Model, result.response.modelId);
   }
 
-  // V3 has structured token usage - extract totals for OTel attributes
-  // TODO: When OTel semantic conventions add support for cached/reasoning tokens,
-  // add these attributes:
-  // - result.usage?.inputTokens.cacheRead -> gen_ai.usage.cache_read_tokens (or similar)
-  // - result.usage?.inputTokens.cacheWrite -> gen_ai.usage.cache_write_tokens (or similar)
-  // - result.usage?.inputTokens.noCache -> gen_ai.usage.no_cache_tokens (or similar)
-  // - result.usage?.outputTokens.reasoning -> gen_ai.usage.reasoning_tokens (or similar)
-  // - result.usage?.outputTokens.text -> gen_ai.usage.text_tokens (or similar)
-  // Access: result.usage?.inputTokens.cacheRead, result.usage?.outputTokens.reasoning, etc.
-  const inputTokens = ensureNumber(result.usage?.inputTokens?.total);
-  if (inputTokens !== undefined) {
-    const curr = context.accumulatedInputTokens ?? 0;
-    context.accumulatedInputTokens = curr + inputTokens;
-    span.setAttribute(Attr.GenAI.Usage.InputTokens, context.accumulatedInputTokens);
-  }
-
-  const outputTokens = ensureNumber(result.usage?.outputTokens?.total);
-  if (outputTokens !== undefined) {
-    const curr = context.accumulatedOutputTokens ?? 0;
-    context.accumulatedOutputTokens = curr + outputTokens;
-    span.setAttribute(Attr.GenAI.Usage.OutputTokens, context.accumulatedOutputTokens);
-  }
+  // OTel has no attributes for inputTokens.noCache or outputTokens.text; both are derivable
+  // from the totals and the cache and reasoning counts.
+  context.accumulatedUsage = accumulateUsage(context.accumulatedUsage, usageFromV3(result.usage));
+  setUsageAttributes(span, context.accumulatedUsage);
 
   // Update prompt to include tool calls and tool results if they exist
   if (toolCalls && toolCalls.length > 0) {
